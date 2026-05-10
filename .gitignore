@@ -1,0 +1,16 @@
+node_modules/
+build/
+dist/
+dist-electron/
+release/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+scratch/
+*.zip
+/icono*.png
+/logo.png
+/icon*.png
+/ICONOS*.png
