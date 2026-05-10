@@ -345,11 +345,17 @@ function startHotspotPolling() {
       } else {
         lastHotspotCorner = currentCorner;
         hotspotEntryTime = Date.now();
+        // Si delay es 0, activar inmediatamente sin esperar otro ciclo
+        if (hotspotDelay === 0 && mainWindow && !mainWindow.isVisible()) {
+          console.log(`ACTIVACIÓN INMEDIATA: ${currentCorner}`);
+          toggleWindow(true);
+          lastHotspotCorner = '';
+        }
       }
     } else {
       lastHotspotCorner = '';
     }
-  }, 500);
+  }, 100);
 }
 
 // =====================================
@@ -661,12 +667,14 @@ function setupIpcHandlers() {
           model: cpus[0]?.model || 'Unknown',
           cores: cpus.length,
         },
+        uptime: os.uptime(),
       };
     } catch (e) {
       console.error('Error en get-system-info:', e);
       return {
         memory: { total: 16, used: 8, percent: 50 },
-        cpu: { model: 'Error', cores: 0 }
+        cpu: { model: 'Error', cores: 0 },
+        uptime: 0
       };
     }
   });

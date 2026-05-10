@@ -111,7 +111,7 @@ declare global {
       windowClose: () => Promise<void>;
       windowHideToTray: () => Promise<void>;
       setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
-      getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number } }>;
+      getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
       resolveFilePath: (filePath: string) => Promise<{ name: string; path: string; ext: string; exists: boolean; iconPath: string; debug?: any } | null>;
       getPathForFile: (file: File) => string;
@@ -135,6 +135,7 @@ const isElectron = !!window.electronAPI;
 const SystemMonitor = React.memo(() => {
   const [memPercent, setMemPercent] = useState<number>(0);
   const [memUsed, setMemUsed] = useState<number>(0);
+  const [uptime, setUptime] = useState<number>(0);
 
   useEffect(() => {
     const fetchMem = async () => {
@@ -143,6 +144,7 @@ const SystemMonitor = React.memo(() => {
           const info = await window.electronAPI!.getSystemInfo();
           setMemPercent(info.memory.percent);
           setMemUsed(info.memory.used);
+          setUptime(info.uptime);
         } else {
           console.warn('Electron API not found, using fallback monitor');
           if ((performance as any).memory) {
@@ -230,6 +232,31 @@ const DiskMonitor = React.memo(() => {
         </div>
       </div>
     </div>
+  );
+});
+
+const UptimeMonitor = React.memo(() => {
+  const [uptime, setUptime] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUptime = async () => {
+      if (isElectron) {
+        const info = await window.electronAPI!.getSystemInfo();
+        setUptime(info.uptime);
+      }
+    };
+    fetchUptime();
+    const interval = setInterval(fetchUptime, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const h = Math.floor(uptime / 3600);
+  const m = Math.floor((uptime % 3600) / 60);
+
+  return (
+    <span className="text-sm font-mono text-slate-400 tracking-wide">
+      {h > 0 ? `${h}h ${m}m` : `${m}m`}
+    </span>
   );
 });
 
@@ -1521,10 +1548,39 @@ export default function App() {
         className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-all duration-300'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarWidth }}
       >
-        <div className="p-6 pb-2">
+        <div className="p-6 pb-2 flex items-center justify-between">
           <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest mt-2 px-2 drop-shadow-sm">
             MÁS USADAS
           </h3>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setIsAboutOpen(true)}
+              title="Acerca de CyberLauncher" 
+              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+            >
+              <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+            </button>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              title="Configuración" 
+              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+            </button>
+            <button 
+              onClick={() => {
+                if (isElectron) {
+                  window.electronAPI!.windowHideToTray();
+                } else {
+                  setIsAppActive(false);
+                }
+              }}
+              title="Minimizar a la bandeja del sistema" 
+              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+            >
+              <Minimize2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 px-4 py-2 pb-4 flex flex-col overflow-hidden">
@@ -1613,38 +1669,26 @@ export default function App() {
           </div>
         </div>
 
-        {/* Lado derecho: Bandeja del sistema */}
+        {/* Lado derecho: Info del sistema */}
         <div className="flex items-center gap-4 text-slate-400">
-          <button title="Redes e Internet" className="group p-1.5 hover:bg-white/10 rounded-md transition-colors">
-            <Wifi className="w-4 h-4 text-slate-400 group-hover:text-white" />
-          </button>
-          <button title="Batería: 100%" className="group p-1.5 hover:bg-white/10 rounded-md transition-colors">
-            <BatteryMedium className="w-4 h-4 text-slate-400 group-hover:text-white" />
-          </button>
-          <button title="Volumen: 75%" className="group p-1.5 hover:bg-white/10 rounded-md transition-colors">
-            <Volume2 className="w-4 h-4 text-slate-400 group-hover:text-white" />
-          </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            title="Configuración" 
-            className="flex items-center justify-center w-8 h-8 hover:bg-white/10 rounded-md transition-colors group"
-          >
-            <Settings className="w-4 h-4 text-slate-400 group-hover:text-white" />
-          </button>
-          <button 
-            onClick={() => {
-              if (isElectron) {
-                window.electronAPI!.windowHideToTray();
-              } else {
-                setIsAppActive(false);
-              }
-            }}
-            title="Minimizar a la bandeja del sistema (Ocultar)" 
-            className="flex items-center justify-center w-8 h-8 hover:bg-white/10 rounded-md transition-colors group"
-          >
-            <Minimize2 className="w-4 h-4 text-cyan-400/70 group-hover:text-cyan-400" />
-          </button>
+          {/* Uptime */}
+          <div className="flex items-center gap-1.5 cursor-default" title="Tiempo encendido del sistema (Uptime)">
+            <Power className="w-4 h-4 text-emerald-500" />
+            <UptimeMonitor />
+          </div>
+          <div className="w-px h-4 bg-white/10" />
+          {/* Launches today */}
+          <div className="flex items-center gap-1.5 cursor-default" title="Lanzamientos de hoy">
+            <ChevronRight className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm font-mono text-slate-400">{apps.reduce((acc: number, app: any) => acc + (app.usage || 0), 0)}</span>
+          </div>
+          <div className="w-px h-4 bg-white/10" />
+          {/* Date */}
+          <div className="flex items-center gap-1.5 cursor-default text-slate-400" title="Fecha actual">
+            <span className="text-sm font-mono tracking-wide">
+              {currentTime.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
+            </span>
+          </div>
         </div>
       </div>
 
