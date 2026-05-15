@@ -319,6 +319,7 @@ export default function App() {
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -335,6 +336,7 @@ export default function App() {
   const [bgImage, setBgImage] = useState(() => localStorage.getItem('bgImage') || PRESET_IMAGES[1]);
   const [customImageUrl, setCustomImageUrl] = useState(() => localStorage.getItem('customImageUrl') || '');
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
+  const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
@@ -351,6 +353,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('customImageUrl', customImageUrl); }, [customImageUrl]);
   useEffect(() => { localStorage.setItem('bgColor', bgColor); }, [bgColor]);
   useEffect(() => { localStorage.setItem('startWithWindows', startWithWindows.toString()); }, [startWithWindows]);
+  useEffect(() => { localStorage.setItem('hideOnClickDeadSpot', hideOnClickDeadSpot.toString()); }, [hideOnClickDeadSpot]);
   useEffect(() => { localStorage.setItem('bgGradient', bgGradient); }, [bgGradient]);
   useEffect(() => { localStorage.setItem('glassIntensity', glassIntensity.toString()); }, [glassIntensity]);
   useEffect(() => { localStorage.setItem('bgOpacity', bgOpacity.toString()); }, [bgOpacity]);
@@ -450,6 +453,7 @@ export default function App() {
           if (source.glassIntensity !== undefined) setGlassIntensity(source.glassIntensity);
           if (source.bgOpacity !== undefined) setBgOpacity(source.bgOpacity);
           if (source.startWithWindows !== undefined) setStartWithWindows(source.startWithWindows);
+          if (source.hideOnClickDeadSpot !== undefined) setHideOnClickDeadSpot(source.hideOnClickDeadSpot);
           if (source.activationShortcut) setActivationShortcut(source.activationShortcut);
           if (source.hotspotCorners) setHotspotCorners(source.hotspotCorners);
           if (source.hotspotDelay !== undefined) setHotspotDelay(source.hotspotDelay);
@@ -467,8 +471,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -493,7 +497,8 @@ export default function App() {
           bgGradient, glassIntensity, bgOpacity,
           startWithWindows, activationShortcut,
           hotspotCorners, hotspotDelay,
-          leftSidebarWidth, rightSidebarWidth
+          leftSidebarWidth, rightSidebarWidth,
+          hideOnClickDeadSpot
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -516,6 +521,7 @@ export default function App() {
     startWithWindows, activationShortcut,
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
+    hideOnClickDeadSpot,
     isConfigLoaded
   ]);
 
@@ -549,7 +555,8 @@ export default function App() {
       'bgGradient', 'glassIntensity', 'bgOpacity',
       'startWithWindows', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
-      'leftSidebarWidth', 'rightSidebarWidth'
+      'leftSidebarWidth', 'rightSidebarWidth',
+      'hideOnClickDeadSpot'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -643,6 +650,10 @@ export default function App() {
         setStartWithWindows(config.startWithWindows);
         localStorage.setItem('startWithWindows', config.startWithWindows.toString());
       }
+      if (config.hideOnClickDeadSpot !== undefined) {
+        setHideOnClickDeadSpot(config.hideOnClickDeadSpot);
+        localStorage.setItem('hideOnClickDeadSpot', config.hideOnClickDeadSpot.toString());
+      }
       if (config.activationShortcut) {
         setActivationShortcut(config.activationShortcut);
         localStorage.setItem('activationShortcut', config.activationShortcut);
@@ -715,6 +726,38 @@ export default function App() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Auto-hide scrollbar: show on any mouse move + on scroll, hide on cursor stop
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    let mouseTimer: number;
+    const onMouseMove = () => {
+      root.classList.add('mouse-active');
+      clearTimeout(mouseTimer);
+      mouseTimer = window.setTimeout(() => root.classList.remove('mouse-active'), 400);
+    };
+    root.addEventListener('mousemove', onMouseMove);
+    const scrollTimeouts = new Map<HTMLElement, number>();
+    const onScroll = (e: Event) => {
+      const el = e.currentTarget as HTMLElement;
+      el.classList.add('scrolling');
+      const existing = scrollTimeouts.get(el);
+      if (existing) clearTimeout(existing);
+      scrollTimeouts.set(el, window.setTimeout(() => {
+        el.classList.remove('scrolling');
+        scrollTimeouts.delete(el);
+      }, 300));
+    };
+    const scrollEls = document.querySelectorAll<HTMLElement>('.custom-scrollbar');
+    scrollEls.forEach(el => el.addEventListener('scroll', onScroll));
+    return () => {
+      root.removeEventListener('mousemove', onMouseMove);
+      clearTimeout(mouseTimer);
+      scrollEls.forEach(el => el.removeEventListener('scroll', onScroll));
+      scrollTimeouts.forEach(t => clearTimeout(t));
+    };
   }, []);
 
   useEffect(() => {
@@ -1124,11 +1167,18 @@ export default function App() {
 
   return (
     <div 
+      ref={rootRef}
       className="flex h-screen w-full text-slate-300 font-sans overflow-hidden selection:bg-blue-500/30 relative transition-all duration-500"
       style={getBackgroundStyle()}
       onDragOver={handleSystemDragOver}
       onDragLeave={handleSystemDragLeave}
       onDrop={handleSystemDrop}
+      onClick={(e) => {
+        if (!hideOnClickDeadSpot || !isElectron) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
+        window.electronAPI!.windowHideToTray();
+      }}
     >
       {/* --- OVERLAYS FOR IMAGE BACKGROUND --- */}
       {bgType === 'image' && (
@@ -2467,6 +2517,26 @@ export default function App() {
 
                     <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                          <MousePointer2 className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Ocultar al hacer clic en espacio vacío</h4>
+                          <p className="text-xs text-slate-500">Al hacer clic en el fondo del launcher, se oculta al tray.</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setHideOnClickDeadSpot(!hideOnClickDeadSpot)}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${hideOnClickDeadSpot ? 'bg-amber-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnClickDeadSpot ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${hideOnClickDeadSpot ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3">
                         <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                           <FileJson className="w-4 h-4 text-emerald-400" />
                         </div>
@@ -2649,20 +2719,29 @@ export default function App() {
       <style>{`
         .custom-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+          scrollbar-color: transparent transparent;
+          transition: scrollbar-color 0.15s;
+        }
+        .mouse-active .custom-scrollbar,
+        .custom-scrollbar.scrolling {
+          scrollbar-color: rgba(34, 211, 238, 0.5) transparent;
         }
         .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
+          width: 2px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.2);
+          background: linear-gradient(to bottom, #22d3ee, #818cf8);
           border-radius: 4px;
+          opacity: 0;
+          transition: opacity 0.15s ease;
         }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.4);
+        .mouse-active .custom-scrollbar::-webkit-scrollbar-thumb,
+        .custom-scrollbar.scrolling::-webkit-scrollbar-thumb {
+          opacity: 1;
+          box-shadow: 0 0 6px rgba(34, 211, 238, 0.5), 0 0 14px rgba(34, 211, 238, 0.2);
         }
       `}</style>
     </div>

@@ -29,6 +29,25 @@ let lastHotspotCorner = '';
 let hotspotEntryTime = 0;
 let isSavingConfig = false;
 let isDialogOpen = false;
+let intentionallyHidden = true; // ventana empieza oculta, solo mostrar si nosotros lo pedimos
+let hotspotCooldown = false; // evita re-disparo mientras el cursor siga en la esquina
+
+function showMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log('[WM] showMainWindow (was intentionallyHidden=' + intentionallyHidden + ')');
+    intentionallyHidden = false;
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
+function hideMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log('[WM] hideMainWindow');
+    intentionallyHidden = true;
+    mainWindow.hide();
+  }
+}
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.json');
@@ -145,7 +164,7 @@ function createWindow() {
     transparent: false,
     alwaysOnTop: false, // Quitar alwaysOnTop para permitir que otras ventanas se abran encima si es necesario
     resizable: true, // Importante: debe ser true para que maximize() funcione correctamente en Windows
-    skipTaskbar: false,
+    skipTaskbar: true,
     backgroundColor: '#0a0f18',
     show: false,
     icon: getAppIcon(),
@@ -180,16 +199,25 @@ function createWindow() {
   // Mostrar la ventana cuando esté lista para evitar flash blanco
   mainWindow.once('ready-to-show', () => {
     console.log('Window ready-to-show, displaying...');
-    mainWindow?.show();
-    mainWindow?.focus();
+    showMainWindow();
   });
 
   // Recargar config cuando la ventana se restaura del tray
   mainWindow.on('show', () => {
+    console.log('[WM EVENT] show (intentionallyHidden=' + intentionallyHidden + ')');
+    if (intentionallyHidden) {
+      console.log('[WM] Windows restored window unexpectedly, re-hiding');
+      hideMainWindow();
+      return;
+    }
     console.log('[MAIN] Window show event fired, sending reload-config');
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('reload-config');
     }
+  });
+
+  mainWindow.on('hide', () => {
+    console.log('[WM EVENT] hide');
   });
 
   // Recargar config cuando la ventana recibe foco (doble fallback)
@@ -203,21 +231,32 @@ function createWindow() {
   // Ocultar launcher cuando pierde foco (comportamiento tipo launcher)
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Al perder foco, limpiar tracking de hotspots para que arranquen limpios si el usuario re-activa
+    lastHotspotCorner = '';
+    hotspotEntryTime = 0;
     // Pequeño delay para no ocultar si un diálogo nativo (file picker, DevTools) roba el foco
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen) {
         console.log('[MAIN] Window lost focus, hiding to tray');
-        mainWindow.hide();
+        hideMainWindow();
       }
     }, 200);
+  });
+
+  // GUARD: Si Windows restaura la ventana (p.ej. tras UAC), re-ocultarla
+  mainWindow.on('restore', () => {
+    console.log('[WM EVENT] restore (intentionallyHidden=' + intentionallyHidden + ')');
+    if (intentionallyHidden && mainWindow && mainWindow.isVisible()) {
+      console.log('[WM] Window restored by OS, re-hiding');
+      hideMainWindow();
+    }
   });
 
   // Seguridad: Mostrar después de 3 segundos si ready-to-show no disparó
   setTimeout(() => {
     if (mainWindow && !mainWindow.isVisible()) {
       console.log('Safety timeout: forcing window show');
-      mainWindow.show();
-      mainWindow.focus();
+      showMainWindow();
     }
   }, 3000);
 
@@ -232,7 +271,7 @@ function createWindow() {
     if (!isQuitting) {
       e.preventDefault();
       saveWindowState();
-      mainWindow?.hide();
+      hideMainWindow();
     }
   });
 
@@ -272,22 +311,23 @@ function createTray() {
 // TOGGLE WINDOW (Mostrar / Ocultar)
 // =====================================
 function toggleWindow(forceShow = false) {
-  if (!mainWindow) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    console.log('[TOGGLE] Window destroyed, recreating...');
+    mainWindow = null;
     createWindow();
+    registerGlobalShortcut(currentShortcut);
     return;
   }
   
   if (forceShow) {
-    mainWindow.show();
-    mainWindow.focus();
+    showMainWindow();
     return;
   }
 
   if (mainWindow.isVisible()) {
-    mainWindow.hide();
+    hideMainWindow();
   } else {
-    mainWindow.show();
-    mainWindow.focus();
+    showMainWindow();
   }
 }
 
@@ -333,12 +373,15 @@ function startHotspotPolling() {
     }
 
     if (currentCorner) {
-      if (currentCorner === lastHotspotCorner) {
+      if (hotspotCooldown) {
+        // Cursor still in corner after previous activation — do nothing until it leaves
+      } else if (currentCorner === lastHotspotCorner) {
         const timeInCorner = Date.now() - hotspotEntryTime;
         if (timeInCorner >= hotspotDelay) {
-          if (mainWindow && !mainWindow.isVisible()) {
-            console.log(`ACTIVACIÓN VÁLIDA: ${currentCorner} tras ${timeInCorner}ms`);
-            toggleWindow(true);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            console.log(`ACTIVACIÓN VÁLIDA: ${currentCorner} tras ${timeInCorner}ms (vis=${mainWindow.isVisible()})`);
+            toggleWindow();
+            hotspotCooldown = true;
           }
           lastHotspotCorner = ''; 
         }
@@ -346,14 +389,17 @@ function startHotspotPolling() {
         lastHotspotCorner = currentCorner;
         hotspotEntryTime = Date.now();
         // Si delay es 0, activar inmediatamente sin esperar otro ciclo
-        if (hotspotDelay === 0 && mainWindow && !mainWindow.isVisible()) {
-          console.log(`ACTIVACIÓN INMEDIATA: ${currentCorner}`);
-          toggleWindow(true);
+        if (hotspotDelay === 0 && mainWindow && !mainWindow.isDestroyed()) {
+          console.log(`ACTIVACIÓN INMEDIATA: ${currentCorner} (vis=${mainWindow.isVisible()})`);
+          toggleWindow();
+          hotspotCooldown = true;
           lastHotspotCorner = '';
         }
       }
     } else {
+      // Cursor left the corner — allow future activations
       lastHotspotCorner = '';
+      hotspotCooldown = false;
     }
   }, 100);
 }
@@ -373,7 +419,11 @@ function registerGlobalShortcut(shortcut: string) {
 
   try {
     const success = globalShortcut.register(electronShortcut, () => {
-      toggleWindow();
+      try {
+        toggleWindow();
+      } catch (err) {
+        console.error('[SHORTCUT] Error in global shortcut callback:', err);
+      }
     });
 
     if (!success) {
@@ -513,7 +563,7 @@ function setupIpcHandlers() {
       ],
     });
     isDialogOpen = false;
-    if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
+    showMainWindow();
     if (result.canceled || result.filePaths.length === 0) return null;
     
     // Devolver la información completa, incluyendo el ícono
@@ -531,7 +581,7 @@ function setupIpcHandlers() {
       ],
     });
     isDialogOpen = false;
-    if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
+    showMainWindow();
     if (result.canceled || result.filePaths.length === 0) return null;
     
     // Para imágenes pequeñas (iconos), devolveremos la ruta cruda.
@@ -575,6 +625,8 @@ function setupIpcHandlers() {
       if (errorMessage) {
         return { success: false, error: errorMessage };
       }
+      // Ocultar al tray al lanzar una app
+      hideMainWindow();
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
@@ -620,7 +672,8 @@ function setupIpcHandlers() {
 
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
   ipcMain.handle('window-minimize', () => {
-    mainWindow?.minimize();
+    // Treat minimize as hide-to-tray so state stays consistent (intentionallyHidden=true)
+    hideMainWindow();
   });
 
   ipcMain.handle('window-maximize-toggle', () => {
@@ -633,11 +686,11 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window-close', () => {
     // Ocultar en vez de cerrar (se va al tray)
-    mainWindow?.hide();
+    hideMainWindow();
   });
 
   ipcMain.handle('window-hide-to-tray', () => {
-    mainWindow?.hide();
+    hideMainWindow();
   });
 
   // --- Configurar inicio con Windows (auto-launch) ---
@@ -734,7 +787,7 @@ function setupIpcHandlers() {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     isDialogOpen = false;
-    if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
+    showMainWindow();
     if (result.canceled || !result.filePath) return null;
     fs.writeFileSync(result.filePath, jsonData, 'utf-8');
     return result.filePath;
@@ -749,7 +802,7 @@ function setupIpcHandlers() {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     isDialogOpen = false;
-    if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
+    showMainWindow();
     if (result.canceled || result.filePaths.length === 0) return null;
     const content = fs.readFileSync(result.filePaths[0], 'utf-8');
     return content;
@@ -850,14 +903,22 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', () => {
     // Alguien intentó abrir una segunda instancia: mostrar y enfocar la existente
-    console.log('[SINGLE-INSTANCE] Intento de segunda instancia, enfocando ventana existente');
+    console.log('[SINGLE-INSTANCE] Intento de segunda instancia (intentionallyHidden=' + intentionallyHidden + ')');
     if (mainWindow) {
-      if (!mainWindow.isVisible()) mainWindow.show();
+      if (!mainWindow.isVisible()) showMainWindow();
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
   });
 }
+
+// Catch unexpected errors to prevent silent death of intervals/listeners
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err?.message, err?.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason);
+});
 
 // =====================================
 // APP LIFECYCLE
@@ -870,7 +931,7 @@ app.whenReady().then(() => {
     currentShortcut = windowState.shortcut;
   }
   
-  // Intentar cargar el atajo desde el nuevo archivo de configuración centralizada
+  // Intentar cargar configuración centralizada (atajo, hotspots, etc.)
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
@@ -878,9 +939,17 @@ app.whenReady().then(() => {
         currentShortcut = config.activationShortcut;
         console.log('Atajo cargado desde configuración central:', currentShortcut);
       }
+      if (config.hotspotCorners && Array.isArray(config.hotspotCorners)) {
+        hotspotCorners = config.hotspotCorners;
+        console.log('Hotspots cargados desde configuración central:', hotspotCorners);
+      }
+      if (config.hotspotDelay !== undefined) {
+        hotspotDelay = config.hotspotDelay;
+        console.log('Hotspot delay cargado desde configuración central:', hotspotDelay);
+      }
     }
   } catch (e) {
-    console.error('Error cargando atajo desde config central:', e);
+    console.error('Error cargando configuración central:', e);
   }
   
   // Configurar el protocolo local-resource para cargar archivos locales
@@ -923,6 +992,26 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
+
+  // Iniciar guardia UAC (independiente de hotspots)
+  startHotspotPolling();
+  setInterval(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const vis = mainWindow.isVisible();
+      if (intentionallyHidden && vis) {
+        console.log('[UAC-GUARD] Window visible when should be hidden! (vis=' + vis + '), hiding off-screen');
+        // Move off-screen so Windows UAC recovery can't find/restore it
+        mainWindow.setBounds({ x: -10000, y: -10000, width: 100, height: 100 });
+        mainWindow.minimize();
+        hideMainWindow();
+        // Re-register shortcut as safety (Windows may lose it during UAC)
+        registerGlobalShortcut(currentShortcut);
+      } else if (!intentionallyHidden && !vis) {
+        console.log('[UAC-GUARD] Window hidden when should be visible! State desync, re-showing');
+        showMainWindow();
+      }
+    }
+  }, 500);
 
   // Vigilar cambios en el archivo de configuracion para sincronizar entre instancias
   let configWatcherReloadTimer: NodeJS.Timeout | null = null;
