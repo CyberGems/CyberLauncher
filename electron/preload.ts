@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // --- Auto-launch (Iniciar con Windows) ---
   setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch', enabled),
+  setHideOnBlur: (enabled: boolean) => ipcRenderer.invoke('set-hide-on-blur', enabled),
+  setShowTaskbarIcon: (enabled: boolean) => ipcRenderer.invoke('set-show-taskbar-icon', enabled),
 
   // --- Info del sistema (CPU/Memoria real) ---
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
@@ -37,6 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // --- Drag & Drop: resolver ruta de archivo ---
   resolveFilePath: (filePath: string) => ipcRenderer.invoke('resolve-file-path', filePath),
+  openFileLocation: (filePath: string) => ipcRenderer.invoke('open-file-location', filePath),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 
   // --- Hotspots ---

@@ -31,6 +31,8 @@ let isSavingConfig = false;
 let isDialogOpen = false;
 let intentionallyHidden = true; // ventana empieza oculta, solo mostrar si nosotros lo pedimos
 let hotspotCooldown = false; // evita re-disparo mientras el cursor siga en la esquina
+let hideOnBlurEnabled = true; // se puede desactivar desde la config
+let showTaskbarIcon = false; // se puede activar desde la config
 
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -164,7 +166,7 @@ function createWindow() {
     transparent: false,
     alwaysOnTop: false, // Quitar alwaysOnTop para permitir que otras ventanas se abran encima si es necesario
     resizable: true, // Importante: debe ser true para que maximize() funcione correctamente en Windows
-    skipTaskbar: true,
+    skipTaskbar: !showTaskbarIcon,
     backgroundColor: '#0a0f18',
     show: false,
     icon: getAppIcon(),
@@ -234,9 +236,10 @@ function createWindow() {
     // Al perder foco, limpiar tracking de hotspots para que arranquen limpios si el usuario re-activa
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
+    if (!hideOnBlurEnabled) return;
     // Pequeño delay para no ocultar si un diálogo nativo (file picker, DevTools) roba el foco
     setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen) {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
         hideMainWindow();
       }
@@ -303,8 +306,8 @@ function createTray() {
     },
   ]);
 
+  tray.on('click', () => toggleWindow());
   tray.setContextMenu(contextMenu);
-  tray.on('double-click', () => toggleWindow());
 }
 
 // =====================================
@@ -702,6 +705,19 @@ function setupIpcHandlers() {
     return { success: true, enabled };
   });
 
+  ipcMain.handle('set-hide-on-blur', (_event, enabled: boolean) => {
+    hideOnBlurEnabled = enabled;
+    return { success: true, enabled };
+  });
+
+  ipcMain.handle('set-show-taskbar-icon', (_event, enabled: boolean) => {
+    showTaskbarIcon = enabled;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setSkipTaskbar(!enabled);
+    }
+    return { success: true, enabled };
+  });
+
   // --- Obtener información del sistema (CPU/Mem real) ---
   ipcMain.handle('get-system-info', () => {
     try {
@@ -776,6 +792,16 @@ function setupIpcHandlers() {
   // --- Obtener ruta de archivo arrastrado (drag & drop nativo) ---
   ipcMain.handle('resolve-file-path', async (_event, filePath: string) => {
     return await resolveFullFileInfo(filePath);
+  });
+
+  ipcMain.handle('open-file-location', async (_event, filePath: string) => {
+    try {
+      shell.showItemInFolder(filePath);
+      return { success: true };
+    } catch (e: any) {
+      console.error('Error opening file location:', e);
+      return { success: false, error: e.message };
+    }
   });
 
   // --- Exportar configuración (guardar archivo nativo) ---
@@ -946,6 +972,10 @@ app.whenReady().then(() => {
       if (config.hotspotDelay !== undefined) {
         hotspotDelay = config.hotspotDelay;
         console.log('Hotspot delay cargado desde configuración central:', hotspotDelay);
+      }
+      if (config.showTaskbarIcon === true) {
+        showTaskbarIcon = true;
+        console.log('Taskbar icon habilitado desde configuración central');
       }
     }
   } catch (e) {
