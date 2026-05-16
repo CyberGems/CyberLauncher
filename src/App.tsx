@@ -12,6 +12,7 @@ import {
   FolderOpen, Eye
 } from 'lucide-react';
 
+// (CyberTray import removed)
 
 export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { className?: string, animated?: boolean }) => (
   <img 
@@ -269,6 +270,7 @@ const UptimeMonitor = React.memo(() => {
 });
 
 export default function App() {
+
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('categories');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
@@ -337,7 +339,7 @@ export default function App() {
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray'>('general');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
@@ -383,6 +385,7 @@ export default function App() {
     const saved = localStorage.getItem('bgOpacity');
     return saved ? parseInt(saved, 10) : 80;
   });
+  // (CyberTray state removed)
 
   useEffect(() => { localStorage.setItem('bgType', bgType); }, [bgType]);
   useEffect(() => { localStorage.setItem('bgImage', bgImage); }, [bgImage]);
@@ -615,7 +618,7 @@ export default function App() {
       'startWithWindows', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth',
-      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon'
+      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -705,6 +708,10 @@ export default function App() {
       if (config.bgOpacity !== undefined) {
         setBgOpacity(config.bgOpacity);
         localStorage.setItem('bgOpacity', config.bgOpacity.toString());
+      }
+      if (config.cyberTray !== undefined) {
+        setCyberTrayConfig(config.cyberTray);
+        localStorage.setItem('cyberTrayConfig', JSON.stringify(config.cyberTray));
       }
       if (config.startWithWindows !== undefined) {
         setStartWithWindows(config.startWithWindows);
@@ -806,7 +813,7 @@ export default function App() {
     const onMouseMove = () => {
       root.classList.add('mouse-active');
       clearTimeout(mouseTimer);
-      mouseTimer = window.setTimeout(() => root.classList.remove('mouse-active'), 400);
+      mouseTimer = window.setTimeout(() => root.classList.remove('mouse-active'), 900);
     };
     root.addEventListener('mousemove', onMouseMove);
     const scrollTimeouts = new Map<HTMLElement, number>();
@@ -818,7 +825,7 @@ export default function App() {
       scrollTimeouts.set(el, window.setTimeout(() => {
         el.classList.remove('scrolling');
         scrollTimeouts.delete(el);
-      }, 300));
+      }, 800));
     };
     const scrollEls = document.querySelectorAll<HTMLElement>('.custom-scrollbar');
     scrollEls.forEach(el => el.addEventListener('scroll', onScroll));
@@ -2692,6 +2699,8 @@ export default function App() {
                 </div>
 
                 </>)}
+
+                {/* (CyberTray Section removed) */}
               </div>
             </motion.div>
           </motion.div>
@@ -2903,7 +2912,7 @@ export default function App() {
         }
 
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
@@ -2941,7 +2950,7 @@ export default function App() {
 
         /* Sidebar narrower scrollbar */
         .custom-scrollbar[class*="px-4"][class*="py-2"][class*="space-y-0"]::-webkit-scrollbar {
-          width: 4px;
+          width: 3px;
         }
       `}</style>
     </div>

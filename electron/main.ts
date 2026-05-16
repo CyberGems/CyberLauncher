@@ -283,6 +283,8 @@ function createWindow() {
   });
 }
 
+// (CyberTray polling removed)
+
 // =====================================
 // SYSTEM TRAY (Bandeja del sistema)
 // =====================================
@@ -696,6 +698,8 @@ function setupIpcHandlers() {
     hideMainWindow();
   });
 
+  // (CyberTray IPCs removed)
+
   // --- Configurar inicio con Windows (auto-launch) ---
   ipcMain.handle('set-auto-launch', (_event, enabled: boolean) => {
     app.setLoginItemSettings({
@@ -867,6 +871,8 @@ function setupIpcHandlers() {
   // --- Obtener ruta del archivo de config (diagnostico) ---
   ipcMain.handle('get-config-path', () => CONFIG_FILE);
 
+  // (CyberTray Data Persistence removed)
+
   // --- Abrir carpeta de datos en el explorador ---
   ipcMain.handle('open-data-folder', () => {
     const dir = path.dirname(CONFIG_FILE);
@@ -877,6 +883,8 @@ function setupIpcHandlers() {
   ipcMain.handle('saveConfig', async (_event, config) => {
     isSavingConfig = true;
     try {
+      // (CyberTray sync removed)
+      
       const json = JSON.stringify(config, null, 2);
       fs.writeFileSync(CONFIG_FILE, json, 'utf-8');
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial
@@ -977,6 +985,7 @@ app.whenReady().then(() => {
         showTaskbarIcon = true;
         console.log('Taskbar icon habilitado desde configuración central');
       }
+      // (CyberTray config load removed)
     }
   } catch (e) {
     console.error('Error cargando configuración central:', e);
@@ -1023,25 +1032,8 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
 
-  // Iniciar guardia UAC (independiente de hotspots)
+  // Iniciar guardia de hotspots
   startHotspotPolling();
-  setInterval(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const vis = mainWindow.isVisible();
-      if (intentionallyHidden && vis) {
-        console.log('[UAC-GUARD] Window visible when should be hidden! (vis=' + vis + '), hiding off-screen');
-        // Move off-screen so Windows UAC recovery can't find/restore it
-        mainWindow.setBounds({ x: -10000, y: -10000, width: 100, height: 100 });
-        mainWindow.minimize();
-        hideMainWindow();
-        // Re-register shortcut as safety (Windows may lose it during UAC)
-        registerGlobalShortcut(currentShortcut);
-      } else if (!intentionallyHidden && !vis) {
-        console.log('[UAC-GUARD] Window hidden when should be visible! State desync, re-showing');
-        showMainWindow();
-      }
-    }
-  }, 500);
 
   // Vigilar cambios en el archivo de configuracion para sincronizar entre instancias
   let configWatcherReloadTimer: NodeJS.Timeout | null = null;
