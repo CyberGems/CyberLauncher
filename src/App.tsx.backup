@@ -9,8 +9,7 @@ import {
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, Eye, Pin, Play, Pause, Timer,
-  Folder, File, Shield, ExternalLink
+  FolderOpen, Eye, Pin, Play, Pause, Timer
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -108,7 +107,6 @@ declare global {
   interface Window {
     electronAPI?: {
       launchApp: (path: string, isAdmin?: boolean) => Promise<{ success: boolean; error?: string }>;
-      getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectImage: () => Promise<string | null>;
       getMonitors: () => Promise<Array<{ id: string; label: string; isPrimary: boolean; bounds: any; size: any }>>;
@@ -125,12 +123,6 @@ declare global {
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
       resolveFilePath: (filePath: string) => Promise<{ name: string; path: string; ext: string; exists: boolean; iconPath: string; debug?: any } | null>;
       openFileLocation: (filePath: string) => Promise<{ success: boolean; error?: string }>;
-      searchSystemFiles: (query: string) => Promise<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>;
-      getIndexerSettings: () => Promise<{ enabled: boolean; maxDepth: number; paths: string[] }>;
-      saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[] }) => Promise<boolean>;
-      getIndexerStats: () => Promise<{ status: 'ONLINE' | 'OFFLINE' | 'INDEXING'; totalFiles: number }>;
-      selectIndexerFolder: () => Promise<string | null>;
-      getSystemDrives: () => Promise<string[]>;
       getPathForFile: (file: File) => string;
       getImageData: (filePath: string) => Promise<string | null>;
       setHotspots: (corners: string[], delay: number) => Promise<{ success: boolean }>;
@@ -329,7 +321,7 @@ const CyberAnalogClock = () => {
         })}
 
         <div className="absolute bottom-8 text-[9px] font-mono text-cyan-400/30 tracking-widest uppercase select-none">
-          CyberGems
+          Neural Chrono
         </div>
 
         {/* Hour hand */}
@@ -456,7 +448,7 @@ const ClockHUD = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={onClose}
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           />
           <motion.div 
@@ -588,34 +580,7 @@ const ClockHUD = ({
                       <button
                         key={idx}
                         onClick={preset.v}
-                        className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono cursor-pointer"
-                      >
-                        {preset.l}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Subtract Preset Buttons */}
-                  <div className="flex gap-1.5 mt-1.5">
-                    {[
-                      { l: '-30s', v: () => { 
-                        if (timerSeconds >= 30) {
-                          setTimerSeconds(s => s - 30);
-                        } else if (timerMinutes > 0) {
-                          setTimerMinutes(m => m - 1);
-                          setTimerSeconds(s => s + 30);
-                        } else {
-                          setTimerSeconds(0);
-                        }
-                      } },
-                      { l: '-1m', v: () => setTimerMinutes(m => Math.max(0, m - 1)) },
-                      { l: '-5m', v: () => setTimerMinutes(m => Math.max(0, m - 5)) },
-                      { l: '-15m', v: () => setTimerMinutes(m => Math.max(0, m - 15)) }
-                    ].map((preset, idx) => (
-                      <button
-                        key={idx}
-                        onClick={preset.v}
-                        className="flex-1 py-1 rounded bg-slate-900 border border-red-500/10 text-[9px] text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-mono cursor-pointer"
+                        className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono"
                       >
                         {preset.l}
                       </button>
@@ -751,7 +716,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={onClose}
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           />
           <motion.div 
@@ -906,7 +871,7 @@ const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={onClose}
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           />
           <motion.div 
@@ -1037,41 +1002,6 @@ export default function App() {
   
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchScope, setSearchScope] = useState<'cyber' | 'system'>('cyber');
-  const [systemSearchResults, setSystemSearchResults] = useState<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>([]);
-  const [isSearchingSystem, setIsSearchingSystem] = useState(false);
-
-  useEffect(() => {
-    if (searchScope !== 'system' || !searchQuery.trim() || searchQuery.trim().startsWith('>')) {
-      setSystemSearchResults([]);
-      return;
-    }
-
-    const delayDebounce = setTimeout(async () => {
-      setIsSearchingSystem(true);
-      try {
-        if (isElectron) {
-          const results = await window.electronAPI!.searchSystemFiles(searchQuery);
-          setSystemSearchResults(results || []);
-        } else {
-          setSystemSearchResults([
-            { name: `Documento_${searchQuery}.pdf`, path: `C:\\Users\\Mock\\Documents\\Documento_${searchQuery}.pdf`, ext: '.pdf', type: 'file' },
-            { name: `Carpeta_${searchQuery}`, path: `C:\\Users\\Mock\\Downloads\\Carpeta_${searchQuery}`, ext: '', type: 'folder' },
-            { name: `Aplicacion_${searchQuery}.exe`, path: `C:\\Program Files\\Aplicacion_${searchQuery}.exe`, ext: '.exe', type: 'app' },
-          ]);
-        }
-      } catch (err) {
-        console.error('System search failed:', err);
-      } finally {
-        setIsSearchingSystem(false);
-      }
-    }, 150);
-
-    return () => clearTimeout(delayDebounce);
-  }, [searchQuery, searchScope]);
-
-
-
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     const saved = localStorage.getItem('app_launcher_view_mode');
     return (saved === 'list' || saved === 'grid') ? saved : 'grid';
@@ -1102,124 +1032,7 @@ export default function App() {
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray' | 'uwp' | 'indexer'>('general');
-
-  const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
-  const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[] }>({
-    enabled: true,
-    maxDepth: 2,
-    paths: []
-  });
-  const [indexerStats, setIndexerStats] = useState<{ status: 'ONLINE' | 'OFFLINE' | 'INDEXING'; totalFiles: number }>({
-    status: 'OFFLINE',
-    totalFiles: 0
-  });
-  const [systemDrives, setSystemDrives] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!notification) return;
-    const timer = setTimeout(() => {
-      setNotification(null);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [notification]);
-
-  useEffect(() => {
-    const fetchIndexerData = async () => {
-      try {
-        if (isElectron) {
-          const settings = await window.electronAPI!.getIndexerSettings();
-          setIndexerSettings(settings || { enabled: true, maxDepth: 2, paths: [] });
-          const stats = await window.electronAPI!.getIndexerStats();
-          setIndexerStats(stats || { status: 'OFFLINE', totalFiles: 0 });
-          const drives = await window.electronAPI!.getSystemDrives();
-          setSystemDrives(drives || []);
-        }
-      } catch (err) {
-        console.error('Error fetching indexer settings:', err);
-      }
-    };
-    fetchIndexerData();
-  }, []);
-
-  useEffect(() => {
-    if (!isSettingsOpen) return;
-    const interval = setInterval(async () => {
-      try {
-        if (isElectron) {
-          const stats = await window.electronAPI!.getIndexerStats();
-          setIndexerStats(stats || { status: 'OFFLINE', totalFiles: 0 });
-        }
-      } catch (err) {
-        console.error('Error fetching indexer stats:', err);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isSettingsOpen]);
-
-  const handleAddFolder = async () => {
-    try {
-      if (isElectron) {
-        const selected = await window.electronAPI!.selectIndexerFolder();
-        if (selected && !indexerSettings.paths.includes(selected)) {
-          const updated = {
-            ...indexerSettings,
-            paths: [...indexerSettings.paths, selected]
-          };
-          setIndexerSettings(updated);
-          await window.electronAPI!.saveIndexerSettings(updated);
-          setNotification({ message: 'Carpeta agregada e indexando...', type: 'success' });
-        }
-      }
-    } catch (err) {
-      console.error('Error selecting indexer folder:', err);
-    }
-  };
-
-  const handleRemoveFolder = async (pathToRemove: string) => {
-    try {
-      const updated = {
-        ...indexerSettings,
-        paths: indexerSettings.paths.filter(p => p !== pathToRemove)
-      };
-      setIndexerSettings(updated);
-      if (isElectron) {
-        await window.electronAPI!.saveIndexerSettings(updated);
-      }
-      setNotification({ message: 'Carpeta eliminada', type: 'info' });
-    } catch (err) {
-      console.error('Error removing indexer folder:', err);
-    }
-  };
-
-  const handleToggleIndexer = async (enabled: boolean) => {
-    try {
-      const updated = { ...indexerSettings, enabled };
-      setIndexerSettings(updated);
-      if (isElectron) {
-        await window.electronAPI!.saveIndexerSettings(updated);
-      }
-      setNotification({ 
-        message: enabled ? 'Buscador activado' : 'Buscador desactivado', 
-        type: enabled ? 'success' : 'info' 
-      });
-    } catch (err) {
-      console.error('Error toggling indexer:', err);
-    }
-  };
-
-  const handleDepthChange = async (maxDepth: number) => {
-    try {
-      const updated = { ...indexerSettings, maxDepth };
-      setIndexerSettings(updated);
-      if (isElectron) {
-        await window.electronAPI!.saveIndexerSettings(updated);
-      }
-    } catch (err) {
-      console.error('Error changing indexer depth:', err);
-    }
-  };
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray'>('general');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
@@ -1229,78 +1042,6 @@ export default function App() {
   const [editCategoryForm, setEditCategoryForm] = useState({ name: '', color: '' });
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [isAppActive, setIsAppActive] = useState(true);
-
-  // Windows Store UWP states
-  const [uwpAppsList, setUwpAppsList] = useState<Array<{ name: string; aumid: string; icon: string }>>([]);
-  const [isScanningUwp, setIsScanningUwp] = useState(false);
-  const [uwpSearchQuery, setUwpSearchQuery] = useState('');
-  const [uwpScanLogs, setUwpScanLogs] = useState<string[]>([]);
-  const [importingUwpApp, setImportingUwpApp] = useState<{ name: string; aumid: string; icon: string } | null>(null);
-  const [uwpImportCategory, setUwpImportCategory] = useState('');
-
-  const CYBER_LOGS_PRESETS = [
-    "> INICIANDO SCANNER NEURONAL DE WINDOWS STORE...",
-    "> CONECTANDO CON EL PROTOCOLO VIRTUAL shell:AppsFolder...",
-    "> DESENCRIPTANDO BASE DE DATOS AppxManifest.xml...",
-    "> CARGANDO IDENTIFICADORES DE MODELO DE APLICACIÓN (AUMID)...",
-    "> EXTRAPOLANDO ACCESOS NTFS PROTEGIDOS...",
-    "> EXTRAYENDO ICONOS BASE64 SIN PRIVILEGIOS DE ADMINISTRADOR...",
-    "> PROCESANDO HASHES DE INTEGRIDAD DE WINDOWS STORE...",
-    "> SCAN COMPLETO. ESTRUCTURA DE APLICACIONES DEVELADA CON ÉXITO."
-  ];
-
-  const handleScanUwpApps = async () => {
-    if (isScanningUwp) return;
-    setIsScanningUwp(true);
-    setUwpScanLogs([]);
-    setUwpAppsList([]);
-    setUwpSearchQuery('');
-
-    // Simulate cyber log scrolling
-    let logIndex = 0;
-    const logsInterval = setInterval(() => {
-      if (logIndex < CYBER_LOGS_PRESETS.length) {
-        setUwpScanLogs(prev => [...prev, CYBER_LOGS_PRESETS[logIndex]]);
-        logIndex++;
-      } else {
-        clearInterval(logsInterval);
-      }
-    }, 350);
-
-    try {
-      if (isElectron) {
-        const apps = await window.electronAPI!.getUwpApps();
-        clearInterval(logsInterval);
-        setUwpScanLogs([
-          ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          `> CONEXIÓN ESTABLECIDA. SE DETECTARON ${apps.length} APLICACIONES VIRTUALES.`,
-          "> ESTRUCTURA DISPONIBLE EN EL PANEL DE IMPORTACIÓN."
-        ]);
-        setUwpAppsList(apps);
-      } else {
-        // Mock data for browser testing
-        await new Promise(r => setTimeout(r, 2800));
-        clearInterval(logsInterval);
-        setUwpScanLogs([
-          ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          "> CONEXIÓN MOCK (NAVEGADOR). SE DETECTARON 4 APLICACIONES VIRTUALES.",
-          "> MODO DE PRUEBA ACTIVO."
-        ]);
-        setUwpAppsList([
-          { name: 'Windows Terminal', aumid: 'Microsoft.WindowsTerminal_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Xbox App', aumid: 'Microsoft.XboxApp_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Calculadora UWP', aumid: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'WhatsApp Store', aumid: '5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App', icon: '' }
-        ]);
-      }
-    } catch (e) {
-      console.error(e);
-      clearInterval(logsInterval);
-      setUwpScanLogs(prev => [...prev, "> ERROR CRÍTICO AL LEER EL SUBNIVEL shell:AppsFolder.", "> ACCESO ABORTADO."]);
-    } finally {
-      setIsScanningUwp(false);
-    }
-  };
 
   const handleSaveCategory = () => {
     if (!editingCategory) return;
@@ -1944,11 +1685,10 @@ export default function App() {
   useEffect(() => {
     const handleGlobalClick = () => {
       if (contextMenu) setContextMenu(null);
-      if (systemContextMenu) setSystemContextMenu(null);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
-  }, [contextMenu, systemContextMenu]);
+  }, [contextMenu]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -2579,12 +2319,6 @@ export default function App() {
                 }
               }}
               onKeyDown={async (e) => {
-                if (e.key === 'Tab') {
-                  e.preventDefault();
-                  if (!searchQuery.startsWith('>')) {
-                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                  }
-                }
                 if (e.key === 'Enter' && searchQuery.trim().startsWith('>')) {
                   e.preventDefault();
                   const rawCmd = searchQuery.trim().substring(1).trim();
@@ -2627,19 +2361,17 @@ export default function App() {
                   }
                 }
               }}
-              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
+              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${
                 searchQuery.startsWith('>') 
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
-                  : searchScope === 'system'
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                  ? 'pr-24 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                  : 'pr-4 border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
               } placeholder:text-slate-500`}
             />
             {searchQuery === '' && (
-              <div className="absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
+              <div className="absolute inset-y-0 left-11 right-4 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={searchQuery.startsWith('>') ? `console-${placeholderIndex}` : searchScope === 'system' ? `system-${placeholderIndex}` : `normal-${placeholderIndex}`}
+                    key={searchQuery.startsWith('>') ? `console-${placeholderIndex}` : `normal-${placeholderIndex}`}
                     initial={{ opacity: 0, y: 3 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -3 }}
@@ -2648,9 +2380,7 @@ export default function App() {
                   >
                     {searchQuery.startsWith('>') 
                       ? (placeholderIndex === 0 ? "Escribe un comando de consola..." : "Presiona [Enter] para ejecutar")
-                      : searchScope === 'system'
-                      ? (placeholderIndex === 0 ? "Buscar en todo el sistema..." : "Presiona [Tab] para volver al Launcher")
-                      : (placeholderIndex === 0 ? "Buscar en CyberLauncher..." : "Escribe '>' para consola o [Tab] para buscar en sistema")
+                      : (placeholderIndex === 0 ? "Buscar apps..." : "Escribe '>' para consola")
                     }
                   </motion.span>
                 </AnimatePresence>
@@ -2659,54 +2389,17 @@ export default function App() {
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               {searchQuery.startsWith('>') ? (
                 <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-colors" />
-              ) : searchScope === 'system' ? (
-                <Search className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] transition-colors" />
               ) : (
                 <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm" />
               )}
             </div>
-
-            {/* Unified Inline Right Actions Container */}
-            <div className="absolute inset-y-0 right-3 flex items-center gap-3 z-20 select-none">
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery('');
-                    searchInputRef.current?.focus();
-                  }}
-                  className="flex items-center justify-center text-slate-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer p-1"
-                  title="Limpiar búsqueda"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              {searchQuery.startsWith('>') ? (
+            {searchQuery.startsWith('>') && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-[9px] font-cyber font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse">
                   CONSOLA
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                  }}
-                  className="flex items-center focus:outline-none cursor-pointer"
-                  title="Alternar alcance de búsqueda (Cyber / Sistema) [TAB]"
-                >
-                  <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
-                    searchScope === 'system'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
-                      : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
-                  }`}>
-                    {searchScope === 'system' ? 'SISTEMA' : 'LAUNCHER'}
-                  </span>
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-3 ml-auto">
@@ -2787,130 +2480,6 @@ export default function App() {
                 )}
                 <div ref={consoleEndRef} />
               </div>
-            </div>
-          ) : (searchScope === 'system' && searchQuery.trim() !== '') ? (
-            <div className="flex-1 flex flex-col pt-4 select-none">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-4 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Search className="w-4 h-4 text-emerald-400 animate-pulse" />
-                  <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">RESULTADOS DEL SISTEMA DE ARCHIVOS</span>
-                </div>
-                <div className="text-[10px] text-slate-400 font-cyber">
-                  {isSearchingSystem ? 'BUSCANDO...' : `COINCIDENCIAS: ${systemSearchResults.length}`}
-                </div>
-              </div>
-
-              {isSearchingSystem && systemSearchResults.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-3">
-                  <div className="w-8 h-8 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                  <span className="text-xs font-cyber animate-pulse">ESCANEAR CON NEURAL INDEX...</span>
-                </div>
-              ) : systemSearchResults.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-2">
-                  <Search className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
-                  <span className="text-xs font-cyber">NO SE ENCONTRARON COINCIDENCIAS</span>
-                  <span className="text-[10px] text-slate-600">Comprueba la ortografía o intenta con otro término</span>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5 max-h-[calc(100vh-240px)]">
-                  {systemSearchResults.map((item, index) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.15, delay: Math.min(index * 0.02, 0.2) }}
-                      key={`${item.path}-${index}`}
-                      onClick={() => {
-                        if (isElectron) {
-                          window.electronAPI!.launchApp(item.path);
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSystemContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          item
-                        });
-                      }}
-                      className="group flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-emerald-500/30 transition-all duration-300 cursor-pointer shadow-lg relative overflow-hidden"
-                    >
-                      {/* Left: icon + name & path */}
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-black/30 flex items-center justify-center border border-white/10 group-hover:border-emerald-500/30 transition-all duration-300 relative shrink-0">
-                          {item.icon ? (
-                            <img src={item.icon} alt={item.name} className="w-7 h-7 object-contain" />
-                          ) : item.type === 'folder' ? (
-                            <Folder className="w-5 h-5 text-amber-400/80 group-hover:text-amber-400 group-hover:scale-105 transition-all duration-300" />
-                          ) : (
-                            <File className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 group-hover:scale-105 transition-all duration-300" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 text-left">
-                          <div className="text-sm font-semibold text-slate-200 group-hover:text-emerald-400 transition-all duration-300 truncate">
-                            {item.name}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono truncate select-all group-hover:text-slate-400 transition-all duration-300">
-                            {item.path}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {item.type !== 'folder' && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isElectron) {
-                                window.electronAPI!.launchApp(item.path, true);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                            title="Ejecutar como Administrador"
-                          >
-                            <Shield className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isElectron) {
-                              window.electronAPI!.openFileLocation(item.path);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                          title="Abrir ubicación de archivo"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newApp = {
-                              id: Date.now(),
-                              name: item.name.replace(/\.[^/.]+$/, ""),
-                              path: item.path,
-                              icon: item.icon || '',
-                              category: 'all',
-                              shortcut: '',
-                              isAdmin: false,
-                              isFavorite: false,
-                            };
-                            setApps(prev => [...prev, newApp]);
-                            setSearchQuery('');
-                            setSearchScope('cyber');
-                          }}
-                          className="p-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                          title="Agregar a CyberLauncher"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
             </div>
           ) : (
             <>
@@ -3327,7 +2896,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-            onClick={(e) => { e.stopPropagation(); setIsAboutOpen(false); }}
+            onClick={() => setIsAboutOpen(false)}
           >
              <motion.div 
               initial={{ scale: 0.9, opacity: 0, y: 30 }}
@@ -3411,7 +2980,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); }}
+            onClick={() => { setEditingApp(null); setIsAddingApp(false); }}
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -3722,19 +3291,19 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
+            onClick={() => setIsSettingsOpen(false)}
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[75vh] max-h-[580px]"
+              className="w-full max-w-lg bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
-                <h2 className="text-sm font-cyber font-bold text-white flex items-center gap-2 tracking-wider">
-                  <Settings className="w-4.5 h-4.5 text-cyan-400" />
-                  CONFIGURACIÓN DE CYBERLAUNCHER
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-blue-400" />
+                  Personalización
                 </h2>
                 <button 
                   onClick={() => setIsSettingsOpen(false)}
@@ -3744,27 +3313,17 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex flex-1 min-h-0 bg-[#070b13]/40">
-                {/* Left Sidebar Navigation */}
-                <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
-                  {([['general','General','⌨'],['appearance','Apariencia','🎨'],['system','Sistema','⚙'],['indexer','Buscador','🔍'],['uwp','Windows Store','🛍']] as const).map(([id,label,icon]) => (
-                    <button 
-                      key={id} 
-                      onClick={() => setSettingsTab(id as any)}
-                      className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 ${
-                        settingsTab === id 
-                          ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
-                          : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
-                      }`}
-                    >
-                      <span className="text-sm">{icon}</span>
-                      <span>{label.toUpperCase()}</span>
-                    </button>
-                  ))}
-                </div>
+              {/* Tab Navigation */}
+              <div className="flex border-b border-white/10 px-4 shrink-0 bg-black/10">
+                {([['general','General','⌨'],['appearance','Apariencia','🎨'],['system','Sistema','⚙']] as const).map(([id,label,icon]) => (
+                  <button key={id} onClick={() => setSettingsTab(id as any)}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${settingsTab === id ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-white/20'}`}>
+                    <span>{icon}</span> {label}
+                  </button>
+                ))}
+              </div>
 
-                {/* Right Scrollable Panel Content */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8 text-slate-300">
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
 
                 {settingsTab === 'general' && (<>
                 {/* Keyboard Shortcut Config */}
@@ -4273,377 +3832,7 @@ export default function App() {
 
                 </>)}
 
-                {settingsTab === 'uwp' && (
-                  <div className="space-y-6 relative min-h-[300px]">
-                    <div className="flex flex-col gap-1 border-b border-white/5 pb-4">
-                      <h3 className="text-lg font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
-                        <Package className="w-5 h-5" /> SCANNER DE WINDOWS STORE
-                      </h3>
-                      <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                        Detecta e integra aplicaciones de la Windows Store (UWP/MSIX) de forma nativa. La ruta virtual se resuelve dinámicamente mediante AUMID, asegurando un lanzamiento indestructible inmune a actualizaciones del sistema.
-                      </p>
-                    </div>
-
-                    {/* Botón de Escaneo / Estado Inicial */}
-                    {uwpAppsList.length === 0 && !isScanningUwp && (
-                      <div className="flex flex-col items-center justify-center p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
-                        <Hexagon className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
-                        <h4 className="text-sm font-medium text-slate-200 mb-2">Escaneo de Sistema Requerido</h4>
-                        <p className="text-xs text-slate-500 max-w-sm mb-6 leading-normal font-sans">
-                          Para catalogar y extraer los accesos directos, iniciaremos un escaneo en los manifiestos de WindowsApps.
-                        </p>
-                        <button
-                          onClick={handleScanUwpApps}
-                          className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98]"
-                        >
-                          INICIAR ESCANEO DE APLICACIONES ⚡
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Consola Terminal Shimmer durante Escaneo */}
-                    {isScanningUwp && (
-                      <div className="flex flex-col bg-black/40 border border-cyan-500/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,211,238,0.15)] relative overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-                            <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">NEURAL TERMINAL DE DIAGNÓSTICO</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-cyan-500 animate-pulse">MEM_DUMP: SCANNING...</span>
-                        </div>
-                        <div className="h-40 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
-                          {uwpScanLogs.map((log, i) => (
-                            <div key={i} className="flex items-start gap-1">
-                              <span className="text-cyan-500 shrink-0">&gt;</span>
-                              <span className={i === uwpScanLogs.length - 1 ? "text-cyan-400 font-bold" : ""}>{log}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Resultados de Búsqueda y Lista */}
-                    {uwpAppsList.length > 0 && !isScanningUwp && (
-                      <div className="space-y-4">
-                        {/* Buscador Superior */}
-                        <div className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl px-3.5 py-2.5 focus-within:border-cyan-500/30 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all">
-                          <Search className="w-4 h-4 text-slate-500" />
-                          <input
-                            type="text"
-                            placeholder="Buscar en la Windows Store..."
-                            value={uwpSearchQuery}
-                            onChange={(e) => setUwpSearchQuery(e.target.value)}
-                            className="bg-transparent border-none outline-none text-slate-200 text-xs w-full focus:ring-0 placeholder:text-slate-600"
-                          />
-                          <button
-                            onClick={handleScanUwpApps}
-                            className="text-[10px] font-cyber font-bold text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 px-2 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0"
-                          >
-                            REESCANEAR 🔄
-                          </button>
-                        </div>
-
-                        {/* Grid de Aplicaciones */}
-                        <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                          {uwpAppsList
-                            .filter(app => app.name.toLowerCase().includes(uwpSearchQuery.toLowerCase()))
-                            .map((app, index) => {
-                              const alreadyAdded = apps.some(existing => existing.path === app.aumid);
-                              
-                              return (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="w-9 h-9 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 shrink-0 group-hover:border-cyan-400/30 transition-colors relative">
-                                      {app.icon ? (
-                                        <img src={app.icon} alt={app.name} className="w-full h-full object-contain" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-cyan-500/10 rounded text-cyan-400 font-bold text-[10px]">UWP</div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
-                                      <p className="text-[9px] text-slate-500 truncate font-mono select-all" title={app.aumid}>{app.aumid}</p>
-                                    </div>
-                                  </div>
-
-                                  <div className="shrink-0 ml-2">
-                                    {alreadyAdded ? (
-                                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
-                                        AGREGADO
-                                      </span>
-                                    ) : (
-                                      <button
-                                        onClick={() => {
-                                          setImportingUwpApp(app);
-                                          setUwpImportCategory(categories.find(c => c.id !== 'all')?.name || 'Utilidades');
-                                        }}
-                                        className="text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)]"
-                                      >
-                                        IMPORTAR 🛍
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Selector de Categoría para Importación */}
-                    <AnimatePresence>
-                      {importingUwpApp && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute inset-0 bg-black/90 backdrop-blur-md rounded-2xl flex items-center justify-center p-4 z-40 border border-cyan-500/20"
-                        >
-                          <motion.div
-                            initial={{ scale: 0.95, y: 10 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 10 }}
-                            className="bg-[#0f172a] border border-cyan-500/30 rounded-2xl p-6 max-w-sm w-full space-y-5 shadow-[0_0_30px_rgba(34,211,238,0.2)]"
-                          >
-                            <div className="text-center space-y-1.5">
-                              <h4 className="text-sm font-cyber font-bold text-cyan-400 tracking-wider uppercase">IMPORTAR APLICACIÓN</h4>
-                              <p className="text-xs text-slate-200 font-bold leading-tight font-sans">{importingUwpApp.name}</p>
-                              <p className="text-[9px] text-slate-500 font-mono truncate">{importingUwpApp.aumid}</p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">CATEGORÍA DE DESTINO</label>
-                              <select
-                                value={uwpImportCategory}
-                                onChange={(e) => setUwpImportCategory(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/40"
-                              >
-                                {categories.filter(c => c.id !== 'all').map(cat => (
-                                  <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
-                                    {cat.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                              <button
-                                onClick={() => setImportingUwpApp(null)}
-                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700"
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const newApp = {
-                                    id: Date.now(),
-                                    name: importingUwpApp.name,
-                                    category: uwpImportCategory,
-                                    path: importingUwpApp.aumid,
-                                    iconPath: importingUwpApp.icon || '',
-                                    color: 'text-cyan-400',
-                                    isFav: false,
-                                    usage: 0
-                                  };
-                                  // @ts-ignore
-                                  setApps(prev => [...prev, newApp]);
-                                  setImportingUwpApp(null);
-                                }}
-                                className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
-                              >
-                                CONFIRMAR
-                              </button>
-                            </div>
-                          </motion.div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {settingsTab === 'indexer' && (
-                  <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                          <Search className={`w-5 h-5 text-cyan-400 ${indexerStats.status === 'INDEXING' ? 'animate-spin' : ''}`} />
-                        </div>
-                        <div className="text-left">
-                          <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">NEURO-INDEX GLOBAL</h3>
-                          <p className="text-[10px] text-slate-500">Motor de indexación híbrido de archivos y accesos directos</p>
-                        </div>
-                      </div>
-                      
-                      {/* Master Toggle */}
-                      <button
-                        onClick={() => handleToggleIndexer(!indexerSettings.enabled)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-cyber font-bold transition-all border ${
-                          indexerSettings.enabled
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        {indexerSettings.enabled ? 'SISTEMA ONLINE' : 'DESACTIVADO'}
-                      </button>
-                    </div>
-
-                    {/* Stats Card */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
-                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">Estado del Motor</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`w-2 h-2 rounded-full ${
-                            indexerStats.status === 'ONLINE'
-                              ? 'bg-emerald-400 animate-pulse'
-                              : indexerStats.status === 'INDEXING'
-                              ? 'bg-amber-400 animate-ping'
-                              : 'bg-red-400'
-                          }`} />
-                          <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-                            {indexerStats.status === 'INDEXING' ? 'INDEXANDO...' : indexerStats.status}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
-                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">Archivos Registrados</span>
-                        <span className="text-lg font-cyber font-bold text-cyan-400 mt-0.5">
-                          {indexerStats.totalFiles.toLocaleString('es-ES')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Slider for Depth */}
-                    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-left">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">Profundidad del Rastreo</label>
-                        <span className="text-xs font-cyber font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
-                          NIVEL {indexerSettings.maxDepth}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="4"
-                        value={indexerSettings.maxDepth}
-                        onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
-                        disabled={!indexerSettings.enabled}
-                        className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                      />
-                      <div className="flex justify-between text-[9px] text-slate-500 font-mono">
-                        <span>LIVIANO (NIVEL 1)</span>
-                        <span>NORMAL (NIVEL 2)</span>
-                        <span>AVANZADO (NIVEL 3)</span>
-                        <span>COMPLETO (NIVEL 4)</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 italic mt-1 font-sans leading-normal">
-                        Niveles altos rastrean más carpetas internas pero consumen más disco temporal en el primer arranque.
-                      </p>
-                    </div>
-
-                    {/* Discovered System Drives */}
-                    <div className="space-y-3.5 text-left">
-                      <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-slate-500" />
-                        UNIDADES DEL SISTEMA DETECTADAS (DRIVES)
-                      </label>
-                      <div className="flex flex-wrap gap-2.5">
-                        {systemDrives.map((drive) => {
-                          const isIndexed = indexerSettings.paths.includes(drive);
-                          return (
-                            <button
-                              key={drive}
-                              onClick={async () => {
-                                if (!indexerSettings.enabled) return;
-                                try {
-                                  let updatedPaths;
-                                  if (isIndexed) {
-                                    updatedPaths = indexerSettings.paths.filter(p => p !== drive);
-                                    setNotification({ message: `Unidad ${drive} desvinculada`, type: 'info' });
-                                  } else {
-                                    updatedPaths = [...indexerSettings.paths, drive];
-                                    setNotification({ message: `Indexando unidad entera ${drive}...`, type: 'success' });
-                                  }
-                                  const updated = { ...indexerSettings, paths: updatedPaths };
-                                  setIndexerSettings(updated);
-                                  if (isElectron) {
-                                    await window.electronAPI!.saveIndexerSettings(updated);
-                                  }
-                                } catch (e) {
-                                  console.error('Error toggling drive:', e);
-                                }
-                              }}
-                              disabled={!indexerSettings.enabled}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-cyber font-bold select-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
-                                isIndexed
-                                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
-                                  : 'bg-white/[0.01] text-slate-400 border-white/5 hover:border-white/10 hover:text-slate-200'
-                              }`}
-                            >
-                              <HardDrive className={`w-3.5 h-3.5 ${isIndexed ? 'animate-pulse text-cyan-400' : 'text-slate-500'}`} />
-                              <span>DISCO ({drive})</span>
-                            </button>
-                          );
-                        })}
-                        {systemDrives.length === 0 && (
-                          <span className="text-[10px] text-slate-600 italic">No se detectaron unidades físicas lógicas.</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Authorized Folders Chip List */}
-                    <div className="space-y-3 text-left">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">
-                          Carpetas Autorizadas a Indexar
-                        </label>
-                        <button
-                          onClick={handleAddFolder}
-                          disabled={!indexerSettings.enabled}
-                          className="px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-30 disabled:hover:bg-cyan-500/10 text-cyan-400 rounded-lg text-[10px] font-cyber font-bold transition-all border border-cyan-500/20 flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          <Plus className="w-3 h-3" /> AGREGAR CARPETA
-                        </button>
-                      </div>
-
-                      {indexerSettings.paths.length === 0 ? (
-                        <div className="p-8 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-slate-500 space-y-2 bg-black/10">
-                          <FolderOpen className="w-7 h-7 text-slate-600" />
-                          <span className="text-xs font-cyber">SIN CARPETAS CONFIGURADAS</span>
-                          <span className="text-[9px] text-slate-600">El buscador no rastreará directorios personalizados hasta agregar uno.</span>
-                        </div>
-                      ) : (
-                        <div className="border border-white/5 bg-black/20 rounded-xl divide-y divide-white/5 max-h-[180px] overflow-y-auto custom-scrollbar">
-                          {indexerSettings.paths.map((folderPath, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 group hover:bg-white/[0.01] transition-colors">
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
-                                <span className="text-xs text-slate-300 truncate font-mono select-all">
-                                  {folderPath}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => handleRemoveFolder(folderPath)}
-                                disabled={!indexerSettings.enabled}
-                                className="opacity-0 group-hover:opacity-100 disabled:opacity-0 p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
-                                title="Eliminar de la indexación"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* (CyberTray Section removed) */}
-                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -4657,7 +3846,6 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setEditingCategory(null); }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
             <motion.div 
@@ -4835,198 +4023,6 @@ export default function App() {
                className="w-full text-left px-4 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400"
             >
               Eliminar <Trash2 className="w-4 h-4 ml-2 text-red-400" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- SYSTEM SEARCH RESULTS CONTEXT MENU --- */}
-      <AnimatePresence>
-        {systemContextMenu && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed z-[100] bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[220px] text-sm select-none"
-            style={{ 
-              left: Math.min(systemContextMenu.x, window.innerWidth - 240), 
-              top: Math.min(systemContextMenu.y, window.innerHeight - 250) 
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Abrir */}
-            <button
-              onClick={() => {
-                if (isElectron) {
-                  window.electronAPI!.launchApp(systemContextMenu.item.path);
-                }
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Abrir <Play className="w-4 h-4 ml-2 text-emerald-400" />
-            </button>
-
-            {/* Copiar */}
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(systemContextMenu.item.path);
-                  setNotification({
-                    message: `Copiado: ${systemContextMenu.item.name}`,
-                    type: 'success'
-                  });
-                } catch (err) {
-                  console.error('Clipboard copy failed:', err);
-                }
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Copiar <Upload className="w-4 h-4 ml-2 text-slate-400" />
-            </button>
-
-            {/* Cortar */}
-            <button
-              onClick={() => {
-                setNotification({
-                  message: `Cortado: ${systemContextMenu.item.name} (Ruta en portapapeles)`,
-                  type: 'info'
-                });
-                navigator.clipboard.writeText(systemContextMenu.item.path).catch(console.error);
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Cortar <Minus className="w-4 h-4 ml-2 text-slate-400" />
-            </button>
-
-            {/* Copiar Ruta completa al Portapapeles */}
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(systemContextMenu.item.path);
-                  setNotification({
-                    message: "Ruta absoluta copiada al portapapeles",
-                    type: 'success'
-                  });
-                } catch (err) {
-                  console.error('Clipboard copy failed:', err);
-                }
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Copiar Ruta absoluta <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
-            </button>
-
-            <div className="h-px bg-white/10 my-1 mx-2" />
-
-            {/* Anclar a Favoritos de CyberLauncher */}
-            <button
-              onClick={() => {
-                const appId = Date.now();
-                const newApp = {
-                  id: appId,
-                  name: systemContextMenu.item.name.replace(/\.[^/.]+$/, ""),
-                  path: systemContextMenu.item.path,
-                  icon: systemContextMenu.item.icon || '',
-                  category: 'all',
-                  shortcut: '',
-                  isAdmin: false,
-                  isFavorite: true,
-                };
-                // @ts-ignore
-                setApps(prev => {
-                  if (prev.some(a => a.path === newApp.path)) {
-                    const existing = prev.find(a => a.path === newApp.path);
-                    if (existing && !favoriteIds.includes(existing.id)) {
-                      setFavoriteIds(f => [...f, existing.id]);
-                    }
-                    return prev;
-                  }
-                  setFavoriteIds(f => [...f, appId]);
-                  return [...prev, newApp];
-                });
-                setNotification({
-                  message: "Anclado a Favoritos",
-                  type: 'success'
-                });
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Anclar a Favoritos <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
-            </button>
-
-            {/* Anclar a Barra de Tareas de CyberLauncher */}
-            <button
-              onClick={() => {
-                const appId = Date.now();
-                const newApp = {
-                  id: appId,
-                  name: systemContextMenu.item.name.replace(/\.[^/.]+$/, ""),
-                  path: systemContextMenu.item.path,
-                  icon: systemContextMenu.item.icon || '',
-                  category: 'all',
-                  shortcut: '',
-                  isAdmin: false,
-                  isFavorite: false,
-                };
-                // @ts-ignore
-                setApps(prev => {
-                  if (prev.some(a => a.path === newApp.path)) {
-                    const existing = prev.find(a => a.path === newApp.path);
-                    if (existing && !taskbarAppIds.includes(existing.id)) {
-                      setTaskbarAppIds(t => [...t, existing.id]);
-                    }
-                    return prev;
-                  }
-                  setTaskbarAppIds(t => [...t, appId]);
-                  return [...prev, newApp];
-                });
-                setNotification({
-                  message: "Anclado a Barra de Tareas",
-                  type: 'success'
-                });
-                setSystemContextMenu(null);
-              }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Anclar a Barra <Plus className="w-4 h-4 ml-2 text-cyan-400" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- TOAST NOTIFICATIONS --- */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
-              notification.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                : notification.type === 'error'
-                ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
-                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full animate-pulse ${
-              notification.type === 'success'
-                ? 'bg-emerald-400'
-                : notification.type === 'error'
-                ? 'bg-red-400'
-                : 'bg-cyan-400'
-            }`} />
-            <span className="text-xs font-cyber font-bold tracking-wide uppercase">{notification.message}</span>
-            <button
-              onClick={() => setNotification(null)}
-              className="ml-2 hover:opacity-80 transition-opacity"
-            >
-              <X className="w-3.5 h-3.5" />
             </button>
           </motion.div>
         )}

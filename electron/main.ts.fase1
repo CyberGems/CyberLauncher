@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { exec, execSync, spawn } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 
@@ -41,94 +41,10 @@ let hideOnBlurEnabled = true;
 let showTaskbarIcon = false;
 let lastHotspotPollTime = 0;
 const HOTSPOT_LAG_THRESHOLD_MS = 400;
-let hotspotsPausedByUAC = false;
-let uacResumeTimer: NodeJS.Timeout | null = null;
-let uacGuardTimer: NodeJS.Timeout | null = null;
-
-let appShortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }> = [];
-
-function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) {
-  // First, unregister all existing custom app shortcuts
-  for (const item of appShortcuts) {
-    if (item.shortcut) {
-      try {
-        const electronShortcut = item.shortcut
-          .replace(/Meta/g, 'Super')
-          .replace(/Ctrl/g, 'CommandOrControl');
-        globalShortcut.unregister(electronShortcut);
-      } catch (err) {
-        console.error('Error unregistering app shortcut:', err);
-      }
-    }
-  }
-
-  appShortcuts = shortcutsList;
-
-  // Now, register the new list
-  for (const item of appShortcuts) {
-    if (!item.shortcut) continue;
-    try {
-      const electronShortcut = item.shortcut
-        .replace(/Meta/g, 'Super')
-        .replace(/Ctrl/g, 'CommandOrControl');
-      
-      const success = globalShortcut.register(electronShortcut, () => {
-        try {
-          console.log(`[GLOBAL HOTKEY] Launching app ${item.id} via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
-          
-          if (item.isAdmin && process.platform === 'win32') {
-            const escapedPath = item.path.replace(/'/g, "''");
-            const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
-            exec(command, { windowsHide: true });
-          } else {
-            shell.openPath(item.path);
-          }
-        } catch (launchErr) {
-          console.error('[GLOBAL HOTKEY] Error launching shortcut app:', launchErr);
-        }
-      });
-      if (!success) {
-        console.warn(`[GLOBAL HOTKEY] Failed to register custom shortcut: ${electronShortcut}`);
-      }
-    } catch (err) {
-      console.error('[GLOBAL HOTKEY] Error registering custom shortcut:', err);
-    }
-  }
-}
-
-function resumeHotspotsImmediate() {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  hotspotsPausedByUAC = false;
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  hotspotCooldown = false;
-  console.log('[HOTSPOT] Resumed immediately (user action)');
-}
-
-function pauseHotspots() {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  hotspotsPausedByUAC = true;
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  hotspotCooldown = false;
-  console.log('[HOTSPOT] Paused by secure-desktop guard');
-}
-
-function resumeHotspotsAfterUAC(delayMs = 1500) {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  uacResumeTimer = setTimeout(() => {
-    hotspotsPausedByUAC = false;
-    lastHotspotCorner = '';
-    hotspotEntryTime = 0;
-    hotspotCooldown = false;
-    console.log('[HOTSPOT] Resumed after UAC delay');
-  }, delayMs);
-}
 
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] showMainWindow (state=' + windowVisibilityState + ')');
-    resumeHotspotsImmediate();
     const callId = ++ownShowCallId;
     inOwnShowCall = callId;
     windowVisibilityState = 'shown-intentional';
@@ -334,13 +250,6 @@ function createWindow() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
-    
-    // Si la ventana está anclada (Always on Top), ignorar la pérdida de foco e informar al frontend para destellar el Pin
-    if (mainWindow.isAlwaysOnTop()) {
-      mainWindow.webContents.send('always-on-top-blur-attempt');
-      return;
-    }
-
     if (!hideOnBlurEnabled) return;
     // Pequeño delay para no ocultar si un diálogo nativo (file picker, DevTools) roba el foco
     setTimeout(() => {
@@ -409,15 +318,6 @@ function createTray() {
       label: 'Mostrar CyberLauncher',
       click: () => toggleWindow(),
     },
-    {
-      label: 'Configuración',
-      click: () => {
-        showMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('open-settings');
-        }
-      }
-    },
     { type: 'separator' },
     {
       label: 'Cerrar',
@@ -450,11 +350,6 @@ function toggleWindow(forceShow = false) {
   }
 
   if (mainWindow.isVisible()) {
-    // Si la ventana está anclada (Always on Top), no ocultar y alertar al frontend para destellar el Pin
-    if (mainWindow.isAlwaysOnTop()) {
-      mainWindow.webContents.send('always-on-top-blur-attempt');
-      return;
-    }
     hideMainWindow();
   } else {
     showMainWindow();
@@ -469,8 +364,6 @@ function startHotspotPolling() {
   lastHotspotPollTime = Date.now();
   
   hotspotTimer = setInterval(() => {
-    if (hotspotsPausedByUAC) return;
-
     const now = Date.now();
     const elapsed = now - lastHotspotPollTime;
     lastHotspotPollTime = now;
@@ -547,40 +440,6 @@ function startHotspotPolling() {
       hotspotCooldown = false;
     }
   }, 100);
-}
-
-// =====================================
-// UAC GUARD (detecta consent.exe para pausar hotspots)
-// =====================================
-function startUACGuard() {
-  if (uacGuardTimer) clearInterval(uacGuardTimer);
-  let uacWasActive = false;
-
-  uacGuardTimer = setInterval(() => {
-    exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
-      const isActive = !err && stdout.includes('consent.exe');
-      if (isActive && !uacWasActive) {
-        console.log('[UAC-GUARD] UAC detected (consent.exe) — pausing hotspots');
-        pauseHotspots();
-        if (mainWindow && mainWindow.isVisible()) {
-          windowVisibilityState = 'hidden-os';
-          hideMainWindow();
-        }
-      } else if (!isActive && uacWasActive) {
-        console.log('[UAC-GUARD] UAC closed — scheduling hotspot resume');
-        resumeHotspotsAfterUAC(1500);
-      }
-      uacWasActive = isActive;
-    });
-  }, 200);
-}
-
-function stopUACGuard() {
-  if (uacGuardTimer) {
-    clearInterval(uacGuardTimer);
-    uacGuardTimer = null;
-    console.log('[UAC-GUARD] Stopped');
-  }
 }
 
 // =====================================
@@ -727,223 +586,9 @@ async function resolveFullFileInfo(filePath: string) {
 }
 
 // =====================================
-// SYSTEM FILES INDEXER (EVERYTHING/WOX STYLE)
-// =====================================
-interface IndexedFile {
-  name: string;
-  path: string;
-  ext: string;
-  type: 'app' | 'file' | 'folder';
-  icon?: string;
-}
-
-let systemIndex: IndexedFile[] = [];
-let systemIndexStatus: 'ONLINE' | 'OFFLINE' | 'INDEXING' = 'OFFLINE';
-
-const getSettingsFilePath = () => path.join(app.getPath('userData'), 'indexer_settings.json');
-
-function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[] } {
-  try {
-    const filePath = getSettingsFilePath();
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('[INDEXER] Error loading indexer settings:', err);
-  }
-  
-  // Default values
-  return {
-    enabled: true,
-    maxDepth: 2,
-    paths: [
-      path.join(process.env.ProgramData || 'C:\\ProgramData', 'Microsoft\\Windows\\Start Menu\\Programs'),
-      path.join(process.env.APPDATA || 'C:\\Users\\Mock\\AppData\\Roaming', 'Microsoft\\Windows\\Start Menu\\Programs'),
-      path.join(os.homedir(), 'Desktop'),
-      path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop'),
-      path.join(os.homedir(), 'Downloads'),
-      path.join(os.homedir(), 'Documents')
-    ]
-  };
-}
-
-function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[] }) {
-  try {
-    const filePath = getSettingsFilePath();
-    fs.writeFileSync(filePath, JSON.stringify(settings, null, 2), 'utf8');
-    console.log('[INDEXER] Settings saved successfully.');
-  } catch (err) {
-    console.error('[INDEXER] Error saving indexer settings:', err);
-  }
-}
-
-async function crawlDirectory(dirPath: string, maxDepth = 2, currentDepth = 0) {
-  if (currentDepth > maxDepth) return;
-  try {
-    if (!fs.existsSync(dirPath)) return;
-    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      const ext = path.extname(entry.name).toLowerCase();
-      
-      if (entry.isDirectory()) {
-        if (entry.name.startsWith('.') || entry.name.startsWith('$') || entry.name === 'node_modules') continue;
-        systemIndex.push({
-          name: entry.name,
-          path: fullPath,
-          ext: '',
-          type: 'folder'
-        });
-        await crawlDirectory(fullPath, maxDepth, currentDepth + 1);
-      } else {
-        const type = (ext === '.exe' || ext === '.lnk' || ext === '.cmd' || ext === '.bat' || ext === '.ps1') ? 'app' : 'file';
-        systemIndex.push({
-          name: entry.name,
-          path: fullPath,
-          ext,
-          type
-        });
-      }
-    }
-  } catch (err) {
-    // Ignore permission/read errors
-  }
-}
-
-async function buildSystemIndex() {
-  const settings = loadIndexerSettings();
-  if (!settings.enabled) {
-    console.log('[INDEXER] Indexador global deshabilitado por el usuario.');
-    systemIndex = [];
-    systemIndexStatus = 'OFFLINE';
-    return;
-  }
-
-  console.log('[INDEXER] Iniciando indexación de sistema en segundo plano...');
-  systemIndexStatus = 'INDEXING';
-  const start = Date.now();
-  systemIndex = [];
-
-  const targets = settings.paths || [];
-  const maxDepth = settings.maxDepth !== undefined ? settings.maxDepth : 2;
-
-  for (const target of targets) {
-    if (fs.existsSync(target)) {
-      const targetDepth = target.includes('Start Menu') ? Math.max(maxDepth, 3) : maxDepth;
-      await crawlDirectory(target, targetDepth, 0);
-    }
-  }
-
-  systemIndexStatus = 'ONLINE';
-  console.log(`[INDEXER] Indexación terminada en ${Date.now() - start}ms. Total items: ${systemIndex.length}`);
-}
-
-// =====================================
 // IPC HANDLERS
 // =====================================
 function setupIpcHandlers() {
-  // --- Obtener configuraciones del indexador global ---
-  ipcMain.handle('get-indexer-settings', async () => {
-    return loadIndexerSettings();
-  });
-
-  // --- Guardar configuraciones del indexador global ---
-  ipcMain.handle('save-indexer-settings', async (_event, settings: { enabled: boolean; maxDepth: number; paths: string[] }) => {
-    saveIndexerSettings(settings);
-    buildSystemIndex().catch(err => console.error('[INDEXER] Error building index after save:', err));
-    return true;
-  });
-
-  // --- Obtener estadísticas en vivo del indexador global ---
-  ipcMain.handle('get-indexer-stats', async () => {
-    return {
-      status: systemIndexStatus,
-      totalFiles: systemIndex.length
-    };
-  });
-
-  // --- Seleccionar carpeta nativa de Windows para indexación ---
-  ipcMain.handle('select-indexer-folder', async () => {
-    if (!mainWindow) return null;
-    isDialogOpen = true;
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openDirectory'],
-      title: 'Seleccionar carpeta para indexar'
-    });
-    isDialogOpen = false;
-    showMainWindow();
-    if (result.canceled || result.filePaths.length === 0) return null;
-    return result.filePaths[0];
-  });
-
-  // --- Obtener unidades lógicas del sistema ---
-  ipcMain.handle('get-system-drives', async () => {
-    const drives: string[] = [];
-    for (let i = 65; i <= 90; i++) { // 'A' to 'Z'
-      const char = String.fromCharCode(i);
-      const drivePath = `${char}:\\`;
-      try {
-        if (fs.existsSync(drivePath)) {
-          drives.push(drivePath);
-        }
-      } catch (e) {
-        // Ignorar unidades no disponibles o protegidas
-      }
-    }
-    return drives;
-  });
-
-  // --- Búsqueda indexada global de sistema ---
-  ipcMain.handle('search-system-files', async (_event, query: string) => {
-    if (!query || query.trim() === '') return [];
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    // 1. Filtrar coincidencias del índice
-    const matches = systemIndex.filter(item => 
-      item.name.toLowerCase().includes(normalizedQuery) ||
-      item.path.toLowerCase().includes(normalizedQuery)
-    );
-
-    // 2. Ordenar resultados
-    matches.sort((a, b) => {
-      const aNameLower = a.name.toLowerCase();
-      const bNameLower = b.name.toLowerCase();
-      
-      const aStartsWith = aNameLower.startsWith(normalizedQuery);
-      const bStartsWith = bNameLower.startsWith(normalizedQuery);
-      if (aStartsWith && !bStartsWith) return -1;
-      if (!aStartsWith && bStartsWith) return 1;
-
-      if (a.type === 'app' && b.type !== 'app') return -1;
-      if (a.type !== 'app' && b.type === 'app') return 1;
-
-      return a.name.localeCompare(b.name);
-    });
-
-    // 3. Limitar a los 50 mejores
-    const topMatches = matches.slice(0, 50);
-
-    // 4. Resolver iconos perezosamente
-    const resultsWithIcons = await Promise.all(topMatches.map(async item => {
-      let icon = '';
-      if (item.type !== 'folder' && fs.existsSync(item.path)) {
-        try {
-          const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
-          if (fileIcon && !fileIcon.isEmpty()) {
-            icon = fileIcon.toDataURL();
-          }
-        } catch (err) {}
-      }
-      return {
-        ...item,
-        icon
-      };
-    }));
-
-    return resultsWithIcons;
-  });
-
   // --- Seleccionar archivo desde el explorador de Windows ---
   ipcMain.handle('select-file', async (_event, options?: { filters?: Electron.FileFilter[] }) => {
     if (!mainWindow) return null;
@@ -995,7 +640,7 @@ function setupIpcHandlers() {
     }
   });
   // --- Lanzar aplicación (ejecutar .exe, abrir URL, etc.) ---
-  ipcMain.handle('launch-app', async (_event, appPath: string, isAdmin?: boolean) => {
+  ipcMain.handle('launch-app', async (_event, appPath: string) => {
     if (!appPath) return { success: false, error: 'No path provided' };
 
     try {
@@ -1005,22 +650,7 @@ function setupIpcHandlers() {
         return { success: true };
       }
 
-      // Si es una aplicación UWP/Windows Store (AUMID conteniendo '!' y '_'), lanzarla virtualmente
-      const isUwp = appPath.includes('!') && appPath.includes('_');
-      if (isUwp) {
-        console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${appPath}`);
-        const command = `explorer.exe shell:AppsFolder\\${appPath}`;
-        exec(command, (err) => {
-          if (err) {
-            console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
-          }
-        });
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
-        return { success: true };
-      }
-
-      // Si es una ruta del sistema, intentar abrirla con shell.openPath o PowerShell RunAs
+      // Si es una ruta del sistema, intentar abrirla con shell.openPath
       // Esto maneja .exe, .lnk (accesos directos), .bat, carpetas, etc.
       const normalizedPath = path.normalize(appPath);
 
@@ -1029,174 +659,17 @@ function setupIpcHandlers() {
         return { success: false, error: `Ruta no encontrada: ${normalizedPath}` };
       }
 
-      if (isAdmin && process.platform === 'win32') {
-        console.log(`[LAUNCH] Intentando lanzar como administrador: ${normalizedPath}`);
-        // Escapar comillas simples para PowerShell
-        const escapedPath = normalizedPath.replace(/'/g, "''");
-        const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
-        
-        exec(command, (err) => {
-          if (err) {
-            console.error('[LAUNCH] Error al ejecutar como administrador:', err);
-          }
-        });
-
-        // Ocultar al tray al lanzar una app
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
-        return { success: true };
-      } else {
-        const errorMessage = await shell.openPath(normalizedPath);
-        if (errorMessage) {
-          return { success: false, error: errorMessage };
-        }
-        // Ocultar al tray al lanzar una app
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
-        return { success: true };
+      const errorMessage = await shell.openPath(normalizedPath);
+      if (errorMessage) {
+        return { success: false, error: errorMessage };
       }
+      // Ocultar al tray al lanzar una app
+      windowVisibilityState = 'hidden-intentional';
+      hideMainWindow();
+      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
     }
-  });
-
-  // --- Obtener aplicaciones de Windows Store (UWP/MSIX) ---
-  ipcMain.handle('get-uwp-apps', async () => {
-    return new Promise((resolve) => {
-      const psScript = `# Full UWP Scanner with Icon Extraction (Standard User version)
-\$ErrorActionPreference = "SilentlyContinue"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-\$startApps = Get-StartApps | Where-Object { \$_.AppID -like "*!*" -and \$_.AppID -like "*_*" }
-
-\$packages = Get-AppxPackage
-\$packageMap = @{}
-foreach (\$pkg in \$packages) {
-    if (\$pkg.InstallLocation) {
-        \$packageMap[\$pkg.PackageFamilyName] = \$pkg.InstallLocation
-    }
-}
-
-\$uwpApps = @()
-
-foreach (\$app in \$startApps) {
-    \$name = \$app.Name
-    \$aumid = \$app.AppID
-    
-    \$parts = \$aumid.Split('!')
-    if (\$parts.Length -lt 2) { continue }
-    \$family = \$parts[0]
-    \$appId = \$parts[1]
-    
-    \$installDir = \$packageMap[\$family]
-    \$iconBase64 = ""
-    
-    if (\$installDir -and (Test-Path "\$installDir\\AppxManifest.xml")) {
-        try {
-            [xml]\$manifest = Get-Content "\$installDir\\AppxManifest.xml" -Raw
-            
-            \$ns = New-Object Xml.XmlNamespaceManager \$manifest.NameTable
-            \$ns.AddNamespace("ns", "http://schemas.microsoft.com/appx/manifest/foundation/windows10")
-            \$ns.AddNamespace("uap", "http://schemas.microsoft.com/appx/manifest/uap/windows10")
-            
-            \$appNode = \$manifest.SelectSingleNode("//ns:Application[@Id='\$appId']", \$ns)
-            if (-not \$appNode) {
-                \$appNode = \$manifest.SelectSingleNode("//Application[@Id='\$appId']")
-            }
-            
-            if (\$appNode) {
-                \$visualElements = \$appNode.SelectSingleNode("uap:VisualElements", \$ns)
-                if (-not \$visualElements) { \$visualElements = \$appNode.SelectSingleNode("VisualElements") }
-                
-                if (\$visualElements) {
-                    \$logoAttributes = @("Square44x44Logo", "Square150x150Logo", "Logo", "SmallLogo")
-                    \$logoRelativePaths = @()
-                    
-                    foreach (\$attrName in \$logoAttributes) {
-                        if (\$visualElements.Attributes[\$attrName]) {
-                            \$logoRelativePaths += \$visualElements.Attributes[\$attrName].Value
-                        }
-                    }
-                    
-                    \$foundIcon = \$false
-                    foreach (\$relPath in \$logoRelativePaths) {
-                        if (\$foundIcon) { break }
-                        
-                        \$cleanPath = \$relPath.Replace('/', '\\')
-                        \$fullPath = Join-Path \$installDir \$cleanPath
-                        
-                        \$parentDir = Split-Path \$fullPath
-                        \$fileName = Split-Path \$fullPath -Leaf
-                        \$baseName = [System.IO.Path]::GetFileNameWithoutExtension(\$fileName)
-                        \$ext = [System.IO.Path]::GetExtension(\$fileName)
-                        
-                        if (Test-Path \$parentDir) {
-                            \$matchingFiles = Get-ChildItem -Path \$parentDir -Filter "\$baseName*\$ext"
-                            if (\$matchingFiles) {
-                                \$bestFile = \$matchingFiles | Where-Object { \$_.Name -like "*scale-200*" } | Select-Object -First 1
-                                if (-not \$bestFile) { \$bestFile = \$matchingFiles | Where-Object { \$_.Name -like "*targetsize-48*" } | Select-Object -First 1 }
-                                if (-not \$bestFile) { \$bestFile = \$matchingFiles | Where-Object { \$_.Name -like "*scale-100*" } | Select-Object -First 1 }
-                                if (-not \$bestFile) { \$bestFile = \$matchingFiles | Select-Object -First 1 }
-                                
-                                if (\$bestFile) {
-                                    \$bytes = [System.IO.File]::ReadAllBytes(\$bestFile.FullName)
-                                    \$b64 = [System.Convert]::ToBase64String(\$bytes)
-                                    \$mime = "image/png"
-                                    if (\$ext -eq ".jpg" -or \$ext -eq ".jpeg") { \$mime = "image/jpeg" }
-                                    elseif (\$ext -eq ".ico") { \$mime = "image/x-icon" }
-                                    \$iconBase64 = "data:\$mime;base64,\$b64"
-                                    \$foundIcon = \$true
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch {
-            # Skip
-        }
-    }
-    
-    \$uwpApps += [PSCustomObject]@{
-        name = \$name
-        aumid = \$aumid
-        icon = \$iconBase64
-    }
-}
-
-\$uwpApps | ConvertTo-Json
-`;
-
-      const tmpPs = path.join(os.tmpdir(), `cl-uwp-apps-${Date.now()}.ps1`);
-      try {
-        fs.writeFileSync(tmpPs, psScript, 'utf-8');
-        exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, { maxBuffer: 25 * 1024 * 1024 }, (err, stdout) => {
-          try {
-            if (fs.existsSync(tmpPs)) fs.unlinkSync(tmpPs);
-          } catch {}
-
-          if (err) {
-            console.error('[UWP] Error ejecutando script de escaneo:', err);
-            resolve([]);
-            return;
-          }
-
-          try {
-            const apps = JSON.parse(stdout.trim() || '[]');
-            resolve(apps);
-          } catch (e) {
-            console.error('[UWP] Error parseando salida JSON de escaneo:', e);
-            resolve([]);
-          }
-        });
-      } catch (e) {
-        console.error('[UWP] Error escribiendo o preparando script de escaneo:', e);
-        try {
-          if (fs.existsSync(tmpPs)) fs.unlinkSync(tmpPs);
-        } catch {}
-        resolve([]);
-      }
-    });
   });
 
   // --- Obtener monitores disponibles ---
@@ -1441,89 +914,6 @@ foreach (\$app in \$startApps) {
     shell.openPath(dir);
   });
 
-  // --- Window Pinning (Always-on-top) ---
-  ipcMain.handle('set-always-on-top', (_event, enabled: boolean) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setAlwaysOnTop(enabled);
-      return { success: true };
-    }
-    return { success: false };
-  });
-
-  // --- Dynamic shortcuts ---
-  ipcMain.handle('register-app-shortcuts', (_event, list) => {
-    registerAppShortcutsList(list);
-    return { success: true };
-  });
-
-  // --- Shell runner ---
-  const activeProcesses = new Map<string, any>();
-
-  ipcMain.handle('run-shell-command', (_event, fullCommand: string) => {
-    const cmdId = Math.random().toString(36).substring(7);
-    try {
-      console.log(`[SHELL RUNNER] Starting command: ${fullCommand} with ID: ${cmdId}`);
-      
-      let child;
-      if (process.platform === 'win32') {
-        child = spawn('cmd.exe', ['/c', fullCommand], {
-          shell: true,
-          windowsHide: true,
-        });
-      } else {
-        child = spawn('sh', ['-c', fullCommand], {
-          shell: true,
-        });
-      }
-
-      activeProcesses.set(cmdId, child);
-
-      child.stdout.on('data', (data: Buffer) => {
-        const text = data.toString('utf-8');
-        mainWindow?.webContents.send('shell-command-output', {
-          id: cmdId,
-          type: 'stdout',
-          text,
-        });
-      });
-
-      child.stderr.on('data', (data: Buffer) => {
-        const text = data.toString('utf-8');
-        mainWindow?.webContents.send('shell-command-output', {
-          id: cmdId,
-          type: 'stderr',
-          text,
-        });
-      });
-
-      child.on('close', (code: number) => {
-        mainWindow?.webContents.send('shell-command-exit', {
-          id: cmdId,
-          exitCode: code ?? 0,
-        });
-        activeProcesses.delete(cmdId);
-      });
-
-      child.on('error', (err: Error) => {
-        mainWindow?.webContents.send('shell-command-output', {
-          id: cmdId,
-          type: 'stderr',
-          text: err.message,
-        });
-        mainWindow?.webContents.send('shell-command-exit', {
-          id: cmdId,
-          exitCode: -1,
-        });
-        activeProcesses.delete(cmdId);
-      });
-
-      return { success: true, cmdId };
-    } catch (err: any) {
-      console.error('[SHELL RUNNER] Spawn error:', err);
-      return { success: false, error: err.message };
-    }
-  });
-
   // --- Persistencia centralizada en userData ---
   ipcMain.handle('saveConfig', async (_event, config) => {
     isSavingConfig = true;
@@ -1609,7 +999,6 @@ process.on('unhandledRejection', (reason) => {
 // =====================================
 app.whenReady().then(() => {
   setupIpcHandlers();
-  buildSystemIndex().catch(err => console.error('[INDEXER] Error building index:', err));
   
   const windowState = loadWindowState();
   if (windowState && windowState.shortcut) {
@@ -1686,9 +1075,6 @@ app.whenReady().then(() => {
   // Iniciar guardia de hotspots
   startHotspotPolling();
 
-  // Iniciar detector de UAC (consent.exe polling)
-  startUACGuard();
-
   // Vigilar cambios en el archivo de configuracion para sincronizar entre instancias
   let configWatcherReloadTimer: NodeJS.Timeout | null = null;
   const startConfigWatcher = () => {
@@ -1755,5 +1141,4 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  stopUACGuard();
 });

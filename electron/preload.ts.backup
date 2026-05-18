@@ -6,7 +6,6 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   // --- Lanzar aplicación (.exe, .lnk, URL, etc.) ---
   launchApp: (appPath: string, isAdmin?: boolean) => ipcRenderer.invoke('launch-app', appPath, isAdmin),
-  getUwpApps: () => ipcRenderer.invoke('get-uwp-apps'),
 
   // --- Diálogos nativos de archivos ---
   selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>
@@ -41,13 +40,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Drag & Drop: resolver ruta de archivo ---
   resolveFilePath: (filePath: string) => ipcRenderer.invoke('resolve-file-path', filePath),
   openFileLocation: (filePath: string) => ipcRenderer.invoke('open-file-location', filePath),
-  searchSystemFiles: (query: string) => ipcRenderer.invoke('search-system-files', query),
-  getIndexerSettings: () => ipcRenderer.invoke('get-indexer-settings'),
-  saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[] }) =>
-    ipcRenderer.invoke('save-indexer-settings', settings),
-  getIndexerStats: () => ipcRenderer.invoke('get-indexer-stats'),
-  selectIndexerFolder: () => ipcRenderer.invoke('select-indexer-folder'),
-  getSystemDrives: () => ipcRenderer.invoke('get-system-drives'),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 
   // --- Hotspots ---
@@ -100,10 +92,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback();
     ipcRenderer.on('always-on-top-blur-attempt', handler);
     return () => { ipcRenderer.removeListener('always-on-top-blur-attempt', handler); };
-  },
-  onOpenSettings: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('open-settings', handler);
-    return () => { ipcRenderer.removeListener('open-settings', handler); };
   },
 });
