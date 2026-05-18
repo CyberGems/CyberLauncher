@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { exec, execSync } from 'node:child_process';
+import { exec, execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 
@@ -29,24 +29,119 @@ let lastHotspotCorner = '';
 let hotspotEntryTime = 0;
 let isSavingConfig = false;
 let isDialogOpen = false;
-let intentionallyHidden = true; // ventana empieza oculta, solo mostrar si nosotros lo pedimos
-let hotspotCooldown = false; // evita re-disparo mientras el cursor siga en la esquina
-let hideOnBlurEnabled = true; // se puede desactivar desde la config
-let showTaskbarIcon = false; // se puede activar desde la config
+// ── STATE MACHINE & GUARDS ──
+type VisibilityState = 'hidden-intentional' | 'shown-intentional' | 'hidden-blur' | 'hidden-os';
+let windowVisibilityState: VisibilityState = 'hidden-intentional';
+let ownShowCallId = 0;
+let inOwnShowCall = 0;
+let ownRestoreCallId = 0;
+let inOwnRestoreCall = 0;
+let hotspotCooldown = false;
+let hideOnBlurEnabled = true;
+let showTaskbarIcon = false;
+let lastHotspotPollTime = 0;
+const HOTSPOT_LAG_THRESHOLD_MS = 400;
+let hotspotsPausedByUAC = false;
+let uacResumeTimer: NodeJS.Timeout | null = null;
+let uacGuardTimer: NodeJS.Timeout | null = null;
+
+let appShortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }> = [];
+
+function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) {
+  // First, unregister all existing custom app shortcuts
+  for (const item of appShortcuts) {
+    if (item.shortcut) {
+      try {
+        const electronShortcut = item.shortcut
+          .replace(/Meta/g, 'Super')
+          .replace(/Ctrl/g, 'CommandOrControl');
+        globalShortcut.unregister(electronShortcut);
+      } catch (err) {
+        console.error('Error unregistering app shortcut:', err);
+      }
+    }
+  }
+
+  appShortcuts = shortcutsList;
+
+  // Now, register the new list
+  for (const item of appShortcuts) {
+    if (!item.shortcut) continue;
+    try {
+      const electronShortcut = item.shortcut
+        .replace(/Meta/g, 'Super')
+        .replace(/Ctrl/g, 'CommandOrControl');
+      
+      const success = globalShortcut.register(electronShortcut, () => {
+        try {
+          console.log(`[GLOBAL HOTKEY] Launching app ${item.id} via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
+          
+          if (item.isAdmin && process.platform === 'win32') {
+            const escapedPath = item.path.replace(/'/g, "''");
+            const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
+            exec(command, { windowsHide: true });
+          } else {
+            shell.openPath(item.path);
+          }
+        } catch (launchErr) {
+          console.error('[GLOBAL HOTKEY] Error launching shortcut app:', launchErr);
+        }
+      });
+      if (!success) {
+        console.warn(`[GLOBAL HOTKEY] Failed to register custom shortcut: ${electronShortcut}`);
+      }
+    } catch (err) {
+      console.error('[GLOBAL HOTKEY] Error registering custom shortcut:', err);
+    }
+  }
+}
+
+function resumeHotspotsImmediate() {
+  if (uacResumeTimer) clearTimeout(uacResumeTimer);
+  hotspotsPausedByUAC = false;
+  lastHotspotCorner = '';
+  hotspotEntryTime = 0;
+  hotspotCooldown = false;
+  console.log('[HOTSPOT] Resumed immediately (user action)');
+}
+
+function pauseHotspots() {
+  if (uacResumeTimer) clearTimeout(uacResumeTimer);
+  hotspotsPausedByUAC = true;
+  lastHotspotCorner = '';
+  hotspotEntryTime = 0;
+  hotspotCooldown = false;
+  console.log('[HOTSPOT] Paused by secure-desktop guard');
+}
+
+function resumeHotspotsAfterUAC(delayMs = 1500) {
+  if (uacResumeTimer) clearTimeout(uacResumeTimer);
+  uacResumeTimer = setTimeout(() => {
+    hotspotsPausedByUAC = false;
+    lastHotspotCorner = '';
+    hotspotEntryTime = 0;
+    hotspotCooldown = false;
+    console.log('[HOTSPOT] Resumed after UAC delay');
+  }, delayMs);
+}
 
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    console.log('[WM] showMainWindow (was intentionallyHidden=' + intentionallyHidden + ')');
-    intentionallyHidden = false;
+    console.log('[WM] showMainWindow (state=' + windowVisibilityState + ')');
+    resumeHotspotsImmediate();
+    const callId = ++ownShowCallId;
+    inOwnShowCall = callId;
+    windowVisibilityState = 'shown-intentional';
     mainWindow.show();
     mainWindow.focus();
+    if (inOwnShowCall === callId) inOwnShowCall = 0;
+    setImmediate(() => { if (inOwnShowCall === callId) inOwnShowCall = 0; });
   }
 }
 
 function hideMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] hideMainWindow');
-    intentionallyHidden = true;
     mainWindow.hide();
   }
 }
@@ -206,9 +301,13 @@ function createWindow() {
 
   // Recargar config cuando la ventana se restaura del tray
   mainWindow.on('show', () => {
-    console.log('[WM EVENT] show (intentionallyHidden=' + intentionallyHidden + ')');
-    if (intentionallyHidden) {
-      console.log('[WM] Windows restored window unexpectedly, re-hiding');
+    console.log('[WM EVENT] show (inOwnShowCall=' + inOwnShowCall + ', state=' + windowVisibilityState + ')');
+    if (inOwnShowCall === ownShowCallId) {
+      inOwnShowCall = 0;
+      console.log('[WM] Own show confirmed');
+    } else {
+      console.log('[WM] External show detected (UAC?), re-hiding');
+      windowVisibilityState = 'hidden-os';
       hideMainWindow();
       return;
     }
@@ -233,14 +332,21 @@ function createWindow() {
   // Ocultar launcher cuando pierde foco (comportamiento tipo launcher)
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    // Al perder foco, limpiar tracking de hotspots para que arranquen limpios si el usuario re-activa
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
+    
+    // Si la ventana está anclada (Always on Top), ignorar la pérdida de foco e informar al frontend para destellar el Pin
+    if (mainWindow.isAlwaysOnTop()) {
+      mainWindow.webContents.send('always-on-top-blur-attempt');
+      return;
+    }
+
     if (!hideOnBlurEnabled) return;
     // Pequeño delay para no ocultar si un diálogo nativo (file picker, DevTools) roba el foco
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
+        windowVisibilityState = 'hidden-blur';
         hideMainWindow();
       }
     }, 200);
@@ -248,9 +354,13 @@ function createWindow() {
 
   // GUARD: Si Windows restaura la ventana (p.ej. tras UAC), re-ocultarla
   mainWindow.on('restore', () => {
-    console.log('[WM EVENT] restore (intentionallyHidden=' + intentionallyHidden + ')');
-    if (intentionallyHidden && mainWindow && mainWindow.isVisible()) {
-      console.log('[WM] Window restored by OS, re-hiding');
+    console.log('[WM EVENT] restore (inOwnRestoreCall=' + inOwnRestoreCall + ', state=' + windowVisibilityState + ')');
+    if (inOwnRestoreCall === ownRestoreCallId) {
+      inOwnRestoreCall = 0;
+      console.log('[WM] Own restore confirmed');
+    } else {
+      console.log('[WM] Window restored by OS (UAC?), re-hiding unconditionally');
+      windowVisibilityState = 'hidden-os';
       hideMainWindow();
     }
   });
@@ -274,6 +384,7 @@ function createWindow() {
     if (!isQuitting) {
       e.preventDefault();
       saveWindowState();
+      windowVisibilityState = 'hidden-intentional';
       hideMainWindow();
     }
   });
@@ -297,6 +408,15 @@ function createTray() {
     {
       label: 'Mostrar CyberLauncher',
       click: () => toggleWindow(),
+    },
+    {
+      label: 'Configuración',
+      click: () => {
+        showMainWindow();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('open-settings');
+        }
+      }
     },
     { type: 'separator' },
     {
@@ -330,6 +450,11 @@ function toggleWindow(forceShow = false) {
   }
 
   if (mainWindow.isVisible()) {
+    // Si la ventana está anclada (Always on Top), no ocultar y alertar al frontend para destellar el Pin
+    if (mainWindow.isAlwaysOnTop()) {
+      mainWindow.webContents.send('always-on-top-blur-attempt');
+      return;
+    }
     hideMainWindow();
   } else {
     showMainWindow();
@@ -341,8 +466,23 @@ function toggleWindow(forceShow = false) {
 // =====================================
 function startHotspotPolling() {
   if (hotspotTimer) clearInterval(hotspotTimer);
+  lastHotspotPollTime = Date.now();
   
   hotspotTimer = setInterval(() => {
+    if (hotspotsPausedByUAC) return;
+
+    const now = Date.now();
+    const elapsed = now - lastHotspotPollTime;
+    lastHotspotPollTime = now;
+
+    if (elapsed > HOTSPOT_LAG_THRESHOLD_MS) {
+      console.log(`[HOTSPOT] Lag detected (${elapsed}ms), resetting hotspot state`);
+      lastHotspotCorner = '';
+      hotspotEntryTime = 0;
+      hotspotCooldown = false;
+      return;
+    }
+
     if (hotspotCorners.length === 0) return;
 
     const { x, y } = screen.getCursorScreenPoint();
@@ -407,6 +547,40 @@ function startHotspotPolling() {
       hotspotCooldown = false;
     }
   }, 100);
+}
+
+// =====================================
+// UAC GUARD (detecta consent.exe para pausar hotspots)
+// =====================================
+function startUACGuard() {
+  if (uacGuardTimer) clearInterval(uacGuardTimer);
+  let uacWasActive = false;
+
+  uacGuardTimer = setInterval(() => {
+    exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
+      const isActive = !err && stdout.includes('consent.exe');
+      if (isActive && !uacWasActive) {
+        console.log('[UAC-GUARD] UAC detected (consent.exe) — pausing hotspots');
+        pauseHotspots();
+        if (mainWindow && mainWindow.isVisible()) {
+          windowVisibilityState = 'hidden-os';
+          hideMainWindow();
+        }
+      } else if (!isActive && uacWasActive) {
+        console.log('[UAC-GUARD] UAC closed — scheduling hotspot resume');
+        resumeHotspotsAfterUAC(1500);
+      }
+      uacWasActive = isActive;
+    });
+  }, 200);
+}
+
+function stopUACGuard() {
+  if (uacGuardTimer) {
+    clearInterval(uacGuardTimer);
+    uacGuardTimer = null;
+    console.log('[UAC-GUARD] Stopped');
+  }
 }
 
 // =====================================
@@ -607,7 +781,7 @@ function setupIpcHandlers() {
     }
   });
   // --- Lanzar aplicación (ejecutar .exe, abrir URL, etc.) ---
-  ipcMain.handle('launch-app', async (_event, appPath: string) => {
+  ipcMain.handle('launch-app', async (_event, appPath: string, isAdmin?: boolean) => {
     if (!appPath) return { success: false, error: 'No path provided' };
 
     try {
@@ -617,7 +791,7 @@ function setupIpcHandlers() {
         return { success: true };
       }
 
-      // Si es una ruta del sistema, intentar abrirla con shell.openPath
+      // Si es una ruta del sistema, intentar abrirla con shell.openPath o PowerShell RunAs
       // Esto maneja .exe, .lnk (accesos directos), .bat, carpetas, etc.
       const normalizedPath = path.normalize(appPath);
 
@@ -626,13 +800,32 @@ function setupIpcHandlers() {
         return { success: false, error: `Ruta no encontrada: ${normalizedPath}` };
       }
 
-      const errorMessage = await shell.openPath(normalizedPath);
-      if (errorMessage) {
-        return { success: false, error: errorMessage };
+      if (isAdmin && process.platform === 'win32') {
+        console.log(`[LAUNCH] Intentando lanzar como administrador: ${normalizedPath}`);
+        // Escapar comillas simples para PowerShell
+        const escapedPath = normalizedPath.replace(/'/g, "''");
+        const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
+        
+        exec(command, (err) => {
+          if (err) {
+            console.error('[LAUNCH] Error al ejecutar como administrador:', err);
+          }
+        });
+
+        // Ocultar al tray al lanzar una app
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
+        return { success: true };
+      } else {
+        const errorMessage = await shell.openPath(normalizedPath);
+        if (errorMessage) {
+          return { success: false, error: errorMessage };
+        }
+        // Ocultar al tray al lanzar una app
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
+        return { success: true };
       }
-      // Ocultar al tray al lanzar una app
-      hideMainWindow();
-      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
     }
@@ -677,7 +870,7 @@ function setupIpcHandlers() {
 
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
   ipcMain.handle('window-minimize', () => {
-    // Treat minimize as hide-to-tray so state stays consistent (intentionallyHidden=true)
+    windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
   });
 
@@ -690,11 +883,12 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('window-close', () => {
-    // Ocultar en vez de cerrar (se va al tray)
+    windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
   });
 
   ipcMain.handle('window-hide-to-tray', () => {
+    windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
   });
 
@@ -879,6 +1073,89 @@ function setupIpcHandlers() {
     shell.openPath(dir);
   });
 
+  // --- Window Pinning (Always-on-top) ---
+  ipcMain.handle('set-always-on-top', (_event, enabled: boolean) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setAlwaysOnTop(enabled);
+      return { success: true };
+    }
+    return { success: false };
+  });
+
+  // --- Dynamic shortcuts ---
+  ipcMain.handle('register-app-shortcuts', (_event, list) => {
+    registerAppShortcutsList(list);
+    return { success: true };
+  });
+
+  // --- Shell runner ---
+  const activeProcesses = new Map<string, any>();
+
+  ipcMain.handle('run-shell-command', (_event, fullCommand: string) => {
+    const cmdId = Math.random().toString(36).substring(7);
+    try {
+      console.log(`[SHELL RUNNER] Starting command: ${fullCommand} with ID: ${cmdId}`);
+      
+      let child;
+      if (process.platform === 'win32') {
+        child = spawn('cmd.exe', ['/c', fullCommand], {
+          shell: true,
+          windowsHide: true,
+        });
+      } else {
+        child = spawn('sh', ['-c', fullCommand], {
+          shell: true,
+        });
+      }
+
+      activeProcesses.set(cmdId, child);
+
+      child.stdout.on('data', (data: Buffer) => {
+        const text = data.toString('utf-8');
+        mainWindow?.webContents.send('shell-command-output', {
+          id: cmdId,
+          type: 'stdout',
+          text,
+        });
+      });
+
+      child.stderr.on('data', (data: Buffer) => {
+        const text = data.toString('utf-8');
+        mainWindow?.webContents.send('shell-command-output', {
+          id: cmdId,
+          type: 'stderr',
+          text,
+        });
+      });
+
+      child.on('close', (code: number) => {
+        mainWindow?.webContents.send('shell-command-exit', {
+          id: cmdId,
+          exitCode: code ?? 0,
+        });
+        activeProcesses.delete(cmdId);
+      });
+
+      child.on('error', (err: Error) => {
+        mainWindow?.webContents.send('shell-command-output', {
+          id: cmdId,
+          type: 'stderr',
+          text: err.message,
+        });
+        mainWindow?.webContents.send('shell-command-exit', {
+          id: cmdId,
+          exitCode: -1,
+        });
+        activeProcesses.delete(cmdId);
+      });
+
+      return { success: true, cmdId };
+    } catch (err: any) {
+      console.error('[SHELL RUNNER] Spawn error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   // --- Persistencia centralizada en userData ---
   ipcMain.handle('saveConfig', async (_event, config) => {
     isSavingConfig = true;
@@ -936,11 +1213,16 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    // Alguien intentó abrir una segunda instancia: mostrar y enfocar la existente
-    console.log('[SINGLE-INSTANCE] Intento de segunda instancia (intentionallyHidden=' + intentionallyHidden + ')');
+    console.log('[SINGLE-INSTANCE] Intento de segunda instancia (state=' + windowVisibilityState + ')');
     if (mainWindow) {
       if (!mainWindow.isVisible()) showMainWindow();
-      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (mainWindow.isMinimized()) {
+        ownRestoreCallId++;
+        inOwnRestoreCall = ownRestoreCallId;
+        mainWindow.restore();
+        if (inOwnRestoreCall === ownRestoreCallId) inOwnRestoreCall = 0;
+        setImmediate(() => { if (inOwnRestoreCall === ownRestoreCallId) inOwnRestoreCall = 0; });
+      }
       mainWindow.focus();
     }
   });
@@ -1035,6 +1317,9 @@ app.whenReady().then(() => {
   // Iniciar guardia de hotspots
   startHotspotPolling();
 
+  // Iniciar detector de UAC (consent.exe polling)
+  startUACGuard();
+
   // Vigilar cambios en el archivo de configuracion para sincronizar entre instancias
   let configWatcherReloadTimer: NodeJS.Timeout | null = null;
   const startConfigWatcher = () => {
@@ -1101,4 +1386,5 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  stopUACGuard();
 });

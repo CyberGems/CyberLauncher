@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 // =====================================
 contextBridge.exposeInMainWorld('electronAPI', {
   // --- Lanzar aplicación (.exe, .lnk, URL, etc.) ---
-  launchApp: (appPath: string) => ipcRenderer.invoke('launch-app', appPath),
+  launchApp: (appPath: string, isAdmin?: boolean) => ipcRenderer.invoke('launch-app', appPath, isAdmin),
 
   // --- Diálogos nativos de archivos ---
   selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>
@@ -67,5 +67,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
     };
     ipcRenderer.on('reload-config', handler);
     return () => { ipcRenderer.removeListener('reload-config', handler); };
+  },
+
+  // --- Window Pinning (Always-on-top) ---
+  setAlwaysOnTop: (enabled: boolean) => ipcRenderer.invoke('set-always-on-top', enabled),
+
+  // --- Dynamic shortcuts ---
+  registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) =>
+    ipcRenderer.invoke('register-app-shortcuts', shortcuts),
+
+  // --- Shell runner ---
+  runShellCommand: (command: string) => ipcRenderer.invoke('run-shell-command', command),
+  onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => {
+    const handler = (_event: any, data: { id: string; type: 'stdout' | 'stderr'; text: string }) => callback(data);
+    ipcRenderer.on('shell-command-output', handler);
+    return () => { ipcRenderer.removeListener('shell-command-output', handler); };
+  },
+  onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => {
+    const handler = (_event: any, data: { id: string; exitCode: number }) => callback(data);
+    ipcRenderer.on('shell-command-exit', handler);
+    return () => { ipcRenderer.removeListener('shell-command-exit', handler); };
+  },
+  onAlwaysOnTopBlurAttempt: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('always-on-top-blur-attempt', handler);
+    return () => { ipcRenderer.removeListener('always-on-top-blur-attempt', handler); };
+  },
+  onOpenSettings: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('open-settings', handler);
+    return () => { ipcRenderer.removeListener('open-settings', handler); };
   },
 });

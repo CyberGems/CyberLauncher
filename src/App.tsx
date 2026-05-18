@@ -9,7 +9,7 @@ import {
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, Eye
+  FolderOpen, Eye, Pin, Play, Pause, Timer
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -58,7 +58,7 @@ const INITIAL_APPS = [
 ];
 
 const PRESET_IMAGES = [
-  'C:\\antigravity_projects\\CyberLauncher\\default_background.jpg',
+  'C:\\CyberGems\\CyberLauncher\\default_background.jpg',
   'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop', // Abstract
   'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2670&auto=format&fit=crop', // Cyberpunk
   'https://images.unsplash.com/photo-1538681105587-85640961bf8b?q=80&w=2670&auto=format&fit=crop', // Dark geom
@@ -106,8 +106,8 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
 declare global {
   interface Window {
     electronAPI?: {
-      launchApp: (path: string) => Promise<{ success: boolean; error?: string }>;
-      selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>;
+      launchApp: (path: string, isAdmin?: boolean) => Promise<{ success: boolean; error?: string }>;
+      selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectImage: () => Promise<string | null>;
       getMonitors: () => Promise<Array<{ id: string; label: string; isPrimary: boolean; bounds: any; size: any }>>;
       setMonitor: (monitorId: string) => Promise<void>;
@@ -135,11 +135,41 @@ declare global {
       openDataFolder: () => Promise<void>;
       onReloadConfig: (callback: () => void) => () => void;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
+      setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
+      registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) => Promise<{ success: boolean }>;
+      runShellCommand: (command: string) => Promise<{ success: boolean; cmdId?: string; error?: string }>;
+      onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
+      onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
+      onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
+      onOpenSettings: (callback: () => void) => () => void;
     };
   }
 }
 
 const isElectron = !!window.electronAPI;
+
+const playCyberBeep = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.12);
+    
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.28);
+  } catch (e) {
+    console.error('Audio synthesis failed:', e);
+  }
+};
 
 const SystemMonitor = React.memo(() => {
   const [memPercent, setMemPercent] = useState<number>(0);
@@ -176,10 +206,10 @@ const SystemMonitor = React.memo(() => {
 
   return (
     <div 
-      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/90 shadow-[0_0_10px_rgba(34,211,238,0.2)] rounded-lg border border-transparent cursor-help hover:bg-cyan-400 transition-colors group"
+      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
       title={`RAM: ${memUsed.toFixed(1)} GB (${Math.round(memPercent)}%)`}
     >
-      <Cpu className="w-4 h-4 text-slate-900" />
+      <Cpu className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
       <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-11 text-right">
         {Math.round(memPercent)}%
       </span>
@@ -211,35 +241,14 @@ const DiskMonitor = React.memo(() => {
   const mainDisk = disks[0];
 
   return (
-    <div className="relative group/disk">
-      <div 
-        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/90 shadow-[0_0_10px_rgba(34,211,238,0.2)] rounded-lg border border-transparent cursor-pointer hover:bg-cyan-400 transition-colors"
-        title="Uso de Discos"
-      >
-        <HardDrive className="w-4 h-4 text-slate-900" />
-        <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-7 text-right">
-          {mainDisk ? `${mainDisk.percent}%` : '--'}
-        </span>
-      </div>
-      
-      {/* Dropdown in tooltip style */}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-black/90 border border-white/10 rounded-xl p-4 opacity-0 invisible group-hover/disk:opacity-100 group-hover/disk:visible transition-all translate-y-2 group-hover/disk:translate-y-0 backdrop-blur-xl shadow-2xl z-50 pointer-events-none group-hover/disk:pointer-events-auto">
-        <div className="text-[11px] font-cyber font-bold text-slate-400 mb-3 tracking-widest border-b border-white/10 pb-1">ALMACENAMIENTO</div>
-        <div className="space-y-3">
-          {disks.map((disk, i) => (
-            <div key={disk.drive}>
-              <div className="flex justify-between text-[10px] font-mono mb-1">
-                <span className="text-slate-300">{disk.drive}</span>
-                <span className={i === 0 ? 'text-cyan-400' : 'text-emerald-400'}>{disk.percent}%</span>
-              </div>
-              <div className="w-full bg-white/5 rounded-full h-1.5 border border-white/5 overflow-hidden">
-                <div className={`${i === 0 ? 'bg-cyan-500' : 'bg-emerald-500'} h-full rounded-full`} style={{ width: `${disk.percent}%` }}></div>
-              </div>
-              <div className="text-[9px] text-slate-500 mt-1 text-right font-mono">{disk.used.toFixed(1)}GB / {disk.total.toFixed(1)}GB</div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div 
+      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
+      title={mainDisk ? `Disco principal: ${mainDisk.percent}% usado` : 'Uso de Discos'}
+    >
+      <HardDrive className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+      <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-7 text-right">
+        {mainDisk ? `${mainDisk.percent}%` : '--'}
+      </span>
     </div>
   );
 });
@@ -268,6 +277,717 @@ const UptimeMonitor = React.memo(() => {
     </span>
   );
 });
+
+const CyberAnalogClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hrs = time.getHours();
+  const mins = time.getMinutes();
+  const secs = time.getSeconds();
+
+  const hrDeg = ((hrs % 12) * 30) + (mins * 0.5);
+  const minDeg = (mins * 6) + (secs * 0.1);
+  const secDeg = secs * 6;
+
+  return (
+    <div className="flex flex-col items-center justify-center my-5 relative">
+      <div className="w-40 h-40 rounded-full border-2 border-cyan-500/25 bg-black/45 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.12)] flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#22d3ee_0%,_transparent_70%)] pointer-events-none" />
+        <div className="absolute w-[92%] h-[92%] rounded-full border border-dashed border-cyan-500/10 pointer-events-none" />
+        
+        {/* Ticks */}
+        {[...Array(12)].map((_, i) => {
+          const rotation = i * 30;
+          const isQuarter = i % 3 === 0;
+          return (
+            <div 
+              key={i} 
+              className="absolute w-full h-full pointer-events-none" 
+              style={{ transform: `rotate(${rotation}deg)` }}
+            >
+              <div 
+                className={`mx-auto w-[1.5px] rounded-full ${
+                  isQuarter ? 'h-2.5 bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.6)]' : 'h-1.5 bg-slate-500/30'
+                }`} 
+                style={{ marginTop: '3px' }}
+              />
+            </div>
+          );
+        })}
+
+        <div className="absolute bottom-8 text-[9px] font-mono text-cyan-400/30 tracking-widest uppercase select-none">
+          CyberGems
+        </div>
+
+        {/* Hour hand */}
+        <div 
+          className="absolute w-full h-full pointer-events-none"
+          style={{ transform: `rotate(${hrDeg}deg)` }}
+        >
+          <div className="mx-auto w-1 h-11 bg-purple-500/80 shadow-[0_0_8px_rgba(168,85,247,0.7)] rounded-full" style={{ marginTop: '32px' }} />
+        </div>
+
+        {/* Minute hand */}
+        <div 
+          className="absolute w-full h-full pointer-events-none"
+          style={{ transform: `rotate(${minDeg}deg)` }}
+        >
+          <div className="mx-auto w-[2px] h-14 bg-cyan-400/80 shadow-[0_0_10px_rgba(34,211,238,0.7)] rounded-full" style={{ marginTop: '20px' }} />
+        </div>
+
+        {/* Second hand */}
+        <div 
+          className="absolute w-full h-full pointer-events-none"
+          style={{ transform: `rotate(${secDeg}deg)` }}
+        >
+          <div className="mx-auto w-[1px] h-16 bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.7)]" style={{ marginTop: '14px' }} />
+          <div className="mx-auto w-[1px] h-3 bg-emerald-500/40" style={{ marginTop: '0px' }} />
+        </div>
+
+        {/* Spindle */}
+        <div className="w-2 h-2 rounded-full bg-slate-900 border border-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)] z-10" />
+      </div>
+    </div>
+  );
+};
+
+interface ScheduledTask {
+  id: string;
+  name: string;
+  totalSeconds: number;
+  remainingSeconds: number;
+  targetPath?: string;
+  isAdmin?: boolean;
+  command?: string;
+  type: 'app' | 'command';
+}
+
+const ClockHUD = ({ 
+  isOpen, 
+  onClose, 
+  apps, 
+  scheduledTasks, 
+  setScheduledTasks 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  apps: Array<any>; 
+  scheduledTasks: Array<ScheduledTask>; 
+  setScheduledTasks: React.Dispatch<React.SetStateAction<Array<ScheduledTask>>>;
+}) => {
+  const [selectedType, setSelectedType] = useState<'app' | 'command'>('app');
+  const [selectedAppId, setSelectedAppId] = useState<string>('');
+  const [customCommand, setCustomCommand] = useState('');
+  
+  const [timerMinutes, setTimerMinutes] = useState<number>(5);
+  const [timerSeconds, setTimerSeconds] = useState<number>(0);
+
+  // Set default app selection when apps list loads
+  useEffect(() => {
+    if (apps && apps.length > 0 && !selectedAppId) {
+      setSelectedAppId(apps[0].id.toString());
+    }
+  }, [apps, selectedAppId]);
+
+  const handleAddTask = () => {
+    const totalSecs = (timerMinutes * 60) + timerSeconds;
+    if (totalSecs <= 0) return;
+
+    let taskName = '';
+    let targetPath = '';
+    let isAdmin = false;
+    let command = '';
+
+    if (selectedType === 'app') {
+      const appObj = apps.find(a => a.id.toString() === selectedAppId);
+      if (!appObj) return;
+      taskName = `Lanzar ${appObj.name}`;
+      targetPath = appObj.path;
+      isAdmin = !!appObj.isAdmin;
+    } else {
+      if (!customCommand.trim()) return;
+      taskName = `Consola: "${customCommand.trim().substring(0, 15)}${customCommand.trim().length > 15 ? '...' : ''}"`;
+      command = customCommand.trim();
+    }
+
+    const newTask: ScheduledTask = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: taskName,
+      totalSeconds: totalSecs,
+      remainingSeconds: totalSecs,
+      targetPath,
+      isAdmin,
+      command,
+      type: selectedType
+    };
+
+    setScheduledTasks(prev => [...prev, newTask]);
+    setCustomCommand('');
+  };
+
+  const handleRemoveTask = (taskId: string) => {
+    setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
+  };
+
+  const formatRemaining = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ x: '100%', opacity: 0.9 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+          >
+            {/* Tech grid bg overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(34,211,238,0.04)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(34,211,238,0.04)_95%)] bg-[size:20px_20px] pointer-events-none" />
+
+            {/* Header */}
+            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <Timer className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <div>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">PROGRAMADOR NEURAL</h2>
+                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">EXECUTION TIMERS v1.5</p>
+                </div>
+              </div>
+              <button 
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg border border-cyan-500/10 hover:border-cyan-500/40 text-cyan-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all flex items-center justify-center focus:outline-none"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Container */}
+            <div className="relative z-10 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+              {/* Cyber Analog Clock Face */}
+              <CyberAnalogClock />
+
+              {/* Form container */}
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4.5 mb-6 text-left">
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">NUEVA PROGRAMACIÓN</h3>
+                
+                {/* Type Selection */}
+                <div className="flex gap-2 mb-3.5">
+                  <button
+                    onClick={() => setSelectedType('app')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                      selectedType === 'app' 
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
+                        : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                    }`}
+                  >
+                    LANZAR APP
+                  </button>
+                  <button
+                    onClick={() => setSelectedType('command')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                      selectedType === 'command' 
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
+                        : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                    }`}
+                  >
+                    CONSOLA CMD
+                  </button>
+                </div>
+
+                {/* Form Fields */}
+                {selectedType === 'app' ? (
+                  <div className="mb-4">
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">SELECCIONAR ACCESO</label>
+                    <select
+                      value={selectedAppId}
+                      onChange={(e) => setSelectedAppId(e.target.value)}
+                      className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                    >
+                      {apps.map(app => (
+                        <option key={app.id} value={app.id} className="bg-slate-900 text-white">
+                          {app.name} ({app.category})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">COMANDO DE CONSOLA</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. shutdown /s /t 0"
+                      value={customCommand}
+                      onChange={(e) => setCustomCommand(e.target.value)}
+                      className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                    />
+                  </div>
+                )}
+
+                {/* Time Picker */}
+                <div className="mb-4.5">
+                  <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">TIEMPO DE ESPERA</label>
+                  <div className="flex items-center gap-3 bg-slate-950/60 border border-cyan-500/10 rounded-lg px-3 py-2">
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Minutos</span>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="999" 
+                        value={timerMinutes} 
+                        onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="bg-transparent text-center text-white font-cyber font-bold text-[18px] w-full focus:outline-none"
+                      />
+                    </div>
+                    <div className="text-cyan-500/40 font-bold text-[20px] mb-2">:</div>
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Segundos</span>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="59" 
+                        value={timerSeconds} 
+                        onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                        className="bg-transparent text-center text-white font-cyber font-bold text-[18px] w-full focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preset Buttons */}
+                  <div className="flex gap-1.5 mt-2.5">
+                    {[
+                      { l: '+30s', v: () => { setTimerSeconds(s => (s + 30) % 60); if (timerSeconds >= 30) setTimerMinutes(m => m + 1); } },
+                      { l: '+1m', v: () => setTimerMinutes(m => m + 1) },
+                      { l: '+5m', v: () => setTimerMinutes(m => m + 5) },
+                      { l: '+15m', v: () => setTimerMinutes(m => m + 15) }
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        onClick={preset.v}
+                        className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono cursor-pointer"
+                      >
+                        {preset.l}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Subtract Preset Buttons */}
+                  <div className="flex gap-1.5 mt-1.5">
+                    {[
+                      { l: '-30s', v: () => { 
+                        if (timerSeconds >= 30) {
+                          setTimerSeconds(s => s - 30);
+                        } else if (timerMinutes > 0) {
+                          setTimerMinutes(m => m - 1);
+                          setTimerSeconds(s => s + 30);
+                        } else {
+                          setTimerSeconds(0);
+                        }
+                      } },
+                      { l: '-1m', v: () => setTimerMinutes(m => Math.max(0, m - 1)) },
+                      { l: '-5m', v: () => setTimerMinutes(m => Math.max(0, m - 5)) },
+                      { l: '-15m', v: () => setTimerMinutes(m => Math.max(0, m - 15)) }
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        onClick={preset.v}
+                        className="flex-1 py-1 rounded bg-slate-900 border border-red-500/10 text-[9px] text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-mono cursor-pointer"
+                      >
+                        {preset.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleAddTask}
+                  className="w-full py-2.5 bg-cyan-400/90 hover:bg-cyan-300 text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  PROGRAMAR EJECUCIÓN
+                </button>
+              </div>
+
+              {/* Tasks List */}
+              <div className="text-left">
+                <div className="flex items-center justify-between mb-3.5">
+                  <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">TAREAS EN EJECUCIÓN</h3>
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
+                    {scheduledTasks.length} ACTIVAS
+                  </span>
+                </div>
+
+                {scheduledTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 border border-dashed border-cyan-500/10 rounded-xl bg-cyan-500/2 opacity-60">
+                    <Timer className="w-8 h-8 text-cyan-500/30 mb-2" />
+                    <p className="text-[10px] font-mono text-slate-400 tracking-wide">Ninguna ejecución en espera</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {scheduledTasks.map((task) => {
+                      const percent = (task.remainingSeconds / task.totalSeconds) * 100;
+                      return (
+                        <div 
+                          key={task.id} 
+                          className="relative overflow-hidden bg-slate-950/80 border border-cyan-500/15 rounded-xl p-3.5 flex items-center justify-between shadow-lg"
+                        >
+                          {/* Progress bar background slider */}
+                          <div 
+                            className="absolute bottom-0 left-0 top-0 bg-cyan-500/5 transition-all duration-1000 ease-linear pointer-events-none"
+                            style={{ width: `${percent}%` }}
+                          />
+
+                          <div className="relative z-10 flex-1 min-w-0 pr-4 text-left">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${task.type === 'app' ? 'bg-cyan-400' : 'bg-orange-400 animate-pulse'}`} />
+                              <h4 className="text-xs font-cyber font-cyber font-bold text-white truncate uppercase tracking-wider">{task.name}</h4>
+                            </div>
+                            <p className="text-[9px] font-mono text-slate-500 truncate">
+                              {task.type === 'app' ? 'Ejecutable local' : `Comando: ${task.command}`}
+                            </p>
+                          </div>
+
+                          <div className="relative z-10 flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <span className="block text-[15px] font-cyber font-bold text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.5)] tracking-widest font-mono tabular-nums leading-none">
+                                {formatRemaining(task.remainingSeconds)}
+                              </span>
+                              <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
+                                Countdown
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveTask(task.id)}
+                              className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
+                              title="Cancelar ejecución"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { isOpen: boolean, onClose: () => void, activationShortcut: string, dailyLaunchCount: number }) => {
+  const [memPercent, setMemPercent] = useState<number>(0);
+  const [memUsed, setMemUsed] = useState<number>(0);
+  const [cpuInfo, setCpuInfo] = useState<{ model: string; cores: number } | null>(null);
+  const [uptime, setUptime] = useState<number>(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchStats = async () => {
+      try {
+        if (isElectron) {
+          const info = await window.electronAPI!.getSystemInfo();
+          setMemPercent(info.memory.percent);
+          setMemUsed(info.memory.used);
+          setCpuInfo(info.cpu);
+          setUptime(info.uptime);
+        } else {
+          setMemPercent(prev => prev === 0 ? 42 : Math.max(20, Math.min(90, prev + (Math.random() * 6 - 3))));
+          setMemUsed(prev => prev === 0 ? 8.2 : prev);
+          setCpuInfo({ model: 'AMD Ryzen 9 7950X3D 16-Core Processor', cores: 16 });
+          setUptime(3600 * 2.5);
+        }
+      } catch (err) {
+        console.error('Error fetching neural metrics:', err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 3000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  const formatUptime = (seconds: number) => {
+    if (seconds <= 0) return '00:00:00';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ x: '100%', opacity: 0.9 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+          >
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
+
+            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <div>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">TELEMETRÍA DE RECURSOS</h2>
+                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">NEURAL COCKPIT SYSTEM v1.4</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={onClose}
+                className="p-1.5 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/30 rounded-lg text-slate-400 hover:text-cyan-400 transition-all focus:outline-none"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
+              <div className="bg-cyan-950/10 border border-cyan-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
+                  <Monitor className="w-3.5 h-3.5" /> RENDIMIENTO GENERAL
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">CARGA DE MEMORIA (RAM)</span>
+                      <span className="text-cyan-400 font-bold">{Math.round(memPercent)}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-950/80 rounded-full border border-cyan-500/10 overflow-hidden p-0.5">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${memPercent}%` }}
+                        className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                      />
+                    </div>
+                    <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                      <span>USED: {memUsed.toFixed(1)} GB</span>
+                      <span>TOTAL: {Math.round(memUsed / (memPercent || 1) * 100)} GB</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-cyan-500/5">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">CPU ESTRUCTURA</span>
+                      <span className="text-purple-400 font-bold">{cpuInfo?.cores || 8} CORES</span>
+                    </div>
+                    <p className="text-[10px] font-mono text-purple-300/80 truncate bg-slate-950/60 p-2 rounded-lg border border-purple-500/10">
+                      {cpuInfo?.model || 'Intel Core / AMD Ryzen Processor'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-cyan-500/5">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">TIEMPO ACTIVO (UPTIME)</span>
+                      <span className="text-emerald-400 font-bold">{formatUptime(uptime)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
+                <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
+                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> PARÁMETROS DEL SISTEMA
+                </h3>
+                <div className="font-mono text-[10px] space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                  <div className="text-emerald-400/90">&gt; NEURAL_LINK_STABLE: OK</div>
+                  <div className="text-slate-400">&gt; LAUNCH_COUNT_TODAY: {dailyLaunchCount} APPS</div>
+                  <div className="text-slate-400">&gt; CURRENT_SHORTCUT: {activationShortcut}</div>
+                  <div className="text-slate-400">&gt; SYSTEM_PLATFORM: WINDOWS_NT_x64</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative z-10 border-t border-cyan-500/20 pt-4 mt-6 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  window.electronAPI?.openDevTools();
+                  onClose();
+                }}
+                className="flex-1 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-400 rounded-xl transition-all font-mono text-[10px] font-bold tracking-widest text-center"
+              >
+                DEVTOOLS
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const [disksList, setDisksList] = useState<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>([]);
+  const [configPath, setConfigPath] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchStats = async () => {
+      try {
+        if (isElectron) {
+          const disks = await window.electronAPI!.getDiskInfo();
+          setDisksList(disks);
+        } else {
+          setDisksList([
+            { drive: 'C:', total: 500, free: 230, used: 270, percent: 54 },
+            { drive: 'D:', total: 1000, free: 620, used: 380, percent: 38 },
+          ]);
+        }
+      } catch (err) {
+        console.error('Error fetching storage neural metrics:', err);
+      }
+    };
+
+    const fetchStatic = async () => {
+      try {
+        if (isElectron) {
+          const path = await window.electronAPI!.getConfigPath();
+          setConfigPath(path);
+        } else {
+          setConfigPath('C:\\Users\\Mock\\AppData\\Roaming\\CyberLauncher\\config.json');
+        }
+      } catch (err) {
+        console.error('Error fetching static config path:', err);
+      }
+    };
+
+    fetchStats();
+    fetchStatic();
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ x: '100%', opacity: 0.9 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-purple-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+          >
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(168,85,247,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(168,85,247,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
+
+            <div className="relative z-10 flex items-center justify-between border-b border-purple-500/20 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <HardDrive className="w-5 h-5 text-purple-400 animate-pulse" />
+                <div>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">TELEMETRÍA DE ALMACENAMIENTO</h2>
+                  <p className="text-[10px] text-purple-500/80 font-mono tracking-wider text-left">STORAGE NEURAL SYSTEM v1.4</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={onClose}
+                className="p-1.5 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 rounded-lg text-slate-400 hover:text-purple-400 transition-all focus:outline-none"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
+              <div className="bg-purple-950/10 border border-purple-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
+                <h3 className="text-xs font-cyber font-bold text-purple-400 tracking-wider flex items-center gap-2">
+                  <HardDrive className="w-3.5 h-3.5" /> UNIDADES DE ALMACENAMIENTO
+                </h3>
+                
+                <div className="space-y-4">
+                  {disksList.map((disk) => (
+                    <div key={disk.drive} className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-mono">
+                        <span className="text-slate-300 font-bold">UNIDAD {disk.drive}</span>
+                        <span className="text-purple-400 font-bold">{Math.round(disk.percent)}%</span>
+                      </div>
+                      <div className="h-2 bg-slate-950/80 rounded-full border border-purple-500/10 overflow-hidden p-0.5">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${disk.percent}%` }}
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]"
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                        <span>LIBRE: {disk.free.toFixed(1)} GB</span>
+                        <span>TOTAL: {disk.total.toFixed(1)} GB</span>
+                      </div>
+                    </div>
+                  ))}
+                  {disksList.length === 0 && (
+                    <p className="text-xs text-slate-500 font-mono italic">Escaneando unidades de disco...</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
+                <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
+                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> PARÁMETROS DE CONFIGURACIÓN
+                </h3>
+                <div className="font-mono text-[10px] space-y-1.5">
+                  <div className="text-slate-400">&gt; CONFIG_FILE_PATH:</div>
+                  <div className="text-slate-500 break-all select-all bg-black/40 p-2.5 rounded-lg border border-white/5">{configPath || 'C:\\CyberGems\\...'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative z-10 border-t border-purple-500/20 pt-4 mt-6 flex gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  window.electronAPI?.openDataFolder();
+                  onClose();
+                }}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl transition-all font-mono text-[10px] font-bold tracking-widest text-center"
+              >
+                CONFIG DIR
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export default function App() {
 
@@ -343,7 +1063,8 @@ export default function App() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '' });
+  const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
+  const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
   const [editingCategory, setEditingCategory] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const [editCategoryForm, setEditCategoryForm] = useState({ name: '', color: '' });
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
@@ -366,10 +1087,160 @@ export default function App() {
     setEditingCategory(null);
   };
 
+  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(() => localStorage.getItem('isAlwaysOnTop') === 'true');
+  const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
+  const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
+  const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
+  const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
+  const [isPinFlashing, setIsPinFlashing] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // Background Scheduler Timer Tick
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setScheduledTasks(prev => {
+        if (prev.length === 0) return prev;
+        
+        const updated = prev.map(task => {
+          if (task.remainingSeconds <= 1) {
+            // Executing scheduled action!
+            if (task.type === 'app' && task.targetPath) {
+              if (isElectron) {
+                window.electronAPI!.launchApp(task.targetPath, task.isAdmin);
+              } else {
+                console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
+              }
+            } else if (task.type === 'command' && task.command) {
+              if (isElectron) {
+                window.electronAPI!.runShellCommand(task.command);
+              } else {
+                console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
+              }
+            }
+            
+            // Play our retro cyber sci-fi synthesized beep sound!
+            playCyberBeep();
+            return null; // Remove task
+          }
+          return { ...task, remainingSeconds: task.remainingSeconds - 1 };
+        }).filter(Boolean) as Array<ScheduledTask>;
+
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const triggerPinFlash = useCallback(() => {
+    setIsPinFlashing(true);
+    setTimeout(() => setIsPinFlashing(false), 1200);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('isAlwaysOnTop', isAlwaysOnTop.toString());
+    if (isElectron) {
+      window.electronAPI!.setAlwaysOnTop(isAlwaysOnTop);
+    }
+  }, [isAlwaysOnTop]);
+
+  // Listen to always-on-top blur attempts
+  useEffect(() => {
+    if (isElectron && window.electronAPI.onAlwaysOnTopBlurAttempt) {
+      const unsub = window.electronAPI.onAlwaysOnTopBlurAttempt(() => {
+        triggerPinFlash();
+      });
+      return unsub;
+    }
+  }, [triggerPinFlash]);
+
+  // Listen to tray Configuración button click
+  useEffect(() => {
+    if (isElectron && window.electronAPI.onOpenSettings) {
+      const unsub = window.electronAPI.onOpenSettings(() => {
+        setIsSettingsOpen(true);
+      });
+      return unsub;
+    }
+  }, []);
+
+  // Synchronize dynamic custom app shortcuts with Electron main process
+  useEffect(() => {
+    if (isConfigLoaded && isElectron && window.electronAPI) {
+      const shortcutList = apps
+        .filter(app => (app as any).path && (app as any).shortcut)
+        .map(app => ({
+          path: (app as any).path,
+          shortcut: (app as any).shortcut,
+          isAdmin: !!(app as any).isAdmin
+        }));
+      window.electronAPI.registerAppShortcuts(shortcutList);
+    }
+  }, [apps, isConfigLoaded]);
+
+  // Mini Console Command Runner States
+  const [consoleLogs, setConsoleLogs] = useState<Array<{ type: 'input' | 'stdout' | 'stderr' | 'system'; text: string; id: string }>>([]);
+  const [activeCmdId, setActiveCmdId] = useState<string | null>(null);
+  const [isCommandRunning, setIsCommandRunning] = useState(false);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom of console logs
+  useEffect(() => {
+    if (consoleEndRef.current) {
+      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [consoleLogs]);
+
+  // IPC listeners for running shell commands in real time
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI) return;
+
+    const unsubOutput = window.electronAPI.onShellOutput((data) => {
+      setConsoleLogs(prev => [
+        ...prev, 
+        { 
+          type: data.type === 'stdout' ? 'stdout' : 'stderr', 
+          text: data.text, 
+          id: `${data.id}-${Date.now()}-${Math.random()}` 
+        }
+      ]);
+    });
+
+    const unsubExit = window.electronAPI.onShellExit((data) => {
+      setConsoleLogs(prev => [
+        ...prev,
+        { 
+          type: 'system', 
+          text: `\n[SISTEMA] El proceso terminó con el código de salida ${data.exitCode}\n`, 
+          id: `${data.id}-exit-${Date.now()}` 
+        }
+      ]);
+      setIsCommandRunning(false);
+      setActiveCmdId(null);
+    });
+
+    return () => {
+      unsubOutput();
+      unsubExit();
+    };
+  }, []);
+
   const [bgType, setBgType] = useState<'image' | 'solid' | 'gradient'>(() => {
     return (localStorage.getItem('bgType') as any) || 'image';
   });
-  const [bgImage, setBgImage] = useState(() => localStorage.getItem('bgImage') || 'C:\\antigravity_projects\\CyberLauncher\\default_background.jpg');
+  const [bgImage, setBgImage] = useState(() => {
+    const saved = localStorage.getItem('bgImage');
+    if (saved && saved.includes('antigravity_projects')) {
+      return 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
+    }
+    return saved || 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
+  });
   const [customImageUrl, setCustomImageUrl] = useState(() => localStorage.getItem('customImageUrl') || '');
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
   const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
@@ -686,8 +1557,12 @@ export default function App() {
         localStorage.setItem('bgType', config.bgType);
       }
       if (config.bgImage) {
-        setBgImage(config.bgImage);
-        localStorage.setItem('bgImage', config.bgImage);
+        let cleanBgImage = config.bgImage;
+        if (cleanBgImage.includes('antigravity_projects')) {
+          cleanBgImage = 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
+        }
+        setBgImage(cleanBgImage);
+        localStorage.setItem('bgImage', cleanBgImage);
       }
       if (config.customImageUrl !== undefined) {
         setCustomImageUrl(config.customImageUrl);
@@ -709,10 +1584,7 @@ export default function App() {
         setBgOpacity(config.bgOpacity);
         localStorage.setItem('bgOpacity', config.bgOpacity.toString());
       }
-      if (config.cyberTray !== undefined) {
-        setCyberTrayConfig(config.cyberTray);
-        localStorage.setItem('cyberTrayConfig', JSON.stringify(config.cyberTray));
-      }
+
       if (config.startWithWindows !== undefined) {
         setStartWithWindows(config.startWithWindows);
         localStorage.setItem('startWithWindows', config.startWithWindows.toString());
@@ -850,20 +1722,43 @@ export default function App() {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (isRecordingShortcut) return;
 
+      // Category speed dialing: Alt + number (1 to 9)
+      if (e.altKey && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key, 10) - 1;
+        if (index < categories.length) {
+          e.preventDefault();
+          setActiveCategory(categories[index].id);
+        }
+      }
+
       if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
       } else if (e.code === 'Escape') {
-        if (isSettingsOpen) {
+        if (isRecordingAppShortcut) {
+          setIsRecordingAppShortcut(false);
+        } else if (isSystemHUDOpen) {
+          setIsSystemHUDOpen(false);
+        } else if (isStorageHUDOpen) {
+          setIsStorageHUDOpen(false);
+        } else if (isSettingsOpen) {
           setIsSettingsOpen(false);
         } else if (isAboutOpen) {
           setIsAboutOpen(false);
+        } else if (editingApp) {
+          setEditingApp(null);
+        } else if (isAddingApp) {
+          setIsAddingApp(false);
+        } else if (searchQuery) {
+          setSearchQuery('');
+        } else if (isElectron) {
+          window.electronAPI!.windowHideToTray();
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isSettingsOpen, isRecordingShortcut, isAboutOpen]);
+  }, [isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp, searchQuery, categories, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen]);
 
   const handleLaunchApp = async (app: typeof INITIAL_APPS[0]) => {
     // Incrementar contadores de uso
@@ -877,7 +1772,7 @@ export default function App() {
     // Si hay ruta definida y estamos en Electron, lanzar la aplicación
     const appPath = (app as any).path;
     if (appPath && isElectron) {
-      const result = await window.electronAPI!.launchApp(appPath);
+      const result = await window.electronAPI!.launchApp(appPath, !!(app as any).isAdmin);
       if (result.success) {
         // Esconder a la bandeja tras lanzar con éxito
         window.electronAPI!.windowHideToTray();
@@ -1227,7 +2122,9 @@ export default function App() {
             name: resolved.name,
             path: resolved.path,
             iconPath: resolved.iconPath || '',
-            category: ''
+            category: '',
+            isAdmin: false,
+            shortcut: ''
           });
           setIsAddingApp(true);
         } else {
@@ -1240,7 +2137,9 @@ export default function App() {
           name: fileName,
           path: filePath || `C:\\Program Files\\${fileName}\\${file.name}`,
           iconPath: '',
-          category: ''
+          category: '',
+          isAdmin: false,
+          shortcut: ''
         });
         setIsAddingApp(true);
       }
@@ -1259,6 +2158,10 @@ export default function App() {
         if (!hideOnClickDeadSpot || !isElectron) return;
         const target = e.target as HTMLElement;
         if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
+        if (isAlwaysOnTop) {
+          triggerPinFlash();
+          return;
+        }
         window.electronAPI!.windowHideToTray();
       }}
     >
@@ -1433,32 +2336,181 @@ export default function App() {
             <input 
               ref={searchInputRef}
               type="text" 
-              placeholder="Buscar..."
+              placeholder=""
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] border border-white/10 transition-all placeholder:text-slate-500 block shadow-inner"
+              onContextMenu={(e) => {
+                if (isElectron) {
+                  e.preventDefault();
+                  window.electronAPI!.showTextContextMenu(e.clientX, e.clientY);
+                }
+              }}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && searchQuery.trim().startsWith('>')) {
+                  e.preventDefault();
+                  const rawCmd = searchQuery.trim().substring(1).trim();
+                  if (!rawCmd) return;
+                  
+                  // Add input trace to console logs
+                  const cmdId = `${Date.now()}`;
+                  setConsoleLogs(prev => [
+                    ...prev,
+                    { type: 'input', text: `> ${rawCmd}`, id: cmdId }
+                  ]);
+                  
+                  if (isElectron) {
+                    setIsCommandRunning(true);
+                    const res = await window.electronAPI!.runShellCommand(rawCmd);
+                    if (res.success && res.cmdId) {
+                      setActiveCmdId(res.cmdId);
+                    } else {
+                      setConsoleLogs(prev => [
+                        ...prev,
+                        { type: 'stderr', text: res.error || 'Failed to spawn process.', id: `error-${Date.now()}` }
+                      ]);
+                      setIsCommandRunning(false);
+                    }
+                  } else {
+                    // Web simulator
+                    setIsCommandRunning(true);
+                    setConsoleLogs(prev => [
+                      ...prev,
+                      { type: 'stdout', text: `Simulando ejecución de: "${rawCmd}"\n`, id: `sim-${Date.now()}` }
+                    ]);
+                    setTimeout(() => {
+                      setConsoleLogs(prev => [
+                        ...prev,
+                        { type: 'stdout', text: `Pinging webhost... Successful.\n`, id: `sim-ping-${Date.now()}` },
+                        { type: 'system', text: `[SISTEMA] El proceso terminó con el código de salida 0`, id: `sim-exit-${Date.now()}` }
+                      ]);
+                      setIsCommandRunning(false);
+                    }, 1500);
+                  }
+                }
+              }}
+              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${
+                searchQuery.startsWith('>') 
+                  ? 'pr-24 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                  : 'pr-4 border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+              } placeholder:text-slate-500`}
             />
+            {searchQuery === '' && (
+              <div className="absolute inset-y-0 left-11 right-4 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={searchQuery.startsWith('>') ? `console-${placeholderIndex}` : `normal-${placeholderIndex}`}
+                    initial={{ opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -3 }}
+                    transition={{ duration: 0.25 }}
+                    className="truncate"
+                  >
+                    {searchQuery.startsWith('>') 
+                      ? (placeholderIndex === 0 ? "Escribe un comando de consola..." : "Presiona [Enter] para ejecutar")
+                      : (placeholderIndex === 0 ? "Buscar apps..." : "Escribe '>' para consola")
+                    }
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+            )}
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm" />
+              {searchQuery.startsWith('>') ? (
+                <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-colors" />
+              ) : (
+                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm" />
+              )}
             </div>
+            {searchQuery.startsWith('>') && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <span className="text-[9px] font-cyber font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse">
+                  CONSOLA
+                </span>
+              </div>
+            )}
           </div>
           
-          <div className="flex items-center gap-6 ml-auto">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-auto">
+            <button 
+              onClick={() => setIsSystemHUDOpen(true)}
+              className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+              title="Abrir Diagnóstico de Recursos de Sistema"
+            >
               <SystemMonitor />
+            </button>
+            <button 
+              onClick={() => setIsStorageHUDOpen(true)}
+              className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+              title="Abrir Diagnóstico de Almacenamiento Físico"
+            >
               <DiskMonitor />
-            </div>
+            </button>
             
-            <div className="flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10">
-              <Clock className="w-5 h-5 mb-0.5 shrink-0" />
+            <button 
+              onClick={() => setIsClockHUDOpen(true)}
+              className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
+              title="Abrir Reloj Neuronal y Programador de Ejecuciones"
+            >
+              <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
               <span>{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
-            </div>
+            </button>
           </div>
         </header>
 
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar relative z-10">
-          
-          {/* Favorites Section */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar relative z-10 flex flex-col">
+          {searchQuery.trim().startsWith('>') ? (
+            <div className="flex-1 flex flex-col pt-4 font-mono text-left bg-black/45 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6 shadow-2xl overflow-hidden relative min-h-[400px]">
+              {/* Terminal Scanline overlay */}
+              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,18,18,0)_98%,rgba(16,185,129,0.04)_98%)] bg-[size:100%_4px] rounded-2xl" />
+              
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5 mb-4 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-emerald-400 animate-pulse" />
+                  <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">CONSOLE DE MANDOS CYBER COCKPIT</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${isCommandRunning ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
+                  <span className="text-[10px] text-slate-400">{isCommandRunning ? 'EJECUTANDO PROCESO...' : 'ONLINE'}</span>
+                  {consoleLogs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setConsoleLogs([])}
+                      className="text-[10px] text-red-400/80 hover:text-red-400 ml-4 font-cyber focus:outline-none"
+                    >
+                      LIMPIAR PANTALLA
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 select-text selection:bg-emerald-500/30 selection:text-white">
+                <div className="text-[11px] text-slate-500 mb-2">
+                  Escribe cualquier comando de consola y presiona [Enter]. Prefijo `&gt;` activo.
+                </div>
+                {consoleLogs.map((log) => (
+                  <div 
+                    key={log.id} 
+                    className={`text-xs break-all leading-relaxed whitespace-pre-wrap ${
+                      log.type === 'input' 
+                        ? 'text-white font-bold' 
+                        : log.type === 'stderr' 
+                        ? 'text-red-400 font-bold' 
+                        : log.type === 'system' 
+                        ? 'text-cyan-400 font-bold border-y border-cyan-500/10 py-1 my-2' 
+                        : 'text-emerald-400/90'
+                    }`}
+                  >
+                    {log.text}
+                  </div>
+                ))}
+                {isCommandRunning && (
+                  <div className="text-xs text-emerald-400/50 animate-pulse mt-1">&gt; Procesando stream de datos...</div>
+                )}
+                <div ref={consoleEndRef} />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Favorites Section */}
           {!searchQuery && activeCategory === 'all' && (
             <section className="mb-10 pt-4">
               <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest flex items-center gap-2 mb-4 drop-shadow-sm">
@@ -1472,9 +2524,11 @@ export default function App() {
                     whileTap={{ scale: 0.95 }}
                     key={`fav-${app.id}`}
                     draggable
+                    // @ts-ignore
                     onDragStart={(e) => handleDragStart(e, app.id)}
                     onDragOver={(e) => handleFavDragOver(e, app.id)}
                     onDrop={(e) => handleDrop(e, app.id)}
+                    // @ts-ignore
                     onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
                     onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
                     onContextMenu={(e: any) => handleContextMenu(e, app)}
@@ -1520,7 +2574,7 @@ export default function App() {
                 <div className="w-px h-4 bg-white/10 mx-2" />
                 <button 
                   onClick={() => {
-                    setEditForm({ name: '', path: '', iconPath: '', category: '' });
+                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
                     setIsAddingApp(true);
                   }}
                   className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
@@ -1676,7 +2730,8 @@ export default function App() {
               </div>
             )}
           </section>
-
+            </>
+          )}
         </div>
       </main>
 
@@ -1696,6 +2751,25 @@ export default function App() {
             MÁS USADAS
           </h3>
           <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
+              title={isAlwaysOnTop ? "Desanclar ventana (No mantener al frente)" : "Anclar ventana (Mantener al frente)"} 
+              className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none ${
+                isPinFlashing 
+                  ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
+                  : isAlwaysOnTop 
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.4)]' 
+                  : 'hover:bg-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Pin className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                isPinFlashing 
+                  ? 'scale-125 text-red-400' 
+                  : isAlwaysOnTop 
+                  ? 'fill-cyan-400' 
+                  : 'rotate-45'
+              }`} />
+            </button>
             <button 
               onClick={() => setIsAboutOpen(true)}
               title="Acerca de CyberLauncher" 
@@ -1760,8 +2834,12 @@ export default function App() {
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsAboutOpen(!isAboutOpen)} 
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setIsSettingsOpen(true);
+            }}
             className="hover:scale-110 transition-transform flex-shrink-0"
-            title="Menú Inicio / Acerca de"
+            title="Menú Inicio / Acerca de (Click derecho: Configuración)"
           >
             <CyberLogo className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
           </button>
@@ -1800,7 +2878,7 @@ export default function App() {
             <div className="relative">
               <button 
                 onClick={() => {
-                  setEditForm({ name: '', path: '', iconPath: '', category: '' });
+                  setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
                   setIsAddingApp(true);
                 }}
                 className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
@@ -2091,6 +3169,83 @@ export default function App() {
                       <p className="text-[10px] text-red-400/80 mt-1">Debes seleccionar una categoría</p>
                     )}
                   </div>
+
+                  {/* Launch as Admin Field */}
+                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <Lock className="w-4 h-4 text-red-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Ejecutar como Administrador</h4>
+                        <p className="text-xs text-slate-500">Solicita privilegios elevados de administrador al iniciar.</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Custom App Hotkey Recorder Field */}
+                  <div className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                          <Keyboard className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1 text-left">Atajo de Teclado Global</h4>
+                          <p className="text-xs text-slate-500 text-left">Lanza este acceso directo desde cualquier lugar del sistema.</p>
+                        </div>
+                      </div>
+                      {editForm.shortcut && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, shortcut: '' }))}
+                          className="text-xs text-red-400 hover:text-red-300 font-cyber transition-colors"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setIsRecordingAppShortcut(true)}
+                      onKeyDown={(e) => {
+                        if (isRecordingAppShortcut) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+                          
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                              keys.push(keyName);
+                              const newShortcut = keys.join('+');
+                              setEditForm(prev => ({ ...prev, shortcut: newShortcut }));
+                              setIsRecordingAppShortcut(false);
+                          }
+                        }
+                      }}
+                      onBlur={() => setIsRecordingAppShortcut(false)}
+                      className={`w-full text-center px-4 py-2.5 rounded-lg text-xs font-mono outline-none transition-all ${
+                        isRecordingAppShortcut 
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]' 
+                          : 'bg-black/30 text-slate-300 hover:bg-white/5 border border-white/10'
+                      }`}
+                    >
+                      {isRecordingAppShortcut ? 'Presiona combinación de teclas...' : (editForm.shortcut || 'Ninguno (Haz clic para asignar)')}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2113,7 +3268,9 @@ export default function App() {
                         category: editForm.category,
                         color: 'text-cyan-400',
                         isFav: false,
-                        usage: 0
+                        usage: 0,
+                        isAdmin: editForm.isAdmin,
+                        shortcut: editForm.shortcut
                       };
                       // @ts-ignore
                       setApps(prev => [...prev, newApp]);
@@ -2128,7 +3285,9 @@ export default function App() {
                             path: editForm.path,
                             // @ts-ignore
                             iconPath: editForm.iconPath,
-                            category: editForm.category
+                            category: editForm.category,
+                            isAdmin: editForm.isAdmin,
+                            shortcut: editForm.shortcut
                           };
                         }
                         return a;
@@ -2867,10 +4026,12 @@ export default function App() {
                  setEditForm({
                    name: contextMenu.app!.name,
                    // @ts-ignore (Assuming path/iconPath might exist dynamically, or just empty)
-                   path: contextMenu.app!.path || '',
+                   path: (contextMenu.app as any).path || '',
                    // @ts-ignore
-                   iconPath: contextMenu.app!.iconPath || '',
-                   category: contextMenu.app!.category
+                   iconPath: (contextMenu.app as any).iconPath || '',
+                   category: contextMenu.app!.category,
+                   isAdmin: !!(contextMenu.app as any).isAdmin,
+                   shortcut: (contextMenu.app as any).shortcut || ''
                  });
                  setContextMenu(null);
                }}
@@ -2893,6 +4054,26 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SystemHUD 
+        isOpen={isSystemHUDOpen}
+        onClose={() => setIsSystemHUDOpen(false)}
+        activationShortcut={activationShortcut}
+        dailyLaunchCount={dailyLaunchCount}
+      />
+
+      <StorageHUD 
+        isOpen={isStorageHUDOpen}
+        onClose={() => setIsStorageHUDOpen(false)}
+      />
+
+      <ClockHUD 
+        isOpen={isClockHUDOpen}
+        onClose={() => setIsClockHUDOpen(false)}
+        apps={apps}
+        scheduledTasks={scheduledTasks}
+        setScheduledTasks={setScheduledTasks}
+      />
 
       <style>{`
         /* ── Cyber Scrollbar ── */
