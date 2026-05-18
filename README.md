@@ -116,4 +116,4 @@ This file is the single source of truth, shared between development and producti
 
 ## License
 
-MIT © [Ciber-CR](https://github.com/Ciber-CR)
+MIT © [CyberGems](https://github.com/CyberGems)
