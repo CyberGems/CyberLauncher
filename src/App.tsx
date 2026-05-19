@@ -1497,6 +1497,7 @@ export default function App() {
   const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
   const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
+  const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
@@ -1513,6 +1514,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('bgImage', bgImage); }, [bgImage]);
   useEffect(() => { localStorage.setItem('customImageUrl', customImageUrl); }, [customImageUrl]);
   useEffect(() => { localStorage.setItem('bgColor', bgColor); }, [bgColor]);
+  useEffect(() => { localStorage.setItem('resetOnLaunch', resetOnLaunch.toString()); }, [resetOnLaunch]);
   useEffect(() => { localStorage.setItem('startWithWindows', startWithWindows.toString()); }, [startWithWindows]);
   useEffect(() => { localStorage.setItem('hideOnClickDeadSpot', hideOnClickDeadSpot.toString()); }, [hideOnClickDeadSpot]);
   useEffect(() => { localStorage.setItem('bgGradient', bgGradient); }, [bgGradient]);
@@ -1630,6 +1632,7 @@ export default function App() {
           if (source.leftSidebarWidth !== undefined) setLeftSidebarWidth(source.leftSidebarWidth);
           if (source.rightSidebarWidth !== undefined) setRightSidebarWidth(source.rightSidebarWidth);
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
+          if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
         }
         setIsConfigLoaded(true);
         console.log('[CONFIG] Carga inicial completada, guardado habilitado');
@@ -1642,8 +1645,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -1669,7 +1672,7 @@ export default function App() {
           startWithWindows, activationShortcut,
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
-          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon
+          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -1692,7 +1695,7 @@ export default function App() {
     startWithWindows, activationShortcut,
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
-    hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon,
+    hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
     isConfigLoaded
   ]);
 
@@ -1743,16 +1746,20 @@ export default function App() {
       'startWithWindows', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth',
-      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray'
+      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
       console.log('[CONFIG] Recargando desde disco...');
-      // Resetear vista y modales al estado inicial
-      setActiveCategory('all');
-      setEditingCategory(null);
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = 0;
+      
+      // Resetear vista y modales al estado inicial si la opción de reset está activa
+      if (localStorage.getItem('resetOnLaunch') !== 'false') {
+        setActiveCategory('all');
+        setEditingCategory(null);
+        setSearchQuery('');
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = 0;
+        }
       }
       let config: any = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -1876,6 +1883,10 @@ export default function App() {
         setShowTaskbarIcon(config.showTaskbarIcon);
         localStorage.setItem('showTaskbarIcon', config.showTaskbarIcon.toString());
         if (isElectron) window.electronAPI!.setShowTaskbarIcon(config.showTaskbarIcon);
+      }
+      if (config.resetOnLaunch !== undefined) {
+        setResetOnLaunch(config.resetOnLaunch);
+        localStorage.setItem('resetOnLaunch', config.resetOnLaunch.toString());
       }
       console.log('[CONFIG] Estado actualizado desde disco');
     });
@@ -4214,8 +4225,8 @@ export default function App() {
                           <MousePointer2 className="w-4 h-4 text-amber-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Ocultar al hacer clic en espacio vacío</h4>
-                          <p className="text-xs text-slate-500">Al hacer clic en el fondo del launcher, se oculta al tray.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_click')}</h4>
+                          <p className="text-xs text-slate-500">{t('general_hide_on_click_desc')}</p>
                         </div>
                       </div>
                       <button 
@@ -4234,8 +4245,8 @@ export default function App() {
                           <Eye className="w-4 h-4 text-cyan-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Ocultar al perder el foco</h4>
-                          <p className="text-xs text-slate-500">Al hacer clic fuera del launcher, se oculta al tray automáticamente.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_blur')}</h4>
+                          <p className="text-xs text-slate-500">{t('general_hide_on_blur_desc')}</p>
                         </div>
                       </div>
                       <button 
@@ -4254,8 +4265,8 @@ export default function App() {
                           <Monitor className="w-4 h-4 text-slate-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Mostrar icono en la barra de tareas</h4>
-                          <p className="text-xs text-slate-500">Muestra el icono de Cyber Launcher en la barra de tareas de Windows.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_show_taskbar')}</h4>
+                          <p className="text-xs text-slate-500">{t('general_show_taskbar_desc')}</p>
                         </div>
                       </div>
                       <button 
@@ -4264,6 +4275,26 @@ export default function App() {
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTaskbarIcon ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${showTaskbarIcon ? 'bg-slate-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                          <History className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_reset_on_launch')}</h4>
+                          <p className="text-xs text-slate-500">{t('general_reset_on_launch_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setResetOnLaunch(!resetOnLaunch)}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${resetOnLaunch ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${resetOnLaunch ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${resetOnLaunch ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
                     </div>

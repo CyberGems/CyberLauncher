@@ -35,6 +35,14 @@ export const translations = {
     general_hotspots_corners_desc: "Selecciona una o más esquinas para activar el launcher al llevar el cursor allí.",
     general_hotspots_delay: "Retraso de activación",
     general_hotspots_delay_desc: "Previene activaciones accidentales",
+    general_hide_on_click: "Ocultar al hacer clic en espacio vacío",
+    general_hide_on_click_desc: "Al hacer clic en el fondo del launcher, se oculta al tray.",
+    general_hide_on_blur: "Ocultar al perder el foco",
+    general_hide_on_blur_desc: "Al hacer clic fuera del launcher, se oculta al tray automáticamente.",
+    general_show_taskbar: "Mostrar icono en la barra de tareas",
+    general_show_taskbar_desc: "Muestra el icono de Cyber Launcher en la barra de tareas de Windows.",
+    general_reset_on_launch: "Restablecer vista al abrir (Reset)",
+    general_reset_on_launch_desc: "Limpia la búsqueda, scroll y restablece la categoría a 'TODAS' al abrir.",
     
     // Appearance Settings Tab
     app_bg_type: "TIPO DE FONDO",
@@ -147,6 +155,14 @@ export const translations = {
     general_hotspots_corners_desc: "Select one or more screen corners to activate the launcher when hovering the cursor.",
     general_hotspots_delay: "Activation Delay Time",
     general_hotspots_delay_desc: "Prevents accidental trigger activations",
+    general_hide_on_click: "Hide on Background Click",
+    general_hide_on_click_desc: "Clicking the launcher's background area automatically hides it to system tray.",
+    general_hide_on_blur: "Hide on Blur / Focus Loss",
+    general_hide_on_blur_desc: "Clicking outside of the launcher window automatically minimizes it.",
+    general_show_taskbar: "Show Taskbar Tray Icon",
+    general_show_taskbar_desc: "Displays the CyberLauncher icon in the Windows taskbar panel.",
+    general_reset_on_launch: "Reset View State on Launch",
+    general_reset_on_launch_desc: "Clears search query, resets scroll position, and active category to 'ALL' upon launch.",
     
     // Appearance Settings Tab
     app_bg_type: "BACKGROUND TYPE",
