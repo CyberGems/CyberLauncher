@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { translations, TranslationKey } from './locales';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Music, Globe, Calculator, Code, Bot, Lock,
@@ -60,15 +61,19 @@ const INITIAL_APPS = [
 
 const PRESET_IMAGES = [
   'C:\\CyberGems\\CyberLauncher\\default_background.jpg',
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop', // Abstract
-  'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2670&auto=format&fit=crop', // Cyberpunk
-  'https://images.unsplash.com/photo-1538681105587-85640961bf8b?q=80&w=2670&auto=format&fit=crop', // Dark geom
+  'bg_abstract.jpg',
+  'bg_cyberpunk.jpg',
+  'bg_geom.jpg',
 ];
 
 const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
 
 const toThumbnailUrl = (path: string) => {
   if (path.startsWith('http') || path.startsWith('data:')) return path;
+  if (!path.includes(':') && !path.includes('\\')) {
+    // Es un asset empaquetado relativo, resolver directo de la raíz del build (dist)
+    return path;
+  }
   return `local-resource:///${path.replace(/\\/g, '/')}`;
 };
 const PRESET_GRADIENTS = [
@@ -1102,6 +1107,20 @@ export default function App() {
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [language, setLanguage] = useState<'es' | 'en'>(() => {
+    const sysLang = navigator.language.startsWith('en') ? 'en' : 'es';
+    return (localStorage.getItem('cyber_lang') as 'es' | 'en') || sysLang;
+  });
+
+  const t = useCallback((key: TranslationKey, variables?: Record<string, string>) => {
+    let text = translations[language]?.[key] || translations['es']?.[key] || String(key);
+    if (variables) {
+      Object.entries(variables).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, v);
+      });
+    }
+    return text;
+  }, [language]);
   const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
@@ -1534,8 +1553,11 @@ export default function App() {
       if (bgType === 'image' && bgImage) {
         if (bgImage.startsWith('http') || bgImage.startsWith('data:')) {
           setBgDataUrl(bgImage);
+        } else if (!bgImage.includes(':') && !bgImage.includes('\\')) {
+          // Es un asset empaquetado relativo, se carga directo desde la raíz de la app
+          setBgDataUrl(bgImage);
         } else if (isElectron) {
-          // Es una ruta local, pedir a Electron el Base64
+          // Es una ruta física absoluta, pedir a Electron el Base64
           const dataUrl = await window.electronAPI!.getImageData(bgImage);
           if (dataUrl) setBgDataUrl(dataUrl);
         }
@@ -2647,10 +2669,10 @@ export default function App() {
                     className="truncate"
                   >
                     {searchQuery.startsWith('>') 
-                      ? (placeholderIndex === 0 ? "Escribe un comando de consola..." : "Presiona [Enter] para ejecutar")
+                      ? (placeholderIndex === 0 ? t('search_placeholder_console') : t('hint_console_enter'))
                       : searchScope === 'system'
-                      ? (placeholderIndex === 0 ? "Buscar en todo el sistema..." : "Presiona [Tab] para volver al Launcher")
-                      : (placeholderIndex === 0 ? "Buscar en CyberLauncher..." : "Escribe '>' para consola o [Tab] para buscar en sistema")
+                      ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
+                      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'))
                     }
                   </motion.span>
                 </AnimatePresence>
@@ -3734,7 +3756,7 @@ export default function App() {
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
                 <h2 className="text-sm font-cyber font-bold text-white flex items-center gap-2 tracking-wider">
                   <Settings className="w-4.5 h-4.5 text-cyan-400" />
-                  CONFIGURACIÓN DE CYBERLAUNCHER
+                  {t('settings_title')}
                 </h2>
                 <button 
                   onClick={() => setIsSettingsOpen(false)}
@@ -3747,7 +3769,13 @@ export default function App() {
               <div className="flex flex-1 min-h-0 bg-[#070b13]/40">
                 {/* Left Sidebar Navigation */}
                 <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
-                  {([['general','General','⌨'],['appearance','Apariencia','🎨'],['system','Sistema','⚙'],['indexer','Buscador','🔍'],['uwp','Windows Store','🛍']] as const).map(([id,label,icon]) => (
+                  {([
+                    ['general', t('tab_general'), '⌨'],
+                    ['appearance', t('tab_appearance'), '🎨'],
+                    ['system', t('tab_system'), '⚙'],
+                    ['indexer', t('tab_indexer'), '🔍'],
+                    ['uwp', t('tab_uwp'), '🛍']
+                  ] as const).map(([id,label,icon]) => (
                     <button 
                       key={id} 
                       onClick={() => setSettingsTab(id as any)}
@@ -3767,11 +3795,45 @@ export default function App() {
                 <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8 text-slate-300">
 
                 {settingsTab === 'general' && (<>
+                {/* Language Selection Config */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-slate-500" />
+                    {t('general_language')}
+                  </label>
+                  <div className="flex gap-3">
+                    {[
+                      { code: 'es', name: 'ESPAÑOL' },
+                      { code: 'en', name: 'ENGLISH' }
+                    ].map(item => {
+                      const isActive = language === item.code;
+                      return (
+                        <button
+                          key={item.code}
+                          onClick={() => {
+                            setLanguage(item.code as any);
+                            localStorage.setItem('cyber_lang', item.code);
+                            setNotification({ message: item.code === 'es' ? 'Idioma cambiado a Español' : 'Language switched to English', type: 'success' });
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-cyber font-bold transition-all duration-300 border hover:scale-102 cursor-pointer ${
+                            isActive
+                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.15)] border-solid'
+                              : 'bg-black/40 text-slate-400 border-white/5 hover:border-white/10 hover:text-slate-200'
+                          }`}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_language_desc')}</p>
+                </div>
+
                 {/* Keyboard Shortcut Config */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
                     <Keyboard className="w-4 h-4 text-slate-500" />
-                    ATAJO PARA ACTIVAR / OCULTAR
+                    {t('general_shortcut')}
                   </label>
                   <button
                     onClick={() => setIsRecordingShortcut(true)}
@@ -3804,16 +3866,16 @@ export default function App() {
                         : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
                     }`}
                   >
-                    {isRecordingShortcut ? 'Presiona la combinación de teclas...' : activationShortcut}
+                    {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
                   </button>
-                  <p className="text-xs text-slate-500">Haz clic en el botón de arriba y presiona la combinación de teclas (ej. Ctrl+Shift+P).</p>
+                  <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
                 {/* Scale Selection */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
                     <LayoutGrid className="w-4 h-4 text-slate-500" />
-                    TAMAÑO DE LAS CARDS
+                    {t('general_scale')}
                   </label>
                   <div className="flex items-center gap-4">
                     <input 
@@ -3825,14 +3887,14 @@ export default function App() {
                     />
                     <span className="text-sm text-blue-400 font-mono w-[30px] text-right">{cardScale}%</span>
                   </div>
-                  <p className="text-xs text-slate-500">Ajusta el tamaño de la cuadrícula para ver más o menos apps, sin hacer scroll.</p>
+                  <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
                 </div>
 
                 {/* Monitor Selection */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
                     <Monitor className="w-4 h-4 text-slate-500" />
-                    MONITOR DE DESPLIEGUE
+                    {t('general_monitor')}
                   </label>
                   <div className="flex gap-2">
                     {monitors.map(mon => (
@@ -3854,7 +3916,7 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500">Selecciona en cuál monitor aparecerá Cyber Launcher.</p>
+                  <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
                 </div>
                 
                 </>)}
@@ -3862,12 +3924,12 @@ export default function App() {
                 {settingsTab === 'appearance' && (<>
                 {/* Background Type Selector */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">TIPO DE FONDO</label>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_bg_type')}</label>
                   <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
                     {[
-                      { id: 'image', icon: ImageIcon, label: 'Imagen' },
-                      { id: 'gradient', icon: Palette, label: 'Gradiente' },
-                      { id: 'solid', icon: Droplets, label: 'Sólido' }
+                      { id: 'image', icon: ImageIcon, label: t('app_bg_image') },
+                      { id: 'gradient', icon: Palette, label: t('app_bg_gradient') },
+                      { id: 'solid', icon: Droplets, label: t('app_bg_solid') }
                     ].map(type => (
                       <button
                         key={type.id}
@@ -3890,7 +3952,9 @@ export default function App() {
                   {bgType === 'image' && (
                     <div className="space-y-4">
                       <div className="space-y-3">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">IMÁGENES PREDETERMINADAS</label>
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          {language === 'es' ? 'IMÁGENES PREDETERMINADAS' : 'PRESET BACKGROUND IMAGES'}
+                        </label>
                         <div className="grid grid-cols-2 gap-3">
                           {PRESET_IMAGES.map((img, i) => (
                             <button
@@ -3908,7 +3972,7 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                           <Link className="w-3 h-3" /> IMAGEN PERSONALIZADA (URL O ARCHIVO LOCAL)
+                           <Link className="w-3 h-3" /> {language === 'es' ? 'IMAGEN PERSONALIZADA (URL O ARCHIVO LOCAL)' : 'CUSTOM BACKGROUND (URL OR LOCAL FILE)'}
                          </label>
                          <div className="flex gap-2">
                            <input 
@@ -3925,9 +3989,9 @@ export default function App() {
                                  setCustomImageUrl('');
                                }
                              }}
-                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                            >
-                             Aplicar
+                             {language === 'es' ? 'Aplicar' : 'Apply'}
                            </button>
                             <button 
                               onClick={async () => {
@@ -3940,14 +4004,16 @@ export default function App() {
                               }}
                               className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5"
                             >
-                              <Upload className="w-4 h-4 mr-2" /> PC
+                              <Upload className="w-4 h-4 mr-2" /> {language === 'es' ? 'PC' : 'My Computer'}
                             </button>
                          </div>
                       </div>
                       
                       <div className="space-y-3 pt-4 border-t border-white/5">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">INTENSIDAD DE CRISTAL (GLASS)</label>
+                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                            {language === 'es' ? 'INTENSIDAD DE CRISTAL (GLASS)' : 'GLASSMORPHISM BLUR LEVEL'}
+                          </label>
                           <span className="text-xs text-blue-400 font-mono">{glassIntensity}%</span>
                         </div>
                         <input 
@@ -3957,12 +4023,16 @@ export default function App() {
                           onChange={(e) => setGlassIntensity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
-                        <p className="text-xs text-slate-500">Mueve a la izquierda para un efecto más transparente, a la derecha para oscurecer la interfaz.</p>
+                        <p className="text-xs text-slate-500">
+                          {language === 'es' 
+                            ? 'Mueve a la izquierda para un efecto más transparente, a la derecha para oscurecer la interfaz.' 
+                            : 'Drag left for maximum clarity/transparency, drag right to darken the backdrop overlay.'}
+                        </p>
                       </div>
 
                       <div className="space-y-3 pt-4 border-t border-white/5">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">OPACIDAD DEL FONDO</label>
+                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_opacity')}</label>
                           <span className="text-xs text-blue-400 font-mono">{bgOpacity}%</span>
                         </div>
                         <input 
@@ -3972,20 +4042,26 @@ export default function App() {
                           onChange={(e) => setBgOpacity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
-                        <p className="text-xs text-slate-500">Ajusta qué tan oscuro se ve la imagen de fondo antes de aplicar el efecto de cristal.</p>
+                        <p className="text-xs text-slate-500">
+                          {language === 'es'
+                            ? 'Ajusta qué tan oscuro se ve la imagen de fondo antes de aplicar el efecto de cristal.'
+                            : 'Adjust how dark the background image displays under the glass backdrop layer.'}
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {bgType === 'gradient' && (
                     <div className="space-y-3">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">GRADIENTES</label>
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        {language === 'es' ? 'GRADIENTES' : 'PRESET GRADIENTS'}
+                      </label>
                       <div className="grid grid-cols-2 gap-3">
                         {PRESET_GRADIENTS.map((grad, i) => (
                           <button
                             key={i}
                             onClick={() => setBgGradient(grad)}
-                            className={`h-20 rounded-xl border-2 transition-all ${
+                            className={`h-20 rounded-xl border-2 transition-all cursor-pointer ${
                               bgGradient === grad ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-white/20'
                             }`}
                             style={{ backgroundImage: grad }}
@@ -3997,13 +4073,15 @@ export default function App() {
 
                   {bgType === 'solid' && (
                     <div className="space-y-3">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">COLORES SÓLIDOS</label>
-              <div className="flex flex-wrap gap-3">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        {language === 'es' ? 'COLORES SÓLIDOS' : 'SOLID COLORS'}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
                         {PRESET_SOLIDS.map((color, i) => (
                           <button
                             key={i}
                             onClick={() => setBgColor(color)}
-                            className={`w-14 h-14 rounded-xl border-2 transition-all ${
+                            className={`w-14 h-14 rounded-xl border-2 transition-all cursor-pointer ${
                               bgColor === color ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20 shadow-inner'
                             }`}
                             style={{ backgroundColor: color }}
@@ -4030,7 +4108,7 @@ export default function App() {
                 <div className="space-y-4">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
                     <MousePointer2 className="w-4 h-4 text-cyan-500" />
-                    ACTIVACIÓN POR HOTSPOTS
+                    {t('general_hotspots')}
                   </label>
                   
                   <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -4069,13 +4147,13 @@ export default function App() {
 
                       <div className="flex-1 space-y-4 w-full">
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 mb-1">Esquinas activas</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">Selecciona una o más esquinas para activar el launcher al llevar el cursor allí.</p>
+                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('general_hotspots_corners')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_corners_desc')}</p>
                         </div>
                         
                         <div className="space-y-2 pt-2 border-t border-white/5">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-slate-300">Retraso de activación</span>
+                            <span className="text-sm font-medium text-slate-300">{t('general_hotspots_delay')}</span>
                             <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">{hotspotDelay}ms</span>
                           </div>
                           <input 
@@ -4087,7 +4165,7 @@ export default function App() {
                             onChange={(e) => setHotspotDelay(parseInt(e.target.value))}
                             className="w-full accent-cyan-500 h-1 bg-white/10 rounded-full appearance-none outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(34,211,238,0.5)] cursor-pointer mt-3"
                           />
-                          <p className="text-[10px] text-slate-500 text-right mt-1">Previene activaciones accidentales</p>
+                          <p className="text-[10px] text-slate-500 text-right mt-1">{t('general_hotspots_delay_desc')}</p>
                         </div>
                       </div>
                     </div>
@@ -4473,8 +4551,8 @@ export default function App() {
                           <Search className={`w-5 h-5 text-cyan-400 ${indexerStats.status === 'INDEXING' ? 'animate-spin' : ''}`} />
                         </div>
                         <div className="text-left">
-                          <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">NEURO-INDEX GLOBAL</h3>
-                          <p className="text-[10px] text-slate-500">Motor de indexación híbrido de archivos y accesos directos</p>
+                          <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('idx_title')}</h3>
+                          <p className="text-[10px] text-slate-500">{t('idx_desc')}</p>
                         </div>
                       </div>
                       
@@ -4487,14 +4565,14 @@ export default function App() {
                             : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
                         }`}
                       >
-                        {indexerSettings.enabled ? 'SISTEMA ONLINE' : 'DESACTIVADO'}
+                        {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
                       </button>
                     </div>
 
                     {/* Stats Card */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
-                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">Estado del Motor</span>
+                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_label')}</span>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`w-2 h-2 rounded-full ${
                             indexerStats.status === 'ONLINE'
@@ -4504,15 +4582,15 @@ export default function App() {
                               : 'bg-red-400'
                           }`} />
                           <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-                            {indexerStats.status === 'INDEXING' ? 'INDEXANDO...' : indexerStats.status}
+                            {indexerStats.status === 'INDEXING' ? (language === 'es' ? 'INDEXANDO...' : 'INDEXING...') : indexerStats.status}
                           </span>
                         </div>
                       </div>
                       
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
-                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">Archivos Registrados</span>
+                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_registered')}</span>
                         <span className="text-lg font-cyber font-bold text-cyan-400 mt-0.5">
-                          {indexerStats.totalFiles.toLocaleString('es-ES')}
+                          {indexerStats.totalFiles.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}
                         </span>
                       </div>
                     </div>
@@ -4520,9 +4598,9 @@ export default function App() {
                     {/* Slider for Depth */}
                     <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-left">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">Profundidad del Rastreo</label>
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('idx_scan_depth')}</label>
                         <span className="text-xs font-cyber font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
-                          NIVEL {indexerSettings.maxDepth}
+                          {language === 'es' ? 'NIVEL' : 'LEVEL'} {indexerSettings.maxDepth}
                         </span>
                       </div>
                       <input
@@ -4535,13 +4613,13 @@ export default function App() {
                         className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed"
                       />
                       <div className="flex justify-between text-[9px] text-slate-500 font-mono">
-                        <span>LIVIANO (NIVEL 1)</span>
-                        <span>NORMAL (NIVEL 2)</span>
-                        <span>AVANZADO (NIVEL 3)</span>
-                        <span>COMPLETO (NIVEL 4)</span>
+                        <span>{t('stat_level1')}</span>
+                        <span>{t('stat_level2')}</span>
+                        <span>{t('stat_level3')}</span>
+                        <span>{t('stat_level4')}</span>
                       </div>
                       <p className="text-[10px] text-slate-500 italic mt-1 font-sans leading-normal">
-                        Niveles altos rastrean más carpetas internas pero consumen más disco temporal en el primer arranque.
+                        {t('idx_scan_depth_desc')}
                       </p>
                     </div>
 
@@ -4549,7 +4627,7 @@ export default function App() {
                     <div className="space-y-3.5 text-left">
                       <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1.5">
                         <HardDrive className="w-3.5 h-3.5 text-slate-500" />
-                        UNIDADES DEL SISTEMA DETECTADAS (DRIVES)
+                        {t('idx_drives_detected')}
                       </label>
                       <div className="flex flex-wrap gap-2.5">
                         {systemDrives.map((drive) => {
@@ -4563,10 +4641,10 @@ export default function App() {
                                   let updatedPaths;
                                   if (isIndexed) {
                                     updatedPaths = indexerSettings.paths.filter(p => p !== drive);
-                                    setNotification({ message: `Unidad ${drive} desvinculada`, type: 'info' });
+                                    setNotification({ message: t('notif_drive_unlinked', { drive }), type: 'info' });
                                   } else {
                                     updatedPaths = [...indexerSettings.paths, drive];
-                                    setNotification({ message: `Indexando unidad entera ${drive}...`, type: 'success' });
+                                    setNotification({ message: t('notif_drive_linked', { drive }), type: 'success' });
                                   }
                                   const updated = { ...indexerSettings, paths: updatedPaths };
                                   setIndexerSettings(updated);
@@ -4585,12 +4663,12 @@ export default function App() {
                               }`}
                             >
                               <HardDrive className={`w-3.5 h-3.5 ${isIndexed ? 'animate-pulse text-cyan-400' : 'text-slate-500'}`} />
-                              <span>DISCO ({drive})</span>
+                              <span>{language === 'es' ? 'DISCO' : 'DRIVE'} ({drive})</span>
                             </button>
                           );
                         })}
                         {systemDrives.length === 0 && (
-                          <span className="text-[10px] text-slate-600 italic">No se detectaron unidades físicas lógicas.</span>
+                          <span className="text-[10px] text-slate-600 italic">{t('idx_drives_none')}</span>
                         )}
                       </div>
                     </div>
@@ -4599,22 +4677,22 @@ export default function App() {
                     <div className="space-y-3 text-left">
                       <div className="flex justify-between items-center">
                         <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">
-                          Carpetas Autorizadas a Indexar
+                          {t('idx_folders_authorized')}
                         </label>
                         <button
                           onClick={handleAddFolder}
                           disabled={!indexerSettings.enabled}
                           className="px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-30 disabled:hover:bg-cyan-500/10 text-cyan-400 rounded-lg text-[10px] font-cyber font-bold transition-all border border-cyan-500/20 flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
-                          <Plus className="w-3 h-3" /> AGREGAR CARPETA
+                          <Plus className="w-3 h-3" /> {t('idx_add_folder')}
                         </button>
                       </div>
 
                       {indexerSettings.paths.length === 0 ? (
                         <div className="p-8 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-slate-500 space-y-2 bg-black/10">
                           <FolderOpen className="w-7 h-7 text-slate-600" />
-                          <span className="text-xs font-cyber">SIN CARPETAS CONFIGURADAS</span>
-                          <span className="text-[9px] text-slate-600">El buscador no rastreará directorios personalizados hasta agregar uno.</span>
+                          <span className="text-xs font-cyber">{language === 'es' ? 'SIN CARPETAS CONFIGURADAS' : 'NO CONFIGURED DIRECTORIES'}</span>
+                          <span className="text-[9px] text-slate-600">{language === 'es' ? 'El buscador no rastreará directorios personalizados hasta agregar uno.' : 'The search engine will not scan custom directories until one is added.'}</span>
                         </div>
                       ) : (
                         <div className="border border-white/5 bg-black/20 rounded-xl divide-y divide-white/5 max-h-[180px] overflow-y-auto custom-scrollbar">
@@ -4630,7 +4708,7 @@ export default function App() {
                                 onClick={() => handleRemoveFolder(folderPath)}
                                 disabled={!indexerSettings.enabled}
                                 className="opacity-0 group-hover:opacity-100 disabled:opacity-0 p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
-                                title="Eliminar de la indexación"
+                                title={language === 'es' ? "Eliminar de la indexación" : "Remove from indexing"}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -4862,9 +4940,9 @@ export default function App() {
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Abrir <Play className="w-4 h-4 ml-2 text-emerald-400" />
+              {t('ctx_open')} <Play className="w-4 h-4 ml-2 text-emerald-400" />
             </button>
 
             {/* Copiar */}
@@ -4873,7 +4951,7 @@ export default function App() {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
                   setNotification({
-                    message: `Copiado: ${systemContextMenu.item.name}`,
+                    message: language === 'es' ? `Copiado: ${systemContextMenu.item.name}` : `Copied: ${systemContextMenu.item.name}`,
                     type: 'success'
                   });
                 } catch (err) {
@@ -4881,24 +4959,24 @@ export default function App() {
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Copiar <Upload className="w-4 h-4 ml-2 text-slate-400" />
+              {t('ctx_copy')} <Upload className="w-4 h-4 ml-2 text-slate-400" />
             </button>
 
             {/* Cortar */}
             <button
               onClick={() => {
                 setNotification({
-                  message: `Cortado: ${systemContextMenu.item.name} (Ruta en portapapeles)`,
+                  message: language === 'es' ? `Cortado: ${systemContextMenu.item.name} (Ruta en portapapeles)` : `Cut: ${systemContextMenu.item.name} (Path copied to clipboard)`,
                   type: 'info'
                 });
                 navigator.clipboard.writeText(systemContextMenu.item.path).catch(console.error);
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Cortar <Minus className="w-4 h-4 ml-2 text-slate-400" />
+              {t('ctx_cut')} <Minus className="w-4 h-4 ml-2 text-slate-400" />
             </button>
 
             {/* Copiar Ruta completa al Portapapeles */}
@@ -4907,7 +4985,7 @@ export default function App() {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
                   setNotification({
-                    message: "Ruta absoluta copiada al portapapeles",
+                    message: language === 'es' ? "Ruta absoluta copiada al portapapeles" : "Absolute path copied to clipboard",
                     type: 'success'
                   });
                 } catch (err) {
@@ -4915,9 +4993,9 @@ export default function App() {
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Copiar Ruta absoluta <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
+              {language === 'es' ? "Copiar Ruta absoluta" : "Copy Absolute Path"} <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
 
             <div className="h-px bg-white/10 my-1 mx-2" />
@@ -4949,14 +5027,14 @@ export default function App() {
                   return [...prev, newApp];
                 });
                 setNotification({
-                  message: "Anclado a Favoritos",
+                  message: language === 'es' ? "Anclado a Favoritos" : "Pinned to Favorites",
                   type: 'success'
                 });
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Anclar a Favoritos <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
+              {language === 'es' ? "Anclar a Favoritos" : "Pin to Favorites"} <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
             </button>
 
             {/* Anclar a Barra de Tareas de CyberLauncher */}
@@ -4986,14 +5064,14 @@ export default function App() {
                   return [...prev, newApp];
                 });
                 setNotification({
-                  message: "Anclado a Barra de Tareas",
+                  message: language === 'es' ? "Anclado a Barra de Tareas" : "Pinned to Taskbar",
                   type: 'success'
                 });
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
             >
-              Anclar a Barra <Plus className="w-4 h-4 ml-2 text-cyan-400" />
+              {language === 'es' ? "Anclar a Barra" : "Pin to Taskbar"} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
           </motion.div>
         )}
