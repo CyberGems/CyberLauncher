@@ -11,7 +11,7 @@ import {
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, Eye, Pin, Play, Pause, Timer,
-  Folder, File, Shield, ExternalLink
+  Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -380,18 +380,47 @@ interface ScheduledTask {
   type: 'app' | 'command';
 }
 
+interface HistoryItem {
+  id: string;
+  name: string;
+  path: string;
+  type: 'app' | 'file' | 'folder' | 'uwp';
+  timestamp: number;
+  icon?: string;
+}
+
+const getCategoryDisplayName = (categoryName: string, t: any) => {
+  let id = '';
+  if (categoryName === 'Todas') id = 'all';
+  else if (categoryName === 'AI') id = 'ai';
+  else if (categoryName === 'Browsers') id = 'browsers';
+  else if (categoryName === 'Communication') id = 'comm';
+  else if (categoryName === 'Design') id = 'design';
+  else if (categoryName === 'Development') id = 'dev';
+  else if (categoryName === 'Entertainment') id = 'ent';
+  else if (categoryName === 'Gaming') id = 'gaming';
+  else if (categoryName === 'Utilidades') id = 'utils';
+
+  if (!id) return categoryName;
+  const translationKey = `cat_${id}`;
+  const translated = t(translationKey as TranslationKey);
+  return translated !== translationKey ? translated : categoryName;
+};
+
 const ClockHUD = ({ 
   isOpen, 
   onClose, 
   apps, 
   scheduledTasks, 
-  setScheduledTasks 
+  setScheduledTasks,
+  t
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   apps: Array<any>; 
   scheduledTasks: Array<ScheduledTask>; 
   setScheduledTasks: React.Dispatch<React.SetStateAction<Array<ScheduledTask>>>;
+  t: (key: TranslationKey, variables?: Record<string, string>) => string;
 }) => {
   const [selectedType, setSelectedType] = useState<'app' | 'command'>('app');
   const [selectedAppId, setSelectedAppId] = useState<string>('');
@@ -419,12 +448,12 @@ const ClockHUD = ({
     if (selectedType === 'app') {
       const appObj = apps.find(a => a.id.toString() === selectedAppId);
       if (!appObj) return;
-      taskName = `Lanzar ${appObj.name}`;
+      taskName = `${t('hud_clock_task_launch_prefix')} ${appObj.name}`;
       targetPath = appObj.path;
       isAdmin = !!appObj.isAdmin;
     } else {
       if (!customCommand.trim()) return;
-      taskName = `Consola: "${customCommand.trim().substring(0, 15)}${customCommand.trim().length > 15 ? '...' : ''}"`;
+      taskName = `${t('hud_clock_task_cmd_prefix')}: "${customCommand.trim().substring(0, 15)}${customCommand.trim().length > 15 ? '...' : ''}"`;
       command = customCommand.trim();
     }
 
@@ -479,7 +508,7 @@ const ClockHUD = ({
               <div className="flex items-center gap-3">
                 <Timer className="w-5 h-5 text-cyan-400 animate-pulse" />
                 <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">PROGRAMADOR NEURAL</h2>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_clock_title')}</h2>
                   <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">EXECUTION TIMERS v1.5</p>
                 </div>
               </div>
@@ -498,7 +527,7 @@ const ClockHUD = ({
 
               {/* Form container */}
               <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4.5 mb-6 text-left">
-                <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">NUEVA PROGRAMACIÓN</h3>
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">{t('hud_clock_new_timer')}</h3>
                 
                 {/* Type Selection */}
                 <div className="flex gap-2 mb-3.5">
@@ -510,7 +539,7 @@ const ClockHUD = ({
                         : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
                     }`}
                   >
-                    LANZAR APP
+                    {t('hud_clock_launch_app')}
                   </button>
                   <button
                     onClick={() => setSelectedType('command')}
@@ -520,14 +549,14 @@ const ClockHUD = ({
                         : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
                     }`}
                   >
-                    CONSOLA CMD
+                    {t('hud_clock_console_cmd')}
                   </button>
                 </div>
 
                 {/* Form Fields */}
                 {selectedType === 'app' ? (
                   <div className="mb-4">
-                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">SELECCIONAR ACCESO</label>
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_select_app')}</label>
                     <select
                       value={selectedAppId}
                       onChange={(e) => setSelectedAppId(e.target.value)}
@@ -535,14 +564,14 @@ const ClockHUD = ({
                     >
                       {apps.map(app => (
                         <option key={app.id} value={app.id} className="bg-slate-900 text-white">
-                          {app.name} ({app.category})
+                          {app.name} ({getCategoryDisplayName(app.category, t)})
                         </option>
                       ))}
                     </select>
                   </div>
                 ) : (
                   <div className="mb-4">
-                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">COMANDO DE CONSOLA</label>
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_console_command')}</label>
                     <input
                       type="text"
                       placeholder="Ej. shutdown /s /t 0"
@@ -555,10 +584,10 @@ const ClockHUD = ({
 
                 {/* Time Picker */}
                 <div className="mb-4.5">
-                  <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">TIEMPO DE ESPERA</label>
+                  <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_wait_time')}</label>
                   <div className="flex items-center gap-3 bg-slate-950/60 border border-cyan-500/10 rounded-lg px-3 py-2">
                     <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Minutos</span>
+                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_minutes')}</span>
                       <input 
                         type="number" 
                         min="0" 
@@ -570,7 +599,7 @@ const ClockHUD = ({
                     </div>
                     <div className="text-cyan-500/40 font-bold text-[20px] mb-2">:</div>
                     <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Segundos</span>
+                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
                       <input 
                         type="number" 
                         min="0" 
@@ -633,23 +662,23 @@ const ClockHUD = ({
                   className="w-full py-2.5 bg-cyan-400/90 hover:bg-cyan-300 text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  PROGRAMAR EJECUCIÓN
+                  {t('hud_clock_schedule_btn')}
                 </button>
               </div>
 
               {/* Tasks List */}
               <div className="text-left">
                 <div className="flex items-center justify-between mb-3.5">
-                  <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">TAREAS EN EJECUCIÓN</h3>
+                  <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">{t('hud_clock_active_tasks')}</h3>
                   <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
-                    {scheduledTasks.length} ACTIVAS
+                    {t('hud_clock_active_count', { count: scheduledTasks.length.toString() })}
                   </span>
                 </div>
 
                 {scheduledTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 border border-dashed border-cyan-500/10 rounded-xl bg-cyan-500/2 opacity-60">
                     <Timer className="w-8 h-8 text-cyan-500/30 mb-2" />
-                    <p className="text-[10px] font-mono text-slate-400 tracking-wide">Ninguna ejecución en espera</p>
+                    <p className="text-[10px] font-mono text-slate-400 tracking-wide">{t('hud_clock_no_tasks')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2.5">
@@ -672,7 +701,7 @@ const ClockHUD = ({
                               <h4 className="text-xs font-cyber font-cyber font-bold text-white truncate uppercase tracking-wider">{task.name}</h4>
                             </div>
                             <p className="text-[9px] font-mono text-slate-500 truncate">
-                              {task.type === 'app' ? 'Ejecutable local' : `Comando: ${task.command}`}
+                              {task.type === 'app' ? t('hud_clock_task_type_local') : `${t('hud_clock_task_type_cmd')}: ${task.command}`}
                             </p>
                           </div>
 
@@ -682,13 +711,13 @@ const ClockHUD = ({
                                 {formatRemaining(task.remainingSeconds)}
                               </span>
                               <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
-                                Countdown
+                                {t('hud_clock_countdown')}
                               </span>
                             </div>
                             <button
                               onClick={() => handleRemoveTask(task.id)}
                               className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
-                              title="Cancelar ejecución"
+                              title={t('hud_clock_cancel')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -707,7 +736,7 @@ const ClockHUD = ({
   );
 };
 
-const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { isOpen: boolean, onClose: () => void, activationShortcut: string, dailyLaunchCount: number }) => {
+const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }: { isOpen: boolean, onClose: () => void, activationShortcut: string, dailyLaunchCount: number, t: (key: any, variables?: any) => string }) => {
   const [memPercent, setMemPercent] = useState<number>(0);
   const [memUsed, setMemUsed] = useState<number>(0);
   const [cpuInfo, setCpuInfo] = useState<{ model: string; cores: number } | null>(null);
@@ -772,7 +801,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
               <div className="flex items-center gap-3">
                 <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
                 <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">TELEMETRÍA DE RECURSOS</h2>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_system_title')}</h2>
                   <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">NEURAL COCKPIT SYSTEM v1.4</p>
                 </div>
               </div>
@@ -788,13 +817,13 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
             <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
               <div className="bg-cyan-950/10 border border-cyan-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
                 <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
-                  <Monitor className="w-3.5 h-3.5" /> RENDIMIENTO GENERAL
+                  <Monitor className="w-3.5 h-3.5" /> {t('hud_system_performance')}
                 </h3>
                 
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <div className="flex justify-between text-[11px] font-mono">
-                      <span className="text-slate-400">CARGA DE MEMORIA (RAM)</span>
+                      <span className="text-slate-400">{t('hud_system_ram')}</span>
                       <span className="text-cyan-400 font-bold">{Math.round(memPercent)}%</span>
                     </div>
                     <div className="h-2 bg-slate-950/80 rounded-full border border-cyan-500/10 overflow-hidden p-0.5">
@@ -805,15 +834,15 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
                       />
                     </div>
                     <div className="flex justify-between text-[9px] font-mono text-slate-500">
-                      <span>USED: {memUsed.toFixed(1)} GB</span>
-                      <span>TOTAL: {Math.round(memUsed / (memPercent || 1) * 100)} GB</span>
+                      <span>{t('hud_system_used', { used: memUsed.toFixed(1) })}</span>
+                      <span>{t('hud_system_total', { total: Math.round(memUsed / (memPercent || 1) * 100).toString() })}</span>
                     </div>
                   </div>
 
                   <div className="space-y-1 pt-2 border-t border-cyan-500/5">
                     <div className="flex justify-between text-[11px] font-mono">
-                      <span className="text-slate-400">CPU ESTRUCTURA</span>
-                      <span className="text-purple-400 font-bold">{cpuInfo?.cores || 8} CORES</span>
+                      <span className="text-slate-400">{t('hud_system_cpu')}</span>
+                      <span className="text-purple-400 font-bold">{t('hud_system_cores', { cores: (cpuInfo?.cores || 8).toString() })}</span>
                     </div>
                     <p className="text-[10px] font-mono text-purple-300/80 truncate bg-slate-950/60 p-2 rounded-lg border border-purple-500/10">
                       {cpuInfo?.model || 'Intel Core / AMD Ryzen Processor'}
@@ -822,7 +851,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
 
                   <div className="space-y-1 pt-2 border-t border-cyan-500/5">
                     <div className="flex justify-between text-[11px] font-mono">
-                      <span className="text-slate-400">TIEMPO ACTIVO (UPTIME)</span>
+                      <span className="text-slate-400">{t('hud_system_uptime')}</span>
                       <span className="text-emerald-400 font-bold">{formatUptime(uptime)}</span>
                     </div>
                   </div>
@@ -831,12 +860,12 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
 
               <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
                 <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> PARÁMETROS DEL SISTEMA
+                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> {t('hud_system_parameters')}
                 </h3>
                 <div className="font-mono text-[10px] space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
                   <div className="text-emerald-400/90">&gt; NEURAL_LINK_STABLE: OK</div>
-                  <div className="text-slate-400">&gt; LAUNCH_COUNT_TODAY: {dailyLaunchCount} APPS</div>
-                  <div className="text-slate-400">&gt; CURRENT_SHORTCUT: {activationShortcut}</div>
+                  <div className="text-slate-400">&gt; {t('hud_system_launches', { count: dailyLaunchCount.toString() })}</div>
+                  <div className="text-slate-400">&gt; {t('hud_system_shortcut', { shortcut: activationShortcut })}</div>
                   <div className="text-slate-400">&gt; SYSTEM_PLATFORM: WINDOWS_NT_x64</div>
                 </div>
               </div>
@@ -861,7 +890,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount }: { 
   );
 };
 
-const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => void, t: (key: any, variables?: any) => string }) => {
   const [disksList, setDisksList] = useState<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>([]);
   const [configPath, setConfigPath] = useState('');
 
@@ -927,7 +956,7 @@ const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
               <div className="flex items-center gap-3">
                 <HardDrive className="w-5 h-5 text-purple-400 animate-pulse" />
                 <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">TELEMETRÍA DE ALMACENAMIENTO</h2>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_storage_title')}</h2>
                   <p className="text-[10px] text-purple-500/80 font-mono tracking-wider text-left">STORAGE NEURAL SYSTEM v1.4</p>
                 </div>
               </div>
@@ -943,14 +972,14 @@ const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
             <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
               <div className="bg-purple-950/10 border border-purple-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
                 <h3 className="text-xs font-cyber font-bold text-purple-400 tracking-wider flex items-center gap-2">
-                  <HardDrive className="w-3.5 h-3.5" /> UNIDADES DE ALMACENAMIENTO
+                  <HardDrive className="w-3.5 h-3.5" /> {t('hud_storage_drives')}
                 </h3>
                 
                 <div className="space-y-4">
                   {disksList.map((disk) => (
                     <div key={disk.drive} className="space-y-1">
                       <div className="flex justify-between text-[11px] font-mono">
-                        <span className="text-slate-300 font-bold">UNIDAD {disk.drive}</span>
+                        <span className="text-slate-300 font-bold">{t('hud_storage_drive', { drive: disk.drive })}</span>
                         <span className="text-purple-400 font-bold">{Math.round(disk.percent)}%</span>
                       </div>
                       <div className="h-2 bg-slate-950/80 rounded-full border border-purple-500/10 overflow-hidden p-0.5">
@@ -961,20 +990,20 @@ const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
                         />
                       </div>
                       <div className="flex justify-between text-[9px] font-mono text-slate-500">
-                        <span>LIBRE: {disk.free.toFixed(1)} GB</span>
-                        <span>TOTAL: {disk.total.toFixed(1)} GB</span>
+                        <span>{t('hud_storage_free', { free: disk.free.toFixed(1) })}</span>
+                        <span>{t('hud_storage_total', { total: disk.total.toFixed(1) })}</span>
                       </div>
                     </div>
                   ))}
                   {disksList.length === 0 && (
-                    <p className="text-xs text-slate-500 font-mono italic">Escaneando unidades de disco...</p>
+                    <p className="text-xs text-slate-500 font-mono italic">{t('hud_storage_scanning')}</p>
                   )}
                 </div>
               </div>
 
               <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
                 <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> PARÁMETROS DE CONFIGURACIÓN
+                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> {t('hud_storage_config_params')}
                 </h3>
                 <div className="font-mono text-[10px] space-y-1.5">
                   <div className="text-slate-400">&gt; CONFIG_FILE_PATH:</div>
@@ -992,8 +1021,162 @@ const StorageHUD = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void 
                 }}
                 className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl transition-all font-mono text-[10px] font-bold tracking-widest text-center"
               >
-                CONFIG DIR
+                {t('hud_storage_config_dir')}
               </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const formatRelativeTime = (timestamp: number, t: any) => {
+  const diffMs = Date.now() - timestamp;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return t('hud_history_just_now');
+  if (diffMins < 60) return t('hud_history_mins_ago', { mins: diffMins.toString() });
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return t('hud_history_hours_ago', { hours: diffHours.toString() });
+  const diffDays = Math.floor(diffHours / 24);
+  return t('hud_history_days_ago', { days: diffDays.toString() });
+};
+
+const HistoryHUD = ({ 
+  isOpen, 
+  onClose, 
+  t, 
+  apps, 
+  launchHistory, 
+  removeHistoryItem, 
+  clearHistory, 
+  onLaunchItem 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  t: (key: any, variables?: any) => string; 
+  apps: Array<any>; 
+  launchHistory: Array<HistoryItem>; 
+  removeHistoryItem: (id: string) => void; 
+  clearHistory: () => void; 
+  onLaunchItem: (item: HistoryItem) => void; 
+}) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ x: '100%', opacity: 0.9 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+          >
+            {/* Tech grid bg overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
+
+            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <History className="w-5 h-5 text-cyan-400 animate-pulse" />
+                <div>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_history_title')}</h2>
+                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">NEURAL LOG SYSTEM v1.2</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {launchHistory.length > 0 && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (confirm(t('hud_history_clear') + '?')) {
+                        clearHistory();
+                      }
+                    }}
+                    className="p-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 rounded-lg text-red-400/80 hover:text-red-400 transition-all focus:outline-none flex items-center gap-1 text-[10px] font-cyber font-bold tracking-wider cursor-pointer"
+                    title={t('hud_history_clear')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{t('hud_history_clear')}</span>
+                  </button>
+                )}
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/30 rounded-lg text-slate-400 hover:text-cyan-400 transition-all focus:outline-none cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 text-left">
+              {launchHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-500 space-y-3 font-mono text-xs">
+                  <History className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
+                  <p className="text-center">{t('hud_history_empty')}</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {launchHistory.map((item) => {
+                    const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
+                    
+                    return (
+                      <div 
+                        key={item.id} 
+                        onClick={() => onLaunchItem(item)}
+                        className="group relative flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-cyan-500/30 transition-all duration-300 cursor-pointer shadow-lg overflow-hidden"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-lg bg-black/30 flex items-center justify-center border border-white/10 group-hover:border-cyan-500/30 transition-all duration-300 shrink-0">
+                            {item.icon ? (
+                              <img src={item.icon} alt={item.name} className="w-6 h-6 object-contain" />
+                            ) : appInfo ? (
+                              <AppIcon app={appInfo} className="w-5 h-5" />
+                            ) : item.type === 'folder' ? (
+                              <Folder className="w-5 h-5 text-amber-400/80 group-hover:text-amber-400 transition-all duration-300" />
+                            ) : (
+                              <File className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 transition-all duration-300" />
+                            )}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-slate-200 group-hover:text-cyan-400 transition-all duration-300 truncate">
+                              {item.name}
+                            </div>
+                            <div className="text-[9px] text-slate-500 font-mono truncate group-hover:text-slate-400 transition-all duration-300" title={item.path}>
+                              {item.path}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="text-[9px] font-mono text-slate-500 group-hover:hidden">
+                            {formatRelativeTime(item.timestamp, t)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeHistoryItem(item.id);
+                            }}
+                            className="hidden group-hover:flex p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
+                            title={t('hud_history_remove_item')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </motion.div>
         </>
@@ -1046,33 +1229,80 @@ export default function App() {
   const [systemSearchResults, setSystemSearchResults] = useState<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>([]);
   const [isSearchingSystem, setIsSearchingSystem] = useState(false);
 
+  const [searchTypeFilter, setSearchTypeFilter] = useState<'all' | 'folders' | 'files'>(() => {
+    const saved = localStorage.getItem('search_type_filter');
+    return (saved === 'all' || saved === 'folders' || saved === 'files') ? saved : 'all';
+  });
+  const [searchSortOrder, setSearchSortOrder] = useState<'asc' | 'desc'>(() => {
+    const saved = localStorage.getItem('search_sort_order');
+    return (saved === 'asc' || saved === 'desc') ? saved : 'asc';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('search_type_filter', searchTypeFilter);
+  }, [searchTypeFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('search_sort_order', searchSortOrder);
+  }, [searchSortOrder]);
+
+  const displayedResults = React.useMemo(() => {
+    const filtered = systemSearchResults.filter(item => {
+      if (searchTypeFilter === 'folders' && item.type !== 'folder') {
+        return false;
+      }
+      if (searchTypeFilter === 'files' && item.type === 'folder') {
+        return false;
+      }
+      return item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    });
+
+    filtered.sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      return searchSortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    return filtered;
+  }, [systemSearchResults, searchQuery, searchTypeFilter, searchSortOrder]);
+
   useEffect(() => {
     if (searchScope !== 'system' || !searchQuery.trim() || searchQuery.trim().startsWith('>')) {
       setSystemSearchResults([]);
       return;
     }
 
+    let active = true;
+
     const delayDebounce = setTimeout(async () => {
       setIsSearchingSystem(true);
       try {
         if (isElectron) {
           const results = await window.electronAPI!.searchSystemFiles(searchQuery);
-          setSystemSearchResults(results || []);
+          if (active) {
+            setSystemSearchResults(results || []);
+          }
         } else {
-          setSystemSearchResults([
-            { name: `Documento_${searchQuery}.pdf`, path: `C:\\Users\\Mock\\Documents\\Documento_${searchQuery}.pdf`, ext: '.pdf', type: 'file' },
-            { name: `Carpeta_${searchQuery}`, path: `C:\\Users\\Mock\\Downloads\\Carpeta_${searchQuery}`, ext: '', type: 'folder' },
-            { name: `Aplicacion_${searchQuery}.exe`, path: `C:\\Program Files\\Aplicacion_${searchQuery}.exe`, ext: '.exe', type: 'app' },
-          ]);
+          if (active) {
+            setSystemSearchResults([
+              { name: `Documento_${searchQuery}.pdf`, path: `C:\\Users\\Mock\\Documents\\Documento_${searchQuery}.pdf`, ext: '.pdf', type: 'file' },
+              { name: `Carpeta_${searchQuery}`, path: `C:\\Users\\Mock\\Downloads\\Carpeta_${searchQuery}`, ext: '', type: 'folder' },
+              { name: `Aplicacion_${searchQuery}.exe`, path: `C:\\Program Files\\Aplicacion_${searchQuery}.exe`, ext: '.exe', type: 'app' },
+            ]);
+          }
         }
       } catch (err) {
         console.error('System search failed:', err);
       } finally {
-        setIsSearchingSystem(false);
+        if (active) {
+          setIsSearchingSystem(false);
+        }
       }
     }, 150);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      active = false;
+      clearTimeout(delayDebounce);
+    };
   }, [searchQuery, searchScope]);
 
 
@@ -1121,6 +1351,7 @@ export default function App() {
     }
     return text;
   }, [language]);
+
   const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
@@ -1135,6 +1366,37 @@ export default function App() {
     totalFiles: 0
   });
   const [systemDrives, setSystemDrives] = useState<string[]>([]);
+
+  // Search Guide Tooltip State
+  const [showSearchGuide, setShowSearchGuide] = useState(false);
+  const searchGuideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerShowGuide = useCallback((currentQuery?: string) => {
+    const query = currentQuery !== undefined ? currentQuery : searchQuery;
+    if (query.length > 0) {
+      setShowSearchGuide(false);
+      return;
+    }
+    setShowSearchGuide(true);
+    if (searchGuideTimeoutRef.current) {
+      clearTimeout(searchGuideTimeoutRef.current);
+    }
+    searchGuideTimeoutRef.current = setTimeout(() => {
+      setShowSearchGuide(false);
+    }, 6000);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (searchGuideTimeoutRef.current) {
+        clearTimeout(searchGuideTimeoutRef.current);
+      }
+      if (searchHoverTimeoutRef.current) {
+        clearTimeout(searchHoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!notification) return;
@@ -1256,16 +1518,28 @@ export default function App() {
   const [uwpScanLogs, setUwpScanLogs] = useState<string[]>([]);
   const [importingUwpApp, setImportingUwpApp] = useState<{ name: string; aumid: string; icon: string } | null>(null);
   const [uwpImportCategory, setUwpImportCategory] = useState('');
+  const [uwpSortOrder, setUwpSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const displayedUwpApps = React.useMemo(() => {
+    const filtered = uwpAppsList.filter(app => 
+      app.name.toLowerCase().includes(uwpSearchQuery.toLowerCase().trim())
+    );
+    filtered.sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      return uwpSortOrder === 'asc' ? cmp : -cmp;
+    });
+    return filtered;
+  }, [uwpAppsList, uwpSearchQuery, uwpSortOrder]);
 
   const CYBER_LOGS_PRESETS = [
-    "> INICIANDO SCANNER NEURONAL DE WINDOWS STORE...",
-    "> CONECTANDO CON EL PROTOCOLO VIRTUAL shell:AppsFolder...",
-    "> DESENCRIPTANDO BASE DE DATOS AppxManifest.xml...",
-    "> CARGANDO IDENTIFICADORES DE MODELO DE APLICACIÓN (AUMID)...",
-    "> EXTRAPOLANDO ACCESOS NTFS PROTEGIDOS...",
-    "> EXTRAYENDO ICONOS BASE64 SIN PRIVILEGIOS DE ADMINISTRADOR...",
-    "> PROCESANDO HASHES DE INTEGRIDAD DE WINDOWS STORE...",
-    "> SCAN COMPLETO. ESTRUCTURA DE APLICACIONES DEVELADA CON ÉXITO."
+    `> ${t('uwp_log_init')}`,
+    `> ${t('uwp_log_connect')}`,
+    `> ${t('uwp_log_decrypt')}`,
+    `> ${t('uwp_log_load_aumid')}`,
+    `> ${t('uwp_log_ntfs')}`,
+    `> ${t('uwp_log_icons')}`,
+    `> ${t('uwp_log_hashes')}`,
+    `> ${t('uwp_log_success')}`
   ];
 
   const handleScanUwpApps = async () => {
@@ -1292,8 +1566,8 @@ export default function App() {
         clearInterval(logsInterval);
         setUwpScanLogs([
           ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          `> CONEXIÓN ESTABLECIDA. SE DETECTARON ${apps.length} APLICACIONES VIRTUALES.`,
-          "> ESTRUCTURA DISPONIBLE EN EL PANEL DE IMPORTACIÓN."
+          `> ${t('uwp_log_connected_count', { count: apps.length.toString() })}`,
+          `> ${t('uwp_log_import_panel')}`
         ]);
         setUwpAppsList(apps);
       } else {
@@ -1302,8 +1576,8 @@ export default function App() {
         clearInterval(logsInterval);
         setUwpScanLogs([
           ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          "> CONEXIÓN MOCK (NAVEGADOR). SE DETECTARON 4 APLICACIONES VIRTUALES.",
-          "> MODO DE PRUEBA ACTIVO."
+          `> ${t('uwp_log_connected_mock', { count: '4' })}`,
+          `> ${t('uwp_log_mock_active')}`
         ]);
         setUwpAppsList([
           { name: 'Windows Terminal', aumid: 'Microsoft.WindowsTerminal_8wekyb3d8bbwe!App', icon: '' },
@@ -1315,7 +1589,11 @@ export default function App() {
     } catch (e) {
       console.error(e);
       clearInterval(logsInterval);
-      setUwpScanLogs(prev => [...prev, "> ERROR CRÍTICO AL LEER EL SUBNIVEL shell:AppsFolder.", "> ACCESO ABORTADO."]);
+      setUwpScanLogs(prev => [
+        ...prev, 
+        `> ${t('uwp_log_critical_error')}`, 
+        `> ${t('uwp_log_aborted')}`
+      ]);
     } finally {
       setIsScanningUwp(false);
     }
@@ -1342,6 +1620,42 @@ export default function App() {
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
+  const [isHistoryHUDOpen, setIsHistoryHUDOpen] = useState(false);
+  const [launchHistory, setLaunchHistory] = useState<HistoryItem[]>(() => {
+    const saved = localStorage.getItem('cyber_launch_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string) => {
+    setLaunchHistory(prev => {
+      const filtered = prev.filter(item => item.path !== path);
+      const newItem: HistoryItem = {
+        id: `${Date.now()}-${Math.random()}`,
+        name,
+        path,
+        type,
+        timestamp: Date.now(),
+        icon
+      };
+      const updated = [newItem, ...filtered].slice(0, 15);
+      localStorage.setItem('cyber_launch_history', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const removeHistoryItem = useCallback((id: string) => {
+    setLaunchHistory(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      localStorage.setItem('cyber_launch_history', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setLaunchHistory([]);
+    localStorage.removeItem('cyber_launch_history');
+  }, []);
+
   const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
   const [isPinFlashing, setIsPinFlashing] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -2035,16 +2349,30 @@ export default function App() {
       return savedDate === today ? prev + 1 : 1;
     });
 
+    const appPath = (app as any).path || `mock://${app.name}`;
+    addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '');
+
     // Si hay ruta definida y estamos en Electron, lanzar la aplicación
-    const appPath = (app as any).path;
-    if (appPath && isElectron) {
-      const result = await window.electronAPI!.launchApp(appPath, !!(app as any).isAdmin);
+    if ((app as any).path && isElectron) {
+      const result = await window.electronAPI!.launchApp((app as any).path, !!(app as any).isAdmin);
       if (result.success) {
         // Esconder a la bandeja tras lanzar con éxito
         window.electronAPI!.windowHideToTray();
       } else {
         console.warn(`Error al lanzar ${app.name}:`, result.error);
       }
+    }
+  };
+
+  const handleLaunchHistoryItem = async (item: HistoryItem) => {
+    const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
+    if (appInfo) {
+      handleLaunchApp(appInfo);
+    } else {
+      if (isElectron) {
+        window.electronAPI!.launchApp(item.path);
+      }
+      addToHistory(item.name, item.path, item.type, item.icon);
     }
   };
 
@@ -2489,7 +2817,7 @@ export default function App() {
 
         <div className="px-6 pb-2 flex items-center justify-between">
           <span className="text-[11px] font-cyber font-semibold text-slate-400/80 tracking-wider">
-            CATEGORÍAS
+            {t('title_categories')}
           </span>
           <button 
             onClick={() => {
@@ -2522,7 +2850,9 @@ export default function App() {
                     boxShadow: `0 0 8px ${cat.color}`
                   }} 
                 />
-                <span className="text-sm font-medium drop-shadow-sm">{cat.name}</span>
+                <span className="text-sm font-medium drop-shadow-sm">
+                  {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 {cat.id !== 'all' && (
@@ -2555,21 +2885,21 @@ export default function App() {
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" style={{ boxShadow: '0 0 8px #3b82f6' }} />
-                APPS
+                {t('title_apps')}
               </div>
               <span className="text-blue-400 font-mono">{apps.length}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
                <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500" style={{ boxShadow: '0 0 8px #eab308' }} />
-                CATEGORÍAS
+                {t('title_categories')}
               </div>
               <span className="text-yellow-400 font-mono">{categories.length - 1}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" style={{ boxShadow: '0 0 8px #10b981' }} />
-                LANZAMIENTOS
+                {t('title_launches')}
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-500/20 blur-sm rounded-full"></div>
@@ -2598,13 +2928,62 @@ export default function App() {
 
         {/* Top Bar */}
         <header className="h-20 flex items-center px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-8">
-          <div className="relative w-full max-w-[400px] group shrink">
+          <div 
+            className="relative w-full max-w-[440px] group shrink"
+            onMouseEnter={() => {
+              if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+              searchHoverTimeoutRef.current = setTimeout(() => {
+                triggerShowGuide();
+              }, 500);
+            }}
+            onMouseLeave={() => {
+              if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+              setShowSearchGuide(false);
+              if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+            }}
+          >
+            {/* Sleek holographic tooltip showing full instruction guide */}
+            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#070b13]/95 border border-cyan-500/30 px-3.5 py-2 rounded-xl text-left z-30 w-max max-w-[360px] transition-all duration-300 ease-out shadow-[0_0_20px_rgba(34,211,238,0.2)] pointer-events-none ${
+              showSearchGuide 
+                ? 'opacity-100 scale-100 translate-y-0' 
+                : 'opacity-0 scale-95 -translate-y-1'
+            }`}>
+              {/* Tech grid bg overlay inside tooltip */}
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%)] bg-[size:10px_10px] pointer-events-none rounded-xl" />
+              <div className="relative z-10">
+                <div className="text-[11px] font-cyber font-bold text-cyan-400 mb-1 tracking-wider uppercase">{t('search_guide_tooltip_title')}</div>
+                <div className="text-[13px] font-mono text-slate-300 leading-normal">
+                  {searchQuery.startsWith('>') 
+                    ? `${t('search_placeholder_console')} — ${t('hint_console_enter')}`
+                    : searchScope === 'system'
+                    ? `${t('search_placeholder_system')} — ${t('hint_system_tab')}`
+                    : `${t('search_placeholder_normal')} — ${t('hint_normal_console')}`
+                  }
+                </div>
+              </div>
+              {/* Sleek triangle pointing up */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 border-l border-t border-cyan-500/30 bg-[#070b13] rotate-45 -mb-1" />
+            </div>
+
             <input 
               ref={searchInputRef}
               type="text" 
               placeholder=""
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onBlur={() => {
+                setShowSearchGuide(false);
+                if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+                if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                if (val.length > 0) {
+                  setShowSearchGuide(false);
+                  if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+                  if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+                }
+              }}
               onContextMenu={(e) => {
                 if (isElectron) {
                   e.preventDefault();
@@ -2769,7 +3148,14 @@ export default function App() {
           </div>
         </header>
 
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar relative z-10 flex flex-col">
+        <div 
+          ref={scrollContainerRef} 
+          className={`flex-1 px-8 pb-8 custom-scrollbar relative z-10 flex flex-col min-h-0 ${
+            (searchScope === 'system' && searchQuery.trim() !== '') || searchQuery.trim().startsWith('>')
+              ? 'overflow-hidden' 
+              : 'overflow-y-auto'
+          }`}
+        >
           {searchQuery.trim().startsWith('>') ? (
             <div className="flex-1 flex flex-col pt-4 font-mono text-left bg-black/45 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6 shadow-2xl overflow-hidden relative min-h-[400px]">
               {/* Terminal Scanline overlay */}
@@ -2822,37 +3208,105 @@ export default function App() {
               </div>
             </div>
           ) : (searchScope === 'system' && searchQuery.trim() !== '') ? (
-            <div className="flex-1 flex flex-col pt-4 select-none">
+            <div className="flex-1 flex flex-col pt-4 select-none min-h-0 overflow-hidden">
               <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-4 shrink-0">
                 <div className="flex items-center gap-2">
                   <Search className="w-4 h-4 text-emerald-400 animate-pulse" />
                   <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">RESULTADOS DEL SISTEMA DE ARCHIVOS</span>
                 </div>
                 <div className="text-[10px] text-slate-400 font-cyber">
-                  {isSearchingSystem ? 'BUSCANDO...' : `COINCIDENCIAS: ${systemSearchResults.length}`}
+                  {isSearchingSystem ? 'BUSCANDO...' : `COINCIDENCIAS: ${displayedResults.length}`}
                 </div>
               </div>
 
-              {isSearchingSystem && systemSearchResults.length === 0 ? (
+              {/* Controles de Ordenamiento y Filtrado */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2 shrink-0">
+                {/* Grupo de Filtro por Tipo */}
+                <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/5">
+                  <button
+                    onClick={() => setSearchTypeFilter('all')}
+                    className={`px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchTypeFilter === 'all'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    MEZCLADO
+                  </button>
+                  <button
+                    onClick={() => setSearchTypeFilter('folders')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchTypeFilter === 'folders'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    <Folder className="w-3.5 h-3.5 text-amber-400/80" />
+                    CARPETAS
+                  </button>
+                  <button
+                    onClick={() => setSearchTypeFilter('files')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchTypeFilter === 'files'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    <File className="w-3.5 h-3.5 text-cyan-400/85" />
+                    ARCHIVOS
+                  </button>
+                </div>
+
+                {/* Grupo de Ordenamiento */}
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5">
+                  <button
+                    onClick={() => setSearchSortOrder('asc')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchSortOrder === 'asc'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                    title="Ordenar de A a Z"
+                  >
+                    <ArrowDownAZ className="w-3.5 h-3.5" />
+                    A-Z
+                  </button>
+                  <button
+                    onClick={() => setSearchSortOrder('desc')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchSortOrder === 'desc'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                    title="Ordenar de Z a A"
+                  >
+                    <ArrowUpZA className="w-3.5 h-3.5" />
+                    Z-A
+                  </button>
+                </div>
+              </div>
+
+              {isSearchingSystem && displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-3">
                   <div className="w-8 h-8 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
                   <span className="text-xs font-cyber animate-pulse">ESCANEAR CON NEURAL INDEX...</span>
                 </div>
-              ) : systemSearchResults.length === 0 ? (
+              ) : displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-2">
                   <Search className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
                   <span className="text-xs font-cyber">NO SE ENCONTRARON COINCIDENCIAS</span>
-                  <span className="text-[10px] text-slate-600">Comprueba la ortografía o intenta con otro término</span>
+                  <span className="text-[10px] text-slate-600">Comprueba la ortografía o intenta con otro término / filtro</span>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5 max-h-[calc(100vh-240px)]">
-                  {systemSearchResults.map((item, index) => (
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
+                  {displayedResults.map((item, index) => (
                     <motion.div
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15, delay: Math.min(index * 0.02, 0.2) }}
                       key={`${item.path}-${index}`}
                       onClick={() => {
+                        addToHistory(item.name, item.path, item.type, item.icon);
                         if (isElectron) {
                           window.electronAPI!.launchApp(item.path);
                         }
@@ -2895,6 +3349,7 @@ export default function App() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              addToHistory(item.name, item.path, item.type, item.icon);
                               if (isElectron) {
                                 window.electronAPI!.launchApp(item.path, true);
                               }
@@ -2952,7 +3407,7 @@ export default function App() {
             <section className="mb-10 pt-4">
               <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest flex items-center gap-2 mb-4 drop-shadow-sm">
                 <Star className="w-4 h-4 fill-slate-400" />
-                FAVORITOS
+                {t('title_favorites')}
               </h3>
               <div className="flex flex-wrap gap-3">
                 {favorites.map((app) => (
@@ -2970,7 +3425,7 @@ export default function App() {
                     onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
                     onContextMenu={(e: any) => handleContextMenu(e, app)}
                     onClick={() => handleLaunchApp(app)}
-                    className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl transition-all shadow-lg cursor-grab active:cursor-grabbing ${app.color} ${
+                    className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl transition-all shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
                       draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
                     } ${favDropTarget === app.id ? 'border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110' : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_15px_currentColor]'}`}
                   >
@@ -2980,7 +3435,7 @@ export default function App() {
                     {/* Tooltip */}
                     <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 p-2 bg-[#0f172a]/95 backdrop-blur-md rounded-lg border border-white/10 shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 flex flex-col items-center gap-0.5">
                        <span className="text-xs font-semibold text-slate-100 whitespace-nowrap">{app.name}</span>
-                       <span className="text-[10px] text-slate-500 font-normal whitespace-nowrap">{app.category}</span>
+                       <span className="text-[10px] text-slate-500 font-normal whitespace-nowrap">{getCategoryDisplayName(app.category, t)}</span>
                     </div>
                   </motion.div>
                 ))}
@@ -2992,7 +3447,7 @@ export default function App() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
-                {activeCategory === 'all' ? 'TODAS LAS APPS' : categories.find(c => c.id === activeCategory)?.name.toUpperCase()}
+                {activeCategory === 'all' ? t('title_all_apps') : categories.find(c => c.id === activeCategory)?.name.toUpperCase()}
               </h3>
               
               <div className="flex items-center bg-black/30 backdrop-blur-md rounded-lg p-1 border border-white/5">
@@ -3117,7 +3572,7 @@ export default function App() {
                               className="text-slate-400 truncate w-full"
                               style={{ fontSize: `${10 * (cardScale / 100)}px` }}
                             >
-                              {app.category}
+                              {getCategoryDisplayName(app.category, t)}
                             </p>
                           </div>
                         </div>
@@ -3141,7 +3596,7 @@ export default function App() {
                               className="text-slate-400 truncate"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
-                              {app.category}
+                              {getCategoryDisplayName(app.category, t)}
                             </p>
                           </div>
                         </div>
@@ -3185,12 +3640,12 @@ export default function App() {
       >
         <div className="p-6 pb-2 flex items-center justify-between">
           <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest mt-2 px-2 drop-shadow-sm">
-            MÁS USADAS
+            {t('title_most_used')}
           </h3>
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
-              title={isAlwaysOnTop ? "Desanclar ventana (No mantener al frente)" : "Anclar ventana (Mantener al frente)"} 
+              title={isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on')} 
               className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none ${
                 isPinFlashing 
                   ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
@@ -3209,14 +3664,14 @@ export default function App() {
             </button>
             <button 
               onClick={() => setIsAboutOpen(true)}
-              title="Acerca de CyberLauncher" 
+              title={t('tooltip_about')} 
               className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
             >
               <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
             </button>
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              title="Configuración" 
+              title={t('tooltip_settings')} 
               className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
             >
               <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
@@ -3229,7 +3684,7 @@ export default function App() {
                   setIsAppActive(false);
                 }
               }}
-              title="Minimizar a la bandeja del sistema" 
+              title={t('tooltip_minimize')} 
               className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
             >
               <Minimize2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
@@ -3319,7 +3774,7 @@ export default function App() {
                   setIsAddingApp(true);
                 }}
                 className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
-                title="Añadir nueva aplicación"
+                title={t('tooltip_add_app')}
               >
                 <Plus className="w-5 h-5" />
               </button>
@@ -3329,20 +3784,34 @@ export default function App() {
 
         {/* Lado derecho: Info del sistema */}
         <div className="flex items-center gap-4 text-slate-400">
+          {/* History HUD Toggle */}
+          <button
+            onClick={() => setIsHistoryHUDOpen(!isHistoryHUDOpen)}
+            className={`flex items-center justify-center p-1.5 rounded-lg border transition-all focus:outline-none cursor-pointer ${
+              isHistoryHUDOpen 
+                ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' 
+                : 'border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-400 hover:text-cyan-300'
+            }`}
+            title={t('hud_history')}
+          >
+            <History className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4 bg-white/10" />
+
           {/* Uptime */}
-          <div className="flex items-center gap-1.5 cursor-default" title="Tiempo encendido del sistema (Uptime)">
+          <div className="flex items-center gap-1.5 cursor-default" title={t('tooltip_uptime')}>
             <Power className="w-4 h-4 text-emerald-500" />
             <UptimeMonitor />
           </div>
           <div className="w-px h-4 bg-white/10" />
           {/* Launches today */}
-          <div className="flex items-center gap-1.5 cursor-default" title="Lanzamientos de hoy">
+          <div className="flex items-center gap-1.5 cursor-default" title={t('tooltip_launches_today')}>
             <ChevronRight className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
           </div>
           <div className="w-px h-4 bg-white/10" />
           {/* Date */}
-          <div className="flex items-center gap-1.5 cursor-default text-slate-400" title="Fecha actual">
+          <div className="flex items-center gap-1.5 cursor-default text-slate-400" title={t('tooltip_date')}>
             <span className="text-sm font-mono tracking-wide">
               {currentTime.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
             </span>
@@ -3596,7 +4065,7 @@ export default function App() {
                         <option value="" disabled className="bg-[#0f172a] text-sm text-slate-500">Seleccionar...</option>
                         {categories.filter(c => c.id !== 'all').sort((a,b) => a.name.localeCompare(b.name)).map(cat => (
                           <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
-                            {cat.name}
+                            {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
                           </option>
                         ))}
                       </select>
@@ -4189,7 +4658,7 @@ export default function App() {
                 {/* Sistema Section */}
                 <div className="space-y-3 pb-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">SISTEMA & RESPALDO</label>
+                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('sys_title')}</label>
                   </div>
                   
                   <div className="flex flex-col gap-2">
@@ -4199,8 +4668,8 @@ export default function App() {
                           <Power className="w-4 h-4 text-blue-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Iniciar con Windows</h4>
-                          <p className="text-xs text-slate-500">Abre Cyber Launcher automáticamente al encender tu PC.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup')}</h4>
+                          <p className="text-xs text-slate-500">{t('sys_startup_desc')}</p>
                         </div>
                       </div>
                       <button 
@@ -4305,15 +4774,15 @@ export default function App() {
                           <FileJson className="w-4 h-4 text-emerald-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Exportar Configuración</h4>
-                          <p className="text-xs text-slate-500">Guarda tus apps y configuraciones en un archivo JSON.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
+                          <p className="text-xs text-slate-500">{t('sys_export_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={handleExport}
                         className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 flex-shrink-0"
                       >
-                        <Download className="w-4 h-4" /> Exportar
+                        <Download className="w-4 h-4" /> {t('sys_export_btn')}
                       </button>
                     </div>
 
@@ -4323,8 +4792,8 @@ export default function App() {
                           <Upload className="w-4 h-4 text-purple-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Importar Configuración</h4>
-                          <p className="text-xs text-slate-500">Restaura un backup previo de configuración (.json).</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
+                          <p className="text-xs text-slate-500">{t('sys_import_desc')}</p>
                         </div>
                       </div>
                       {isElectron ? (
@@ -4332,11 +4801,11 @@ export default function App() {
                           onClick={handleImportNative}
                           className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0"
                         >
-                          <Upload className="w-4 h-4" /> Importar
+                          <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                         </button>
                       ) : (
                         <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0">
-                          <Upload className="w-4 h-4" /> Importar
+                          <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                           <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                         </label>
                       )}
@@ -4349,15 +4818,15 @@ export default function App() {
                           <Terminal className="w-4 h-4 text-slate-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Diagnóstico del Sistema</h4>
-                          <p className="text-xs text-slate-500">Abre la consola para ver logs de resolución de archivos y errores.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
+                          <p className="text-xs text-slate-500">{t('sys_diag_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => window.electronAPI!.openDevTools()}
                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 flex-shrink-0"
                       >
-                        <Terminal className="w-4 h-4" /> Abrir Consola
+                        <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
                       </button>
                     </div>
                     <div className="flex items-center justify-between pt-2">
@@ -4366,15 +4835,15 @@ export default function App() {
                           <FolderOpen className="w-4 h-4 text-cyan-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Carpeta de Datos</h4>
-                          <p className="text-xs text-slate-500">Abre la carpeta donde se guardan las configuraciones.</p>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
+                          <p className="text-xs text-slate-500">{t('sys_data_dir_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => window.electronAPI!.openDataFolder()}
                         className="flex items-center gap-2 px-3 py-1.5 bg-cyan-800 hover:bg-cyan-700 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700 flex-shrink-0"
                       >
-                        <FolderOpen className="w-4 h-4" /> Open Data Folder
+                        <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
                       </button>
                     </div>
                   </div>
@@ -4386,10 +4855,10 @@ export default function App() {
                   <div className="space-y-6 relative min-h-[300px]">
                     <div className="flex flex-col gap-1 border-b border-white/5 pb-4">
                       <h3 className="text-lg font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
-                        <Package className="w-5 h-5" /> SCANNER DE WINDOWS STORE
+                        <Package className="w-5 h-5" /> {t('uwp_header_title')}
                       </h3>
                       <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                        Detecta e integra aplicaciones de la Windows Store (UWP/MSIX) de forma nativa. La ruta virtual se resuelve dinámicamente mediante AUMID, asegurando un lanzamiento indestructible inmune a actualizaciones del sistema.
+                        {t('uwp_header_desc')}
                       </p>
                     </div>
 
@@ -4397,15 +4866,15 @@ export default function App() {
                     {uwpAppsList.length === 0 && !isScanningUwp && (
                       <div className="flex flex-col items-center justify-center p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
                         <Hexagon className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
-                        <h4 className="text-sm font-medium text-slate-200 mb-2">Escaneo de Sistema Requerido</h4>
+                        <h4 className="text-sm font-medium text-slate-200 mb-2">{t('uwp_req_title')}</h4>
                         <p className="text-xs text-slate-500 max-w-sm mb-6 leading-normal font-sans">
-                          Para catalogar y extraer los accesos directos, iniciaremos un escaneo en los manifiestos de WindowsApps.
+                          {t('uwp_req_desc')}
                         </p>
                         <button
                           onClick={handleScanUwpApps}
                           className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98]"
                         >
-                          INICIAR ESCANEO DE APLICACIONES ⚡
+                          {t('uwp_req_btn')}
                         </button>
                       </div>
                     )}
@@ -4416,9 +4885,9 @@ export default function App() {
                         <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-                            <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">NEURAL TERMINAL DE DIAGNÓSTICO</span>
+                            <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">{t('uwp_terminal_title')}</span>
                           </div>
-                          <span className="text-[10px] font-mono text-cyan-500 animate-pulse">MEM_DUMP: SCANNING...</span>
+                          <span className="text-[10px] font-mono text-cyan-500 animate-pulse">{t('uwp_terminal_status')}</span>
                         </div>
                         <div className="h-40 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
                           {uwpScanLogs.map((log, i) => (
@@ -4439,24 +4908,33 @@ export default function App() {
                           <Search className="w-4 h-4 text-slate-500" />
                           <input
                             type="text"
-                            placeholder="Buscar en la Windows Store..."
+                            placeholder={t('uwp_search_placeholder')}
                             value={uwpSearchQuery}
                             onChange={(e) => setUwpSearchQuery(e.target.value)}
                             className="bg-transparent border-none outline-none text-slate-200 text-xs w-full focus:ring-0 placeholder:text-slate-600"
                           />
+
+                          {/* A-Z / Z-A Sorting toggle button */}
+                          <button
+                            onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
+                            title={uwpSortOrder === 'asc' ? "Ordenar Z-A" : "Ordenar A-Z"}
+                          >
+                            {uwpSortOrder === 'asc' ? <ArrowDownAZ className="w-3.5 h-3.5 text-cyan-400/90" /> : <ArrowUpZA className="w-3.5 h-3.5 text-cyan-400/90" />}
+                            {uwpSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                          </button>
+
                           <button
                             onClick={handleScanUwpApps}
                             className="text-[10px] font-cyber font-bold text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 px-2 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0"
                           >
-                            REESCANEAR 🔄
+                            {t('uwp_rescan_btn')}
                           </button>
                         </div>
 
                         {/* Grid de Aplicaciones */}
                         <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                          {uwpAppsList
-                            .filter(app => app.name.toLowerCase().includes(uwpSearchQuery.toLowerCase()))
-                            .map((app, index) => {
+                          {displayedUwpApps.map((app, index) => {
                               const alreadyAdded = apps.some(existing => existing.path === app.aumid);
                               
                               return (
@@ -4481,7 +4959,7 @@ export default function App() {
                                   <div className="shrink-0 ml-2">
                                     {alreadyAdded ? (
                                       <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
-                                        AGREGADO
+                                        {t('uwp_added_label')}
                                       </span>
                                     ) : (
                                       <button
@@ -4491,7 +4969,7 @@ export default function App() {
                                         }}
                                         className="text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)]"
                                       >
-                                        IMPORTAR 🛍
+                                        {t('uwp_import_btn')}
                                       </button>
                                     )}
                                   </div>
@@ -4518,13 +4996,13 @@ export default function App() {
                             className="bg-[#0f172a] border border-cyan-500/30 rounded-2xl p-6 max-w-sm w-full space-y-5 shadow-[0_0_30px_rgba(34,211,238,0.2)]"
                           >
                             <div className="text-center space-y-1.5">
-                              <h4 className="text-sm font-cyber font-bold text-cyan-400 tracking-wider uppercase">IMPORTAR APLICACIÓN</h4>
+                              <h4 className="text-sm font-cyber font-bold text-cyan-400 tracking-wider uppercase">{t('uwp_confirm_title')}</h4>
                               <p className="text-xs text-slate-200 font-bold leading-tight font-sans">{importingUwpApp.name}</p>
                               <p className="text-[9px] text-slate-500 font-mono truncate">{importingUwpApp.aumid}</p>
                             </div>
 
                             <div className="space-y-2">
-                              <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">CATEGORÍA DE DESTINO</label>
+                              <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('uwp_confirm_category')}</label>
                               <select
                                 value={uwpImportCategory}
                                 onChange={(e) => setUwpImportCategory(e.target.value)}
@@ -4532,7 +5010,7 @@ export default function App() {
                               >
                                 {categories.filter(c => c.id !== 'all').map(cat => (
                                   <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
-                                    {cat.name}
+                                    {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
                                   </option>
                                 ))}
                               </select>
@@ -4543,7 +5021,7 @@ export default function App() {
                                 onClick={() => setImportingUwpApp(null)}
                                 className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700"
                               >
-                                Cancelar
+                                {t('uwp_confirm_cancel')}
                               </button>
                               <button
                                 onClick={() => {
@@ -4563,7 +5041,7 @@ export default function App() {
                                 }}
                                 className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
                               >
-                                CONFIRMAR
+                                {t('uwp_confirm_ok')}
                               </button>
                             </div>
                           </motion.div>
@@ -5146,11 +5624,13 @@ export default function App() {
         onClose={() => setIsSystemHUDOpen(false)}
         activationShortcut={activationShortcut}
         dailyLaunchCount={dailyLaunchCount}
+        t={t}
       />
 
       <StorageHUD 
         isOpen={isStorageHUDOpen}
         onClose={() => setIsStorageHUDOpen(false)}
+        t={t}
       />
 
       <ClockHUD 
@@ -5159,6 +5639,18 @@ export default function App() {
         apps={apps}
         scheduledTasks={scheduledTasks}
         setScheduledTasks={setScheduledTasks}
+        t={t}
+      />
+
+      <HistoryHUD 
+        isOpen={isHistoryHUDOpen}
+        onClose={() => setIsHistoryHUDOpen(false)}
+        t={t}
+        apps={apps}
+        launchHistory={launchHistory}
+        removeHistoryItem={removeHistoryItem}
+        clearHistory={clearHistory}
+        onLaunchItem={handleLaunchHistoryItem}
       />
 
       <style>{`

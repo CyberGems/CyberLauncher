@@ -402,7 +402,7 @@ function createWindow() {
 function createTray() {
   if (tray) return;
   tray = new Tray(getTrayIcon());
-  tray.setToolTip('CyberLauncher — Sistema Operativo Neural');
+  tray.setToolTip('CyberLauncher');
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -894,15 +894,16 @@ function setupIpcHandlers() {
     return drives;
   });
 
+  const systemFileIconCache = new Map<string, string>();
+
   // --- Búsqueda indexada global de sistema ---
   ipcMain.handle('search-system-files', async (_event, query: string) => {
     if (!query || query.trim() === '') return [];
     const normalizedQuery = query.toLowerCase().trim();
     
-    // 1. Filtrar coincidencias del índice
+    // 1. Filtrar coincidencias del índice (solo si aparece en el nombre)
     const matches = systemIndex.filter(item => 
-      item.name.toLowerCase().includes(normalizedQuery) ||
-      item.path.toLowerCase().includes(normalizedQuery)
+      item.name.toLowerCase().includes(normalizedQuery)
     );
 
     // 2. Ordenar resultados
@@ -921,19 +922,25 @@ function setupIpcHandlers() {
       return a.name.localeCompare(b.name);
     });
 
-    // 3. Limitar a los 50 mejores
-    const topMatches = matches.slice(0, 50);
+    // 3. Limitar a los 30 mejores para optimizar velocidad de extracción de iconos
+    const topMatches = matches.slice(0, 30);
 
-    // 4. Resolver iconos perezosamente
+    // 4. Resolver iconos perezosamente usando cache en memoria
     const resultsWithIcons = await Promise.all(topMatches.map(async item => {
       let icon = '';
-      if (item.type !== 'folder' && fs.existsSync(item.path)) {
-        try {
-          const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
-          if (fileIcon && !fileIcon.isEmpty()) {
-            icon = fileIcon.toDataURL();
-          }
-        } catch (err) {}
+      if (item.type !== 'folder') {
+        const cachedIcon = systemFileIconCache.get(item.path);
+        if (cachedIcon) {
+          icon = cachedIcon;
+        } else if (fs.existsSync(item.path)) {
+          try {
+            const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
+            if (fileIcon && !fileIcon.isEmpty()) {
+              icon = fileIcon.toDataURL();
+              systemFileIconCache.set(item.path, icon);
+            }
+          } catch (err) {}
+        }
       }
       return {
         ...item,
