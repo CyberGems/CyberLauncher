@@ -6,7 +6,7 @@ import {
   MonitorSmartphone, PenTool, KeyRound, MousePointer2, FileUp,
   Gamepad2, TerminalSquare, Binary, MessageCircle, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
-  Minus, Square, X, ChevronRight, LayoutGrid, Image as ImageIcon,
+  Minus, Square, X, ChevronRight, ChevronDown, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
@@ -95,7 +95,7 @@ const CyberIcon = ({ className, style }: { className?: string, style?: React.CSS
 const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number }) => {
   // 1. Usar imagen personalizada (Base64 o local) si existe
   if (app.iconPath) {
-    return <img src={app.iconPath} alt={app.name} className={`${className} object-contain`} style={style} />;
+    return <img src={app.iconPath} alt={app.name} className={`${className} object-contain`} style={style} draggable="false" />;
   }
 
   // 2. Usar componente de Lucide si es válido (solo para apps iniciales en la misma sesión)
@@ -1246,6 +1246,18 @@ export default function App() {
     localStorage.setItem('search_sort_order', searchSortOrder);
   }, [searchSortOrder]);
 
+  const searchTypeCounts = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    let all = 0, folders = 0, files = 0;
+    for (const item of systemSearchResults) {
+      if (!item.name.toLowerCase().includes(query)) continue;
+      all++;
+      if (item.type === 'folder') folders++;
+      else files++;
+    }
+    return { all, folders, files };
+  }, [systemSearchResults, searchQuery]);
+
   const displayedResults = React.useMemo(() => {
     const filtered = systemSearchResults.filter(item => {
       if (searchTypeFilter === 'folders' && item.type !== 'folder') {
@@ -1356,10 +1368,12 @@ export default function App() {
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
-  const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[] }>({
+  const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }>({
     enabled: true,
     maxDepth: 2,
-    paths: []
+    paths: [],
+    includeHiddenFolders: false,
+    indexHiddenContent: false
   });
   const [indexerStats, setIndexerStats] = useState<{ status: 'ONLINE' | 'OFFLINE' | 'INDEXING'; totalFiles: number }>({
     status: 'OFFLINE',
@@ -1411,7 +1425,14 @@ export default function App() {
       try {
         if (isElectron) {
           const settings = await window.electronAPI!.getIndexerSettings();
-          setIndexerSettings(settings || { enabled: true, maxDepth: 2, paths: [] });
+          setIndexerSettings({
+            enabled: true,
+            maxDepth: 2,
+            paths: [],
+            includeHiddenFolders: false,
+            indexHiddenContent: false,
+            ...(settings || {})
+          });
           const stats = await window.electronAPI!.getIndexerStats();
           setIndexerStats(stats || { status: 'OFFLINE', totalFiles: 0 });
           const drives = await window.electronAPI!.getSystemDrives();
@@ -1501,11 +1522,41 @@ export default function App() {
       console.error('Error changing indexer depth:', err);
     }
   };
+
+  const handleToggleHiddenFolders = async (includeHiddenFolders: boolean) => {
+    try {
+      const updated = { ...indexerSettings, includeHiddenFolders };
+      setIndexerSettings(updated);
+      if (isElectron) {
+        await window.electronAPI!.saveIndexerSettings(updated);
+      }
+      setNotification({ message: includeHiddenFolders ? 'Carpetas ocultas incluidas' : 'Carpetas ocultas excluidas', type: 'success' });
+    } catch (err) {
+      console.error('Error toggling hidden folders:', err);
+    }
+  };
+
+  const handleToggleHiddenContent = async (indexHiddenContent: boolean) => {
+    try {
+      const updated = { ...indexerSettings, indexHiddenContent };
+      setIndexerSettings(updated);
+      if (isElectron) {
+        await window.electronAPI!.saveIndexerSettings(updated);
+      }
+      setNotification({ message: indexHiddenContent ? 'Contenido interno de ocultas indexado' : 'Contenido interno de ocultas omitido', type: 'success' });
+    } catch (err) {
+      console.error('Error toggling hidden content indexing:', err);
+    }
+  };
+
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
+  const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
+  const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(() => {
+    try { return localStorage.getItem('cl_advanced_open') === 'true'; } catch { return false; }
+  });
   const [editingCategory, setEditingCategory] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const [editCategoryForm, setEditCategoryForm] = useState({ name: '', color: '' });
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
@@ -1900,6 +1951,10 @@ export default function App() {
   }, [taskbarAppIds]);
 
   useEffect(() => {
+    localStorage.setItem('cl_advanced_open', advancedOptionsOpen ? 'true' : 'false');
+  }, [advancedOptionsOpen]);
+
+  useEffect(() => {
     localStorage.setItem('dailyLaunchCount', dailyLaunchCount.toString());
     localStorage.setItem('dailyLaunchDate', new Date().toDateString());
   }, [dailyLaunchCount]);
@@ -1947,6 +2002,7 @@ export default function App() {
           if (source.rightSidebarWidth !== undefined) setRightSidebarWidth(source.rightSidebarWidth);
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
           if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
+          if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
         }
         setIsConfigLoaded(true);
         console.log('[CONFIG] Carga inicial completada, guardado habilitado');
@@ -1959,8 +2015,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -1986,7 +2042,8 @@ export default function App() {
           startWithWindows, activationShortcut,
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
-          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch
+          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+          selectedMonitor
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -2010,6 +2067,7 @@ export default function App() {
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+    selectedMonitor,
     isConfigLoaded
   ]);
 
@@ -2060,12 +2118,18 @@ export default function App() {
       'startWithWindows', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth',
-      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch'
+      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
       console.log('[CONFIG] Recargando desde disco...');
       
+      // Auto-focus y seleccionar el texto del input al abrir/restaurar el launcher
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }, 150);
+
       // Resetear vista y modales al estado inicial si la opción de reset está activa
       if (localStorage.getItem('resetOnLaunch') !== 'false') {
         setActiveCategory('all');
@@ -2201,6 +2265,10 @@ export default function App() {
       if (config.resetOnLaunch !== undefined) {
         setResetOnLaunch(config.resetOnLaunch);
         localStorage.setItem('resetOnLaunch', config.resetOnLaunch.toString());
+      }
+      if (config.selectedMonitor) {
+        setSelectedMonitor(config.selectedMonitor);
+        localStorage.setItem('selectedMonitor', config.selectedMonitor);
       }
       console.log('[CONFIG] Estado actualizado desde disco');
     });
@@ -2569,7 +2637,14 @@ export default function App() {
         const mons = await window.electronAPI!.getMonitors();
         setMonitors(mons);
         const primary = mons.find(m => m.isPrimary);
-        if (primary) setSelectedMonitor(primary.id);
+        
+        // Conservar el monitor guardado si ya existe
+        const savedMonitor = localStorage.getItem('selectedMonitor') || selectedMonitor;
+        if (savedMonitor && mons.some(m => m.id === savedMonitor)) {
+          setSelectedMonitor(savedMonitor);
+        } else if (primary) {
+          setSelectedMonitor(primary.id);
+        }
         
         // Registrar el atajo guardado al iniciar
         window.electronAPI!.registerShortcut(activationShortcut);
@@ -2658,6 +2733,24 @@ export default function App() {
 
 
   useEffect(() => {
+    const handleGlobalDragStart = () => {
+      document.body.setAttribute('data-cl-drag', '1');
+    };
+
+    const handleGlobalDragEnd = () => {
+      document.body.removeAttribute('data-cl-drag');
+    };
+
+    window.addEventListener('dragstart', handleGlobalDragStart, true);
+    window.addEventListener('dragend', handleGlobalDragEnd, true);
+
+    return () => {
+      window.removeEventListener('dragstart', handleGlobalDragStart, true);
+      window.removeEventListener('dragend', handleGlobalDragEnd, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isElectron) return;
 
     const handleGlobalDragOver = (e: DragEvent) => {
@@ -2718,7 +2811,9 @@ export default function App() {
             iconPath: resolved.iconPath || '',
             category: '',
             isAdmin: false,
-            shortcut: ''
+            shortcut: '',
+            pinToFavorites: false,
+            pinToTaskbar: false
           });
           setIsAddingApp(true);
         } else {
@@ -2733,7 +2828,9 @@ export default function App() {
           iconPath: '',
           category: '',
           isAdmin: false,
-          shortcut: ''
+          shortcut: '',
+          pinToFavorites: false,
+          pinToTaskbar: false
         });
         setIsAddingApp(true);
       }
@@ -2779,10 +2876,10 @@ export default function App() {
             <div className="bg-black/50 p-6 rounded-2xl flex flex-col items-center shadow-2xl backdrop-blur-md border border-white/10">
               <Upload className="w-16 h-16 text-blue-400 mb-4" />
               <h2 className="text-2xl font-cyber font-bold text-white tracking-widest drop-shadow-md">
-                SOLTAR PARA AÑADIR APP
+                {t('drag_overlay_title')}
               </h2>
               <p className="text-slate-300 mt-2 text-sm text-center max-w-xs">
-                Arrastra ejecutables (.exe) o accesos directos (.lnk) para extraer su información.
+                {t('drag_overlay_desc')}
               </p>
             </div>
           </motion.div>
@@ -3227,33 +3324,33 @@ export default function App() {
                     onClick={() => setSearchTypeFilter('all')}
                     className={`px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'all'
-                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
-                    MEZCLADO
+                    MEZCLADO <span className={searchTypeFilter === 'all' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.all})</span>
                   </button>
                   <button
                     onClick={() => setSearchTypeFilter('folders')}
                     className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'folders'
-                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
                     <Folder className="w-3.5 h-3.5 text-amber-400/80" />
-                    CARPETAS
+                    CARPETAS <span className={searchTypeFilter === 'folders' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.folders})</span>
                   </button>
                   <button
                     onClick={() => setSearchTypeFilter('files')}
                     className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'files'
-                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                        ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
                     <File className="w-3.5 h-3.5 text-cyan-400/85" />
-                    ARCHIVOS
+                    ARCHIVOS <span className={searchTypeFilter === 'files' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.files})</span>
                   </button>
                 </div>
 
@@ -3466,7 +3563,7 @@ export default function App() {
                 <div className="w-px h-4 bg-white/10 mx-2" />
                 <button 
                   onClick={() => {
-                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
+                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
                     setIsAddingApp(true);
                   }}
                   className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
@@ -3770,7 +3867,7 @@ export default function App() {
             <div className="relative">
               <button 
                 onClick={() => {
-                  setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '' });
+                  setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
                   setIsAddingApp(true);
                 }}
                 className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
@@ -3920,7 +4017,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-md bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -4076,6 +4173,27 @@ export default function App() {
                     )}
                   </div>
 
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOptionsOpen(prev => !prev)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-colors text-left group"
+                >
+                  <span className="text-xs font-cyber font-bold text-slate-400 tracking-widest">OPCIONES AVANZADAS</span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${advancedOptionsOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {advancedOptionsOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="overflow-hidden space-y-4"
+                    >
+
                   {/* Launch as Admin Field */}
                   <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                     <div className="flex items-center gap-3">
@@ -4094,6 +4212,50 @@ export default function App() {
                     >
                       <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
                         <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Pin to Favorites Field */}
+                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <Star className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Anclar a favoritos</h4>
+                        <p className="text-xs text-slate-500">Muestra esta app en la sección de favoritos.</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Pin to Taskbar Field */}
+                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                        <Pin className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Anclar a barra de tareas</h4>
+                        <p className="text-xs text-slate-500">Muestra esta app en la barra de tareas inferior.</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                       </div>
                     </button>
                   </div>
@@ -4152,7 +4314,9 @@ export default function App() {
                       {isRecordingAppShortcut ? 'Presiona combinación de teclas...' : (editForm.shortcut || 'Ninguno (Haz clic para asignar)')}
                     </button>
                   </div>
-                </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3 bg-black/20">
@@ -4165,8 +4329,9 @@ export default function App() {
                 <button 
                   onClick={() => {
                     if (isAddingApp) {
+                      const newId = Date.now();
                       const newApp = {
-                        id: Date.now(),
+                        id: newId,
                         name: editForm.name || 'Nueva App',
                         path: editForm.path,
                         iconPath: editForm.iconPath,
@@ -4180,6 +4345,12 @@ export default function App() {
                       };
                       // @ts-ignore
                       setApps(prev => [...prev, newApp]);
+                      if (editForm.pinToFavorites) {
+                        setFavoriteIds(prev => [...prev, newId]);
+                      }
+                      if (editForm.pinToTaskbar) {
+                        setTaskbarAppIds(prev => [...prev, newId]);
+                      }
                       setIsAddingApp(false);
                     } else if (editingApp) {
                       setApps(prev => prev.map(a => {
@@ -4198,6 +4369,18 @@ export default function App() {
                         }
                         return a;
                       }));
+                      setFavoriteIds(prev => {
+                        const has = prev.includes(editingApp.id);
+                        if (editForm.pinToFavorites && !has) return [...prev, editingApp.id];
+                        if (!editForm.pinToFavorites && has) return prev.filter(id => id !== editingApp.id);
+                        return prev;
+                      });
+                      setTaskbarAppIds(prev => {
+                        const has = prev.includes(editingApp.id);
+                        if (editForm.pinToTaskbar && !has) return [...prev, editingApp.id];
+                        if (!editForm.pinToTaskbar && has) return prev.filter(id => id !== editingApp.id);
+                        return prev;
+                      });
                       setEditingApp(null);
                     }
                   }}
@@ -5132,6 +5315,53 @@ export default function App() {
                       </p>
                     </div>
 
+                    {/* Hidden Folders Toggles */}
+                    <div className="space-y-3 text-left">
+                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
+                            <Eye className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_folders')}</h4>
+                            <p className="text-xs text-slate-500">{t('idx_hidden_folders_desc')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!indexerSettings.enabled}
+                          onClick={() => handleToggleHiddenFolders(!indexerSettings.includeHiddenFolders)}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${indexerSettings.includeHiddenFolders ? 'bg-slate-400' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.includeHiddenFolders ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${indexerSettings.includeHiddenFolders ? 'bg-slate-400 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled && indexerSettings.includeHiddenFolders ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                            <FolderOpen className="w-4 h-4 text-amber-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_content')}</h4>
+                            <p className="text-xs text-slate-500">{t('idx_hidden_content_desc')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!indexerSettings.enabled || !indexerSettings.includeHiddenFolders}
+                          onClick={() => handleToggleHiddenContent(!indexerSettings.indexHiddenContent)}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${indexerSettings.indexHiddenContent ? 'bg-amber-500' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.indexHiddenContent ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${indexerSettings.indexHiddenContent ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Discovered System Drives */}
                     <div className="space-y-3.5 text-left">
                       <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1.5">
@@ -5403,7 +5633,9 @@ export default function App() {
                    iconPath: (contextMenu.app as any).iconPath || '',
                    category: contextMenu.app!.category,
                    isAdmin: !!(contextMenu.app as any).isAdmin,
-                   shortcut: (contextMenu.app as any).shortcut || ''
+                   shortcut: (contextMenu.app as any).shortcut || '',
+                   pinToFavorites: favoriteIds.includes(contextMenu.app!.id),
+                   pinToTaskbar: taskbarAppIds.includes(contextMenu.app!.id)
                  });
                  setContextMenu(null);
                }}

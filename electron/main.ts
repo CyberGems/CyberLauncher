@@ -239,12 +239,28 @@ function createWindow() {
   const displays = screen.getAllDisplays();
   let targetDisplay = screen.getPrimaryDisplay();
 
-  if (windowState && windowState.monitorId) {
+  // Cargar monitor prioritariamente desde cyber-launcher-config.json (configuración centralizada robusta)
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (config.selectedMonitor) {
+        const savedDisplay = displays.find(d => d.id.toString() === config.selectedMonitor);
+        if (savedDisplay) {
+          targetDisplay = savedDisplay;
+          console.log(`[MONITOR] Cargado monitor desde config central: ${targetDisplay.id}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[MONITOR] Error cargando monitor desde config central:', e);
+  }
+
+  // Fallback a window-state.json si no está definido en el archivo de configuración
+  if (targetDisplay.id === screen.getPrimaryDisplay().id && windowState && windowState.monitorId) {
     const savedDisplay = displays.find(d => d.id.toString() === windowState.monitorId);
     if (savedDisplay) {
       targetDisplay = savedDisplay;
-    } else {
-      console.log('Saved monitor not found, using primary');
+      console.log(`[MONITOR] Cargado monitor desde window-state: ${targetDisplay.id}`);
     }
   }
   
@@ -555,9 +571,17 @@ function startHotspotPolling() {
 function startUACGuard() {
   if (uacGuardTimer) clearInterval(uacGuardTimer);
   let uacWasActive = false;
+  let queryInFlight = false;
 
   uacGuardTimer = setInterval(() => {
+    // Nothing to protect: no hotspots armed and window already hidden → skip the spawn.
+    if (hotspotCorners.length === 0 && (!mainWindow || !mainWindow.isVisible())) return;
+    // Coalesce: never pile up tasklist invocations if the previous one hasn't returned.
+    if (queryInFlight) return;
+    queryInFlight = true;
+
     exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
+      queryInFlight = false;
       const isActive = !err && stdout.includes('consent.exe');
       if (isActive && !uacWasActive) {
         console.log('[UAC-GUARD] UAC detected (consent.exe) — pausing hotspots');
@@ -572,7 +596,7 @@ function startUACGuard() {
       }
       uacWasActive = isActive;
     });
-  }, 200);
+  }, 1500);
 }
 
 function stopUACGuard() {
@@ -742,12 +766,20 @@ let systemIndexStatus: 'ONLINE' | 'OFFLINE' | 'INDEXING' = 'OFFLINE';
 
 const getSettingsFilePath = () => path.join(app.getPath('userData'), 'indexer_settings.json');
 
-function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[] } {
+function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean } {
   try {
     const filePath = getSettingsFilePath();
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return {
+        enabled: true,
+        maxDepth: 2,
+        paths: [],
+        includeHiddenFolders: false,
+        indexHiddenContent: false,
+        ...parsed
+      };
     }
   } catch (err) {
     console.error('[INDEXER] Error loading indexer settings:', err);
@@ -764,11 +796,13 @@ function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: str
       path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop'),
       path.join(os.homedir(), 'Downloads'),
       path.join(os.homedir(), 'Documents')
-    ]
+    ],
+    includeHiddenFolders: false,
+    indexHiddenContent: false
   };
 }
 
-function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[] }) {
+function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }) {
   try {
     const filePath = getSettingsFilePath();
     fs.writeFileSync(filePath, JSON.stringify(settings, null, 2), 'utf8');
@@ -778,7 +812,7 @@ function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; pat
   }
 }
 
-async function crawlDirectory(dirPath: string, maxDepth = 2, currentDepth = 0) {
+async function crawlDirectory(dirPath: string, maxDepth = 2, currentDepth = 0, opts?: { includeHiddenFolders?: boolean; indexHiddenContent?: boolean }) {
   if (currentDepth > maxDepth) return;
   try {
     if (!fs.existsSync(dirPath)) return;
@@ -788,14 +822,22 @@ async function crawlDirectory(dirPath: string, maxDepth = 2, currentDepth = 0) {
       const ext = path.extname(entry.name).toLowerCase();
       
       if (entry.isDirectory()) {
-        if (entry.name.startsWith('.') || entry.name.startsWith('$') || entry.name === 'node_modules') continue;
+        const isHidden = entry.name.startsWith('.') || entry.name.startsWith('$');
+        const isNodeModules = entry.name === 'node_modules';
+        if (isNodeModules) continue;
+        if (isHidden && !opts?.includeHiddenFolders) continue;
+
         systemIndex.push({
           name: entry.name,
           path: fullPath,
           ext: '',
           type: 'folder'
         });
-        await crawlDirectory(fullPath, maxDepth, currentDepth + 1);
+
+        const shouldRecurse = opts?.indexHiddenContent || !isHidden;
+        if (shouldRecurse) {
+          await crawlDirectory(fullPath, maxDepth, currentDepth + 1, opts);
+        }
       } else {
         const type = (ext === '.exe' || ext === '.lnk' || ext === '.cmd' || ext === '.bat' || ext === '.ps1') ? 'app' : 'file';
         systemIndex.push({
@@ -827,11 +869,15 @@ async function buildSystemIndex() {
 
   const targets = settings.paths || [];
   const maxDepth = settings.maxDepth !== undefined ? settings.maxDepth : 2;
+  const crawlOpts = {
+    includeHiddenFolders: settings.includeHiddenFolders,
+    indexHiddenContent: settings.indexHiddenContent
+  };
 
   for (const target of targets) {
     if (fs.existsSync(target)) {
       const targetDepth = target.includes('Start Menu') ? Math.max(maxDepth, 3) : maxDepth;
-      await crawlDirectory(target, targetDepth, 0);
+      await crawlDirectory(target, targetDepth, 0, crawlOpts);
     }
   }
 
@@ -849,7 +895,7 @@ function setupIpcHandlers() {
   });
 
   // --- Guardar configuraciones del indexador global ---
-  ipcMain.handle('save-indexer-settings', async (_event, settings: { enabled: boolean; maxDepth: number; paths: string[] }) => {
+  ipcMain.handle('save-indexer-settings', async (_event, settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }) => {
     saveIndexerSettings(settings);
     buildSystemIndex().catch(err => console.error('[INDEXER] Error building index after save:', err));
     return true;

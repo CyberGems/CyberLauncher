@@ -90,6 +90,10 @@ export const translations = {
     idx_drives_none: "No se detectaron unidades físicas lógicas.",
     idx_folders_authorized: "CARPETAS AUTORIZADAS A INDEXAR",
     idx_add_folder: "AGREGAR CARPETA",
+    idx_hidden_folders: "INCLUIR CARPETAS OCULTAS (DOTFILES)",
+    idx_hidden_folders_desc: "Muestra carpetas que empiezan con punto (ej. .codex, .git) en los resultados de búsqueda.",
+    idx_hidden_content: "INDEXAR CONTENIDO INTERNO DE OCULTAS",
+    idx_hidden_content_desc: "Rastrea recursivamente todo el contenido dentro de carpetas ocultas. Aumenta el uso de recursos.",
     
     // Windows Store Settings Tab
     uwp_title: "APLICACIONES UWP & MSIX",
@@ -252,6 +256,8 @@ export const translations = {
     uwp_log_mock_active: "MODO DE PRUEBA ACTIVO.",
     uwp_log_critical_error: "ERROR CRÍTICO AL LEER EL SUBNIVEL shell:AppsFolder.",
     uwp_log_aborted: "ACCESO ABORTADO.",
+    drag_overlay_title: "SOLTAR PARA AÑADIR APP",
+    drag_overlay_desc: "Arrastra ejecutables (.exe) o accesos directos (.lnk) para extraer su información.",
   },
   en: {
     // Top Bar & General Placeholders
@@ -344,6 +350,10 @@ export const translations = {
     idx_drives_none: "No logical system drives detected.",
     idx_folders_authorized: "AUTHORIZED DIRECTORIES TO INDEX",
     idx_add_folder: "ADD DIRECTORY",
+    idx_hidden_folders: "INCLUDE HIDDEN FOLDERS (DOTFILES)",
+    idx_hidden_folders_desc: "Shows folders starting with a dot (e.g. .codex, .git) in search results.",
+    idx_hidden_content: "INDEX INSIDE HIDDEN FOLDERS",
+    idx_hidden_content_desc: "Recursively scans all content inside hidden folders. Increases resource usage.",
     
     // Windows Store Settings Tab
     uwp_title: "UWP & MSIX APPLICATIONS",
@@ -506,6 +516,8 @@ export const translations = {
     uwp_log_mock_active: "MOCK TEST MODE ACTIVE.",
     uwp_log_critical_error: "CRITICAL ERROR READING shell:AppsFolder SUBLEVEL.",
     uwp_log_aborted: "ACCESS ABORTED.",
+    drag_overlay_title: "DROP TO ADD APP",
+    drag_overlay_desc: "Drag executables (.exe) or shortcuts (.lnk) to extract their info.",
   }
 };
 
