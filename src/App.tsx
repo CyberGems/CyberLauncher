@@ -2222,7 +2222,7 @@ export default function App() {
       setActiveCategory(prev => (prev === 'all' ? prev : 'all'));
       setEditingCategory(null);
       setSearchQuery(prev => (prev === '' ? prev : ''));
-      setSearchScope(prev => (prev === 'apps' ? prev : 'apps'));
+      setSearchScope(prev => (prev === 'cyber' ? prev : 'cyber'));
       if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== 0) {
         scrollContainerRef.current.scrollTop = 0;
       }
