@@ -54,7 +54,7 @@ export const translations = {
     general_show_taskbar: "Mostrar icono en la barra de tareas",
     general_show_taskbar_desc: "Muestra el icono de Cyber Launcher en la barra de tareas de Windows.",
     general_reset_on_launch: "Restablecer vista al abrir (Reset)",
-    general_reset_on_launch_desc: "Limpia la búsqueda, scroll y restablece la categoría a 'TODAS' al abrir.",
+    general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
     
     // Appearance Settings Tab
     app_bg_type: "TIPO DE FONDO",
@@ -316,7 +316,7 @@ export const translations = {
     general_show_taskbar: "Show Taskbar Tray Icon",
     general_show_taskbar_desc: "Displays the CyberLauncher icon in the Windows taskbar panel.",
     general_reset_on_launch: "Reset View State on Launch",
-    general_reset_on_launch_desc: "Clears search query, resets scroll position, and active category to 'ALL' upon launch.",
+    general_reset_on_launch_desc: "When opening the launcher, clears search/scroll and sets category to 'ALL' (once per open).",
     
     // Appearance Settings Tab
     app_bg_type: "BACKGROUND TYPE",

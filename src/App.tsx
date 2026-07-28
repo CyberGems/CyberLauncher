@@ -165,6 +165,7 @@ declare global {
       getConfigPath: () => Promise<string>;
       openDataFolder: () => Promise<void>;
       onReloadConfig: (callback: () => void) => () => void;
+      onLauncherShown: (callback: () => void) => () => void;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) => Promise<{ success: boolean }>;
@@ -2207,7 +2208,29 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isConfigLoaded]);
 
-  // Recargar config cuando la ventana se restaura del tray o cuando cambia en disco
+  // Al mostrar el launcher: reset ligero de vista (sin releer config del disco)
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onLauncherShown) return;
+    const cleanup = window.electronAPI.onLauncherShown(() => {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }, 50);
+
+      if (localStorage.getItem('resetOnLaunch') === 'false') return;
+
+      setActiveCategory(prev => (prev === 'all' ? prev : 'all'));
+      setEditingCategory(null);
+      setSearchQuery(prev => (prev === '' ? prev : ''));
+      setSearchScope(prev => (prev === 'apps' ? prev : 'apps'));
+      if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== 0) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Sync config desde disco (watcher / otra instancia) — sin resetear la vista
   useEffect(() => {
     if (!isElectron) return;
 
@@ -2223,22 +2246,6 @@ export default function App() {
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
       console.log('[CONFIG] Recargando desde disco...');
-      
-      // Auto-focus y seleccionar el texto del input al abrir/restaurar el launcher
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }, 150);
-
-      // Resetear vista y modales al estado inicial si la opción de reset está activa
-      if (localStorage.getItem('resetOnLaunch') !== 'false') {
-        setActiveCategory('all');
-        setEditingCategory(null);
-        setSearchQuery('');
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = 0;
-        }
-      }
       let config: any = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {

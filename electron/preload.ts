@@ -76,6 +76,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('reload-config', handler);
     return () => { ipcRenderer.removeListener('reload-config', handler); };
   },
+  onLauncherShown: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('launcher-shown', handler);
+    return () => { ipcRenderer.removeListener('launcher-shown', handler); };
+  },
 
   // --- Window Pinning (Always-on-top) ---
   setAlwaysOnTop: (enabled: boolean) => ipcRenderer.invoke('set-always-on-top', enabled),

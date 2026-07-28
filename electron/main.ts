@@ -433,7 +433,7 @@ function createWindow() {
     saveWindowState();
   });
 
-  // Recargar config cuando la ventana se restaura del tray
+  // Vista al restaurar del tray (reset ligero) — no mezclar con reload-config
   mainWindow.on('show', () => {
     console.log('[WM EVENT] show (inOwnShowCall=' + inOwnShowCall + ', state=' + windowVisibilityState + ')');
     if (inOwnShowCall === ownShowCallId) {
@@ -445,9 +445,8 @@ function createWindow() {
       hideMainWindow();
       return;
     }
-    console.log('[MAIN] Window show event fired, sending reload-config');
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('reload-config');
+      mainWindow.webContents.send('launcher-shown');
     }
   });
 
@@ -455,13 +454,9 @@ function createWindow() {
     console.log('[WM EVENT] hide');
   });
 
-  mainWindow.on('focus', () => {
-    console.log('[MAIN] Window focus event fired, sending reload-config');
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('reload-config');
-    }
-  });
-
+  // Nota: no enviar reload-config en focus — se disparaba en cada apertura (show+focus),
+  // reseteaba la vista dos veces y forzaba loadConfig innecesario (lag).
+  // La sync entre instancias sigue vía fs.watch → reload-config.
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     lastHotspotCorner = '';
