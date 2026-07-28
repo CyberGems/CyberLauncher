@@ -5,6 +5,7 @@ import { exec, execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import { resolveTargetDisplay } from './display-resolve';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -196,17 +197,29 @@ function getTrayIcon() {
 }
 
 function saveWindowState() {
-  if (!mainWindow) return;
+  if (!mainWindow || mainWindow.isDestroyed()) return;
   const bounds = mainWindow.getBounds();
   const isMaximized = mainWindow.isMaximized();
-  const displays = screen.getAllDisplays();
-  const currentDisplay = screen.getDisplayMatching(bounds);
-  
+  const currentDisplay =
+    screen.getDisplayMatching(bounds) ||
+    screen.getDisplayNearestPoint({
+      x: Math.round(bounds.x + bounds.width / 2),
+      y: Math.round(bounds.y + bounds.height / 2),
+    });
+  const workArea = currentDisplay.workArea || currentDisplay.bounds;
+
   const state = {
     bounds,
+    /** Stable geometric fingerprint — used when display.id changes after reboot */
+    displayBounds: {
+      x: workArea.x,
+      y: workArea.y,
+      width: workArea.width,
+      height: workArea.height,
+    },
     isMaximized,
     monitorId: currentDisplay.id.toString(),
-    shortcut: currentShortcut
+    shortcut: currentShortcut,
   };
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify(state));
@@ -215,7 +228,7 @@ function saveWindowState() {
   }
 }
 
-function loadWindowState() {
+function loadWindowState(): any | null {
   try {
     if (fs.existsSync(STATE_FILE)) {
       return JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
@@ -224,6 +237,49 @@ function loadWindowState() {
     console.error('Error loading window state:', e);
   }
   return null;
+}
+
+function readPreferredMonitorId(): string | null {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (config.selectedMonitor) return String(config.selectedMonitor);
+    }
+  } catch (e) {
+    console.error('[MONITOR] Error reading preferred monitor from config:', e);
+  }
+  return null;
+}
+
+function persistSelectedMonitorInConfig(monitorId: string) {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return;
+    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    if (config.selectedMonitor === monitorId) return;
+    config.selectedMonitor = monitorId;
+    isSavingConfig = true;
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    setTimeout(() => { isSavingConfig = false; }, 300);
+  } catch (e) {
+    console.error('[MONITOR] Error persisting selectedMonitor in config:', e);
+  }
+}
+
+function placeWindowOnDisplay(display: Electron.Display) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const wa = display.workArea || display.bounds;
+  try {
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    mainWindow.setBounds({
+      x: wa.x,
+      y: wa.y,
+      width: wa.width,
+      height: wa.height,
+    });
+    mainWindow.maximize();
+  } catch (e) {
+    console.error('[MONITOR] placeWindowOnDisplay failed:', e);
+  }
 }
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
@@ -238,46 +294,33 @@ function getIconPath(): string {
 function createWindow() {
   const windowState = loadWindowState();
   const displays = screen.getAllDisplays();
-  let targetDisplay = screen.getPrimaryDisplay();
+  const primary = screen.getPrimaryDisplay();
+  const preferredId = readPreferredMonitorId();
 
-  // Cargar monitor prioritariamente desde cyber-launcher-config.json (configuración centralizada robusta)
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      if (config.selectedMonitor) {
-        const savedDisplay = displays.find(d => d.id.toString() === config.selectedMonitor);
-        if (savedDisplay) {
-          targetDisplay = savedDisplay;
-          console.log(`[MONITOR] Cargado monitor desde config central: ${targetDisplay.id}`);
-        }
-      }
-    }
-  } catch (e) {
-    console.error('[MONITOR] Error cargando monitor desde config central:', e);
-  }
+  const targetDisplay = resolveTargetDisplay(displays, primary, {
+    preferredId,
+    savedMonitorId: windowState?.monitorId ?? null,
+    boundsHint: windowState?.displayBounds || windowState?.bounds || null,
+  });
 
-  // Fallback a window-state.json si no está definido en el archivo de configuración
-  if (targetDisplay.id === screen.getPrimaryDisplay().id && windowState && windowState.monitorId) {
-    const savedDisplay = displays.find(d => d.id.toString() === windowState.monitorId);
-    if (savedDisplay) {
-      targetDisplay = savedDisplay;
-      console.log(`[MONITOR] Cargado monitor desde window-state: ${targetDisplay.id}`);
-    }
-  }
-  
-  console.log(`Creating window on display: ${targetDisplay.id} at ${targetDisplay.workArea.x},${targetDisplay.workArea.y}`);
+  console.log(
+    `[MONITOR] Creating on display ${targetDisplay.id}` +
+      ` (preferred=${preferredId || 'none'}, savedId=${windowState?.monitorId || 'none'})` +
+      ` at ${targetDisplay.workArea.x},${targetDisplay.workArea.y}`
+  );
 
+  const startupWorkArea = { ...(targetDisplay.workArea || targetDisplay.bounds) };
   const { width, height } = targetDisplay.workAreaSize;
 
   mainWindow = new BrowserWindow({
     width: width,
     height: height,
-    x: targetDisplay.workArea.x,
-    y: targetDisplay.workArea.y,
+    x: startupWorkArea.x,
+    y: startupWorkArea.y,
     frame: false,
     transparent: false,
-    alwaysOnTop: false, // Quitar alwaysOnTop para permitir que otras ventanas se abran encima si es necesario
-    resizable: true, // Importante: debe ser true para que maximize() funcione correctamente en Windows
+    alwaysOnTop: false,
+    resizable: true,
     skipTaskbar: !showTaskbarIcon,
     backgroundColor: '#0a0f18',
     show: false,
@@ -287,38 +330,48 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: false,
-      // Reduce white flash while Chromium paints the first frame
       backgroundThrottling: false,
     },
     autoHideMenuBar: true,
   });
 
-  // Reaffirm shell color (Windows can ignore backgroundColor until after create in some builds)
-  mainWindow.setBackgroundColor('#0a0f18');
+  try { mainWindow.setBackgroundColor('#0a0f18'); } catch { /* ignore */ }
 
-  // Truco para quitar el gap en ventanas frameless de Windows:
-  // Maximizar debe hacerse con resizable en true, pero luego se puede bloquear.
   mainWindow.setResizable(true);
-  mainWindow.setBounds(targetDisplay.workArea);
-  
-  // Si queremos que Windows gestione el área de trabajo (taskbars), usamos maximize
-  // pero solo si no estamos ya en la posición correcta.
-  mainWindow.maximize();
+  placeWindowOnDisplay(targetDisplay);
 
-  // Escuchar cambios para evitar que Windows añada bordes al redimensionar
-  mainWindow.on('maximize', () => {
-    // Al maximizar, Windows a veces añade bordes de 8px si no se tiene cuidado
-    // pero con frame:false, maximize() debería ser limpio.
-  });
+  mainWindow.on('maximize', () => {});
 
-  // Guardar estado al mover o redimensionar
   mainWindow.on('move', saveWindowState);
   mainWindow.on('resize', saveWindowState);
 
-  // Mostrar la ventana cuando esté lista para evitar flash blanco
-  mainWindow.once('ready-to-show', () => {
-    console.log('Window ready-to-show, displaying...');
+  // First paint reveal (CyberViewer): wait for ui-ready, opacity 0 -> show -> fade in
+  let initialRevealed = false;
+  const revealAfterFirstPaint = () => {
+    if (initialRevealed || !mainWindow || mainWindow.isDestroyed()) return;
+    initialRevealed = true;
+    console.log('[WM] First-paint reveal (ui-ready / fallback)');
+
+    try { mainWindow.setOpacity(0); } catch { /* ignore */ }
+    placeWindowOnDisplay(targetDisplay);
+    saveWindowState();
     showMainWindow();
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        try { mainWindow.setOpacity(1); } catch { /* ignore */ }
+      }
+    }, 32);
+  };
+
+  const onUiReady = () => {
+    ipcMain.removeListener('ui-ready', onUiReady);
+    revealAfterFirstPaint();
+  };
+  ipcMain.on('ui-ready', onUiReady);
+
+  mainWindow.once('ready-to-show', () => {
+    console.log('[WM] ready-to-show — waiting for ui-ready (fallback 1.5s)');
+    setTimeout(() => revealAfterFirstPaint(), 1500);
   });
 
   // Recargar config cuando la ventana se restaura del tray
@@ -343,7 +396,6 @@ function createWindow() {
     console.log('[WM EVENT] hide');
   });
 
-  // Recargar config cuando la ventana recibe foco (doble fallback)
   mainWindow.on('focus', () => {
     console.log('[MAIN] Window focus event fired, sending reload-config');
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -351,20 +403,17 @@ function createWindow() {
     }
   });
 
-  // Ocultar launcher cuando pierde foco (comportamiento tipo launcher)
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
     
-    // Si la ventana está anclada (Always on Top), ignorar la pérdida de foco e informar al frontend para destellar el Pin
     if (mainWindow.isAlwaysOnTop()) {
       mainWindow.webContents.send('always-on-top-blur-attempt');
       return;
     }
 
     if (!hideOnBlurEnabled) return;
-    // Pequeño delay para no ocultar si un diálogo nativo (file picker, DevTools) roba el foco
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
@@ -374,7 +423,6 @@ function createWindow() {
     }, 200);
   });
 
-  // GUARD: Si Windows restaura la ventana (p.ej. tras UAC), re-ocultarla
   mainWindow.on('restore', () => {
     console.log('[WM EVENT] restore (inOwnRestoreCall=' + inOwnRestoreCall + ', state=' + windowVisibilityState + ')');
     if (inOwnRestoreCall === ownRestoreCallId) {
@@ -387,11 +435,10 @@ function createWindow() {
     }
   });
 
-  // Seguridad: Mostrar después de 3 segundos si ready-to-show no disparó
   setTimeout(() => {
-    if (mainWindow && !mainWindow.isVisible()) {
-      console.log('Safety timeout: forcing window show');
-      showMainWindow();
+    if (!initialRevealed) {
+      console.log('[WM] Safety timeout: forcing first-paint reveal');
+      revealAfterFirstPaint();
     }
   }, 3000);
 
@@ -401,7 +448,6 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // En lugar de cerrar, minimizar a la bandeja del sistema
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
       e.preventDefault();
@@ -412,6 +458,7 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
+    ipcMain.removeListener('ui-ready', onUiReady);
     mainWindow = null;
   });
 }
@@ -1322,15 +1369,10 @@ foreach (\$app in \$startApps) {
     const target = displays.find(d => d.id.toString() === monitorId);
     if (!target) return;
 
-    // Primero unmaximize, luego mover, luego maximize en el nuevo monitor
-    mainWindow.unmaximize();
-    mainWindow.setBounds({
-      x: target.workArea.x,
-      y: target.workArea.y,
-      width: target.workArea.width,
-      height: target.workArea.height,
-    });
-    mainWindow.maximize();
+    placeWindowOnDisplay(target);
+    persistSelectedMonitorInConfig(monitorId);
+    saveWindowState();
+    return { success: true, monitorId };
   });
 
   // --- Registrar atajo global desde React ---

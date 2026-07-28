@@ -155,6 +155,7 @@ declare global {
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
+      uiReady: () => void;
     };
   }
 }
