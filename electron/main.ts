@@ -132,15 +132,28 @@ function resumeHotspotsAfterUAC(delayMs = 1500) {
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] showMainWindow (state=' + windowVisibilityState + ')');
+    const dpiSettle = willChangeDisplayOnActivation();
     placeOnActivationDisplayIfNeeded();
-    resumeHotspotsImmediate();
-    const callId = ++ownShowCallId;
-    inOwnShowCall = callId;
-    windowVisibilityState = 'shown-intentional';
-    mainWindow.show();
-    mainWindow.focus();
-    if (inOwnShowCall === callId) inOwnShowCall = 0;
-    setImmediate(() => { if (inOwnShowCall === callId) inOwnShowCall = 0; });
+
+    const reveal = () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      resumeHotspotsImmediate();
+      const callId = ++ownShowCallId;
+      inOwnShowCall = callId;
+      windowVisibilityState = 'shown-intentional';
+      bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + (dpiSettle ? 1200 : 0));
+      mainWindow.show();
+      mainWindow.focus();
+      if (inOwnShowCall === callId) inOwnShowCall = 0;
+      setImmediate(() => { if (inOwnShowCall === callId) inOwnShowCall = 0; });
+    };
+
+    // Mixed DPI (e.g. 150% ↔ 125%): let Chromium attach to the new scale before becoming visible
+    if (dpiSettle) {
+      setTimeout(reveal, 48);
+    } else {
+      reveal();
+    }
   }
 }
 
@@ -273,14 +286,32 @@ function placeWindowOnDisplay(display: Electron.Display, opts?: { maximize?: boo
   const wa = display.workArea || display.bounds;
   const shouldMaximize = opts?.maximize !== false;
   try {
-    if (mainWindow.isMaximized()) mainWindow.unmaximize();
-    mainWindow.setBounds({
-      x: wa.x,
-      y: wa.y,
-      width: wa.width,
-      height: wa.height,
-    });
-    if (shouldMaximize) mainWindow.maximize();
+    const currentBounds = mainWindow.getBounds();
+    const currentDisplay =
+      screen.getDisplayMatching(currentBounds) ||
+      screen.getDisplayNearestPoint({
+        x: Math.round(currentBounds.x + currentBounds.width / 2),
+        y: Math.round(currentBounds.y + currentBounds.height / 2),
+      });
+
+    // Same display + already maximized → skip (avoids mixed-DPI thrash on reopen)
+    if (currentDisplay?.id === display.id && mainWindow.isMaximized() && shouldMaximize) {
+      return;
+    }
+
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    }
+
+    // `animate: false` — Windows DPI transitions look worse with animated bounds
+    mainWindow.setBounds(
+      { x: wa.x, y: wa.y, width: wa.width, height: wa.height },
+      false
+    );
+
+    if (shouldMaximize && !mainWindow.isMaximized()) {
+      mainWindow.maximize();
+    }
   } catch (e) {
     console.error('[MONITOR] placeWindowOnDisplay failed:', e);
   }
@@ -295,6 +326,13 @@ function getCursorDisplay(): Electron.Display {
 
 function isFollowCursorMonitorMode(): boolean {
   return readPreferredMonitorId() === MONITOR_FOLLOW_CURSOR;
+}
+
+function willChangeDisplayOnActivation(): boolean {
+  if (!isFollowCursorMonitorMode() || !mainWindow || mainWindow.isDestroyed()) return false;
+  const target = getCursorDisplay();
+  const cur = screen.getDisplayMatching(mainWindow.getBounds());
+  return !cur || cur.id !== target.id;
 }
 
 /** Before showing via activation, optionally jump to the cursor's monitor. */

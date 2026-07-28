@@ -2971,7 +2971,7 @@ export default function App() {
       {/* --- OVERLAYS FOR IMAGE BACKGROUND --- */}
       {bgType === 'image' && (
         <div 
-          className="absolute inset-0 pointer-events-none transition-all duration-500" 
+          className="absolute inset-0 pointer-events-none transition-opacity duration-300" 
           style={{ backgroundColor: `rgba(0, 0, 0, ${bgOpacity / 100})` }}
         />
       )}
@@ -2999,16 +2999,16 @@ export default function App() {
       </AnimatePresence>
 
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
         className="flex flex-col w-full h-full relative z-10"
       >
         <div className="flex-1 flex overflow-hidden">
             {/* --- LEFT SIDEBAR (Categories) --- */}
             <aside 
               ref={leftAsideRef}
-              className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-all duration-300'}`}
+              className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-colors duration-200'}`}
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
         <div className="p-6 flex items-center gap-3">
@@ -3128,7 +3128,7 @@ export default function App() {
 
       {/* --- CENTER MAIN CONTENT --- */}
       <main 
-        className="flex-1 flex flex-col min-w-0 relative z-10 transition-all duration-300"
+        className="flex-1 flex flex-col min-w-0 relative z-10"
         style={getGlassStyle(0.4)}
       >
         {/* Decorative background element (only visible if not using image) */}
@@ -3684,10 +3684,9 @@ export default function App() {
                 const CardShell: any = animateAppCards ? motion.div : 'div';
                 const motionProps = animateAppCards
                   ? {
-                      initial: { opacity: 0, scale: 0.85 },
-                      animate: { opacity: 1, scale: 1 },
-                      transition: { duration: 0.2, delay: Math.min(index, 12) * 0.01, ease: 'easeOut' },
-                      whileHover: { scale: 1.03 },
+                      initial: { opacity: 0 },
+                      animate: { opacity: 1 },
+                      transition: { duration: 0.15, delay: Math.min(index, 12) * 0.008, ease: 'easeOut' },
                     }
                   : {};
                 
@@ -3838,7 +3837,7 @@ export default function App() {
       {/* --- RIGHT SIDEBAR (Most Used) --- */}
       <aside 
         ref={rightAsideRef}
-        className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-all duration-300'}`}
+        className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-colors duration-200'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarWidth }}
       >
         <div className="p-6 pb-2 flex items-center justify-between">
