@@ -61,14 +61,30 @@ const INITIAL_APPS = [
   { id: 16, name: 'WhatsApp', category: 'Communication', icon: MessageCircle, color: 'text-green-500', isFav: true, usage: 0 },
 ];
 
+const DEFAULT_BG_IMAGE = 'bg_default.jpg';
+
 const PRESET_IMAGES = [
-  'C:\\CyberGems\\CyberLauncher\\default_background.jpg',
+  DEFAULT_BG_IMAGE,
   'bg_abstract.jpg',
   'bg_cyberpunk.jpg',
   'bg_geom.jpg',
 ];
 
 const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
+
+/** Migrate legacy absolute paths / old project folders to packaged preset names. */
+const normalizeBgImage = (path: string | null | undefined): string => {
+  if (!path) return DEFAULT_BG_IMAGE;
+  if (path.includes('antigravity_projects')) return DEFAULT_BG_IMAGE;
+  const normalized = path.replace(/\//g, '\\');
+  if (/([\\/])default_background\.jpg$/i.test(normalized) && normalized.includes(':')) {
+    return DEFAULT_BG_IMAGE;
+  }
+  if (normalized === 'C:\\CyberGems\\CyberLauncher\\default_background.jpg') {
+    return DEFAULT_BG_IMAGE;
+  }
+  return path;
+};
 
 const toThumbnailUrl = (path: string) => {
   if (path.startsWith('http') || path.startsWith('data:')) return path;
@@ -1935,11 +1951,7 @@ export default function App() {
     return (localStorage.getItem('bgType') as any) || 'image';
   });
   const [bgImage, setBgImage] = useState(() => {
-    const saved = localStorage.getItem('bgImage');
-    if (saved && saved.includes('antigravity_projects')) {
-      return 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
-    }
-    return saved || 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
+    return normalizeBgImage(localStorage.getItem('bgImage'));
   });
   const [customImageUrl, setCustomImageUrl] = useState(() => localStorage.getItem('customImageUrl') || '');
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
@@ -2074,7 +2086,7 @@ export default function App() {
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
           // Datos de UI pueden variar entre versiones sin problema
           if (source.bgType) setBgType(source.bgType);
-          if (source.bgImage) setBgImage(source.bgImage);
+          if (source.bgImage) setBgImage(normalizeBgImage(source.bgImage));
           if (source.customImageUrl !== undefined) setCustomImageUrl(source.customImageUrl);
           if (source.bgColor) setBgColor(source.bgColor);
           if (source.bgGradient) setBgGradient(source.bgGradient);
@@ -2284,10 +2296,7 @@ export default function App() {
         localStorage.setItem('bgType', config.bgType);
       }
       if (config.bgImage) {
-        let cleanBgImage = config.bgImage;
-        if (cleanBgImage.includes('antigravity_projects')) {
-          cleanBgImage = 'C:\\CyberGems\\CyberLauncher\\default_background.jpg';
-        }
+        const cleanBgImage = normalizeBgImage(config.bgImage);
         setBgImage(cleanBgImage);
         localStorage.setItem('bgImage', cleanBgImage);
       }
@@ -2678,7 +2687,7 @@ export default function App() {
       
       if (data.settings) {
         if (data.settings.bgType !== undefined) setBgType(data.settings.bgType);
-        if (data.settings.bgImage !== undefined) setBgImage(data.settings.bgImage);
+        if (data.settings.bgImage !== undefined) setBgImage(normalizeBgImage(data.settings.bgImage));
         if (data.settings.customImageUrl !== undefined) setCustomImageUrl(data.settings.customImageUrl);
         if (data.settings.bgColor !== undefined) setBgColor(data.settings.bgColor);
         if (data.settings.bgGradient !== undefined) setBgGradient(data.settings.bgGradient);
