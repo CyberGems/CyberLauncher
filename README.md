@@ -29,7 +29,7 @@ CyberLauncher is a full-screen, glassmorphic application launcher built with **E
 - **📂 Custom Categories** — Organize apps into color-coded categories with inline editing
 - **🖥️ Multi-Monitor Support** — Choose which display CyberLauncher appears on
 - **🎯 Hot Corners** — Activate the launcher by moving your cursor to any screen corner
-- **⌨️ Global Shortcut** — Show/hide with a customizable keyboard shortcut (default: `Alt+Space`)
+- **⌨️ Global Shortcut** — Show/hide with a customizable keyboard shortcut (default: `Alt+Shift+L`)
 - **🎨 Theming** — Background images, gradients, solid colors, glass intensity, and opacity controls
 - **📊 System Monitor** — Real-time RAM usage and disk space in the top bar
 - **🔒 Single Instance** — Only one instance runs at a time; second launches focus the existing window
