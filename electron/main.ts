@@ -132,6 +132,7 @@ function resumeHotspotsAfterUAC(delayMs = 1500) {
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] showMainWindow (state=' + windowVisibilityState + ')');
+    placeOnActivationDisplayIfNeeded();
     resumeHotspotsImmediate();
     const callId = ++ownShowCallId;
     inOwnShowCall = callId;
@@ -285,6 +286,26 @@ function placeWindowOnDisplay(display: Electron.Display, opts?: { maximize?: boo
   }
 }
 
+/** Special selectedMonitor value: open on the display under the cursor (hotkey/hotspot/tray). */
+const MONITOR_FOLLOW_CURSOR = 'follow-cursor';
+
+function getCursorDisplay(): Electron.Display {
+  return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+}
+
+function isFollowCursorMonitorMode(): boolean {
+  return readPreferredMonitorId() === MONITOR_FOLLOW_CURSOR;
+}
+
+/** Before showing via activation, optionally jump to the cursor's monitor. */
+function placeOnActivationDisplayIfNeeded() {
+  if (!isFollowCursorMonitorMode()) return;
+  const display = getCursorDisplay();
+  console.log(`[MONITOR] Follow-cursor → display ${display.id}`);
+  placeWindowOnDisplay(display);
+  saveWindowState();
+}
+
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 
 function getIconPath(): string {
@@ -300,11 +321,14 @@ function createWindow() {
   const primary = screen.getPrimaryDisplay();
   const preferredId = readPreferredMonitorId();
 
-  const targetDisplay = resolveTargetDisplay(displays, primary, {
-    preferredId,
-    savedMonitorId: windowState?.monitorId ?? null,
-    boundsHint: windowState?.displayBounds || windowState?.bounds || null,
-  });
+  const targetDisplay =
+    preferredId === MONITOR_FOLLOW_CURSOR
+      ? getCursorDisplay()
+      : resolveTargetDisplay(displays, primary, {
+          preferredId,
+          savedMonitorId: windowState?.monitorId ?? null,
+          boundsHint: windowState?.displayBounds || windowState?.bounds || null,
+        });
 
   console.log(
     `[MONITOR] Creating on display ${targetDisplay.id}` +
@@ -1366,15 +1390,22 @@ foreach (\$app in \$startApps) {
     }));
   });
 
-  // --- Mover ventana a un monitor específico ---
+  // --- Mover ventana a un monitor específico (o modo seguir cursor) ---
   ipcMain.handle('set-monitor', (_event, monitorId: string) => {
     if (!mainWindow) return;
+    persistSelectedMonitorInConfig(monitorId);
+
+    if (monitorId === MONITOR_FOLLOW_CURSOR) {
+      placeWindowOnDisplay(getCursorDisplay());
+      saveWindowState();
+      return { success: true, monitorId };
+    }
+
     const displays = screen.getAllDisplays();
     const target = displays.find(d => d.id.toString() === monitorId);
-    if (!target) return;
+    if (!target) return { success: false };
 
     placeWindowOnDisplay(target);
-    persistSelectedMonitorInConfig(monitorId);
     saveWindowState();
     return { success: true, monitorId };
   });

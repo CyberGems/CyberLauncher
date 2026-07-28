@@ -2742,9 +2742,11 @@ export default function App() {
         setMonitors(mons);
         const primary = mons.find(m => m.isPrimary);
         
-        // Conservar el monitor guardado si ya existe
+        // Conservar el monitor guardado si ya existe (incluye modo seguir cursor)
         const savedMonitor = localStorage.getItem('selectedMonitor') || selectedMonitor;
-        if (savedMonitor && mons.some(m => m.id === savedMonitor)) {
+        if (savedMonitor === 'follow-cursor') {
+          setSelectedMonitor('follow-cursor');
+        } else if (savedMonitor && mons.some(m => m.id === savedMonitor)) {
           setSelectedMonitor(savedMonitor);
         } else if (primary) {
           setSelectedMonitor(primary.id);
@@ -4675,17 +4677,34 @@ export default function App() {
                     <Monitor className="w-4 h-4 text-slate-500" />
                     {t('general_monitor')}
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonitor('follow-cursor');
+                        if (isElectron) {
+                          window.electronAPI!.setMonitor('follow-cursor');
+                        }
+                      }}
+                      className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        selectedMonitor === 'follow-cursor'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                          : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                      }`}
+                    >
+                      {t('general_monitor_follow')}
+                    </button>
                     {monitors.map(mon => (
                       <button
                         key={mon.id}
+                        type="button"
                         onClick={() => {
                           setSelectedMonitor(mon.id);
                           if (isElectron) {
                             window.electronAPI!.setMonitor(mon.id);
                           }
                         }}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
                           selectedMonitor === mon.id 
                             ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm' 
                             : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'

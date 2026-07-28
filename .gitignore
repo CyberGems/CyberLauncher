@@ -7,7 +7,6 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
 scratch/
 *.zip
 /icono*.png
