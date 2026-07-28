@@ -23,7 +23,7 @@ app.setName('CyberLauncher');
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
-let currentShortcut = 'Alt+Space';
+let currentShortcut = 'Alt+Shift+L';
 let hotspotCorners: string[] = [];
 let hotspotDelay = 300;
 let hotspotTimer: NodeJS.Timeout | null = null;
@@ -686,7 +686,7 @@ function registerGlobalShortcut(shortcut: string) {
   // Desregistrar el atajo anterior
   globalShortcut.unregisterAll();
 
-  // Convertir formato "Alt+Space" al formato de Electron "Alt+Space"
+  // Convertir formato "Alt+Shift+L" al formato de Electron
   // El formato de Electron usa: CommandOrControl, Alt, Shift, Super, etc.
   const electronShortcut = shortcut
     .replace(/Meta/g, 'Super')

@@ -11,10 +11,12 @@ import {
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, Eye, Pin, Play, Pause, Timer,
-  Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA
+  Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw
 } from 'lucide-react';
 
 // (CyberTray import removed)
+
+const DEFAULT_ACTIVATION_SHORTCUT = 'Alt+Shift+L';
 
 export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { className?: string, animated?: boolean }) => (
   <img 
@@ -1422,7 +1424,7 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: typeof INITIAL_APPS[0] | null } | null>(null);
 
   // Launcher Activity State
-  const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || 'Alt+Space');
+  const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
   const [hotspotCorners, setHotspotCorners] = useState<string[]>(() => {
     const saved = localStorage.getItem('hotspotCorners');
     return saved ? JSON.parse(saved) : [];
@@ -4587,39 +4589,55 @@ export default function App() {
                     <Keyboard className="w-4 h-4 text-slate-500" />
                     {t('general_shortcut')}
                   </label>
-                  <button
-                    onClick={() => setIsRecordingShortcut(true)}
-                    onKeyDown={(e) => {
-                      if (isRecordingShortcut) {
-                        e.preventDefault();
-                        const keys = [];
-                        if (e.ctrlKey) keys.push('Ctrl');
-                        if (e.altKey) keys.push('Alt');
-                        if (e.shiftKey) keys.push('Shift');
-                        if (e.metaKey) keys.push('Meta');
-                        
-                        if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
-                            const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
-                            keys.push(keyName);
-                            const newShortcut = keys.join('+');
-                            setActivationShortcut(newShortcut);
-                            setIsRecordingShortcut(false);
-                            // Registrar el atajo global en Electron
-                            if (isElectron) {
-                              window.electronAPI!.registerShortcut(newShortcut);
-                            }
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsRecordingShortcut(true)}
+                      onKeyDown={(e) => {
+                        if (isRecordingShortcut) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+                          
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                              keys.push(keyName);
+                              const newShortcut = keys.join('+');
+                              setActivationShortcut(newShortcut);
+                              setIsRecordingShortcut(false);
+                              // Registrar el atajo global en Electron
+                              if (isElectron) {
+                                window.electronAPI!.registerShortcut(newShortcut);
+                              }
+                          }
                         }
-                      }
-                    }}
-                    onBlur={() => setIsRecordingShortcut(false)}
-                    className={`w-full text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
-                      isRecordingShortcut 
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
-                        : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
-                    }`}
-                  >
-                    {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
-                  </button>
+                      }}
+                      onBlur={() => setIsRecordingShortcut(false)}
+                      className={`flex-1 text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                        isRecordingShortcut 
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                          : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
+                      }`}
+                    >
+                      {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
+                    </button>
+                    <button
+                      type="button"
+                      title={t('general_shortcut_reset')}
+                      onClick={() => {
+                        setIsRecordingShortcut(false);
+                        setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                        if (isElectron) {
+                          window.electronAPI!.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                        }
+                      }}
+                      className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
