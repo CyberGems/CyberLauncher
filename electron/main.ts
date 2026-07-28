@@ -4,6 +4,7 @@ import path from 'node:path';
 import { exec, execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
+import crypto from 'node:crypto';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -286,9 +287,14 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: false,
+      // Reduce white flash while Chromium paints the first frame
+      backgroundThrottling: false,
     },
     autoHideMenuBar: true,
   });
+
+  // Reaffirm shell color (Windows can ignore backgroundColor until after create in some builds)
+  mainWindow.setBackgroundColor('#0a0f18');
 
   // Truco para quitar el gap en ventanas frameless de Windows:
   // Maximizar debe hacerse con resizable en true, pero luego se puede bloquear.
@@ -480,9 +486,24 @@ function toggleWindow(forceShow = false) {
 // =====================================
 // HOTSPOTS LOGIC (Esquinas activas)
 // =====================================
+function stopHotspotPolling() {
+  if (hotspotTimer) {
+    clearInterval(hotspotTimer);
+    hotspotTimer = null;
+  }
+}
+
 function startHotspotPolling() {
-  if (hotspotTimer) clearInterval(hotspotTimer);
+  stopHotspotPolling();
   lastHotspotPollTime = Date.now();
+  lastHotspotCorner = '';
+  hotspotEntryTime = 0;
+  hotspotCooldown = false;
+
+  if (hotspotCorners.length === 0) {
+    console.log('[HOTSPOT] No corners configured — polling stopped');
+    return;
+  }
   
   hotspotTimer = setInterval(() => {
     if (hotspotsPausedByUAC) return;
@@ -642,6 +663,25 @@ function registerGlobalShortcut(shortcut: string) {
 // =====================================
 // FILE RESOLUTION HELPERS
 // =====================================
+
+function getIconCacheDir() {
+  const dir = path.join(app.getPath('userData'), 'icon-cache');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function toLocalResourceUrl(filePath: string) {
+  return `local-resource:///${filePath.replace(/\\/g, '/')}`;
+}
+
+/** Persist PNG bytes to disk cache and return a local-resource URL (avoids base64 in config). */
+async function persistIconPng(sourcePath: string, pngBuffer: Buffer): Promise<string> {
+  const hash = crypto.createHash('sha1').update(sourcePath.toLowerCase()).digest('hex').slice(0, 24);
+  const outPath = path.join(getIconCacheDir(), `${hash}.png`);
+  await fs.promises.writeFile(outPath, pngBuffer);
+  return toLocalResourceUrl(outPath);
+}
+
 async function resolveFullFileInfo(filePath: string) {
   try {
     console.log('--- Iniciando resolución de archivo ---');
@@ -654,7 +694,6 @@ async function resolveFullFileInfo(filePath: string) {
     let ext = path.extname(normalized).toLowerCase();
     let resolvedPath = normalized;
     let resolvedName = path.basename(normalized, ext);
-    let iconDataUrl = '';
 
     // RESOLVER .LNK DE FORMA MÁS AGRESIVA
     if (ext === '.lnk') {
@@ -685,54 +724,65 @@ async function resolveFullFileInfo(filePath: string) {
       }
     }
 
-    // EXTRACCIÓN DE ÍCONO USANDO NATIVEIMAGE
-    try {
-      console.log('Intentando extraer icono para:', resolvedPath);
-      if (fs.existsSync(resolvedPath)) {
-        // Intentar primero con tamaño grande
-        let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
-        
-        // Si falla o es genérico, intentar con tamaño normal
-        if (!icon || icon.isEmpty()) {
-          console.log('Icono grande falló, intentando normal...');
-          icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
-        }
-
-        if (icon && !icon.isEmpty()) {
-          iconDataUrl = icon.toDataURL();
-          console.log('Icono extraído. Longitud base64:', iconDataUrl.length);
-        } else {
-          console.log('No se pudo extraer icono (archivo protegido o sin recursos)');
-        }
-      }
-    } catch (e) {
-      console.warn('Error getFileIcon:', e);
-    }
-
-    // Fallback con PowerShell: si el icono es muy pequeño, probablemente sea genérico
-    if (!iconDataUrl || iconDataUrl.length < 1500) {
+    // EXTRACCIÓN DE ÍCONO → cache en disco (local-resource://) en vez de base64 en config
+    let iconPath = '';
+    const cachedIconPath = path.join(
+      getIconCacheDir(),
+      `${crypto.createHash('sha1').update(resolvedPath.toLowerCase()).digest('hex').slice(0, 24)}.png`
+    );
+    if (fs.existsSync(cachedIconPath) && fs.statSync(cachedIconPath).size > 100) {
+      iconPath = toLocalResourceUrl(cachedIconPath);
+      console.log('[ICON] Cache hit:', cachedIconPath);
+    } else {
       try {
-        console.log('[ICON] Fallback PowerShell para:', resolvedPath);
-        const escapedPath = resolvedPath.replace(/'/g, "''");
-        const psScript = `Add-Type -AssemblyName System.Drawing; $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('${escapedPath}'); if ($icon) { $bmp=$icon.ToBitmap(); $tmp=[System.IO.Path]::GetTempFileName()+'.png'; $bmp.Save($tmp,[System.Drawing.Imaging.ImageFormat]::Png); Write-Output $tmp; $icon.Dispose(); $bmp.Dispose() }`;
-        const tmpPs = path.join(os.tmpdir(), `cl-icon-${Date.now()}.ps1`);
-        fs.writeFileSync(tmpPs, psScript, 'utf-8');
-        const psOutput = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, { encoding: 'utf-8', timeout: 8000 }).trim();
-        fs.unlinkSync(tmpPs);
-        if (psOutput && fs.existsSync(psOutput)) {
-          const pngBuffer = fs.readFileSync(psOutput);
-          fs.unlinkSync(psOutput);
-          if (pngBuffer.length > 100) {
-            iconDataUrl = `data:image/png;base64,${pngBuffer.toString('base64')}`;
-            console.log('[ICON] PowerShell extrajo icono. Longitud:', iconDataUrl.length);
-          } else {
-            console.log('[ICON] PowerShell PNG muy pequeño, ignorando');
+        console.log('Intentando extraer icono para:', resolvedPath);
+        if (fs.existsSync(resolvedPath)) {
+          let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
+          if (!icon || icon.isEmpty()) {
+            console.log('Icono grande falló, intentando normal...');
+            icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
           }
-        } else {
-          console.log('[ICON] PowerShell no devolvio ruta de PNG');
+
+          if (icon && !icon.isEmpty()) {
+            const png = icon.toPNG();
+            // Heurística previa: iconos genéricos suelen ser muy pequeños en dataURL (~<1500 chars ≈ <~1KB)
+            if (png.length >= 400) {
+              iconPath = await persistIconPng(resolvedPath, png);
+              console.log('[ICON] Guardado en cache. Bytes:', png.length);
+            }
+          } else {
+            console.log('No se pudo extraer icono (archivo protegido o sin recursos)');
+          }
         }
-      } catch (psErr: any) {
-        console.warn('[ICON] PowerShell fallback falló:', psErr?.message || psErr);
+      } catch (e) {
+        console.warn('Error getFileIcon:', e);
+      }
+
+      // Fallback con PowerShell si el icono nativo falló o parece genérico
+      if (!iconPath) {
+        try {
+          console.log('[ICON] Fallback PowerShell para:', resolvedPath);
+          const escapedPath = resolvedPath.replace(/'/g, "''");
+          const psScript = `Add-Type -AssemblyName System.Drawing; $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('${escapedPath}'); if ($icon) { $bmp=$icon.ToBitmap(); $tmp=[System.IO.Path]::GetTempFileName()+'.png'; $bmp.Save($tmp,[System.Drawing.Imaging.ImageFormat]::Png); Write-Output $tmp; $icon.Dispose(); $bmp.Dispose() }`;
+          const tmpPs = path.join(os.tmpdir(), `cl-icon-${Date.now()}.ps1`);
+          await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+          const psOutput = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, { encoding: 'utf-8', timeout: 8000 }).trim();
+          await fs.promises.unlink(tmpPs).catch(() => {});
+          if (psOutput && fs.existsSync(psOutput)) {
+            const pngBuffer = await fs.promises.readFile(psOutput);
+            await fs.promises.unlink(psOutput).catch(() => {});
+            if (pngBuffer.length > 100) {
+              iconPath = await persistIconPng(resolvedPath, pngBuffer);
+              console.log('[ICON] PowerShell → cache. Bytes:', pngBuffer.length);
+            } else {
+              console.log('[ICON] PowerShell PNG muy pequeño, ignorando');
+            }
+          } else {
+            console.log('[ICON] PowerShell no devolvio ruta de PNG');
+          }
+        } catch (psErr: any) {
+          console.warn('[ICON] PowerShell fallback falló:', psErr?.message || psErr);
+        }
       }
     }
 
@@ -741,8 +791,8 @@ async function resolveFullFileInfo(filePath: string) {
       path: resolvedPath,
       ext,
       exists: fs.existsSync(resolvedPath),
-      iconPath: iconDataUrl,
-      debug: { normalized, resolvedPath, ext, iconSize: iconDataUrl.length },
+      iconPath,
+      debug: { normalized, resolvedPath, ext, iconCached: !!iconPath },
     };
   } catch (err) {
     console.error('Error resolveFullFileInfo:', err);
@@ -1458,7 +1508,7 @@ foreach (\$app in \$startApps) {
     console.log('ACTUALIZANDO HOTSPOTS:', corners, 'Delay:', delay);
     hotspotCorners = corners;
     hotspotDelay = delay;
-    startHotspotPolling();
+    startHotspotPolling(); // no-op interval when corners empty
     return { success: true };
   });
 
@@ -1581,15 +1631,11 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('saveConfig', async (_event, config) => {
     isSavingConfig = true;
     try {
-      // (CyberTray sync removed)
-      
       const json = JSON.stringify(config, null, 2);
-      fs.writeFileSync(CONFIG_FILE, json, 'utf-8');
+      await fs.promises.writeFile(CONFIG_FILE, json, 'utf-8');
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial
       await new Promise(r => setTimeout(r, 50));
-      // Verificar que se escribio correctamente
-      const verify = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      console.log('[CONFIG] Guardado:', CONFIG_FILE, 'apps:', verify.apps?.length || 0);
+      console.log('[CONFIG] Guardado:', CONFIG_FILE, 'apps:', config?.apps?.length || 0);
       return true;
     } catch (e: any) {
       console.error('[CONFIG] Error saving:', e?.message || e);
@@ -1604,15 +1650,17 @@ foreach (\$app in \$startApps) {
     try {
       console.log('[CONFIG] Ruta:', CONFIG_FILE);
       if (fs.existsSync(CONFIG_FILE)) {
-        const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        const raw = await fs.promises.readFile(CONFIG_FILE, 'utf-8');
+        const data = JSON.parse(raw);
         console.log('[CONFIG] Cargado:', data.apps?.length || 0, 'apps');
         return data;
       }
       // Migrar desde ruta antigua si existe (antes de app.setName)
       const oldConfig = path.join(app.getPath('appData'), 'cyber-launcher', 'cyber-launcher-config.json');
       if (fs.existsSync(oldConfig)) {
-        const data = JSON.parse(fs.readFileSync(oldConfig, 'utf-8'));
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
+        const raw = await fs.promises.readFile(oldConfig, 'utf-8');
+        const data = JSON.parse(raw);
+        await fs.promises.writeFile(CONFIG_FILE, JSON.stringify(data, null, 2));
         return data;
       }
       return null;

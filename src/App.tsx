@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { translations, TranslationKey } from './locales';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -368,6 +368,96 @@ const CyberAnalogClock = () => {
     </div>
   );
 };
+
+/** Isolated digital clock — ticks without re-rendering the full App tree. */
+const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title: string }) => {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <button
+      onClick={onClick}
+      className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
+      title={title}
+    >
+      <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+      <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
+    </button>
+  );
+});
+
+/** Footer date — updates once per minute (enough for calendar day). */
+const FooterDate = React.memo(({ title }: { title: string }) => {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const msToNextMinute = 60_000 - (Date.now() % 60_000);
+    let intervalId: number | undefined;
+    const alignId = window.setTimeout(() => {
+      tick();
+      intervalId = window.setInterval(tick, 60_000);
+    }, msToNextMinute);
+    return () => {
+      clearTimeout(alignId);
+      if (intervalId !== undefined) clearInterval(intervalId);
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1.5 cursor-default text-slate-400" title={title}>
+      <span className="text-sm font-mono tracking-wide">
+        {now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
+      </span>
+    </div>
+  );
+});
+
+/** Rotating search hint — own interval so App does not re-render every 3s. */
+const RotatingSearchPlaceholder = React.memo(({
+  mode,
+  t,
+}: {
+  mode: 'console' | 'system' | 'normal';
+  t: (key: TranslationKey, variables?: Record<string, string>) => string;
+}) => {
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const text =
+    mode === 'console'
+      ? (placeholderIndex === 0 ? t('search_placeholder_console') : t('hint_console_enter'))
+      : mode === 'system'
+      ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
+      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
+
+  return (
+    <div className="absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={`${mode}-${placeholderIndex}`}
+          initial={{ opacity: 0, y: 3 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -3 }}
+          transition={{ duration: 0.25 }}
+          className="truncate"
+        >
+          {text}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+});
 
 interface ScheduledTask {
   id: string;
@@ -1328,8 +1418,6 @@ export default function App() {
     localStorage.setItem('app_launcher_view_mode', viewMode);
   }, [viewMode]);
 
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: typeof INITIAL_APPS[0] | null } | null>(null);
 
@@ -1709,10 +1797,11 @@ export default function App() {
 
   const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
   const [isPinFlashing, setIsPinFlashing] = useState(false);
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
-  // Background Scheduler Timer Tick
+  // Background Scheduler — only tick while there are active tasks (avoids 1 Hz App re-renders when idle)
   useEffect(() => {
+    if (scheduledTasks.length === 0) return;
+
     const timer = setInterval(() => {
       setScheduledTasks(prev => {
         if (prev.length === 0) return prev;
@@ -1745,14 +1834,7 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [scheduledTasks.length > 0]);
 
   const triggerPinFlash = useCallback(() => {
     setIsPinFlashing(true);
@@ -1903,6 +1985,10 @@ export default function App() {
   });
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
   const [isDraggingRight, setIsDraggingRight] = useState(false);
+  const leftAsideRef = useRef<HTMLElement>(null);
+  const rightAsideRef = useRef<HTMLElement>(null);
+  const pendingLeftWidth = useRef<number | null>(null);
+  const pendingRightWidth = useRef<number | null>(null);
 
   useEffect(() => {
     localStorage.setItem('leftSidebarWidth', leftSidebarWidth.toString());
@@ -2280,12 +2366,18 @@ export default function App() {
     setIsDraggingLeft(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
+    pendingLeftWidth.current = leftSidebarWidth;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      setLeftSidebarWidth(Math.max(200, Math.min(500, moveEvent.clientX)));
+      const w = Math.max(200, Math.min(500, moveEvent.clientX));
+      pendingLeftWidth.current = w;
+      if (leftAsideRef.current) leftAsideRef.current.style.width = `${w}px`;
     };
 
     const handleMouseUp = () => {
+      if (pendingLeftWidth.current != null) {
+        setLeftSidebarWidth(pendingLeftWidth.current);
+      }
       setIsDraggingLeft(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -2302,12 +2394,18 @@ export default function App() {
     setIsDraggingRight(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
+    pendingRightWidth.current = rightSidebarWidth;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      setRightSidebarWidth(Math.max(240, Math.min(600, window.innerWidth - moveEvent.clientX)));
+      const w = Math.max(240, Math.min(600, window.innerWidth - moveEvent.clientX));
+      pendingRightWidth.current = w;
+      if (rightAsideRef.current) rightAsideRef.current.style.width = `${w}px`;
     };
 
     const handleMouseUp = () => {
+      if (pendingRightWidth.current != null) {
+        setRightSidebarWidth(pendingRightWidth.current);
+      }
       setIsDraggingRight(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -2318,11 +2416,6 @@ export default function App() {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Auto-hide scrollbar: show on any mouse move + on scroll, hide on cursor stop
   useEffect(() => {
@@ -2662,31 +2755,37 @@ export default function App() {
     fetchMonitors();
   }, []);
 
-  const categoriesWithCount = categories.map(cat => ({
+  const categoriesWithCount = useMemo(() => categories.map(cat => ({
     ...cat,
     count: cat.id === 'all' ? apps.length : apps.filter(app => app.category === cat.name).length
   })).sort((a, b) => {
     if (a.id === 'all') return -1;
     if (b.id === 'all') return 1;
     return a.name.localeCompare(b.name);
-  });
+  }), [categories, apps]);
 
-  const filteredApps = apps.filter(app => {
+  const filteredApps = useMemo(() => apps.filter(app => {
     const matchesCategory = activeCategory === 'all' || categories.find(c => c.id === activeCategory)?.name === app.category;
     const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  }).sort((a, b) => a.name.localeCompare(b.name)), [apps, activeCategory, categories, searchQuery]);
 
-  const favorites = favoriteIds.map(id => apps.find(a => a.id === id)).filter(Boolean) as typeof INITIAL_APPS;
-  const mostUsed = [...apps].sort((a, b) => b.usage - a.usage).slice(0, 15);
+  const favorites = useMemo(
+    () => favoriteIds.map(id => apps.find(a => a.id === id)).filter(Boolean) as typeof INITIAL_APPS,
+    [favoriteIds, apps]
+  );
+  const mostUsed = useMemo(
+    () => [...apps].sort((a, b) => b.usage - a.usage).slice(0, 15),
+    [apps]
+  );
+  const animateAppCards = filteredApps.length <= 48;
 
   const getBackgroundStyle = () => {
     if (bgType === 'image') {
       return { 
         backgroundImage: `url("${bgDataUrl || bgImage}")`, 
         backgroundSize: 'cover', 
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundPosition: 'center'
       };
     }
     if (bgType === 'solid') return { backgroundColor: bgColor };
@@ -2840,8 +2939,8 @@ export default function App() {
   return (
     <div 
       ref={rootRef}
-      className="flex h-screen w-full text-slate-300 font-sans overflow-hidden selection:bg-blue-500/30 relative transition-all duration-500"
-      style={getBackgroundStyle()}
+      className="flex h-screen w-full text-slate-300 font-sans overflow-hidden selection:bg-blue-500/30 relative"
+      style={{ backgroundColor: '#0a0f18', ...getBackgroundStyle() }}
       onDragOver={handleSystemDragOver}
       onDragLeave={handleSystemDragLeave}
       onDrop={handleSystemDrop}
@@ -2895,6 +2994,7 @@ export default function App() {
         <div className="flex-1 flex overflow-hidden">
             {/* --- LEFT SIDEBAR (Categories) --- */}
             <aside 
+              ref={leftAsideRef}
               className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-all duration-300'}`}
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
@@ -3145,25 +3245,10 @@ export default function App() {
               } placeholder:text-slate-500`}
             />
             {searchQuery === '' && (
-              <div className="absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={searchQuery.startsWith('>') ? `console-${placeholderIndex}` : searchScope === 'system' ? `system-${placeholderIndex}` : `normal-${placeholderIndex}`}
-                    initial={{ opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -3 }}
-                    transition={{ duration: 0.25 }}
-                    className="truncate"
-                  >
-                    {searchQuery.startsWith('>') 
-                      ? (placeholderIndex === 0 ? t('search_placeholder_console') : t('hint_console_enter'))
-                      : searchScope === 'system'
-                      ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
-                      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'))
-                    }
-                  </motion.span>
-                </AnimatePresence>
-              </div>
+              <RotatingSearchPlaceholder
+                mode={searchQuery.startsWith('>') ? 'console' : searchScope === 'system' ? 'system' : 'normal'}
+                t={t}
+              />
             )}
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               {searchQuery.startsWith('>') ? (
@@ -3234,14 +3319,10 @@ export default function App() {
               <DiskMonitor />
             </button>
             
-            <button 
+            <HeaderClock
               onClick={() => setIsClockHUDOpen(true)}
-              className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
               title="Abrir Reloj Neuronal y Programador de Ejecuciones"
-            >
-              <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-              <span>{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
-            </button>
+            />
           </div>
         </header>
 
@@ -3587,6 +3668,15 @@ export default function App() {
             >
               {filteredApps.flatMap((app, index) => {
                 const elements = [];
+                const CardShell: any = animateAppCards ? motion.div : 'div';
+                const motionProps = animateAppCards
+                  ? {
+                      initial: { opacity: 0, scale: 0.85 },
+                      animate: { opacity: 1, scale: 1 },
+                      transition: { duration: 0.2, delay: Math.min(index, 12) * 0.01, ease: 'easeOut' },
+                      whileHover: { scale: 1.03 },
+                    }
+                  : {};
                 
                 if (viewMode === 'list') {
                   const firstLetter = app.name.charAt(0).toUpperCase();
@@ -3603,30 +3693,30 @@ export default function App() {
                   }
 
                   if (showHeader) {
+                    const HeaderShell: any = animateAppCards ? motion.div : 'div';
                     elements.push(
-                      <motion.div 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, delay: index * 0.015 }}
+                      <HeaderShell 
+                        {...(animateAppCards ? {
+                          initial: { opacity: 0, x: -10 },
+                          animate: { opacity: 1, x: 0 },
+                          transition: { duration: 0.2, delay: Math.min(index, 12) * 0.015 },
+                        } : {})}
                         key={`header-${viewMode}-${activeCategory}-${pLetter}`}
                         className="col-span-full mt-2 mb-1 flex items-center gap-4 opacity-70" 
                         style={{ gridColumn: '1 / -1' }}
                       >
                         <span className="text-base font-bold font-cyber text-slate-400 w-8 pl-1">{pLetter}</span>
                         <div className="h-px bg-gradient-to-r from-white/10 to-transparent flex-1" />
-                      </motion.div>
+                      </HeaderShell>
                     );
                   }
                 }
 
                 elements.push(
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2, delay: index * 0.01, ease: "easeOut" }}
-                    whileHover={{ scale: 1.03 }}
+                  <CardShell
+                    {...motionProps}
                     key={`app-${viewMode}-${activeCategory}-${app.id}`}
-                    onContextMenu={(e) => handleContextMenu(e, app)}
+                    onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, app)}
                     onClick={() => handleLaunchApp(app)}
                     style={{
                       padding: viewMode === 'grid' 
@@ -3634,7 +3724,9 @@ export default function App() {
                         : `${8 * (cardScale / 100)}px ${12 * (cardScale / 100)}px`,
                       borderRadius: viewMode === 'grid'
                         ? `${16 * (cardScale / 100)}px`
-                        : `${12 * (cardScale / 100)}px`
+                        : `${12 * (cardScale / 100)}px`,
+                      contentVisibility: 'auto' as const,
+                      containIntrinsicSize: viewMode === 'grid' ? '120px' : '56px',
                     }}
                     className={viewMode === 'grid'
                       ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 transition-colors shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
@@ -3705,7 +3797,7 @@ export default function App() {
                         )}
                       </>
                     )}
-                  </motion.div>
+                  </CardShell>
                 );
 
                 return elements;
@@ -3732,6 +3824,7 @@ export default function App() {
 
       {/* --- RIGHT SIDEBAR (Most Used) --- */}
       <aside 
+        ref={rightAsideRef}
         className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-all duration-300'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarWidth }}
       >
@@ -3908,11 +4001,7 @@ export default function App() {
           </div>
           <div className="w-px h-4 bg-white/10" />
           {/* Date */}
-          <div className="flex items-center gap-1.5 cursor-default text-slate-400" title={t('tooltip_date')}>
-            <span className="text-sm font-mono tracking-wide">
-              {currentTime.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
-            </span>
-          </div>
+          <FooterDate title={t('tooltip_date')} />
         </div>
       </div>
 
