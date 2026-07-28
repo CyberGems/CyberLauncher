@@ -2,7 +2,10 @@
   "name": "cyber-launcher",
   "private": true,
   "version": "1.2.6",
+  "description": "CyberLauncher — launcher de escritorio rápido y personalizable, por CyberGems",
   "type": "module",
+  "author": "CyberGems <info@cybergems.org>",
+  "license": "MIT",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -13,8 +16,9 @@
     "lint": "tsc --noEmit"
   },
   "build": {
-    "appId": "com.cyberlauncher.app",
+    "appId": "com.cybergems.cyberlauncher",
     "productName": "CyberLauncher",
+    "copyright": "© 2026 CyberGems",
     "directories": {
       "output": "release"
     },

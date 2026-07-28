@@ -14,3 +14,21 @@ scratch/
 /logo.png
 /icon*.png
 /ICONOS*.png
+
+# Local IDE / VS junk
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Local backups
+*.backup*
+*.bak
+
+# Private local control files (never push)
+AGENTS.md
+CLAUDE.md
+.cursorrules
+.cursor/
+.github/copilot-instructions.md
