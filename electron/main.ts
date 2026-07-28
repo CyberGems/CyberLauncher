@@ -41,6 +41,8 @@ let inOwnRestoreCall = 0;
 let hotspotCooldown = false;
 let hideOnBlurEnabled = true;
 let showTaskbarIcon = false;
+/** Ignore hide-on-blur during initial boot / first maximize (Windows steals focus briefly). */
+let bootBlurGuardUntil = 0;
 let lastHotspotPollTime = 0;
 const HOTSPOT_LAG_THRESHOLD_MS = 400;
 let hotspotsPausedByUAC = false;
@@ -265,9 +267,10 @@ function persistSelectedMonitorInConfig(monitorId: string) {
   }
 }
 
-function placeWindowOnDisplay(display: Electron.Display) {
+function placeWindowOnDisplay(display: Electron.Display, opts?: { maximize?: boolean }) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const wa = display.workArea || display.bounds;
+  const shouldMaximize = opts?.maximize !== false;
   try {
     if (mainWindow.isMaximized()) mainWindow.unmaximize();
     mainWindow.setBounds({
@@ -276,7 +279,7 @@ function placeWindowOnDisplay(display: Electron.Display) {
       width: wa.width,
       height: wa.height,
     });
-    mainWindow.maximize();
+    if (shouldMaximize) mainWindow.maximize();
   } catch (e) {
     console.error('[MONITOR] placeWindowOnDisplay failed:', e);
   }
@@ -338,40 +341,34 @@ function createWindow() {
   try { mainWindow.setBackgroundColor('#0a0f18'); } catch { /* ignore */ }
 
   mainWindow.setResizable(true);
-  placeWindowOnDisplay(targetDisplay);
+  // Position on target monitor WITHOUT maximize before first show —
+  // maximize() while hidden often flashes a white frame on Windows.
+  placeWindowOnDisplay(targetDisplay, { maximize: false });
 
   mainWindow.on('maximize', () => {});
 
   mainWindow.on('move', saveWindowState);
   mainWindow.on('resize', saveWindowState);
 
-  // First paint reveal (CyberViewer): wait for ui-ready, opacity 0 -> show -> fade in
-  let initialRevealed = false;
-  const revealAfterFirstPaint = () => {
-    if (initialRevealed || !mainWindow || mainWindow.isDestroyed()) return;
-    initialRevealed = true;
-    console.log('[WM] First-paint reveal (ui-ready / fallback)');
+  // Early paint: force dark document chrome as soon as DOM exists
+  mainWindow.webContents.on('dom-ready', () => {
+    mainWindow?.webContents.insertCSS(
+      'html,body,#root{margin:0;width:100%;height:100%;background-color:#0a0f18!important;color-scheme:dark;overflow:hidden}'
+    ).catch(() => {});
+  });
 
-    try { mainWindow.setOpacity(0); } catch { /* ignore */ }
-    placeWindowOnDisplay(targetDisplay);
-    saveWindowState();
-    showMainWindow();
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        try { mainWindow.setOpacity(1); } catch { /* ignore */ }
-      }
-    }, 32);
-  };
-
-  const onUiReady = () => {
-    ipcMain.removeListener('ui-ready', onUiReady);
-    revealAfterFirstPaint();
-  };
-  ipcMain.on('ui-ready', onUiReady);
-
+  // Show as soon as Chromium is ready — no opacity dance, no waiting for ui-ready
+  // (those caused black screen / invisible window for ~2s).
   mainWindow.once('ready-to-show', () => {
-    console.log('[WM] ready-to-show — waiting for ui-ready (fallback 1.5s)');
-    setTimeout(() => revealAfterFirstPaint(), 1500);
+    console.log('[WM] ready-to-show — showing');
+    bootBlurGuardUntil = Date.now() + 2000;
+    showMainWindow();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMaximized()) {
+        mainWindow.maximize();
+      }
+    } catch { /* ignore */ }
+    saveWindowState();
   });
 
   // Recargar config cuando la ventana se restaura del tray
@@ -414,7 +411,12 @@ function createWindow() {
     }
 
     if (!hideOnBlurEnabled) return;
+    if (Date.now() < bootBlurGuardUntil) {
+      console.log('[WM] Ignoring blur during boot guard');
+      return;
+    }
     setTimeout(() => {
+      if (Date.now() < bootBlurGuardUntil) return;
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
         windowVisibilityState = 'hidden-blur';
@@ -436,9 +438,12 @@ function createWindow() {
   });
 
   setTimeout(() => {
-    if (!initialRevealed) {
-      console.log('[WM] Safety timeout: forcing first-paint reveal');
-      revealAfterFirstPaint();
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.log('[WM] Safety timeout: forcing show');
+      showMainWindow();
+      try {
+        if (!mainWindow.isMaximized()) mainWindow.maximize();
+      } catch { /* ignore */ }
     }
   }, 3000);
 
@@ -458,7 +463,6 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
-    ipcMain.removeListener('ui-ready', onUiReady);
     mainWindow = null;
   });
 }

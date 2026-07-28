@@ -18,9 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
   setMonitor: (monitorId: string) => ipcRenderer.invoke('set-monitor', monitorId),
 
-  // --- First paint ack (avoids white flash on boot) ---
-  uiReady: () => ipcRenderer.send('ui-ready'),
-
   // --- Atajo global ---
   registerShortcut: (shortcut: string) => ipcRenderer.invoke('register-shortcut', shortcut),
 
