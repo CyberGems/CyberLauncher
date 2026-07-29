@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { resolveTargetDisplay } from './display-resolve';
+import { initUpdater } from './updater';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -2134,6 +2135,16 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
+
+  // Auto-update (GitHub Releases via electron-updater)
+  let bootAutoUpdate = true;
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (typeof config.autoUpdate === 'boolean') bootAutoUpdate = config.autoUpdate;
+    }
+  } catch { /* keep default */ }
+  initUpdater({ autoUpdate: bootAutoUpdate });
 
   // Iniciar guardia de hotspots
   startHotspotPolling();

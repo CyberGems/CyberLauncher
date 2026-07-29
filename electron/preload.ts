@@ -112,4 +112,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-settings', handler);
     return () => { ipcRenderer.removeListener('open-settings', handler); };
   },
+
+  // --- App versions / updates (CyberFeeds model) ---
+  getAppVersions: () => ipcRenderer.invoke('app:get-versions'),
+  getUpdateStatus: () => ipcRenderer.invoke('update:get-status'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  setAutoUpdate: (enabled: boolean) => ipcRenderer.invoke('set-auto-update', enabled),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  onUpdateStatus: (callback: (status: any) => void) => {
+    const handler = (_event: any, status: any) => callback(status);
+    ipcRenderer.on('update:status', handler);
+    return () => { ipcRenderer.removeListener('update:status', handler); };
+  },
 });

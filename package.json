@@ -48,6 +48,11 @@
       ],
       "multiLanguageInstaller": false,
       "shortcutName": "CyberLauncher"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "CyberGems",
+      "repo": "CyberLauncher"
     }
   },
   "dependencies": {
@@ -57,6 +62,7 @@
     "@fontsource/space-grotesk": "^5.3.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.546.0",
     "motion": "^12.38.0",
     "react": "^19.0.1",

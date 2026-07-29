@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
+import AboutModal, { UpdateStatus } from './AboutModal';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Music, Globe, Calculator, Code, Bot, Lock,
@@ -175,6 +176,17 @@ declare global {
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
+      getAppVersions: () => Promise<{
+        app: string; electron: string; chrome: string; node: string;
+        platform: string; arch: string; osRelease: string; osType: string;
+      }>;
+      getUpdateStatus: () => Promise<UpdateStatus>;
+      checkForUpdates: () => Promise<{ ok: boolean; version?: string; error?: string }>;
+      downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
+      installUpdate: () => void;
+      setAutoUpdate: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+      onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
     };
   }
 }
@@ -1567,6 +1579,9 @@ export default function App() {
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [autoUpdate, setAutoUpdate] = useState(true);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
+  const updateNotifSeenRef = useRef<string>('');
   const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
@@ -2002,6 +2017,7 @@ export default function App() {
           if (source.rightSidebarWidth !== undefined) setRightSidebarWidth(source.rightSidebarWidth);
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
           if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
+          if (source.autoUpdate !== undefined) setAutoUpdate(!!source.autoUpdate);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -2025,8 +2041,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -2053,7 +2069,7 @@ export default function App() {
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-          selectedMonitor
+          selectedMonitor, autoUpdate
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -2077,7 +2093,7 @@ export default function App() {
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-    selectedMonitor,
+    selectedMonitor, autoUpdate,
     isConfigLoaded
   ]);
 
@@ -2141,6 +2157,39 @@ export default function App() {
       }
     });
     return cleanup;
+  }, []);
+
+  // Update status: badge + toast (deduped per version/state)
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onUpdateStatus) return;
+
+    const applyStatus = (status: UpdateStatus) => {
+      setUpdateStatus(status);
+      if (status.state === 'available' || status.state === 'downloaded') {
+        const key = `${status.state}:${status.version}`;
+        const seen = updateNotifSeenRef.current || localStorage.getItem('update_notif_seen') || '';
+        if (seen === key) return;
+        updateNotifSeenRef.current = key;
+        localStorage.setItem('update_notif_seen', key);
+        setNotification({
+          message: status.state === 'available'
+            ? t('about_notif_available', { version: status.version })
+            : t('about_notif_downloaded', { version: status.version }),
+          type: 'info',
+        });
+      }
+    };
+
+    window.electronAPI.getUpdateStatus?.().then((s) => { if (s) applyStatus(s); }).catch(() => {});
+    const off = window.electronAPI.onUpdateStatus(applyStatus);
+    return off;
+  }, [t]);
+
+  const handleAutoUpdateChange = useCallback((enabled: boolean) => {
+    setAutoUpdate(enabled);
+    if (isElectron) {
+      window.electronAPI?.setAutoUpdate?.(enabled);
+    }
   }, []);
 
   // Sync config desde disco (watcher / otra instancia) — sin resetear la vista
@@ -2286,6 +2335,9 @@ export default function App() {
       if (config.resetOnLaunch !== undefined) {
         setResetOnLaunch(config.resetOnLaunch);
         localStorage.setItem('resetOnLaunch', config.resetOnLaunch.toString());
+      }
+      if (config.autoUpdate !== undefined) {
+        setAutoUpdate(!!config.autoUpdate);
       }
       if (config.selectedMonitor) {
         setSelectedMonitor(config.selectedMonitor);
@@ -2999,12 +3051,15 @@ export default function App() {
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
         <div className="p-6 flex items-center gap-3">
-          <Tooltip label="Acerca de Cyber Launcher" placement="bottom">
+          <Tooltip label={t('tooltip_about')} placement="bottom">
             <button 
               onClick={() => setIsAboutOpen(true)}
-              className="group w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex flex-shrink-0 items-center justify-center border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
+              className="group relative w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex flex-shrink-0 items-center justify-center border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
             >
               <CyberLogo className="w-9 h-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all group-hover:drop-shadow-[0_0_14px_rgba(34,211,238,0.9)]" />
+              {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+              )}
             </button>
           </Tooltip>
           <div>
@@ -4051,9 +4106,12 @@ export default function App() {
             <Tooltip label={t('tooltip_about')} placement="bottom">
               <button 
                 onClick={() => setIsAboutOpen(true)}
-                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+                className="relative flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
               >
                 <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                )}
               </button>
             </Tooltip>
             <Tooltip label={t('tooltip_settings')} placement="bottom">
@@ -4194,9 +4252,12 @@ export default function App() {
                 e.preventDefault();
                 setIsSettingsOpen(true);
               }}
-              className="hover:scale-110 transition-transform flex-shrink-0"
+              className="relative hover:scale-110 transition-transform flex-shrink-0"
             >
               <CyberLogo className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
+              {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+              )}
             </button>
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
@@ -4284,85 +4345,14 @@ export default function App() {
       {/* --- ABOUT MODAL --- */}
       <AnimatePresence>
         {isAboutOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-            onClick={(e) => { e.stopPropagation(); setIsAboutOpen(false); }}
-          >
-             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 30 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 30 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-sm bg-[#0a0f18] border border-cyan-500/30 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col max-h-[90vh]"
-            >
-              {/* Decorative corners */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-500/50 rounded-tl-2xl m-2 pointer-events-none z-10" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500/50 rounded-tr-2xl m-2 pointer-events-none z-10" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/50 rounded-bl-2xl m-2 pointer-events-none z-10" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50 rounded-br-2xl m-2 pointer-events-none z-10" />
-              
-              <Tooltip label="Cerrar" placement="left">
-                <button 
-                  onClick={() => setIsAboutOpen(false)} 
-                  className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors z-20"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </Tooltip>
-
-              <div className="overflow-y-auto custom-scrollbar flex flex-col items-center p-8 text-center w-full">
-                <CyberLogo className="w-24 h-24 text-cyan-400 mb-6 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] shrink-0" />
-                
-                <h1 className="text-[26px] font-cyber font-bold tracking-widest text-white mb-1 drop-shadow-md shrink-0">CYBER LAUNCHER</h1>
-                <div className="text-xs font-mono text-cyan-400 mb-6 px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 shadow-[inset_0_0_10px_rgba(6,182,212,0.2)] shrink-0">
-                  v1.0.0-beta.neo
-                </div>
-
-                <div className="w-full flex flex-col gap-4 font-mono text-xs text-slate-500 text-left bg-black/40 p-5 rounded-xl border border-white/5 relative overflow-hidden group/tech shadow-inner shrink-0">
-                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/tech:opacity-100 transition-opacity pointer-events-none" />
-                  
-                  <h4 className="text-cyan-400 text-[10px] tracking-[0.2em] border-b border-white/5 pb-2 drop-shadow-sm flex items-center justify-between">
-                    <span>ESPECIFICACIONES DEL NÚCLEO</span>
-                    <span className="text-emerald-400">ESTABLE</span>
-                  </h4>
-                  
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">React</span>
-                      <span className="text-blue-400 drop-shadow-sm">v19.0.1</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">Tailwind</span>
-                      <span className="text-cyan-400 drop-shadow-sm">v4.1.14</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-yellow-500/30 hover:bg-yellow-500/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">Vite</span>
-                      <span className="text-yellow-400 drop-shadow-sm">v6.2.3</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-fuchsia-500/30 hover:bg-fuchsia-500/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">Motion</span>
-                      <span className="text-fuchsia-400 drop-shadow-sm">v12.38</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">Lucide</span>
-                      <span className="text-emerald-400 drop-shadow-sm">v0.546</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-white/5 px-2.5 py-2 rounded-md border border-white/5 hover:border-blue-600/30 hover:bg-blue-600/10 transition-colors shadow-sm">
-                      <span className="text-slate-300">TypeScript</span>
-                      <span className="text-blue-500 drop-shadow-sm">v5.8.2</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 text-[10px] tracking-[0.2em] text-slate-600 hover:text-cyan-400 transition-colors cursor-default shrink-0">
-                  &copy; 2026 CyberGems
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+          <AboutModal
+            language={language}
+            t={t}
+            autoUpdate={autoUpdate}
+            onAutoUpdateChange={handleAutoUpdateChange}
+            onClose={() => setIsAboutOpen(false)}
+            isElectron={isElectron}
+          />
         )}
       </AnimatePresence>
 
