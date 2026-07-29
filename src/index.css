@@ -29,6 +29,33 @@ body,
 
 body {
   overflow: hidden;
+  /* Desktop chrome: titles/labels are not text fields */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Keep real text fields and explicitly selectable paths selectable */
+input,
+textarea,
+[contenteditable="true"],
+.select-text,
+.select-all {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.select-all {
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+h1, h2, h3, h4, h5, h6,
+label {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 @keyframes cyber-pulse-border {
