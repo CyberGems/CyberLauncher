@@ -242,7 +242,7 @@ const SystemMonitor = React.memo(() => {
       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
     >
       <Cpu className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-11 text-right">
+      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-11 text-right tabular-nums">
         {Math.round(memPercent)}%
       </span>
     </div>
@@ -277,7 +277,7 @@ const DiskMonitor = React.memo(() => {
       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
     >
       <HardDrive className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-7 text-right">
+      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-7 text-right tabular-nums">
         {mainDisk ? `${mainDisk.percent}%` : '--'}
       </span>
     </div>
@@ -303,7 +303,7 @@ const UptimeMonitor = React.memo(() => {
   const m = Math.floor((uptime % 3600) / 60);
 
   return (
-    <span className="text-sm font-mono text-slate-400 tracking-wide">
+    <span className="text-sm font-digits text-slate-400 tracking-wide tabular-nums">
       {h > 0 ? `${h}h ${m}m` : `${m}m`}
     </span>
   );
@@ -400,7 +400,7 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
     <Tooltip label={title} placement="bottom">
       <button
         onClick={onClick}
-        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
+        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
       >
         <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
@@ -705,10 +705,10 @@ const ClockHUD = ({
                         max="999" 
                         value={timerMinutes} 
                         onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="bg-transparent text-center text-white font-cyber font-bold text-[18px] w-full focus:outline-none"
+                        className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
                       />
                     </div>
-                    <div className="text-cyan-500/40 font-bold text-[20px] mb-2">:</div>
+                    <div className="text-cyan-500/40 font-digits font-bold text-[20px] mb-2">:</div>
                     <div className="flex-1 flex flex-col items-center">
                       <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
                       <input 
@@ -717,7 +717,7 @@ const ClockHUD = ({
                         max="59" 
                         value={timerSeconds} 
                         onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                        className="bg-transparent text-center text-white font-cyber font-bold text-[18px] w-full focus:outline-none"
+                        className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
                       />
                     </div>
                   </div>
@@ -818,7 +818,7 @@ const ClockHUD = ({
 
                           <div className="relative z-10 flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <span className="block text-[15px] font-cyber font-bold text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.5)] tracking-widest font-mono tabular-nums leading-none">
+                              <span className="block text-[15px] font-digits font-bold text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.5)] tracking-widest tabular-nums leading-none">
                                 {formatRemaining(task.remainingSeconds)}
                               </span>
                               <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
@@ -1218,12 +1218,18 @@ export default function App() {
 
   const SEARCH_TYPE_FILTERS = ['all', 'apps', 'folders', 'files'] as const;
 
+  const searchBaseName = (name: string) => {
+    // ".codex" / ".git" — no tratar el nombre completo como extensión
+    if (name.startsWith('.') && name.indexOf('.', 1) === -1) return name;
+    return name.replace(/\.[^.]+$/, '') || name;
+  };
+
   const searchTypeCounts = React.useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     let all = 0, apps = 0, folders = 0, files = 0;
     for (const item of systemSearchResults) {
       const name = item.name.toLowerCase();
-      const base = name.replace(/\.[^.]+$/, '');
+      const base = searchBaseName(name);
       if (!name.includes(query) && !base.includes(query)) continue;
       all++;
       if (item.type === 'folder') folders++;
@@ -1240,7 +1246,7 @@ export default function App() {
       if (searchTypeFilter === 'apps' && item.type !== 'app') return false;
       if (searchTypeFilter === 'files' && item.type !== 'file') return false;
       const name = item.name.toLowerCase();
-      const base = name.replace(/\.[^.]+$/, '');
+      const base = searchBaseName(name);
       return name.includes(query) || base.includes(query);
     });
 
@@ -1260,8 +1266,8 @@ export default function App() {
         const tr = typeRank(a) - typeRank(b);
         if (tr !== 0) return tr;
       }
-      const aName = a.name.replace(/\.[^.]+$/, '');
-      const bName = b.name.replace(/\.[^.]+$/, '');
+      const aName = searchBaseName(a.name);
+      const bName = searchBaseName(b.name);
       const cmp = aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' });
       return searchSortOrder === 'asc' ? cmp : -cmp;
     });
@@ -1371,6 +1377,13 @@ export default function App() {
   const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
+  const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
+  const systemContextMenuIndexRef = React.useRef(0);
+  const SYSTEM_MENU_ACTION_COUNT = 6;
+
+  React.useEffect(() => {
+    systemContextMenuIndexRef.current = systemContextMenuIndex;
+  }, [systemContextMenuIndex]);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }>({
     enabled: true,
@@ -2119,6 +2132,10 @@ export default function App() {
       setEditingCategory(null);
       setSearchQuery(prev => (prev === '' ? prev : ''));
       setSearchScope(prev => (prev === 'cyber' ? prev : 'cyber'));
+      setSearchTypeFilter(prev => (prev === 'all' ? prev : 'all'));
+      setSearchSortOrder(prev => (prev === 'asc' ? prev : 'asc'));
+      setSystemContextMenu(null);
+      setSystemSearchSelectedIndex(0);
       if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== 0) {
         scrollContainerRef.current.scrollTop = 0;
       }
@@ -3085,7 +3102,7 @@ export default function App() {
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-500/20 blur-sm rounded-full"></div>
-                <span className="relative text-emerald-400 font-cyber font-bold tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">{apps.reduce((acc, app) => acc + (app.usage || 0), 0)}</span>
+                <span className="relative text-emerald-400 font-digits font-bold tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">{apps.reduce((acc, app) => acc + (app.usage || 0), 0)}</span>
               </div>
             </div>
           </div>
@@ -3180,6 +3197,51 @@ export default function App() {
                   }
                 }
 
+                // Menú contextual del resultado: capturar teclado aquí (el foco sigue en el input)
+                if (systemContextMenu) {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setSystemContextMenu(null);
+                    return;
+                  }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSystemContextMenuIndex(prev => {
+                      const next = (prev + 1) % SYSTEM_MENU_ACTION_COUNT;
+                      systemContextMenuIndexRef.current = next;
+                      return next;
+                    });
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSystemContextMenuIndex(prev => {
+                      const next = (prev - 1 + SYSTEM_MENU_ACTION_COUNT) % SYSTEM_MENU_ACTION_COUNT;
+                      systemContextMenuIndexRef.current = next;
+                      return next;
+                    });
+                    return;
+                  }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const btn = document.querySelector(`[data-system-menu-index="${systemContextMenuIndexRef.current}"]`) as HTMLButtonElement | null;
+                    btn?.click();
+                    return;
+                  }
+                  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    setSystemContextMenu(null);
+                    return;
+                  }
+                  if (e.ctrlKey || e.metaKey) {
+                    // permitir Ctrl+←/→ filtro cerrando el menú
+                    setSystemContextMenu(null);
+                  } else {
+                    // Cualquier otra tecla con menú abierto: no navegar resultados por debajo
+                    return;
+                  }
+                }
+
                 const inSystemResults =
                   searchScope === 'system' &&
                   searchQuery.trim() !== '' &&
@@ -3212,6 +3274,8 @@ export default function App() {
                     if (item) {
                       const el = document.querySelector(`[data-search-result-index="${systemSearchSelectedIndex}"]`);
                       const rect = el?.getBoundingClientRect();
+                      setSystemContextMenuIndex(0);
+                      systemContextMenuIndexRef.current = 0;
                       setSystemContextMenu({
                         x: rect ? Math.min(rect.right - 12, window.innerWidth - 240) : 240,
                         y: rect ? Math.min(rect.top + 8, window.innerHeight - 250) : 200,
@@ -3491,6 +3555,18 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Preloader: visible mientras la búsqueda sigue (aunque ya haya resultados previos) */}
+                <div className="flex-1 flex items-center justify-center min-w-[7rem] px-2">
+                  {isSearchingSystem ? (
+                    <div className="flex items-center gap-2 text-emerald-400/90" aria-live="polite">
+                      <div className="w-3.5 h-3.5 border-2 border-emerald-500/25 border-t-emerald-400 rounded-full animate-spin shrink-0" />
+                      <span className="text-[9px] font-cyber tracking-wider whitespace-nowrap animate-pulse">
+                        {t('search_results_searching')}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
                 {/* Grupo de Ordenamiento */}
                 <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5">
                   <Tooltip label="Ordenar de A a Z" placement="bottom">
@@ -3548,7 +3624,6 @@ export default function App() {
                       transition={{ duration: 0.15, delay: Math.min(index * 0.02, 0.2) }}
                       key={`${item.path}-${index}`}
                       data-search-result-index={index}
-                      onMouseEnter={() => setSystemSearchSelectedIndex(index)}
                       onClick={() => {
                         addToHistory(item.name, item.path, item.type, item.icon);
                         if (isElectron) {
@@ -3559,11 +3634,20 @@ export default function App() {
                         e.preventDefault();
                         e.stopPropagation();
                         setSystemSearchSelectedIndex(index);
+                        setSystemContextMenuIndex(0);
+                        systemContextMenuIndexRef.current = 0;
                         setSystemContextMenu({
                           x: e.clientX,
                           y: e.clientY,
                           item
                         });
+                      }}
+                      onMouseEnter={() => {
+                        setSystemSearchSelectedIndex(index);
+                        // Si el menú está abierto sobre otro ítem, cerrarlo al hover
+                        if (systemContextMenu && systemContextMenu.item?.path !== item.path) {
+                          setSystemContextMenu(null);
+                        }
                       }}
                       className={`group flex items-center justify-between p-3 rounded-xl border transition-colors duration-150 cursor-pointer shadow-lg relative overflow-hidden ${
                         isSelected
@@ -5610,7 +5694,7 @@ export default function App() {
                       
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
                         <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_registered')}</span>
-                        <span className="text-lg font-cyber font-bold text-cyan-400 mt-0.5">
+                        <span className="text-lg font-digits font-bold text-cyan-400 mt-0.5">
                           {indexerStats.totalFiles.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}
                         </span>
                       </div>
@@ -6006,19 +6090,25 @@ export default function App() {
           >
             {/* Abrir */}
             <button
+              data-system-menu-index={0}
+              onMouseEnter={() => setSystemContextMenuIndex(0)}
               onClick={() => {
                 if (isElectron) {
                   window.electronAPI!.launchApp(systemContextMenu.item.path);
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 0 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {t('ctx_open')} <Play className="w-4 h-4 ml-2 text-emerald-400" />
             </button>
 
             {/* Copiar */}
             <button
+              data-system-menu-index={1}
+              onMouseEnter={() => setSystemContextMenuIndex(1)}
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
@@ -6031,13 +6121,17 @@ export default function App() {
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 1 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {t('ctx_copy')} <Upload className="w-4 h-4 ml-2 text-slate-400" />
             </button>
 
             {/* Cortar */}
             <button
+              data-system-menu-index={2}
+              onMouseEnter={() => setSystemContextMenuIndex(2)}
               onClick={() => {
                 setNotification({
                   message: language === 'es' ? `Cortado: ${systemContextMenu.item.name} (Ruta en portapapeles)` : `Cut: ${systemContextMenu.item.name} (Path copied to clipboard)`,
@@ -6046,13 +6140,17 @@ export default function App() {
                 navigator.clipboard.writeText(systemContextMenu.item.path).catch(console.error);
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 2 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {t('ctx_cut')} <Minus className="w-4 h-4 ml-2 text-slate-400" />
             </button>
 
             {/* Copiar Ruta completa al Portapapeles */}
             <button
+              data-system-menu-index={3}
+              onMouseEnter={() => setSystemContextMenuIndex(3)}
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
@@ -6065,7 +6163,9 @@ export default function App() {
                 }
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 3 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {language === 'es' ? "Copiar Ruta absoluta" : "Copy Absolute Path"} <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
@@ -6074,6 +6174,8 @@ export default function App() {
 
             {/* Anclar a Favoritos de CyberLauncher */}
             <button
+              data-system-menu-index={4}
+              onMouseEnter={() => setSystemContextMenuIndex(4)}
               onClick={() => {
                 const appId = Date.now();
                 const newApp = {
@@ -6104,13 +6206,17 @@ export default function App() {
                 });
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 4 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {language === 'es' ? "Anclar a Favoritos" : "Pin to Favorites"} <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
             </button>
 
             {/* Anclar a Barra de Tareas de CyberLauncher */}
             <button
+              data-system-menu-index={5}
+              onMouseEnter={() => setSystemContextMenuIndex(5)}
               onClick={() => {
                 const appId = Date.now();
                 const newApp = {
@@ -6141,7 +6247,9 @@ export default function App() {
                 });
                 setSystemContextMenu(null);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 5 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
             >
               {language === 'es' ? "Anclar a Barra" : "Pin to Taskbar"} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
             </button>

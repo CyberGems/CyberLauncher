@@ -975,6 +975,7 @@ function getDefaultIndexerPaths(): string[] {
     path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
     path.join(programData, 'Microsoft', 'Windows', 'Start Menu'),
     path.join(appData, 'Microsoft', 'Windows', 'Start Menu'),
+    os.homedir(),
     path.join(os.homedir(), 'Desktop'),
     path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop'),
     path.join(localAppData, 'Programs'),
@@ -986,6 +987,21 @@ function getDefaultIndexerPaths(): string[] {
 
 function isStartMenuPath(p: string): boolean {
   return /start menu/i.test(p);
+}
+
+function isUserHomePath(p: string): boolean {
+  try {
+    return path.resolve(p).toLowerCase() === path.resolve(os.homedir()).toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+/** Base name for ranking — path.parse treats ".codex" as ext-only with empty name. */
+function itemBaseName(fileName: string): string {
+  if (fileName.startsWith('.') && fileName.indexOf('.', 1) === -1) return fileName;
+  const parsed = path.parse(fileName).name;
+  return parsed || fileName;
 }
 
 function ensureStartMenuPaths(paths: string[]): string[] {
@@ -1001,12 +1017,25 @@ function ensureStartMenuPaths(paths: string[]): string[] {
   return merged;
 }
 
-function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean } {
+/** Ensure user home is indexed (shallow) so ~\.codex / ~\.cursor etc. are discoverable. */
+function ensureCoveragePaths(paths: string[]): string[] {
+  let merged = ensureStartMenuPaths(paths);
+  const home = os.homedir();
+  if (home && fs.existsSync(home)) {
+    const lower = new Set(merged.map(p => p.toLowerCase()));
+    if (!lower.has(home.toLowerCase())) {
+      merged = [home, ...merged];
+    }
+  }
+  return merged;
+}
+
+function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean; _migrateDotfolders2026?: boolean } {
   const defaults = {
     enabled: true,
     maxDepth: 2,
     paths: getDefaultIndexerPaths(),
-    includeHiddenFolders: false,
+    includeHiddenFolders: true,
     indexHiddenContent: false
   };
 
@@ -1019,12 +1048,17 @@ function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: str
         ...defaults,
         ...parsed,
         paths: Array.isArray(parsed.paths) && parsed.paths.length > 0
-          ? ensureStartMenuPaths(parsed.paths)
+          ? ensureCoveragePaths(parsed.paths)
           : defaults.paths
       };
-      // Persist migration if Start Menu roots were missing / paths were empty
-      const pathsChanged = JSON.stringify(parsed.paths || []) !== JSON.stringify(merged.paths);
-      if (pathsChanged) {
+      let needsSave = JSON.stringify(parsed.paths || []) !== JSON.stringify(merged.paths);
+      // One-time: enable dotfolders so ~\.codex and similar match Everything-style discovery
+      if (!parsed._migrateDotfolders2026) {
+        merged.includeHiddenFolders = true;
+        merged._migrateDotfolders2026 = true;
+        needsSave = true;
+      }
+      if (needsSave) {
         try { saveIndexerSettings(merged); } catch { /* ignore */ }
       }
       return merged;
@@ -1036,7 +1070,7 @@ function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: str
   return defaults;
 }
 
-function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }) {
+function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean; _migrateDotfolders2026?: boolean }) {
   try {
     const filePath = getSettingsFilePath();
     fs.writeFileSync(filePath, JSON.stringify(settings, null, 2), 'utf8');
@@ -1110,7 +1144,12 @@ async function buildSystemIndex() {
 
   for (const target of targets) {
     if (fs.existsSync(target)) {
-      const targetDepth = isStartMenuPath(target) ? Math.max(maxDepth, 4) : maxDepth;
+      // Home: solo hijos inmediatos (encuentra .codex sin rastrear AppData entero)
+      const targetDepth = isStartMenuPath(target)
+        ? Math.max(maxDepth, 4)
+        : isUserHomePath(target)
+          ? 1
+          : maxDepth;
       await crawlDirectory(target, targetDepth, 0, crawlOpts);
     }
   }
@@ -1129,8 +1168,18 @@ function setupIpcHandlers() {
   });
 
   // --- Guardar configuraciones del indexador global ---
-  ipcMain.handle('save-indexer-settings', async (_event, settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }) => {
-    saveIndexerSettings(settings);
+  ipcMain.handle('save-indexer-settings', async (_event, settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean; _migrateDotfolders2026?: boolean }) => {
+    // Preservar flag de migración para no reactivar dotfolders si el usuario los apagó
+    let migrateFlag = settings._migrateDotfolders2026;
+    if (migrateFlag === undefined) {
+      try {
+        const raw = fs.readFileSync(getSettingsFilePath(), 'utf8');
+        migrateFlag = !!JSON.parse(raw)._migrateDotfolders2026;
+      } catch {
+        migrateFlag = true;
+      }
+    }
+    saveIndexerSettings({ ...settings, _migrateDotfolders2026: migrateFlag });
     buildSystemIndex().catch(err => console.error('[INDEXER] Error building index after save:', err));
     return true;
   });
@@ -1193,7 +1242,7 @@ function setupIpcHandlers() {
     const ranked: Ranked[] = [];
 
     for (const item of systemIndex) {
-      const base = path.parse(item.name).name;
+      const base = itemBaseName(item.name);
       const nameLower = item.name.toLowerCase();
       const baseLower = base.toLowerCase();
 
@@ -1228,21 +1277,107 @@ function setupIpcHandlers() {
 
     const topMatches = ranked.slice(0, resultLimit);
 
-    // Iconos: en queries cortas solo cache (evita 20× getFileIcon bloqueando el main process)
+    // Iconos: nunca confiar en getFileIcon(.lnk) (suelen ser blancos genéricos).
+    // Preferir target del acceso; .ico custom; fallback ExtractAssociatedIcon.
+    const resolveLnkIconCandidates = (lnkPath: string): string[] => {
+      const candidates: string[] = [];
+      const push = (p?: string) => {
+        if (!p) return;
+        const cleaned = p.trim().replace(/^"(.*)"$/, '$1');
+        if (!cleaned || candidates.includes(cleaned)) return;
+        candidates.push(cleaned);
+      };
+      try {
+        const shortcut = shell.readShortcutLink(lnkPath);
+        // Solo .ico custom: icon en DLL/EXE con índice no se puede elegir con getFileIcon
+        if (shortcut.icon) {
+          const iconPath = shortcut.icon.trim().replace(/^"(.*)"$/, '$1');
+          if (path.extname(iconPath).toLowerCase() === '.ico') push(iconPath);
+        }
+        push(shortcut.target);
+      } catch { /* ignore */ }
+      push(lnkPath);
+      return candidates;
+    };
+
+    const nativeIconDataUrl = async (filePath: string): Promise<string> => {
+      try {
+        if (!fs.existsSync(filePath)) return '';
+        const fileIcon = await app.getFileIcon(filePath, { size: 'normal' });
+        if (!fileIcon || fileIcon.isEmpty()) return '';
+        const png = fileIcon.toPNG();
+        // Stubs blancos de .lnk suelen ser muy pequeños
+        if (png.length < 600) return '';
+        return fileIcon.toDataURL();
+      } catch {
+        return '';
+      }
+    };
+
+    const psAssociatedIconDataUrl = (filePath: string): string => {
+      let tmpPs = '';
+      let tmpPng = '';
+      try {
+        if (!fs.existsSync(filePath)) return '';
+        const escaped = filePath.replace(/'/g, "''");
+        tmpPng = path.join(os.tmpdir(), `cl-search-icon-${Date.now()}-${Math.random().toString(36).slice(2)}.png`);
+        tmpPs = path.join(os.tmpdir(), `cl-search-icon-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`);
+        const script = [
+          'Add-Type -AssemblyName System.Drawing',
+          `$icon = [System.Drawing.Icon]::ExtractAssociatedIcon('${escaped}')`,
+          'if (-not $icon) { exit 1 }',
+          '$bmp = $icon.ToBitmap()',
+          `$bmp.Save('${tmpPng.replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]::Png)`,
+          '$icon.Dispose(); $bmp.Dispose()',
+        ].join('\r\n');
+        fs.writeFileSync(tmpPs, script, 'utf-8');
+        execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+          encoding: 'utf-8',
+          timeout: 5000,
+          windowsHide: true,
+        });
+        if (!fs.existsSync(tmpPng)) return '';
+        const buf = fs.readFileSync(tmpPng);
+        if (buf.length < 600) return '';
+        return `data:image/png;base64,${buf.toString('base64')}`;
+      } catch {
+        return '';
+      } finally {
+        if (tmpPs) fs.unlink(tmpPs, () => {});
+        if (tmpPng) fs.unlink(tmpPng, () => {});
+      }
+    };
+
     const resolveIcon = async (item: IndexedFile): Promise<string> => {
       if (item.type === 'folder') return '';
       const cached = systemFileIconCache.get(item.path);
       if (cached) return cached;
-      if (shortQuery) return '';
-      try {
-        if (!fs.existsSync(item.path)) return '';
-        const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
-        if (fileIcon && !fileIcon.isEmpty()) {
-          const data = fileIcon.toDataURL();
+
+      const candidates = item.ext === '.lnk'
+        ? resolveLnkIconCandidates(item.path)
+        : [item.path];
+
+      for (const candidate of candidates) {
+        // Evitar getFileIcon sobre el .lnk (icono blanco genérico)
+        if (path.extname(candidate).toLowerCase() === '.lnk') continue;
+        const data = await nativeIconDataUrl(candidate);
+        if (data) {
           systemFileIconCache.set(item.path, data);
           return data;
         }
-      } catch { /* ignore */ }
+      }
+
+      // Solo para accesos (y no en queries de 1 letra, para no spawnear PowerShell en masa)
+      if (item.ext === '.lnk' && !shortQuery) {
+        for (const candidate of candidates) {
+          const data = psAssociatedIconDataUrl(candidate);
+          if (data) {
+            systemFileIconCache.set(item.path, data);
+            return data;
+          }
+        }
+      }
+
       return '';
     };
 

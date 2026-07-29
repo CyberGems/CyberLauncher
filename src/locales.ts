@@ -54,7 +54,7 @@ export const translations = {
     general_show_taskbar: "Mostrar icono en la barra de tareas",
     general_show_taskbar_desc: "Muestra el icono de Cyber Launcher en la barra de tareas de Windows.",
     general_reset_on_launch: "Restablecer vista al abrir (Reset)",
-    general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
+    general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/filtro/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
     
     // Appearance Settings Tab
     app_bg_type: "TIPO DE FONDO",
@@ -154,7 +154,7 @@ export const translations = {
     search_results_searching: "BUSCANDO...",
     search_results_empty: "NO SE ENCONTRARON COINCIDENCIAS",
     search_results_empty_hint: "Comprueba la ortografía o intenta con otro término / filtro",
-    search_nav_hint: "↑↓ navegar  ·  ←→ menú  ·  Ctrl+←/→ filtro  ·  Enter abrir",
+    search_nav_hint: "↑↓ navegar  ·  ←→ menú  ·  Ctrl+←/→ filtro  ·  Enter abrir  ·  Esc cierra menú",
     cat_all: "Todas",
     cat_ai: "AI",
     cat_browsers: "Navegadores",
@@ -329,7 +329,7 @@ export const translations = {
     general_show_taskbar: "Show Taskbar Tray Icon",
     general_show_taskbar_desc: "Displays the CyberLauncher icon in the Windows taskbar panel.",
     general_reset_on_launch: "Reset View State on Launch",
-    general_reset_on_launch_desc: "When opening the launcher, clears search/scroll and sets category to 'ALL' (once per open).",
+    general_reset_on_launch_desc: "When opening the launcher, clears search/filter/scroll and sets category to 'ALL' (once per open).",
     
     // Appearance Settings Tab
     app_bg_type: "BACKGROUND TYPE",
@@ -429,7 +429,7 @@ export const translations = {
     search_results_searching: "SEARCHING...",
     search_results_empty: "NO MATCHES FOUND",
     search_results_empty_hint: "Check spelling or try another term / filter",
-    search_nav_hint: "↑↓ navigate  ·  ←→ menu  ·  Ctrl+←/→ filter  ·  Enter open",
+    search_nav_hint: "↑↓ navigate  ·  ←→ menu  ·  Ctrl+←/→ filter  ·  Enter open  ·  Esc closes menu",
     cat_all: "All",
     cat_ai: "AI",
     cat_browsers: "Browsers",
