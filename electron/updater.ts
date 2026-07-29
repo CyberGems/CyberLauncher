@@ -1,6 +1,9 @@
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
 import { ipcMain, BrowserWindow, app, shell } from 'electron';
 import os from 'node:os';
+
+// electron-updater is CJS; named ESM import fails when the module is externalized.
+const { autoUpdater } = electronUpdater;
 
 /**
  * Update lifecycle (CyberFeeds model) via electron-updater + GitHub Releases.
