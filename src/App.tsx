@@ -176,6 +176,7 @@ declare global {
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
+      onOpenAbout: (callback: () => void) => () => void;
       getAppVersions: () => Promise<{
         app: string; electron: string; chrome: string; node: string;
         platform: string; arch: string; osRelease: string; osType: string;
@@ -1788,14 +1789,21 @@ export default function App() {
     }
   }, [triggerPinFlash]);
 
-  // Listen to tray Configuración button click
+  // Listen to tray Configuración / Acerca de
   useEffect(() => {
-    if (isElectron && window.electronAPI.onOpenSettings) {
-      const unsub = window.electronAPI.onOpenSettings(() => {
+    if (!isElectron || !window.electronAPI) return;
+    const unsubs: Array<() => void> = [];
+    if (window.electronAPI.onOpenSettings) {
+      unsubs.push(window.electronAPI.onOpenSettings(() => {
         setIsSettingsOpen(true);
-      });
-      return unsub;
+      }));
     }
+    if (window.electronAPI.onOpenAbout) {
+      unsubs.push(window.electronAPI.onOpenAbout(() => {
+        setIsAboutOpen(true);
+      }));
+    }
+    return () => unsubs.forEach((u) => u());
   }, []);
 
   // Synchronize dynamic custom app shortcuts with Electron main process
@@ -2018,6 +2026,10 @@ export default function App() {
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
           if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
           if (source.autoUpdate !== undefined) setAutoUpdate(!!source.autoUpdate);
+          if (source.language === 'es' || source.language === 'en') {
+            setLanguage(source.language);
+            localStorage.setItem('cyber_lang', source.language);
+          }
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -2041,8 +2053,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -2069,7 +2081,7 @@ export default function App() {
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-          selectedMonitor, autoUpdate
+          selectedMonitor, autoUpdate, language
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -2093,7 +2105,7 @@ export default function App() {
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-    selectedMonitor, autoUpdate,
+    selectedMonitor, autoUpdate, language,
     isConfigLoaded
   ]);
 

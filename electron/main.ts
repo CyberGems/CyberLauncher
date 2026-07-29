@@ -489,10 +489,12 @@ function createWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('launcher-shown');
     }
+    rebuildTrayMenu();
   });
 
   mainWindow.on('hide', () => {
     console.log('[WM EVENT] hide');
+    rebuildTrayMenu();
   });
 
   // Nota: no enviar reload-config en focus — se disparaba en cada apertura (show+focus),
@@ -571,28 +573,92 @@ function createWindow() {
 // =====================================
 // SYSTEM TRAY (Bandeja del sistema)
 // =====================================
-function createTray() {
-  if (tray) return;
-  tray = new Tray(getTrayIcon());
-  tray.setToolTip('CyberLauncher');
+const TRAY_I18N = {
+  es: {
+    showHide: 'Mostrar / Ocultar',
+    settings: 'Configuración...',
+    about: 'Acerca de...',
+    quit: 'Salir',
+  },
+  en: {
+    showHide: 'Show / Hide',
+    settings: 'Settings...',
+    about: 'About...',
+    quit: 'Exit',
+  },
+} as const;
+
+function getTrayLanguage(): 'es' | 'en' {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (config.language === 'en' || config.language === 'es') return config.language;
+    }
+  } catch { /* ignore */ }
+  return app.getLocale().toLowerCase().startsWith('en') ? 'en' : 'es';
+}
+
+function getMenuIconsDir(): string {
+  return VITE_DEV_SERVER_URL
+    ? path.join(__dirname, '../public/menu-icons')
+    : path.join(__dirname, '../dist/menu-icons');
+}
+
+function loadMenuIcon(name: string) {
+  const iconPath = path.join(getMenuIconsDir(), name);
+  if (fs.existsSync(iconPath)) {
+    const img = nativeImage.createFromPath(iconPath);
+    if (!img.isEmpty()) return img;
+  }
+  return nativeImage.createEmpty();
+}
+
+function rebuildTrayMenu(): void {
+  if (!tray) return;
+  const lang = getTrayLanguage();
+  const t = TRAY_I18N[lang];
+  const version = app.getVersion();
+  const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  const parts = t.showHide.split(' / ');
+  const dynamicLabel = isVisible ? (parts[1] || 'Hide') : (parts[0] || 'Show');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Mostrar CyberLauncher',
+      label: `CyberLauncher v${version}`,
+      enabled: false,
+      icon: nativeImage.createEmpty(),
+    },
+    { type: 'separator' },
+    {
+      label: dynamicLabel,
+      icon: loadMenuIcon('show-hide.png'),
+      accelerator: currentShortcut || undefined,
       click: () => toggleWindow(),
     },
     {
-      label: 'Configuración',
+      label: t.settings,
+      icon: loadMenuIcon('settings.png'),
       click: () => {
         showMainWindow();
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('open-settings');
         }
-      }
+      },
+    },
+    {
+      label: t.about,
+      icon: loadMenuIcon('about.png'),
+      click: () => {
+        showMainWindow();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('open-about');
+        }
+      },
     },
     { type: 'separator' },
     {
-      label: 'Cerrar',
+      label: t.quit,
+      icon: loadMenuIcon('quit.png'),
       click: () => {
         isQuitting = true;
         app.quit();
@@ -600,8 +666,23 @@ function createTray() {
     },
   ]);
 
-  tray.on('click', () => toggleWindow());
   tray.setContextMenu(contextMenu);
+  tray.setToolTip(`CyberLauncher v${version}`);
+}
+
+function createTray() {
+  if (tray) return;
+  tray = new Tray(getTrayIcon());
+  rebuildTrayMenu();
+
+  tray.on('click', () => toggleWindow());
+  tray.on('double-click', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindow();
+      return;
+    }
+    showMainWindow();
+  });
 }
 
 // =====================================
@@ -1690,6 +1771,7 @@ foreach (\$app in \$startApps) {
   // --- Registrar atajo global desde React ---
   ipcMain.handle('register-shortcut', (_event, shortcut: string) => {
     registerGlobalShortcut(shortcut);
+    rebuildTrayMenu();
     return { success: true, shortcut: currentShortcut };
   });
 
@@ -1988,6 +2070,7 @@ foreach (\$app in \$startApps) {
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial
       await new Promise(r => setTimeout(r, 50));
       console.log('[CONFIG] Guardado:', CONFIG_FILE, 'apps:', config?.apps?.length || 0);
+      rebuildTrayMenu();
       return true;
     } catch (e: any) {
       console.error('[CONFIG] Error saving:', e?.message || e);

@@ -112,6 +112,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-settings', handler);
     return () => { ipcRenderer.removeListener('open-settings', handler); };
   },
+  onOpenAbout: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('open-about', handler);
+    return () => { ipcRenderer.removeListener('open-about', handler); };
+  },
 
   // --- App versions / updates (CyberFeeds model) ---
   getAppVersions: () => ipcRenderer.invoke('app:get-versions'),
