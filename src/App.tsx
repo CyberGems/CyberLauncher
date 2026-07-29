@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { translations, TranslationKey } from './locales';
+import Tooltip from './Tooltip';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Music, Globe, Calculator, Code, Bot, Lock,
@@ -239,7 +240,6 @@ const SystemMonitor = React.memo(() => {
   return (
     <div 
       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
-      title={`RAM: ${memUsed.toFixed(1)} GB (${Math.round(memPercent)}%)`}
     >
       <Cpu className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
       <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-11 text-right">
@@ -275,7 +275,6 @@ const DiskMonitor = React.memo(() => {
   return (
     <div 
       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
-      title={mainDisk ? `Disco principal: ${mainDisk.percent}% usado` : 'Uso de Discos'}
     >
       <HardDrive className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
       <span className="text-xs font-mono text-slate-900 font-bold tracking-wider w-7 text-right">
@@ -398,14 +397,15 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
   }, []);
 
   return (
-    <button
-      onClick={onClick}
-      className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
-      title={title}
-    >
-      <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
-    </button>
+    <Tooltip label={title} placement="bottom">
+      <button
+        onClick={onClick}
+        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-cyber font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
+      >
+        <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+        <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
+      </button>
+    </Tooltip>
   );
 });
 
@@ -428,11 +428,13 @@ const FooterDate = React.memo(({ title }: { title: string }) => {
   }, []);
 
   return (
-    <div className="flex items-center gap-1.5 cursor-default text-slate-400" title={title}>
-      <span className="text-sm font-mono tracking-wide">
-        {now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
-      </span>
-    </div>
+    <Tooltip label={title} placement="top">
+      <div className="flex items-center gap-1.5 cursor-default text-slate-400">
+        <span className="text-sm font-mono tracking-wide">
+          {now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
+        </span>
+      </div>
+    </Tooltip>
   );
 });
 
@@ -823,13 +825,14 @@ const ClockHUD = ({
                                 {t('hud_clock_countdown')}
                               </span>
                             </div>
-                            <button
-                              onClick={() => handleRemoveTask(task.id)}
-                              className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
-                              title={t('hud_clock_cancel')}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip label={t('hud_clock_cancel')} placement="left">
+                              <button
+                                onClick={() => handleRemoveTask(task.id)}
+                                className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           </div>
                         </div>
                       );
@@ -2866,13 +2869,14 @@ export default function App() {
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
         <div className="p-6 flex items-center gap-3">
-          <button 
-            onClick={() => setIsAboutOpen(true)}
-            className="group w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex flex-shrink-0 items-center justify-center border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
-            title="Acerca de Cyber Launcher"
-          >
-            <CyberLogo className="w-9 h-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all group-hover:drop-shadow-[0_0_14px_rgba(34,211,238,0.9)]" />
-          </button>
+          <Tooltip label="Acerca de Cyber Launcher" placement="bottom">
+            <button 
+              onClick={() => setIsAboutOpen(true)}
+              className="group w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex flex-shrink-0 items-center justify-center border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
+            >
+              <CyberLogo className="w-9 h-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all group-hover:drop-shadow-[0_0_14px_rgba(34,211,238,0.9)]" />
+            </button>
+          </Tooltip>
           <div>
             <h1 className="font-cyber font-bold text-white tracking-wider text-sm drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">CYBER</h1>
             <h2 className="text-xs text-cyan-400 font-cyber tracking-widest font-bold drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">LAUNCHER</h2>
@@ -2883,16 +2887,17 @@ export default function App() {
           <span className="text-[11px] font-cyber font-semibold text-slate-400/80 tracking-wider">
             {t('title_categories')}
           </span>
-          <button 
-            onClick={() => {
-              const newId = 'cat-' + Date.now();
-              setCategories([...categories, { id: newId, name: 'Nueva', color: '#60a5fa' }]);
-            }}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            title="Agregar categoría"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <Tooltip label="Agregar categoría" placement="bottom">
+            <button 
+              onClick={() => {
+                const newId = 'cat-' + Date.now();
+                setCategories([...categories, { id: newId, name: 'Nueva', color: '#60a5fa' }]);
+              }}
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-0.5 custom-scrollbar">
@@ -3130,18 +3135,19 @@ export default function App() {
             {/* Unified Inline Right Actions Container */}
             <div className="absolute inset-y-0 right-3 flex items-center gap-3 z-20 select-none">
               {searchQuery && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery('');
-                    searchInputRef.current?.focus();
-                  }}
-                  className="flex items-center justify-center text-slate-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer p-1"
-                  title="Limpiar búsqueda"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <Tooltip label="Limpiar búsqueda" placement="bottom">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchQuery('');
+                      searchInputRef.current?.focus();
+                    }}
+                    className="flex items-center justify-center text-slate-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </Tooltip>
               )}
 
               {searchQuery.startsWith('>') ? (
@@ -3149,42 +3155,45 @@ export default function App() {
                   CONSOLA
                 </span>
               ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                  }}
-                  className="flex items-center focus:outline-none cursor-pointer"
-                  title="Alternar alcance de búsqueda (Cyber / Sistema) [TAB]"
-                >
-                  <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
-                    searchScope === 'system'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
-                      : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
-                  }`}>
-                    {searchScope === 'system' ? 'SISTEMA' : 'LAUNCHER'}
-                  </span>
-                </button>
+                <Tooltip label="Alternar alcance de búsqueda (Cyber / Sistema) [TAB]" placement="bottom">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
+                    }}
+                    className="flex items-center focus:outline-none cursor-pointer"
+                  >
+                    <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
+                      searchScope === 'system'
+                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
+                        : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
+                    }`}>
+                      {searchScope === 'system' ? 'SISTEMA' : 'LAUNCHER'}
+                    </span>
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
           
           <div className="flex items-center gap-3 ml-auto">
-            <button 
-              onClick={() => setIsSystemHUDOpen(true)}
-              className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
-              title="Abrir Diagnóstico de Recursos de Sistema"
-            >
-              <SystemMonitor />
-            </button>
-            <button 
-              onClick={() => setIsStorageHUDOpen(true)}
-              className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
-              title="Abrir Diagnóstico de Almacenamiento Físico"
-            >
-              <DiskMonitor />
-            </button>
+            <Tooltip label="Abrir Diagnóstico de Recursos de Sistema" placement="bottom">
+              <button 
+                onClick={() => setIsSystemHUDOpen(true)}
+                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+              >
+                <SystemMonitor />
+              </button>
+            </Tooltip>
+            <Tooltip label="Abrir Diagnóstico de Almacenamiento Físico" placement="bottom">
+              <button 
+                onClick={() => setIsStorageHUDOpen(true)}
+                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+              >
+                <DiskMonitor />
+              </button>
+            </Tooltip>
             
             <HeaderClock
               onClick={() => setIsClockHUDOpen(true)}
@@ -3304,30 +3313,32 @@ export default function App() {
 
                 {/* Grupo de Ordenamiento */}
                 <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5">
-                  <button
-                    onClick={() => setSearchSortOrder('asc')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
-                      searchSortOrder === 'asc'
-                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
-                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
-                    }`}
-                    title="Ordenar de A a Z"
-                  >
-                    <ArrowDownAZ className="w-3.5 h-3.5" />
-                    A-Z
-                  </button>
-                  <button
-                    onClick={() => setSearchSortOrder('desc')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
-                      searchSortOrder === 'desc'
-                        ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
-                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
-                    }`}
-                    title="Ordenar de Z a A"
-                  >
-                    <ArrowUpZA className="w-3.5 h-3.5" />
-                    Z-A
-                  </button>
+                  <Tooltip label="Ordenar de A a Z" placement="bottom">
+                    <button
+                      onClick={() => setSearchSortOrder('asc')}
+                      className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                        searchSortOrder === 'asc'
+                          ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <ArrowDownAZ className="w-3.5 h-3.5" />
+                      A-Z
+                    </button>
+                  </Tooltip>
+                  <Tooltip label="Ordenar de Z a A" placement="bottom">
+                    <button
+                      onClick={() => setSearchSortOrder('desc')}
+                      className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                        searchSortOrder === 'desc'
+                          ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
+                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <ArrowUpZA className="w-3.5 h-3.5" />
+                      Z-A
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -3391,54 +3402,57 @@ export default function App() {
                       {/* Right: Actions */}
                       <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         {item.type !== 'folder' && (
+                          <Tooltip label="Ejecutar como Administrador" placement="top">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToHistory(item.name, item.path, item.type, item.icon);
+                                if (isElectron) {
+                                  window.electronAPI!.launchApp(item.path, true);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
+                            >
+                              <Shield className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
+                        )}
+                        <Tooltip label="Abrir ubicación de archivo" placement="top">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              addToHistory(item.name, item.path, item.type, item.icon);
                               if (isElectron) {
-                                window.electronAPI!.launchApp(item.path, true);
+                                window.electronAPI!.openFileLocation(item.path);
                               }
                             }}
-                            className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                            title="Ejecutar como Administrador"
+                            className="p-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
                           >
-                            <Shield className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isElectron) {
-                              window.electronAPI!.openFileLocation(item.path);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                          title="Abrir ubicación de archivo"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newApp = {
-                              id: Date.now(),
-                              name: item.name.replace(/\.[^/.]+$/, ""),
-                              path: item.path,
-                              icon: item.icon || '',
-                              category: 'all',
-                              shortcut: '',
-                              isAdmin: false,
-                              isFavorite: false,
-                            };
-                            setApps(prev => [...prev, newApp]);
-                            setSearchQuery('');
-                            setSearchScope('cyber');
-                          }}
-                          className="p-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
-                          title="Agregar a CyberLauncher"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                        </Tooltip>
+                        <Tooltip label="Agregar a CyberLauncher" placement="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newApp = {
+                                id: Date.now(),
+                                name: item.name.replace(/\.[^/.]+$/, ""),
+                                path: item.path,
+                                icon: item.icon || '',
+                                category: 'all',
+                                shortcut: '',
+                                isAdmin: false,
+                                isFavorite: false,
+                              };
+                              setApps(prev => [...prev, newApp]);
+                              setSearchQuery('');
+                              setSearchScope('cyber');
+                            }}
+                            className="p-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </motion.div>
                   ))}
@@ -3456,33 +3470,39 @@ export default function App() {
               </h3>
               <div className="flex flex-wrap gap-3">
                 {favorites.map((app) => (
-                  <motion.div
-                    whileHover={{ scale: 1.05, y: -4 }}
-                    whileTap={{ scale: 0.95 }}
+                  <Tooltip
                     key={`fav-${app.id}`}
-                    draggable
-                    // @ts-ignore
-                    onDragStart={(e) => handleDragStart(e, app.id)}
-                    onDragOver={(e) => handleFavDragOver(e, app.id)}
-                    onDrop={(e) => handleDrop(e, app.id)}
-                    // @ts-ignore
-                    onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
-                    onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
-                    onContextMenu={(e: any) => handleContextMenu(e, app)}
-                    onClick={() => handleLaunchApp(app)}
-                    className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl transition-all shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
-                      draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
-                    } ${favDropTarget === app.id ? 'border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110' : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_15px_currentColor]'}`}
+                    placement="bottom"
+                    label={
+                      <span className="flex flex-col items-center gap-0.5">
+                        <span>{app.name}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
+                          {getCategoryDisplayName(app.category, t)}
+                        </span>
+                      </span>
+                    }
                   >
-                    <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.15] blur-md rounded-2xl transition-opacity pointer-events-none" />
-                    <AppIcon app={app} className="w-6 h-6 z-10" />
-                    
-                    {/* Tooltip */}
-                    <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 p-2 bg-[#0f172a]/95 backdrop-blur-md rounded-lg border border-white/10 shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 flex flex-col items-center gap-0.5">
-                       <span className="text-xs font-semibold text-slate-100 whitespace-nowrap">{app.name}</span>
-                       <span className="text-[10px] text-slate-500 font-normal whitespace-nowrap">{getCategoryDisplayName(app.category, t)}</span>
-                    </div>
-                  </motion.div>
+                    <motion.div
+                      whileHover={{ scale: 1.05, y: -4 }}
+                      whileTap={{ scale: 0.95 }}
+                      draggable
+                      // @ts-ignore
+                      onDragStart={(e) => handleDragStart(e, app.id)}
+                      onDragOver={(e) => handleFavDragOver(e, app.id)}
+                      onDrop={(e) => handleDrop(e, app.id)}
+                      // @ts-ignore
+                      onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
+                      onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
+                      onContextMenu={(e: any) => handleContextMenu(e, app)}
+                      onClick={() => handleLaunchApp(app)}
+                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl transition-all shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
+                        draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
+                      } ${favDropTarget === app.id ? 'border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110' : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_15px_currentColor]'}`}
+                    >
+                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.15] blur-md rounded-2xl transition-opacity pointer-events-none" />
+                      <AppIcon app={app} className="w-6 h-6 z-10" />
+                    </motion.div>
+                  </Tooltip>
                 ))}
               </div>
             </section>
@@ -3509,16 +3529,17 @@ export default function App() {
                   <ListIcon className="w-4 h-4" />
                 </button>
                 <div className="w-px h-4 bg-white/10 mx-2" />
-                <button 
-                  onClick={() => {
-                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
-                    setIsAddingApp(true);
-                  }}
-                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
-                  title="Agregar app"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+                <Tooltip label="Agregar app" placement="bottom">
+                  <button 
+                    onClick={() => {
+                      setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                      setIsAddingApp(true);
+                    }}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
 
@@ -3696,52 +3717,56 @@ export default function App() {
       >
         <div className="px-3 pt-3 pb-1 flex items-center justify-end">
           <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
-              title={isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on')} 
-              className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none ${
-                isPinFlashing 
-                  ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
-                  : isAlwaysOnTop 
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.4)]' 
-                  : 'hover:bg-white/10 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Pin className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                isPinFlashing 
-                  ? 'scale-125 text-red-400' 
-                  : isAlwaysOnTop 
-                  ? 'fill-cyan-400' 
-                  : 'rotate-45'
-              }`} />
-            </button>
-            <button 
-              onClick={() => setIsAboutOpen(true)}
-              title={t('tooltip_about')} 
-              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
-            >
-              <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-            </button>
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              title={t('tooltip_settings')} 
-              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
-            >
-              <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-            </button>
-            <button 
-              onClick={() => {
-                if (isElectron) {
-                  window.electronAPI!.windowHideToTray();
-                } else {
-                  setIsAppActive(false);
-                }
-              }}
-              title={t('tooltip_minimize')} 
-              className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
-            >
-              <Minimize2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-            </button>
+            <Tooltip label={isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on')} placement="bottom">
+              <button 
+                onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
+                className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none ${
+                  isPinFlashing 
+                    ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
+                    : isAlwaysOnTop 
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.4)]' 
+                    : 'hover:bg-white/10 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Pin className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  isPinFlashing 
+                    ? 'scale-125 text-red-400' 
+                    : isAlwaysOnTop 
+                    ? 'fill-cyan-400' 
+                    : 'rotate-45'
+                }`} />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('tooltip_about')} placement="bottom">
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+              >
+                <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('tooltip_settings')} placement="bottom">
+              <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+              >
+                <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('tooltip_minimize')} placement="bottom">
+              <button 
+                onClick={() => {
+                  if (isElectron) {
+                    window.electronAPI!.windowHideToTray();
+                  } else {
+                    setIsAppActive(false);
+                  }
+                }}
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
+              >
+                <Minimize2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -3851,60 +3876,62 @@ export default function App() {
       <div className="flex-shrink-0 flex items-center justify-between w-full bg-black/60 backdrop-blur-3xl border-t border-white/10 px-6 py-2 z-40 relative">
         {/* Lado izquierdo: Inicio y Favoritos */}
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsAboutOpen(!isAboutOpen)} 
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setIsSettingsOpen(true);
-            }}
-            className="hover:scale-110 transition-transform flex-shrink-0"
-            title="Menú Inicio / Acerca de (Click derecho: Configuración)"
-          >
-            <CyberLogo className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
-          </button>
+          <Tooltip label="Menú Inicio / Acerca de (Click derecho: Configuración)" placement="top">
+            <button 
+              onClick={() => setIsAboutOpen(!isAboutOpen)} 
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setIsSettingsOpen(true);
+              }}
+              className="hover:scale-110 transition-transform flex-shrink-0"
+            >
+              <CyberLogo className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
+            </button>
+          </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
           <div className="flex gap-2 relative">
             {taskbarAppIds.map(id => {
               const app = apps.find(a => a.id === id);
               if (!app) return null;
               return (
-                <button 
-                  key={`taskbar-${app.id}`} 
-                  draggable
-                  onDragStart={(e) => handleTaskbarDragStart(e, app.id)}
-                  onDragOver={(e) => handleTaskbarDragOver(e, app.id)}
-                  onDrop={(e) => handleTaskbarDrop(e, app.id)}
-                  onDragEnd={() => { setDraggedTaskbarId(null); setTaskbarDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
-                  onDragLeave={() => setTaskbarDropTarget(prev => prev === app.id ? null : prev)}
-                  onContextMenu={(e) => handleContextMenu(e, app)}
-                  onClick={() => handleLaunchApp(app)}
-                  className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing ${
-                    draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
-                  } ${taskbarDropTarget === app.id ? 'bg-cyan-500/20 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110' : ''}`} 
-                  title={app.name}
-                >
-                  <div className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}>
-                    <AppIcon app={app} className="w-5 h-5 drop-shadow-md" />
-                  </div>
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
-                  </div>
-                </button>
+                <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top">
+                  <button 
+                    draggable
+                    onDragStart={(e) => handleTaskbarDragStart(e, app.id)}
+                    onDragOver={(e) => handleTaskbarDragOver(e, app.id)}
+                    onDrop={(e) => handleTaskbarDrop(e, app.id)}
+                    onDragEnd={() => { setDraggedTaskbarId(null); setTaskbarDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
+                    onDragLeave={() => setTaskbarDropTarget(prev => prev === app.id ? null : prev)}
+                    onContextMenu={(e) => handleContextMenu(e, app)}
+                    onClick={() => handleLaunchApp(app)}
+                    className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing ${
+                      draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
+                    } ${taskbarDropTarget === app.id ? 'bg-cyan-500/20 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110' : ''}`} 
+                  >
+                    <div className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}>
+                      <AppIcon app={app} className="w-5 h-5 drop-shadow-md" />
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+                    </div>
+                  </button>
+                </Tooltip>
               );
             })}
             
             {/* Botón "+" para agregar app */}
             <div className="relative">
-              <button 
-                onClick={() => {
-                  setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
-                  setIsAddingApp(true);
-                }}
-                className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
-                title={t('tooltip_add_app')}
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <Tooltip label={t('tooltip_add_app')} placement="top">
+                <button 
+                  onClick={() => {
+                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                    setIsAddingApp(true);
+                  }}
+                  className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -3912,16 +3939,20 @@ export default function App() {
         {/* Lado derecho: Info del sistema */}
         <div className="flex items-center gap-4 text-slate-400">
           {/* Uptime */}
-          <div className="flex items-center gap-1.5 cursor-default" title={t('tooltip_uptime')}>
-            <Power className="w-4 h-4 text-emerald-500" />
-            <UptimeMonitor />
-          </div>
+          <Tooltip label={t('tooltip_uptime')} placement="top">
+            <div className="flex items-center gap-1.5 cursor-default">
+              <Power className="w-4 h-4 text-emerald-500" />
+              <UptimeMonitor />
+            </div>
+          </Tooltip>
           <div className="w-px h-4 bg-white/10" />
           {/* Launches today */}
-          <div className="flex items-center gap-1.5 cursor-default" title={t('tooltip_launches_today')}>
-            <ChevronRight className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
-          </div>
+          <Tooltip label={t('tooltip_launches_today')} placement="top">
+            <div className="flex items-center gap-1.5 cursor-default">
+              <ChevronRight className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
+            </div>
+          </Tooltip>
           <div className="w-px h-4 bg-white/10" />
           {/* Date */}
           <FooterDate title={t('tooltip_date')} />
@@ -3953,13 +3984,14 @@ export default function App() {
               <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/50 rounded-bl-2xl m-2 pointer-events-none z-10" />
               <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50 rounded-br-2xl m-2 pointer-events-none z-10" />
               
-              <button 
-                onClick={() => setIsAboutOpen(false)} 
-                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors z-20"
-                title="Cerrar"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <Tooltip label="Cerrar" placement="left">
+                <button 
+                  onClick={() => setIsAboutOpen(false)} 
+                  className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors z-20"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </Tooltip>
 
               <div className="overflow-y-auto custom-scrollbar flex flex-col items-center p-8 text-center w-full">
                 <CyberLogo className="w-24 h-24 text-cyan-400 mb-6 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] shrink-0" />
@@ -4544,20 +4576,21 @@ export default function App() {
                     >
                       {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
                     </button>
-                    <button
-                      type="button"
-                      title={t('general_shortcut_reset')}
-                      onClick={() => {
-                        setIsRecordingShortcut(false);
-                        setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
-                        if (isElectron) {
-                          window.electronAPI!.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
-                        }
-                      }}
-                      className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
+                    <Tooltip label={t('general_shortcut_reset')} placement="top">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRecordingShortcut(false);
+                          setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                          if (isElectron) {
+                            window.electronAPI!.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                          }
+                        }}
+                        className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
                   </div>
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
@@ -5143,14 +5176,15 @@ export default function App() {
                           />
 
                           {/* A-Z / Z-A Sorting toggle button */}
-                          <button
-                            onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                            className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
-                            title={uwpSortOrder === 'asc' ? "Ordenar Z-A" : "Ordenar A-Z"}
-                          >
-                            {uwpSortOrder === 'asc' ? <ArrowDownAZ className="w-3.5 h-3.5 text-cyan-400/90" /> : <ArrowUpZA className="w-3.5 h-3.5 text-cyan-400/90" />}
-                            {uwpSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
-                          </button>
+                          <Tooltip label={uwpSortOrder === 'asc' ? "Ordenar Z-A" : "Ordenar A-Z"} placement="bottom">
+                            <button
+                              onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                              className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
+                            >
+                              {uwpSortOrder === 'asc' ? <ArrowDownAZ className="w-3.5 h-3.5 text-cyan-400/90" /> : <ArrowUpZA className="w-3.5 h-3.5 text-cyan-400/90" />}
+                              {uwpSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                            </button>
+                          </Tooltip>
 
                           <button
                             onClick={handleScanUwpApps}
@@ -5180,7 +5214,9 @@ export default function App() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                       <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
-                                      <p className="text-[9px] text-slate-500 truncate font-mono select-all" title={app.aumid}>{app.aumid}</p>
+                                      <Tooltip label={app.aumid} placement="top">
+                                        <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
+                                      </Tooltip>
                                     </div>
                                   </div>
 
@@ -5488,14 +5524,15 @@ export default function App() {
                                   {folderPath}
                                 </span>
                               </div>
-                              <button
-                                onClick={() => handleRemoveFolder(folderPath)}
-                                disabled={!indexerSettings.enabled}
-                                className="opacity-0 group-hover:opacity-100 disabled:opacity-0 p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
-                                title={language === 'es' ? "Eliminar de la indexación" : "Remove from indexing"}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <Tooltip label={language === 'es' ? "Eliminar de la indexación" : "Remove from indexing"} placement="left">
+                                <button
+                                  onClick={() => handleRemoveFolder(folderPath)}
+                                  disabled={!indexerSettings.enabled}
+                                  className="opacity-0 group-hover:opacity-100 disabled:opacity-0 p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
                             </div>
                           ))}
                         </div>
@@ -5581,13 +5618,14 @@ export default function App() {
                   >
                     Cancelar
                   </button>
-                  <button 
-                    onClick={handleDeleteCategory}
-                    className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors"
-                    title="Eliminar categoría"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <Tooltip label="Eliminar categoría" placement="top">
+                    <button 
+                      onClick={handleDeleteCategory}
+                      className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             </motion.div>
