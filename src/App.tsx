@@ -2409,7 +2409,7 @@ export default function App() {
 
   const handleDragStart = (e: React.DragEvent, id: number) => {
     setDraggedFavId(id);
-    document.body.setAttribute('data-cl-drag', '1');
+    document.body.setAttribute('data-cl-drag', 'favorites');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id.toString());
   };
@@ -2421,6 +2421,11 @@ export default function App() {
   };
 
   const handleFavDragOver = (e: React.DragEvent, targetId: number) => {
+    if (document.body.getAttribute('data-cl-drag') !== 'favorites') {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
     handleDragOver(e);
     if (draggedFavId !== null && draggedFavId !== targetId) {
       setFavDropTarget(targetId);
@@ -2431,6 +2436,7 @@ export default function App() {
     e.preventDefault();
     e.stopPropagation();
     setFavDropTarget(null);
+    if (document.body.getAttribute('data-cl-drag') !== 'favorites') return;
     if (draggedFavId === null || draggedFavId === targetId) return;
 
     setFavoriteIds(prev => {
@@ -2446,7 +2452,7 @@ export default function App() {
 
   const handleTaskbarDragStart = (e: React.DragEvent, id: number) => {
     setDraggedTaskbarId(id);
-    document.body.setAttribute('data-cl-drag', '1');
+    document.body.setAttribute('data-cl-drag', 'taskbar');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id.toString());
     const ghost = document.createElement('div');
@@ -2457,6 +2463,11 @@ export default function App() {
   };
 
   const handleTaskbarDragOver = (e: React.DragEvent, targetId: number) => {
+    if (document.body.getAttribute('data-cl-drag') !== 'taskbar') {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
     handleDragOver(e);
     if (draggedTaskbarId !== null && draggedTaskbarId !== targetId) {
       setTaskbarDropTarget(targetId);
@@ -2467,6 +2478,7 @@ export default function App() {
     e.preventDefault();
     e.stopPropagation();
     setTaskbarDropTarget(null);
+    if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
     if (draggedTaskbarId === null || draggedTaskbarId === targetId) return;
 
     setTaskbarAppIds(prev => {
@@ -2686,9 +2698,20 @@ export default function App() {
 
   // --- Handlers para Drag & Drop desde Windows/OS ---
   const handleSystemDragOver = (e: React.DragEvent) => {
+    const dragKind = document.body.getAttribute('data-cl-drag');
+    if (dragKind) {
+      // Reorden interno: solo zonas data-cl-drop del mismo tipo; fuera → cursor prohibido
+      const zone = (e.target as HTMLElement | null)?.closest?.(`[data-cl-drop="${dragKind}"]`);
+      e.preventDefault();
+      e.dataTransfer.dropEffect = zone ? 'move' : 'none';
+      if (!zone) {
+        setFavDropTarget(null);
+        setTaskbarDropTarget(null);
+      }
+      return;
+    }
     e.preventDefault();
-    if (document.body.hasAttribute('data-cl-drag')) return;
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.types?.includes('Files')) {
       setIsDraggingFromOS(true);
     }
   };
@@ -2703,19 +2726,48 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalDragStart = () => {
-      document.body.setAttribute('data-cl-drag', '1');
+      // Fallback genérico; los handlers tipan favorites/taskbar después
+      if (!document.body.hasAttribute('data-cl-drag')) {
+        document.body.setAttribute('data-cl-drag', 'internal');
+      }
     };
 
     const handleGlobalDragEnd = () => {
       document.body.removeAttribute('data-cl-drag');
+      setDraggedFavId(null);
+      setFavDropTarget(null);
+      setDraggedTaskbarId(null);
+      setTaskbarDropTarget(null);
+    };
+
+    const handleInternalDragOver = (e: DragEvent) => {
+      const dragKind = document.body.getAttribute('data-cl-drag');
+      if (!dragKind || dragKind === 'internal') {
+        if (dragKind) {
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+        }
+        return;
+      }
+      if (dragKind !== 'favorites' && dragKind !== 'taskbar') return;
+
+      const zone = (e.target as HTMLElement | null)?.closest?.(`[data-cl-drop="${dragKind}"]`);
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = zone ? 'move' : 'none';
+      if (!zone) {
+        setFavDropTarget(null);
+        setTaskbarDropTarget(null);
+      }
     };
 
     window.addEventListener('dragstart', handleGlobalDragStart, true);
     window.addEventListener('dragend', handleGlobalDragEnd, true);
+    window.addEventListener('dragover', handleInternalDragOver, true);
 
     return () => {
       window.removeEventListener('dragstart', handleGlobalDragStart, true);
       window.removeEventListener('dragend', handleGlobalDragEnd, true);
+      window.removeEventListener('dragover', handleInternalDragOver, true);
     };
   }, []);
 
@@ -3468,7 +3520,16 @@ export default function App() {
                 <Star className="w-4 h-4 fill-slate-400" />
                 {t('title_favorites')}
               </h3>
-              <div className="flex flex-wrap gap-3">
+              <div
+                className="flex flex-wrap gap-3 rounded-2xl p-1 -m-1 transition-[box-shadow,background-color] duration-150"
+                data-cl-drop="favorites"
+                onDragOver={(e) => {
+                  if (document.body.getAttribute('data-cl-drag') !== 'favorites') return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+              >
                 {favorites.map((app) => (
                   <Tooltip
                     key={`fav-${app.id}`}
@@ -3889,7 +3950,16 @@ export default function App() {
             </button>
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
-          <div className="flex gap-2 relative">
+          <div
+            className="flex gap-2 relative rounded-xl p-0.5 -m-0.5 transition-[box-shadow,background-color] duration-150"
+            data-cl-drop="taskbar"
+            onDragOver={(e) => {
+              if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+          >
             {taskbarAppIds.map(id => {
               const app = apps.find(a => a.id === id);
               if (!app) return null;

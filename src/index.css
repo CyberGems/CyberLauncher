@@ -69,6 +69,13 @@ label {
   }
 }
 
+/* Internal DnD: highlight only the matching drop strip */
+body[data-cl-drag="favorites"] [data-cl-drop="favorites"],
+body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
+  background-color: rgba(34, 211, 238, 0.06);
+}
+
 /* CyberGems tooltip (same motion language as CyberNotes) */
 @keyframes tooltipPop {
   from {
