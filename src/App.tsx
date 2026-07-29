@@ -3142,28 +3142,28 @@ export default function App() {
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" style={{ boxShadow: '0 0 8px #3b82f6' }} />
+                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
                 {t('title_apps')}
               </div>
-              <span className="text-blue-400 font-digits font-bold tracking-wider tabular-nums bg-blue-500/[0.07] px-2 py-0.5 rounded-md border border-blue-500/20">
+              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
                 {apps.length}
               </span>
             </div>
             <div className="flex justify-between items-center text-xs">
                <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500" style={{ boxShadow: '0 0 8px #eab308' }} />
+                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
                 {t('title_categories')}
               </div>
-              <span className="text-yellow-400 font-digits font-bold tracking-wider tabular-nums bg-yellow-500/[0.07] px-2 py-0.5 rounded-md border border-yellow-500/20">
+              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
                 {categories.length - 1}
               </span>
             </div>
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" style={{ boxShadow: '0 0 8px #10b981' }} />
+                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
                 {t('title_launches')}
               </div>
-              <span className="text-emerald-400 font-digits font-bold tracking-wider tabular-nums bg-emerald-500/[0.07] px-2 py-0.5 rounded-md border border-emerald-500/20">
+              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
                 {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
               </span>
             </div>
