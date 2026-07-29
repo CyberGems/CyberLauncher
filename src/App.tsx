@@ -3086,24 +3086,23 @@ export default function App() {
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" style={{ boxShadow: '0 0 8px #3b82f6' }} />
                 {t('title_apps')}
               </div>
-              <span className="text-blue-400 font-mono">{apps.length}</span>
+              <span className="text-blue-400 font-digits font-bold tracking-wider tabular-nums">{apps.length}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
                <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500" style={{ boxShadow: '0 0 8px #eab308' }} />
                 {t('title_categories')}
               </div>
-              <span className="text-yellow-400 font-mono">{categories.length - 1}</span>
+              <span className="text-yellow-400 font-digits font-bold tracking-wider tabular-nums">{categories.length - 1}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" style={{ boxShadow: '0 0 8px #10b981' }} />
                 {t('title_launches')}
               </div>
-              <div className="relative">
-                <div className="absolute inset-0 bg-emerald-500/20 blur-sm rounded-full"></div>
-                <span className="relative text-emerald-400 font-digits font-bold tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">{apps.reduce((acc, app) => acc + (app.usage || 0), 0)}</span>
-              </div>
+              <span className="text-emerald-400 font-digits font-bold tracking-wider tabular-nums bg-emerald-500/[0.07] px-2 py-0.5 rounded-md border border-emerald-500/20">
+                {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
+              </span>
             </div>
           </div>
         </div>
