@@ -3782,9 +3782,7 @@ export default function App() {
                       </span>
                     }
                   >
-                    <motion.div
-                      whileHover={{ scale: 1.05, y: -4 }}
-                      whileTap={{ scale: 0.95 }}
+                    <div
                       draggable
                       // @ts-ignore
                       onDragStart={(e) => handleDragStart(e, app.id)}
@@ -3795,13 +3793,16 @@ export default function App() {
                       onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
                       onContextMenu={(e: any) => handleContextMenu(e, app)}
                       onClick={() => handleLaunchApp(app)}
-                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl transition-all shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
+                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 will-change-transform ${app.color} ${
                         draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
-                      } ${favDropTarget === app.id ? 'border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110' : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_15px_currentColor]'}`}
+                      } ${favDropTarget === app.id
+                        ? 'border-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.35)] scale-105'
+                        : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_10px_currentColor] hover:scale-105 hover:-translate-y-0.5 active:scale-95'
+                      } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
                     >
-                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.15] blur-md rounded-2xl transition-opacity pointer-events-none" />
+                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.12] rounded-2xl transition-opacity duration-100 pointer-events-none" />
                       <AppIcon app={app} className="w-6 h-6 z-10" />
-                    </motion.div>
+                    </div>
                   </Tooltip>
                 ))}
               </div>
