@@ -1151,149 +1151,6 @@ const formatRelativeTime = (timestamp: number, t: any) => {
   return t('hud_history_days_ago', { days: diffDays.toString() });
 };
 
-const HistoryHUD = ({ 
-  isOpen, 
-  onClose, 
-  t, 
-  apps, 
-  launchHistory, 
-  removeHistoryItem, 
-  clearHistory, 
-  onLaunchItem 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  t: (key: any, variables?: any) => string; 
-  apps: Array<any>; 
-  launchHistory: Array<HistoryItem>; 
-  removeHistoryItem: (id: string) => void; 
-  clearHistory: () => void; 
-  onLaunchItem: (item: HistoryItem) => void; 
-}) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div 
-            initial={{ x: '100%', opacity: 0.9 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '100%', opacity: 0.9 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
-          >
-            {/* Tech grid bg overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
-
-            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
-              <div className="flex items-center gap-3">
-                <History className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_history_title')}</h2>
-                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">NEURAL LOG SYSTEM v1.2</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {launchHistory.length > 0 && (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (confirm(t('hud_history_clear') + '?')) {
-                        clearHistory();
-                      }
-                    }}
-                    className="p-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 rounded-lg text-red-400/80 hover:text-red-400 transition-all focus:outline-none flex items-center gap-1 text-[10px] font-cyber font-bold tracking-wider cursor-pointer"
-                    title={t('hud_history_clear')}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{t('hud_history_clear')}</span>
-                  </button>
-                )}
-                <button 
-                  type="button"
-                  onClick={onClose}
-                  className="p-1.5 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/30 rounded-lg text-slate-400 hover:text-cyan-400 transition-all focus:outline-none cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 text-left">
-              {launchHistory.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-500 space-y-3 font-mono text-xs">
-                  <History className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
-                  <p className="text-center">{t('hud_history_empty')}</p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {launchHistory.map((item) => {
-                    const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
-                    
-                    return (
-                      <div 
-                        key={item.id} 
-                        onClick={() => onLaunchItem(item)}
-                        className="group relative flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-cyan-500/30 transition-all duration-300 cursor-pointer shadow-lg overflow-hidden"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                          <div className="w-9 h-9 rounded-lg bg-black/30 flex items-center justify-center border border-white/10 group-hover:border-cyan-500/30 transition-all duration-300 shrink-0">
-                            {item.icon ? (
-                              <img src={item.icon} alt={item.name} className="w-6 h-6 object-contain" />
-                            ) : appInfo ? (
-                              <AppIcon app={appInfo} className="w-5 h-5" />
-                            ) : item.type === 'folder' ? (
-                              <Folder className="w-5 h-5 text-amber-400/80 group-hover:text-amber-400 transition-all duration-300" />
-                            ) : (
-                              <File className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 transition-all duration-300" />
-                            )}
-                          </div>
-                          
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-semibold text-slate-200 group-hover:text-cyan-400 transition-all duration-300 truncate">
-                              {item.name}
-                            </div>
-                            <div className="text-[9px] text-slate-500 font-mono truncate group-hover:text-slate-400 transition-all duration-300" title={item.path}>
-                              {item.path}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0 ml-3">
-                          <span className="text-[9px] font-mono text-slate-500 group-hover:hidden">
-                            {formatRelativeTime(item.timestamp, t)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeHistoryItem(item.id);
-                            }}
-                            className="hidden group-hover:flex p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
-                            title={t('hud_history_remove_item')}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
 export default function App() {
 
   const [categories, setCategories] = useState(() => {
@@ -1778,7 +1635,6 @@ export default function App() {
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
-  const [isHistoryHUDOpen, setIsHistoryHUDOpen] = useState(false);
   const [launchHistory, setLaunchHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('cyber_launch_history');
     return saved ? JSON.parse(saved) : [];
@@ -1795,23 +1651,10 @@ export default function App() {
         timestamp: Date.now(),
         icon
       };
-      const updated = [newItem, ...filtered].slice(0, 15);
+      const updated = [newItem, ...filtered].slice(0, 10);
       localStorage.setItem('cyber_launch_history', JSON.stringify(updated));
       return updated;
     });
-  }, []);
-
-  const removeHistoryItem = useCallback((id: string) => {
-    setLaunchHistory(prev => {
-      const updated = prev.filter(item => item.id !== id);
-      localStorage.setItem('cyber_launch_history', JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
-
-  const clearHistory = useCallback(() => {
-    setLaunchHistory([]);
-    localStorage.removeItem('cyber_launch_history');
   }, []);
 
   const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
@@ -2795,8 +2638,12 @@ export default function App() {
     [favoriteIds, apps]
   );
   const mostUsed = useMemo(
-    () => [...apps].sort((a, b) => b.usage - a.usage).slice(0, 15),
+    () => [...apps].sort((a, b) => b.usage - a.usage).slice(0, 10),
     [apps]
+  );
+  const recentLaunches = useMemo(
+    () => launchHistory.slice(0, 10),
+    [launchHistory]
   );
   const animateAppCards = filteredApps.length <= 48;
 
@@ -3841,16 +3688,13 @@ export default function App() {
         onMouseDown={startResizingRight}
       />
 
-      {/* --- RIGHT SIDEBAR (Most Used) --- */}
+      {/* --- RIGHT SIDEBAR (Recent + Most Used) --- */}
       <aside 
         ref={rightAsideRef}
         className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-colors duration-200'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarWidth }}
       >
-        <div className="p-6 pb-2 flex items-center justify-between">
-          <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest mt-2 px-2 drop-shadow-sm">
-            {t('title_most_used')}
-          </h3>
+        <div className="px-3 pt-3 pb-1 flex items-center justify-end">
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
@@ -3901,29 +3745,103 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 px-4 py-2 pb-4 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col justify-between">
-            {mostUsed.map((app, index) => (
-              <button 
-                key={`recent-${app.id}`}
-                onContextMenu={(e) => handleContextMenu(e, app)}
-                onClick={() => handleLaunchApp(app)}
-                className="w-full flex-1 min-h-0 flex items-center justify-between px-2 rounded-xl border border-transparent hover:bg-white/5 hover:border-white/10 group transition-all"
-              >
-                <div className="flex items-center gap-2 lg:gap-3 overflow-hidden">
-                  <span className="text-[10px] md:text-xs text-slate-500 font-mono w-3 lg:w-4 text-right group-hover:text-slate-300 shrink-0">
-                    {index + 1}.
-                  </span>
-                  <AppIcon app={app} className={`w-4 h-4 lg:w-5 lg:h-5 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
-                  <span className="text-xs lg:text-sm font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
-                    {app.name}
-                  </span>
+        <div className="flex-1 min-h-0 px-2 pb-2 flex flex-col overflow-hidden">
+          {/* Recientes */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest px-2 py-0.5 shrink-0 drop-shadow-sm">
+              {t('title_recent')}
+            </h3>
+            <div className="flex-1 min-h-0 flex flex-col">
+              {recentLaunches.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center px-2">
+                  <p className="text-[10px] font-mono text-slate-600 text-center leading-tight">{t('hud_history_empty')}</p>
                 </div>
-                <span className="text-[10px] lg:text-xs font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors shrink-0 ml-2 bg-cyan-500/5 group-hover:bg-cyan-500/10 px-2 py-0.5 rounded-md border border-transparent group-hover:border-cyan-500/20">
-                  {app.usage > 0 ? app.usage : '-'}
-                </span>
-              </button>
-            ))}
+              ) : (
+                Array.from({ length: 10 }, (_, index) => {
+                  const item = recentLaunches[index];
+                  if (!item) {
+                    return <div key={`recent-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
+                  }
+                  const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
+                  return (
+                    <button
+                      key={`recent-${item.id}`}
+                      type="button"
+                      onClick={() => handleLaunchHistoryItem(item)}
+                      onContextMenu={(e) => {
+                        if (appInfo) handleContextMenu(e, appInfo);
+                        else e.preventDefault();
+                      }}
+                      className="w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border border-transparent hover:bg-white/5 hover:border-white/10 group transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
+                        <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
+                          {index + 1}.
+                        </span>
+                        {appInfo ? (
+                          <AppIcon app={appInfo} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
+                        ) : item.icon ? (
+                          <img src={item.icon} alt="" className="w-3.5 h-3.5 lg:w-4 lg:h-4 object-contain drop-shadow-md shrink-0" />
+                        ) : item.type === 'folder' ? (
+                          <Folder className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400/80 shrink-0" />
+                        ) : (
+                          <File className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-400 shrink-0" />
+                        )}
+                        <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                          {item.name}
+                        </span>
+                      </div>
+                      <span className="text-[9px] lg:text-[10px] font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/5 group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded border border-transparent group-hover:border-cyan-500/20">
+                        {formatRelativeTime(item.timestamp, t)}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 py-1.5 px-2 opacity-30 shrink-0">
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+          </div>
+
+          {/* Más usadas */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest px-2 py-0.5 shrink-0 drop-shadow-sm">
+              {t('title_most_used')}
+            </h3>
+            <div className="flex-1 min-h-0 flex flex-col">
+              {Array.from({ length: 10 }, (_, index) => {
+                const app = mostUsed[index];
+                if (!app) {
+                  return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
+                }
+                return (
+                  <button
+                    key={`most-used-${app.id}`}
+                    type="button"
+                    onContextMenu={(e) => handleContextMenu(e, app)}
+                    onClick={() => handleLaunchApp(app)}
+                    className="w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border border-transparent hover:bg-white/5 hover:border-white/10 group transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
+                      <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
+                        {index + 1}.
+                      </span>
+                      <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                      <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                        {app.name}
+                      </span>
+                    </div>
+                    <span className="text-[9px] lg:text-[10px] font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/5 group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded border border-transparent group-hover:border-cyan-500/20">
+                      {app.usage > 0 ? app.usage : '-'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </aside>
@@ -3993,20 +3911,6 @@ export default function App() {
 
         {/* Lado derecho: Info del sistema */}
         <div className="flex items-center gap-4 text-slate-400">
-          {/* History HUD Toggle */}
-          <button
-            onClick={() => setIsHistoryHUDOpen(!isHistoryHUDOpen)}
-            className={`flex items-center justify-center p-1.5 rounded-lg border transition-all focus:outline-none cursor-pointer ${
-              isHistoryHUDOpen 
-                ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' 
-                : 'border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-400 hover:text-cyan-300'
-            }`}
-            title={t('hud_history')}
-          >
-            <History className="w-4 h-4" />
-          </button>
-          <div className="w-px h-4 bg-white/10" />
-
           {/* Uptime */}
           <div className="flex items-center gap-1.5 cursor-default" title={t('tooltip_uptime')}>
             <Power className="w-4 h-4 text-emerald-500" />
@@ -6013,17 +5917,6 @@ export default function App() {
         scheduledTasks={scheduledTasks}
         setScheduledTasks={setScheduledTasks}
         t={t}
-      />
-
-      <HistoryHUD 
-        isOpen={isHistoryHUDOpen}
-        onClose={() => setIsHistoryHUDOpen(false)}
-        t={t}
-        apps={apps}
-        launchHistory={launchHistory}
-        removeHistoryItem={removeHistoryItem}
-        clearHistory={clearHistory}
-        onLaunchItem={handleLaunchHistoryItem}
       />
 
       <style>{`
