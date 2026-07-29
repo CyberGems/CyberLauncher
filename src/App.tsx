@@ -1286,6 +1286,9 @@ export default function App() {
     }
 
     let active = true;
+    const trimmed = searchQuery.trim();
+    // Queries de 1 carácter son caras: esperar un poco más por si el usuario sigue escribiendo
+    const debounceMs = trimmed.length <= 1 ? 280 : 120;
 
     const delayDebounce = setTimeout(async () => {
       setIsSearchingSystem(true);
@@ -1301,6 +1304,7 @@ export default function App() {
               { name: `Documento_${searchQuery}.pdf`, path: `C:\\Users\\Mock\\Documents\\Documento_${searchQuery}.pdf`, ext: '.pdf', type: 'file' },
               { name: `Carpeta_${searchQuery}`, path: `C:\\Users\\Mock\\Downloads\\Carpeta_${searchQuery}`, ext: '', type: 'folder' },
               { name: `Aplicacion_${searchQuery}.exe`, path: `C:\\Program Files\\Aplicacion_${searchQuery}.exe`, ext: '.exe', type: 'app' },
+              { name: `App_${searchQuery}.lnk`, path: `C:\\Users\\Mock\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\App_${searchQuery}.lnk`, ext: '.lnk', type: 'app' },
             ]);
           }
         }
@@ -1311,7 +1315,7 @@ export default function App() {
           setIsSearchingSystem(false);
         }
       }
-    }, 150);
+    }, debounceMs);
 
     return () => {
       active = false;

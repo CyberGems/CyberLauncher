@@ -1175,73 +1175,92 @@ function setupIpcHandlers() {
   });
 
   const systemFileIconCache = new Map<string, string>();
+  let systemSearchGeneration = 0;
 
   // --- Búsqueda indexada global de sistema ---
   ipcMain.handle('search-system-files', async (_event, query: string) => {
     if (!query || query.trim() === '') return [];
     const normalizedQuery = query.toLowerCase().trim();
+    const qLen = normalizedQuery.length;
+    const gen = ++systemSearchGeneration;
 
-    const scoreMatch = (item: IndexedFile) => {
+    // 1 letra ≈ miles de hits: solo prefijo + priorizar apps, y cortar pronto
+    const shortQuery = qLen <= 1;
+    const collectLimit = shortQuery ? 80 : 400;
+    const resultLimit = shortQuery ? 20 : 40;
+
+    type Ranked = IndexedFile & { _score: number; _typeRank: number; _base: string };
+    const ranked: Ranked[] = [];
+
+    for (const item of systemIndex) {
+      const base = path.parse(item.name).name;
       const nameLower = item.name.toLowerCase();
-      const baseLower = path.parse(item.name).name.toLowerCase();
-      if (baseLower === normalizedQuery || nameLower === normalizedQuery) return 0;
-      if (baseLower.startsWith(normalizedQuery) || nameLower.startsWith(normalizedQuery)) return 1;
-      if (baseLower.includes(normalizedQuery) || nameLower.includes(normalizedQuery)) return 2;
-      return 99;
-    };
+      const baseLower = base.toLowerCase();
 
-    const typeRank = (item: IndexedFile) => {
+      let score = 99;
+      if (baseLower === normalizedQuery || nameLower === normalizedQuery) score = 0;
+      else if (baseLower.startsWith(normalizedQuery) || nameLower.startsWith(normalizedQuery)) score = 1;
+      else if (!shortQuery && (baseLower.includes(normalizedQuery) || nameLower.includes(normalizedQuery))) score = 2;
+
+      if (score >= 99) continue;
+
+      // En consultas de 1 carácter priorizar programas/accesos; carpetas/archivos solo si sobra cupo
+      if (shortQuery && item.type !== 'app' && ranked.length >= 40) continue;
+
+      let typeRank = 4;
       if (item.type === 'app') {
-        // Prefer shortcuts (.lnk) over raw scripts/exes in mixed ranking
-        if (item.ext === '.lnk') return 0;
-        if (item.ext === '.exe') return 1;
-        return 2;
-      }
-      if (item.type === 'folder') return 3;
-      return 4;
-    };
+        if (item.ext === '.lnk') typeRank = 0;
+        else if (item.ext === '.exe') typeRank = 1;
+        else typeRank = 2;
+      } else if (item.type === 'folder') typeRank = 3;
 
-    const matches = systemIndex.filter(item => scoreMatch(item) < 99);
+      ranked.push({ ...item, _score: score, _typeRank: typeRank, _base: base });
+      if (ranked.length >= collectLimit) break;
+    }
 
-    matches.sort((a, b) => {
-      const scoreDiff = scoreMatch(a) - scoreMatch(b);
-      if (scoreDiff !== 0) return scoreDiff;
+    if (gen !== systemSearchGeneration) return [];
 
-      const typeDiff = typeRank(a) - typeRank(b);
-      if (typeDiff !== 0) return typeDiff;
-
-      return path.parse(a.name).name.localeCompare(path.parse(b.name).name, undefined, {
-        numeric: true,
-        sensitivity: 'base'
-      });
+    ranked.sort((a, b) => {
+      if (a._score !== b._score) return a._score - b._score;
+      if (a._typeRank !== b._typeRank) return a._typeRank - b._typeRank;
+      return a._base.localeCompare(b._base, undefined, { numeric: true, sensitivity: 'base' });
     });
 
-    // Limitar a los 40 mejores para iconos + cobertura de programas
-    const topMatches = matches.slice(0, 40);
+    const topMatches = ranked.slice(0, resultLimit);
 
-    const resultsWithIcons = await Promise.all(topMatches.map(async item => {
-      let icon = '';
-      if (item.type !== 'folder') {
-        const cachedIcon = systemFileIconCache.get(item.path);
-        if (cachedIcon) {
-          icon = cachedIcon;
-        } else if (fs.existsSync(item.path)) {
-          try {
-            const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
-            if (fileIcon && !fileIcon.isEmpty()) {
-              icon = fileIcon.toDataURL();
-              systemFileIconCache.set(item.path, icon);
-            }
-          } catch (err) {}
+    // Iconos: en queries cortas solo cache (evita 20× getFileIcon bloqueando el main process)
+    const resolveIcon = async (item: IndexedFile): Promise<string> => {
+      if (item.type === 'folder') return '';
+      const cached = systemFileIconCache.get(item.path);
+      if (cached) return cached;
+      if (shortQuery) return '';
+      try {
+        if (!fs.existsSync(item.path)) return '';
+        const fileIcon = await app.getFileIcon(item.path, { size: 'normal' });
+        if (fileIcon && !fileIcon.isEmpty()) {
+          const data = fileIcon.toDataURL();
+          systemFileIconCache.set(item.path, data);
+          return data;
         }
-      }
-      return {
-        ...item,
-        icon
-      };
-    }));
+      } catch { /* ignore */ }
+      return '';
+    };
 
-    return resultsWithIcons;
+    const results: Array<IndexedFile & { icon: string }> = [];
+    const ICON_BATCH = 6;
+    for (let i = 0; i < topMatches.length; i += ICON_BATCH) {
+      if (gen !== systemSearchGeneration) return [];
+      const batch = topMatches.slice(i, i + ICON_BATCH);
+      const withIcons = await Promise.all(batch.map(async (item) => {
+        const { _score, _typeRank, _base, ...rest } = item;
+        return { ...rest, icon: await resolveIcon(rest) };
+      }));
+      results.push(...withIcons);
+      // Ceder el event loop entre lotes para no congelar la UI
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+
+    return results;
   });
 
   // --- Seleccionar archivo desde el explorador de Windows ---
