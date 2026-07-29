@@ -965,40 +965,75 @@ let systemIndexStatus: 'ONLINE' | 'OFFLINE' | 'INDEXING' = 'OFFLINE';
 
 const getSettingsFilePath = () => path.join(app.getPath('userData'), 'indexer_settings.json');
 
+/** Default crawl roots — Start Menu shortcuts are the Wox/Everything-style app surface. */
+function getDefaultIndexerPaths(): string[] {
+  const programData = process.env.ProgramData || 'C:\\ProgramData';
+  const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const candidates = [
+    path.join(programData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+    path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+    path.join(programData, 'Microsoft', 'Windows', 'Start Menu'),
+    path.join(appData, 'Microsoft', 'Windows', 'Start Menu'),
+    path.join(os.homedir(), 'Desktop'),
+    path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop'),
+    path.join(localAppData, 'Programs'),
+    path.join(os.homedir(), 'Downloads'),
+    path.join(os.homedir(), 'Documents'),
+  ];
+  return candidates.filter((p, i, arr) => arr.indexOf(p) === i && fs.existsSync(p));
+}
+
+function isStartMenuPath(p: string): boolean {
+  return /start menu/i.test(p);
+}
+
+function ensureStartMenuPaths(paths: string[]): string[] {
+  const defaults = getDefaultIndexerPaths().filter(isStartMenuPath);
+  const lower = new Set(paths.map(p => p.toLowerCase()));
+  const merged = [...paths];
+  for (const required of defaults) {
+    if (!lower.has(required.toLowerCase())) {
+      merged.push(required);
+      lower.add(required.toLowerCase());
+    }
+  }
+  return merged;
+}
+
 function loadIndexerSettings(): { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean } {
+  const defaults = {
+    enabled: true,
+    maxDepth: 2,
+    paths: getDefaultIndexerPaths(),
+    includeHiddenFolders: false,
+    indexHiddenContent: false
+  };
+
   try {
     const filePath = getSettingsFilePath();
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf8');
       const parsed = JSON.parse(data);
-      return {
-        enabled: true,
-        maxDepth: 2,
-        paths: [],
-        includeHiddenFolders: false,
-        indexHiddenContent: false,
-        ...parsed
+      const merged = {
+        ...defaults,
+        ...parsed,
+        paths: Array.isArray(parsed.paths) && parsed.paths.length > 0
+          ? ensureStartMenuPaths(parsed.paths)
+          : defaults.paths
       };
+      // Persist migration if Start Menu roots were missing / paths were empty
+      const pathsChanged = JSON.stringify(parsed.paths || []) !== JSON.stringify(merged.paths);
+      if (pathsChanged) {
+        try { saveIndexerSettings(merged); } catch { /* ignore */ }
+      }
+      return merged;
     }
   } catch (err) {
     console.error('[INDEXER] Error loading indexer settings:', err);
   }
-  
-  // Default values
-  return {
-    enabled: true,
-    maxDepth: 2,
-    paths: [
-      path.join(process.env.ProgramData || 'C:\\ProgramData', 'Microsoft\\Windows\\Start Menu\\Programs'),
-      path.join(process.env.APPDATA || 'C:\\Users\\Mock\\AppData\\Roaming', 'Microsoft\\Windows\\Start Menu\\Programs'),
-      path.join(os.homedir(), 'Desktop'),
-      path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop'),
-      path.join(os.homedir(), 'Downloads'),
-      path.join(os.homedir(), 'Documents')
-    ],
-    includeHiddenFolders: false,
-    indexHiddenContent: false
-  };
+
+  return defaults;
 }
 
 function saveIndexerSettings(settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }) {
@@ -1075,7 +1110,7 @@ async function buildSystemIndex() {
 
   for (const target of targets) {
     if (fs.existsSync(target)) {
-      const targetDepth = target.includes('Start Menu') ? Math.max(maxDepth, 3) : maxDepth;
+      const targetDepth = isStartMenuPath(target) ? Math.max(maxDepth, 4) : maxDepth;
       await crawlDirectory(target, targetDepth, 0, crawlOpts);
     }
   }
@@ -1145,32 +1180,45 @@ function setupIpcHandlers() {
   ipcMain.handle('search-system-files', async (_event, query: string) => {
     if (!query || query.trim() === '') return [];
     const normalizedQuery = query.toLowerCase().trim();
-    
-    // 1. Filtrar coincidencias del índice (solo si aparece en el nombre)
-    const matches = systemIndex.filter(item => 
-      item.name.toLowerCase().includes(normalizedQuery)
-    );
 
-    // 2. Ordenar resultados
+    const scoreMatch = (item: IndexedFile) => {
+      const nameLower = item.name.toLowerCase();
+      const baseLower = path.parse(item.name).name.toLowerCase();
+      if (baseLower === normalizedQuery || nameLower === normalizedQuery) return 0;
+      if (baseLower.startsWith(normalizedQuery) || nameLower.startsWith(normalizedQuery)) return 1;
+      if (baseLower.includes(normalizedQuery) || nameLower.includes(normalizedQuery)) return 2;
+      return 99;
+    };
+
+    const typeRank = (item: IndexedFile) => {
+      if (item.type === 'app') {
+        // Prefer shortcuts (.lnk) over raw scripts/exes in mixed ranking
+        if (item.ext === '.lnk') return 0;
+        if (item.ext === '.exe') return 1;
+        return 2;
+      }
+      if (item.type === 'folder') return 3;
+      return 4;
+    };
+
+    const matches = systemIndex.filter(item => scoreMatch(item) < 99);
+
     matches.sort((a, b) => {
-      const aNameLower = a.name.toLowerCase();
-      const bNameLower = b.name.toLowerCase();
-      
-      const aStartsWith = aNameLower.startsWith(normalizedQuery);
-      const bStartsWith = bNameLower.startsWith(normalizedQuery);
-      if (aStartsWith && !bStartsWith) return -1;
-      if (!aStartsWith && bStartsWith) return 1;
+      const scoreDiff = scoreMatch(a) - scoreMatch(b);
+      if (scoreDiff !== 0) return scoreDiff;
 
-      if (a.type === 'app' && b.type !== 'app') return -1;
-      if (a.type !== 'app' && b.type === 'app') return 1;
+      const typeDiff = typeRank(a) - typeRank(b);
+      if (typeDiff !== 0) return typeDiff;
 
-      return a.name.localeCompare(b.name);
+      return path.parse(a.name).name.localeCompare(path.parse(b.name).name, undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
     });
 
-    // 3. Limitar a los 30 mejores para optimizar velocidad de extracción de iconos
-    const topMatches = matches.slice(0, 30);
+    // Limitar a los 40 mejores para iconos + cobertura de programas
+    const topMatches = matches.slice(0, 40);
 
-    // 4. Resolver iconos perezosamente usando cache en memoria
     const resultsWithIcons = await Promise.all(topMatches.map(async item => {
       let icon = '';
       if (item.type !== 'folder') {

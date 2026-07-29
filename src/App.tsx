@@ -1198,14 +1198,15 @@ export default function App() {
   const [systemSearchResults, setSystemSearchResults] = useState<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>([]);
   const [isSearchingSystem, setIsSearchingSystem] = useState(false);
 
-  const [searchTypeFilter, setSearchTypeFilter] = useState<'all' | 'folders' | 'files'>(() => {
+  const [searchTypeFilter, setSearchTypeFilter] = useState<'all' | 'apps' | 'folders' | 'files'>(() => {
     const saved = localStorage.getItem('search_type_filter');
-    return (saved === 'all' || saved === 'folders' || saved === 'files') ? saved : 'all';
+    return (saved === 'all' || saved === 'apps' || saved === 'folders' || saved === 'files') ? saved : 'all';
   });
   const [searchSortOrder, setSearchSortOrder] = useState<'asc' | 'desc'>(() => {
     const saved = localStorage.getItem('search_sort_order');
     return (saved === 'asc' || saved === 'desc') ? saved : 'asc';
   });
+  const [systemSearchSelectedIndex, setSystemSearchSelectedIndex] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('search_type_filter', searchTypeFilter);
@@ -1215,36 +1216,68 @@ export default function App() {
     localStorage.setItem('search_sort_order', searchSortOrder);
   }, [searchSortOrder]);
 
+  const SEARCH_TYPE_FILTERS = ['all', 'apps', 'folders', 'files'] as const;
+
   const searchTypeCounts = React.useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    let all = 0, folders = 0, files = 0;
+    let all = 0, apps = 0, folders = 0, files = 0;
     for (const item of systemSearchResults) {
-      if (!item.name.toLowerCase().includes(query)) continue;
+      const name = item.name.toLowerCase();
+      const base = name.replace(/\.[^.]+$/, '');
+      if (!name.includes(query) && !base.includes(query)) continue;
       all++;
       if (item.type === 'folder') folders++;
+      else if (item.type === 'app') apps++;
       else files++;
     }
-    return { all, folders, files };
+    return { all, apps, folders, files };
   }, [systemSearchResults, searchQuery]);
 
   const displayedResults = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
     const filtered = systemSearchResults.filter(item => {
-      if (searchTypeFilter === 'folders' && item.type !== 'folder') {
-        return false;
-      }
-      if (searchTypeFilter === 'files' && item.type === 'folder') {
-        return false;
-      }
-      return item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      if (searchTypeFilter === 'folders' && item.type !== 'folder') return false;
+      if (searchTypeFilter === 'apps' && item.type !== 'app') return false;
+      if (searchTypeFilter === 'files' && item.type !== 'file') return false;
+      const name = item.name.toLowerCase();
+      const base = name.replace(/\.[^.]+$/, '');
+      return name.includes(query) || base.includes(query);
     });
 
+    const typeRank = (item: typeof filtered[0]) => {
+      if (item.type === 'app') {
+        if (item.ext === '.lnk') return 0;
+        if (item.ext === '.exe') return 1;
+        return 2;
+      }
+      if (item.type === 'folder') return 3;
+      return 4;
+    };
+
     filtered.sort((a, b) => {
-      const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      // Mixed (and apps): keep programs/shortcuts first; then alphabetical within group
+      if (searchTypeFilter === 'all' || searchTypeFilter === 'apps') {
+        const tr = typeRank(a) - typeRank(b);
+        if (tr !== 0) return tr;
+      }
+      const aName = a.name.replace(/\.[^.]+$/, '');
+      const bName = b.name.replace(/\.[^.]+$/, '');
+      const cmp = aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' });
       return searchSortOrder === 'asc' ? cmp : -cmp;
     });
 
     return filtered;
   }, [systemSearchResults, searchQuery, searchTypeFilter, searchSortOrder]);
+
+  useEffect(() => {
+    setSystemSearchSelectedIndex(0);
+  }, [searchQuery, searchScope, searchTypeFilter, systemSearchResults]);
+
+  useEffect(() => {
+    if (searchScope !== 'system' || displayedResults.length === 0) return;
+    const el = document.querySelector(`[data-search-result-index="${systemSearchSelectedIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [systemSearchSelectedIndex, displayedResults.length, searchScope]);
 
   useEffect(() => {
     if (searchScope !== 'system' || !searchQuery.trim() || searchQuery.trim().startsWith('>')) {
@@ -3142,6 +3175,60 @@ export default function App() {
                     setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
                   }
                 }
+
+                const inSystemResults =
+                  searchScope === 'system' &&
+                  searchQuery.trim() !== '' &&
+                  !searchQuery.trim().startsWith('>') &&
+                  displayedResults.length > 0;
+
+                if (inSystemResults) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSystemSearchSelectedIndex(prev => Math.min(prev + 1, displayedResults.length - 1));
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSystemSearchSelectedIndex(prev => Math.max(prev - 1, 0));
+                    return;
+                  }
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    if (e.ctrlKey || e.metaKey) {
+                      e.preventDefault();
+                      const idx = SEARCH_TYPE_FILTERS.indexOf(searchTypeFilter);
+                      const next = e.key === 'ArrowRight'
+                        ? SEARCH_TYPE_FILTERS[(idx + 1) % SEARCH_TYPE_FILTERS.length]
+                        : SEARCH_TYPE_FILTERS[(idx - 1 + SEARCH_TYPE_FILTERS.length) % SEARCH_TYPE_FILTERS.length];
+                      setSearchTypeFilter(next);
+                      return;
+                    }
+                    e.preventDefault();
+                    const item = displayedResults[systemSearchSelectedIndex];
+                    if (item) {
+                      const el = document.querySelector(`[data-search-result-index="${systemSearchSelectedIndex}"]`);
+                      const rect = el?.getBoundingClientRect();
+                      setSystemContextMenu({
+                        x: rect ? Math.min(rect.right - 12, window.innerWidth - 240) : 240,
+                        y: rect ? Math.min(rect.top + 8, window.innerHeight - 250) : 200,
+                        item
+                      });
+                    }
+                    return;
+                  }
+                  if (e.key === 'Enter' && !searchQuery.trim().startsWith('>')) {
+                    e.preventDefault();
+                    const item = displayedResults[systemSearchSelectedIndex];
+                    if (item) {
+                      addToHistory(item.name, item.path, item.type, item.icon);
+                      if (isElectron) {
+                        window.electronAPI!.launchApp(item.path);
+                      }
+                    }
+                    return;
+                  }
+                }
+
                 if (e.key === 'Enter' && searchQuery.trim().startsWith('>')) {
                   e.preventDefault();
                   const rawCmd = searchQuery.trim().substring(1).trim();
@@ -3342,48 +3429,61 @@ export default function App() {
               <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-4 shrink-0">
                 <div className="flex items-center gap-2">
                   <Search className="w-4 h-4 text-emerald-400 animate-pulse" />
-                  <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">RESULTADOS DEL SISTEMA DE ARCHIVOS</span>
+                  <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">{t('search_results_title')}</span>
                 </div>
                 <div className="text-[10px] text-slate-400 font-cyber">
-                  {isSearchingSystem ? 'BUSCANDO...' : `COINCIDENCIAS: ${displayedResults.length}`}
+                  {isSearchingSystem
+                    ? t('search_results_searching')
+                    : t('search_results_matches', { count: displayedResults.length.toString() })}
                 </div>
               </div>
 
               {/* Controles de Ordenamiento y Filtrado */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2 shrink-0">
                 {/* Grupo de Filtro por Tipo */}
-                <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/5">
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5 flex-wrap">
                   <button
                     onClick={() => setSearchTypeFilter('all')}
-                    className={`px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                    className={`px-2.5 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'all'
                         ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
-                    MEZCLADO <span className={searchTypeFilter === 'all' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.all})</span>
+                    {t('search_filter_mixed')} <span className={searchTypeFilter === 'all' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.all})</span>
+                  </button>
+                  <button
+                    onClick={() => setSearchTypeFilter('apps')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                      searchTypeFilter === 'apps'
+                        ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
+                        : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    <Package className="w-3.5 h-3.5 text-violet-400/85" />
+                    {t('search_filter_apps')} <span className={searchTypeFilter === 'apps' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.apps})</span>
                   </button>
                   <button
                     onClick={() => setSearchTypeFilter('folders')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'folders'
                         ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
                     <Folder className="w-3.5 h-3.5 text-amber-400/80" />
-                    CARPETAS <span className={searchTypeFilter === 'folders' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.folders})</span>
+                    {t('search_filter_folders')} <span className={searchTypeFilter === 'folders' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.folders})</span>
                   </button>
                   <button
                     onClick={() => setSearchTypeFilter('files')}
-                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
                       searchTypeFilter === 'files'
                         ? 'bg-emerald-500/20 text-emerald-400 animate-[cyber-pulse-border_2s_ease-in-out_infinite] border'
                         : 'text-slate-400 hover:text-slate-200 border border-transparent'
                     }`}
                   >
                     <File className="w-3.5 h-3.5 text-cyan-400/85" />
-                    ARCHIVOS <span className={searchTypeFilter === 'files' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.files})</span>
+                    {t('search_filter_files')} <span className={searchTypeFilter === 'files' ? 'text-emerald-400/60' : 'text-slate-500'}>({searchTypeCounts.files})</span>
                   </button>
                 </div>
 
@@ -3417,6 +3517,9 @@ export default function App() {
                   </Tooltip>
                 </div>
               </div>
+              <div className="text-[9px] font-mono text-slate-600 mb-3 px-1 shrink-0 tracking-wide">
+                {t('search_nav_hint')}
+              </div>
 
               {isSearchingSystem && displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-3">
@@ -3426,17 +3529,22 @@ export default function App() {
               ) : displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-2">
                   <Search className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
-                  <span className="text-xs font-cyber">NO SE ENCONTRARON COINCIDENCIAS</span>
-                  <span className="text-[10px] text-slate-600">Comprueba la ortografía o intenta con otro término / filtro</span>
+                  <span className="text-xs font-cyber">{t('search_results_empty')}</span>
+                  <span className="text-[10px] text-slate-600">{t('search_results_empty_hint')}</span>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
-                  {displayedResults.map((item, index) => (
+                  {displayedResults.map((item, index) => {
+                    const isSelected = index === systemSearchSelectedIndex;
+                    const displayName = item.name.replace(/\.lnk$/i, '');
+                    return (
                     <motion.div
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15, delay: Math.min(index * 0.02, 0.2) }}
                       key={`${item.path}-${index}`}
+                      data-search-result-index={index}
+                      onMouseEnter={() => setSystemSearchSelectedIndex(index)}
                       onClick={() => {
                         addToHistory(item.name, item.path, item.type, item.icon);
                         if (isElectron) {
@@ -3446,28 +3554,39 @@ export default function App() {
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        setSystemSearchSelectedIndex(index);
                         setSystemContextMenu({
                           x: e.clientX,
                           y: e.clientY,
                           item
                         });
                       }}
-                      className="group flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-emerald-500/30 transition-all duration-300 cursor-pointer shadow-lg relative overflow-hidden"
+                      className={`group flex items-center justify-between p-3 rounded-xl border transition-colors duration-150 cursor-pointer shadow-lg relative overflow-hidden ${
+                        isSelected
+                          ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                          : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-emerald-500/30'
+                      }`}
                     >
                       {/* Left: icon + name & path */}
                       <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-black/30 flex items-center justify-center border border-white/10 group-hover:border-emerald-500/30 transition-all duration-300 relative shrink-0">
+                        <div className={`w-10 h-10 rounded-lg bg-black/30 flex items-center justify-center border transition-all duration-300 relative shrink-0 ${
+                          isSelected ? 'border-emerald-500/40' : 'border-white/10 group-hover:border-emerald-500/30'
+                        }`}>
                           {item.icon ? (
-                            <img src={item.icon} alt={item.name} className="w-7 h-7 object-contain" />
+                            <img src={item.icon} alt={displayName} className="w-7 h-7 object-contain" />
                           ) : item.type === 'folder' ? (
                             <Folder className="w-5 h-5 text-amber-400/80 group-hover:text-amber-400 group-hover:scale-105 transition-all duration-300" />
+                          ) : item.type === 'app' ? (
+                            <Package className="w-5 h-5 text-violet-400/80 group-hover:text-violet-400 group-hover:scale-105 transition-all duration-300" />
                           ) : (
                             <File className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 group-hover:scale-105 transition-all duration-300" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1 text-left">
-                          <div className="text-sm font-semibold text-slate-200 group-hover:text-emerald-400 transition-all duration-300 truncate">
-                            {item.name}
+                          <div className={`text-sm font-semibold truncate transition-colors duration-150 ${
+                            isSelected ? 'text-emerald-300' : 'text-slate-200 group-hover:text-emerald-400'
+                          }`}>
+                            {displayName}
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono truncate select-all group-hover:text-slate-400 transition-all duration-300">
                             {item.path}
@@ -3476,7 +3595,9 @@ export default function App() {
                       </div>
 
                       {/* Right: Actions */}
-                      <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className={`flex items-center gap-2 shrink-0 transition-opacity duration-300 ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}>
                         {item.type !== 'folder' && (
                           <Tooltip label="Ejecutar como Administrador" placement="top">
                             <button
@@ -3531,7 +3652,8 @@ export default function App() {
                         </Tooltip>
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
