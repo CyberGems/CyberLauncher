@@ -3063,8 +3063,10 @@ export default function App() {
                     }}
                   />
                 )}
-                <span className={`text-xs px-2 py-0.5 rounded-full backdrop-blur-md ${
-                  activeCategory === cat.id ? 'bg-blue-500/30 text-blue-200' : 'bg-black/40 group-hover:bg-black/60'
+                <span className={`text-xs px-2 py-0.5 rounded-md border tabular-nums font-medium transition-colors ${
+                  activeCategory === cat.id
+                    ? 'bg-blue-500/[0.08] border-blue-500/25 text-blue-300'
+                    : 'bg-white/[0.03] border-white/10 text-slate-500 group-hover:border-white/15 group-hover:text-slate-400'
                 }`}>
                   {cat.count}
                 </span>
@@ -3086,14 +3088,18 @@ export default function App() {
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" style={{ boxShadow: '0 0 8px #3b82f6' }} />
                 {t('title_apps')}
               </div>
-              <span className="text-blue-400 font-digits font-bold tracking-wider tabular-nums">{apps.length}</span>
+              <span className="text-blue-400 font-digits font-bold tracking-wider tabular-nums bg-blue-500/[0.07] px-2 py-0.5 rounded-md border border-blue-500/20">
+                {apps.length}
+              </span>
             </div>
             <div className="flex justify-between items-center text-xs">
                <div className="flex items-center gap-2 text-slate-400">
                 <span className="inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500" style={{ boxShadow: '0 0 8px #eab308' }} />
                 {t('title_categories')}
               </div>
-              <span className="text-yellow-400 font-digits font-bold tracking-wider tabular-nums">{categories.length - 1}</span>
+              <span className="text-yellow-400 font-digits font-bold tracking-wider tabular-nums bg-yellow-500/[0.07] px-2 py-0.5 rounded-md border border-yellow-500/20">
+                {categories.length - 1}
+              </span>
             </div>
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
