@@ -142,7 +142,7 @@ declare global {
       windowMaximizeToggle: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowHideToTray: () => Promise<void>;
-      setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
+      setAutoLaunch: (enabled: boolean, startMinimized?: boolean) => Promise<{ success: boolean; enabled: boolean; startMinimized?: boolean }>;
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       setShowTaskbarIcon: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
@@ -1802,6 +1802,7 @@ export default function App() {
   });
   const [customImageUrl, setCustomImageUrl] = useState(() => localStorage.getItem('customImageUrl') || '');
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
+  const [startMinimized, setStartMinimized] = useState(() => localStorage.getItem('startMinimized') === 'true');
   const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
   const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
@@ -1824,6 +1825,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('bgColor', bgColor); }, [bgColor]);
   useEffect(() => { localStorage.setItem('resetOnLaunch', resetOnLaunch.toString()); }, [resetOnLaunch]);
   useEffect(() => { localStorage.setItem('startWithWindows', startWithWindows.toString()); }, [startWithWindows]);
+  useEffect(() => { localStorage.setItem('startMinimized', startMinimized.toString()); }, [startMinimized]);
   useEffect(() => { localStorage.setItem('hideOnClickDeadSpot', hideOnClickDeadSpot.toString()); }, [hideOnClickDeadSpot]);
   useEffect(() => { localStorage.setItem('bgGradient', bgGradient); }, [bgGradient]);
   useEffect(() => { localStorage.setItem('glassIntensity', glassIntensity.toString()); }, [glassIntensity]);
@@ -1940,6 +1942,7 @@ export default function App() {
           if (source.glassIntensity !== undefined) setGlassIntensity(source.glassIntensity);
           if (source.bgOpacity !== undefined) setBgOpacity(source.bgOpacity);
           if (source.startWithWindows !== undefined) setStartWithWindows(source.startWithWindows);
+          if (source.startMinimized !== undefined) setStartMinimized(source.startMinimized);
           if (source.hideOnClickDeadSpot !== undefined) setHideOnClickDeadSpot(source.hideOnClickDeadSpot);
           if (source.hideOnBlur !== undefined) { setHideOnBlur(source.hideOnBlur); if (isElectron) window.electronAPI!.setHideOnBlur(source.hideOnBlur); }
           if (source.activationShortcut) setActivationShortcut(source.activationShortcut);
@@ -1950,6 +1953,16 @@ export default function App() {
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
           if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
+          // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
+          {
+            const auto = source.startWithWindows !== undefined
+              ? !!source.startWithWindows
+              : localStorage.getItem('startWithWindows') === 'true';
+            const mini = source.startMinimized !== undefined
+              ? !!source.startMinimized
+              : localStorage.getItem('startMinimized') === 'true';
+            window.electronAPI!.setAutoLaunch(auto, auto && mini);
+          }
         }
         setIsConfigLoaded(true);
         console.log('[CONFIG] Carga inicial completada, guardado habilitado');
@@ -1962,8 +1975,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -1986,7 +1999,7 @@ export default function App() {
           apps: appsClean, categories, favoriteIds, taskbarAppIds,
           bgType, bgImage, customImageUrl, bgColor,
           bgGradient, glassIntensity, bgOpacity,
-          startWithWindows, activationShortcut,
+          startWithWindows, startMinimized, activationShortcut,
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
@@ -2010,7 +2023,7 @@ export default function App() {
     apps, categories, favoriteIds, taskbarAppIds,
     bgType, bgImage, customImageUrl, bgColor,
     bgGradient, glassIntensity, bgOpacity,
-    startWithWindows, activationShortcut,
+    startWithWindows, startMinimized, activationShortcut,
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
@@ -2084,7 +2097,7 @@ export default function App() {
       'apps', 'categories', 'favoriteIds', 'taskbarAppIds',
       'bgType', 'bgImage', 'customImageUrl', 'bgColor',
       'bgGradient', 'glassIntensity', 'bgOpacity',
-      'startWithWindows', 'activationShortcut',
+      'startWithWindows', 'startMinimized', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth',
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor'
@@ -2177,6 +2190,10 @@ export default function App() {
       if (config.startWithWindows !== undefined) {
         setStartWithWindows(config.startWithWindows);
         localStorage.setItem('startWithWindows', config.startWithWindows.toString());
+      }
+      if (config.startMinimized !== undefined) {
+        setStartMinimized(config.startMinimized);
+        localStorage.setItem('startMinimized', config.startMinimized.toString());
       }
       if (config.hideOnClickDeadSpot !== undefined) {
         setHideOnClickDeadSpot(config.hideOnClickDeadSpot);
@@ -2512,6 +2529,7 @@ export default function App() {
         glassIntensity,
         bgOpacity,
         startWithWindows,
+        startMinimized,
         leftSidebarWidth,
         rightSidebarWidth,
         activationShortcut,
@@ -2559,6 +2577,7 @@ export default function App() {
         if (data.settings.glassIntensity !== undefined) setGlassIntensity(data.settings.glassIntensity);
         if (data.settings.bgOpacity !== undefined) setBgOpacity(data.settings.bgOpacity);
         if (data.settings.startWithWindows !== undefined) setStartWithWindows(data.settings.startWithWindows);
+        if (data.settings.startMinimized !== undefined) setStartMinimized(data.settings.startMinimized);
         if (data.settings.leftSidebarWidth !== undefined) setLeftSidebarWidth(data.settings.leftSidebarWidth);
         if (data.settings.rightSidebarWidth !== undefined) setRightSidebarWidth(data.settings.rightSidebarWidth);
         if (data.settings.activationShortcut !== undefined) setActivationShortcut(data.settings.activationShortcut);
@@ -2567,6 +2586,11 @@ export default function App() {
            setHotspotCorners([data.settings.hotspotCorner]);
         }
         if (data.settings.hotspotDelay !== undefined) setHotspotDelay(data.settings.hotspotDelay);
+        if (isElectron && (data.settings.startWithWindows !== undefined || data.settings.startMinimized !== undefined)) {
+          const auto = data.settings.startWithWindows !== undefined ? !!data.settings.startWithWindows : startWithWindows;
+          const mini = data.settings.startMinimized !== undefined ? !!data.settings.startMinimized : startMinimized;
+          window.electronAPI!.setAutoLaunch(auto, auto && mini);
+        }
       }
       
     } catch (error) {
@@ -5008,7 +5032,7 @@ export default function App() {
                           const newVal = !startWithWindows;
                           setStartWithWindows(newVal);
                           if (isElectron) {
-                            window.electronAPI!.setAutoLaunch(newVal);
+                            window.electronAPI!.setAutoLaunch(newVal, newVal && startMinimized);
                           }
                         }}
                         className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${startWithWindows ? 'bg-blue-500' : 'bg-slate-700'}`}
@@ -5018,6 +5042,34 @@ export default function App() {
                         </div>
                       </button>
                     </div>
+
+                    {startWithWindows && (
+                      <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                            <Minimize2 className="w-4 h-4 text-indigo-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup_minimized')}</h4>
+                            <p className="text-xs text-slate-500">{t('sys_startup_minimized_desc')}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const newVal = !startMinimized;
+                            setStartMinimized(newVal);
+                            if (isElectron) {
+                              window.electronAPI!.setAutoLaunch(true, newVal);
+                            }
+                          }}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${startMinimized ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startMinimized ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${startMinimized ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                          </div>
+                        </button>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3">

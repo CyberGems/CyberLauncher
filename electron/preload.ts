@@ -28,7 +28,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowHideToTray: () => ipcRenderer.invoke('window-hide-to-tray'),
 
   // --- Auto-launch (Iniciar con Windows) ---
-  setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch', enabled),
+  setAutoLaunch: (enabled: boolean, startMinimized?: boolean) =>
+    ipcRenderer.invoke('set-auto-launch', enabled, startMinimized),
   setHideOnBlur: (enabled: boolean) => ipcRenderer.invoke('set-hide-on-blur', enabled),
   setShowTaskbarIcon: (enabled: boolean) => ipcRenderer.invoke('set-show-taskbar-icon', enabled),
 

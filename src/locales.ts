@@ -72,6 +72,8 @@ export const translations = {
     // System Settings Tab
     sys_startup: "INICIO AUTOMÁTICO CON WINDOWS",
     sys_startup_desc: "Lanza Cyber Launcher automáticamente al iniciar sesión.",
+    sys_startup_minimized: "INICIAR MINIMIZADO",
+    sys_startup_minimized_desc: "Al iniciar con Windows, abre en la bandeja sin mostrar la ventana.",
     sys_blur_hide: "OCULTAR AL PERDER EL FOCO (BLUR HIDE)",
     sys_blur_hide_desc: "Oculta el lanzador inmediatamente al hacer clic fuera de su ventana.",
     sys_animations: "EFECTOS VISUALES Y ANIMACIONES",
@@ -335,6 +337,8 @@ export const translations = {
     // System Settings Tab
     sys_startup: "LAUNCH AUTO WITH WINDOWS",
     sys_startup_desc: "Launch CyberLauncher automatically when you log into Windows.",
+    sys_startup_minimized: "START MINIMIZED",
+    sys_startup_minimized_desc: "When launching with Windows, open to the tray without showing the window.",
     sys_blur_hide: "HIDE ON FOCUS LOSS (BLUR HIDE)",
     sys_blur_hide_desc: "Hide the launcher instantly when you click outside its window.",
     sys_animations: "VISUAL EFFECTS & ANIMATIONS",

@@ -166,6 +166,38 @@ function hideMainWindow() {
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.json');
+const START_MINIMIZED_ARG = '--start-minimized';
+/** True when this process should boot to tray (login / --start-minimized). */
+let startHiddenThisSession = false;
+
+function readConfigBoolean(key: string): boolean {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      return !!config[key];
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+function applyAutoLaunchSettings(enabled: boolean, startMinimized: boolean) {
+  app.setLoginItemSettings({
+    openAtLogin: enabled,
+    path: app.getPath('exe'),
+    args: enabled && startMinimized ? [START_MINIMIZED_ARG] : [],
+  });
+}
+
+function computeStartHiddenThisSession(): boolean {
+  if (process.argv.includes(START_MINIMIZED_ARG)) return true;
+  try {
+    const login = app.getLoginItemSettings();
+    if (login.wasOpenedAtLogin && readConfigBoolean('startWithWindows') && readConfigBoolean('startMinimized')) {
+      return true;
+    }
+  } catch { /* ignore */ }
+  return false;
+}
 
 // --- Icono de la aplicación (usa PNG/ICO real, no SVG) ---
 function getAppIconPath(): string {
@@ -421,9 +453,17 @@ function createWindow() {
 
   // Show as soon as Chromium is ready — no opacity dance, no waiting for ui-ready
   // (those caused black screen / invisible window for ~2s).
+  startHiddenThisSession = computeStartHiddenThisSession();
   mainWindow.once('ready-to-show', () => {
-    console.log('[WM] ready-to-show — showing');
     bootBlurGuardUntil = Date.now() + 2000;
+    if (startHiddenThisSession) {
+      console.log('[WM] ready-to-show — start minimized (tray)');
+      windowVisibilityState = 'hidden-intentional';
+      // Stay hidden; first tray/hotkey activation will show + maximize.
+      saveWindowState();
+      return;
+    }
+    console.log('[WM] ready-to-show — showing');
     showMainWindow();
     try {
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMaximized()) {
@@ -495,6 +535,7 @@ function createWindow() {
   });
 
   setTimeout(() => {
+    if (startHiddenThisSession) return;
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
       console.log('[WM] Safety timeout: forcing show');
       showMainWindow();
@@ -1476,12 +1517,10 @@ foreach (\$app in \$startApps) {
   // (CyberTray IPCs removed)
 
   // --- Configurar inicio con Windows (auto-launch) ---
-  ipcMain.handle('set-auto-launch', (_event, enabled: boolean) => {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      path: app.getPath('exe'),
-    });
-    return { success: true, enabled };
+  ipcMain.handle('set-auto-launch', (_event, enabled: boolean, startMinimized?: boolean) => {
+    const minimized = enabled && (startMinimized ?? readConfigBoolean('startMinimized'));
+    applyAutoLaunchSettings(enabled, minimized);
+    return { success: true, enabled, startMinimized: minimized };
   });
 
   ipcMain.handle('set-hide-on-blur', (_event, enabled: boolean) => {
