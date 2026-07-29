@@ -3055,13 +3055,15 @@ export default function App() {
               </div>
               <div className="flex items-center gap-1.5">
                 {cat.id !== 'all' && (
-                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditCategoryForm({ name: cat.name, color: cat.color });
-                      setEditingCategory(cat);
-                    }}
-                  />
+                  <Tooltip label={t('tooltip_edit_category')} placement="right">
+                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditCategoryForm({ name: cat.name, color: cat.color });
+                        setEditingCategory(cat);
+                      }}
+                    />
+                  </Tooltip>
                 )}
                 <span className={`text-xs px-2 py-0.5 rounded-md border tabular-nums font-medium transition-colors ${
                   activeCategory === cat.id
@@ -3796,11 +3798,11 @@ export default function App() {
                       className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 will-change-transform ${app.color} ${
                         draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
                       } ${favDropTarget === app.id
-                        ? 'border-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.35)] scale-105'
-                        : 'border-white/10 hover:bg-white/10 hover:border-current hover:shadow-[0_0_10px_currentColor] hover:scale-105 hover:-translate-y-0.5 active:scale-95'
+                        ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
+                        : 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95'
                       } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
                     >
-                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.12] rounded-2xl transition-opacity duration-100 pointer-events-none" />
+                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.05] rounded-2xl transition-opacity duration-100 pointer-events-none" />
                       <AppIcon app={app} className="w-6 h-6 z-10" />
                     </div>
                   </Tooltip>
@@ -3817,20 +3819,24 @@ export default function App() {
               </h3>
               
               <div className="flex items-center bg-black/30 backdrop-blur-md rounded-lg p-1 border border-white/5">
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  <ListIcon className="w-4 h-4" />
-                </button>
+                <Tooltip label={t('tooltip_view_grid')} placement="bottom">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    <Grid className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip label={t('tooltip_view_list')} placement="bottom">
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    <ListIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip>
                 <div className="w-px h-4 bg-white/10 mx-2" />
-                <Tooltip label="Agregar app" placement="bottom">
+                <Tooltip label={t('tooltip_add_app')} placement="bottom">
                   <button 
                     onClick={() => {
                       setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
@@ -3924,10 +3930,12 @@ export default function App() {
                     {viewMode === 'grid' ? (
                       <>
                         {favoriteIds.includes(app.id) && (
-                          <Star 
-                            className="absolute top-[8px] right-[8px] text-blue-400 fill-blue-500/30 drop-shadow-md" 
-                            style={{ width: `${12 * (cardScale / 100)}px`, height: `${12 * (cardScale / 100)}px` }}
-                          />
+                          <Tooltip label={t('tooltip_in_favorites')} placement="left">
+                            <Star 
+                              className="absolute top-[8px] right-[8px] text-blue-400 fill-blue-500/30 drop-shadow-md pointer-events-auto" 
+                              style={{ width: `${12 * (cardScale / 100)}px`, height: `${12 * (cardScale / 100)}px` }}
+                            />
+                          </Tooltip>
                         )}
                         <div 
                           className="flex flex-col items-center justify-center text-center h-full"
@@ -3978,10 +3986,12 @@ export default function App() {
                           </div>
                         </div>
                         {favoriteIds.includes(app.id) && (
-                          <Star 
-                            className="text-blue-400 fill-blue-500/30 group-hover:text-blue-300 flex-shrink-0" 
-                            style={{ width: `${16 * (cardScale / 100)}px`, height: `${16 * (cardScale / 100)}px` }}
-                          />
+                          <Tooltip label={t('tooltip_in_favorites')} placement="left">
+                            <Star 
+                              className="text-blue-400 fill-blue-500/30 group-hover:text-blue-300 flex-shrink-0" 
+                              style={{ width: `${16 * (cardScale / 100)}px`, height: `${16 * (cardScale / 100)}px` }}
+                            />
+                          </Tooltip>
                         )}
                       </>
                     )}

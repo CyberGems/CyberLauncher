@@ -19,6 +19,10 @@ export const translations = {
     tooltip_launches_today: "Lanzamientos de hoy",
     tooltip_date: "Fecha actual",
     tooltip_add_app: "Añadir nueva aplicación",
+    tooltip_edit_category: "Editar categoría",
+    tooltip_in_favorites: "En favoritos",
+    tooltip_view_grid: "Vista en cuadrícula",
+    tooltip_view_list: "Vista en lista",
     
     // Sidebar Tabs
     tab_general: "GENERAL",
@@ -294,6 +298,10 @@ export const translations = {
     tooltip_launches_today: "Today's launches",
     tooltip_date: "Current date",
     tooltip_add_app: "Add new application",
+    tooltip_edit_category: "Edit category",
+    tooltip_in_favorites: "In favorites",
+    tooltip_view_grid: "Grid view",
+    tooltip_view_list: "List view",
     
     // Sidebar Tabs
     tab_general: "GENERAL",
