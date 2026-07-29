@@ -4185,7 +4185,7 @@ export default function App() {
                           {item.name}
                         </span>
                       </div>
-                      <span className="text-[9px] lg:text-[10px] font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/5 group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded border border-transparent group-hover:border-cyan-500/20">
+                      <span className="text-[9px] lg:text-[10px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors shrink-0 ml-1.5 bg-white/[0.03] group-hover:bg-white/[0.05] px-1.5 py-0.5 rounded-md border border-white/10 group-hover:border-white/15 tabular-nums">
                         {formatRelativeTime(item.timestamp, t)}
                       </span>
                     </button>
@@ -4229,7 +4229,7 @@ export default function App() {
                         {app.name}
                       </span>
                     </div>
-                    <span className="text-[9px] lg:text-[10px] font-mono text-cyan-400/80 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/5 group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded border border-transparent group-hover:border-cyan-500/20">
+                    <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
                       {app.usage > 0 ? app.usage : '-'}
                     </span>
                   </button>
