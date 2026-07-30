@@ -496,6 +496,7 @@ function createWindow() {
 
   mainWindow.on('hide', () => {
     console.log('[WM EVENT] hide');
+    // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
     rebuildTrayMenu();
   });
 
@@ -517,8 +518,16 @@ function createWindow() {
       console.log('[WM] Ignoring blur during boot guard');
       return;
     }
+    if (isTrayMenuGuardActive()) {
+      console.log('[WM] Ignoring blur during tray menu');
+      return;
+    }
     setTimeout(() => {
       if (Date.now() < bootBlurGuardUntil) return;
+      if (isTrayMenuGuardActive()) {
+        console.log('[WM] Ignoring blur during tray menu (delayed)');
+        return;
+      }
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && !isUiModalOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
         windowVisibilityState = 'hidden-blur';
@@ -615,16 +624,45 @@ function loadMenuIcon(name: string) {
   return nativeImage.createEmpty();
 }
 
-function rebuildTrayMenu(): void {
-  if (!tray) return;
+/**
+ * While the tray context menu is open, hide-on-blur + tray.setContextMenu race on Windows
+ * and can crash the process when hovering menu items. Guard both paths.
+ */
+let trayMenuGuardUntil = 0;
+let pendingTrayRebuild = false;
+let trayRebuildTimer: ReturnType<typeof setTimeout> | null = null;
+
+function armTrayMenuGuard(ms = 5000) {
+  trayMenuGuardUntil = Math.max(trayMenuGuardUntil, Date.now() + ms);
+  // After the menu closes, apply hide-on-blur if the window is still unfocused.
+  setTimeout(() => {
+    if (isTrayMenuGuardActive()) return;
+    if (!hideOnBlurEnabled) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isFocused() || mainWindow.isAlwaysOnTop()) return;
+    if (isDialogOpen || isUiModalOpen) return;
+    if (mainWindow.isVisible()) {
+      console.log('[WM] Applying deferred hide-on-blur after tray menu');
+      windowVisibilityState = 'hidden-blur';
+      hideMainWindow();
+    }
+  }, ms + 50);
+}
+
+function isTrayMenuGuardActive() {
+  return Date.now() < trayMenuGuardUntil;
+}
+
+function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const lang = getTrayLanguage();
   const t = TRAY_I18N[lang];
   const version = app.getVersion();
+  // Guard keeps the window from hide-on-blur while the menu is opening, so isVisible() is reliable here.
   const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
   const parts = t.showHide.split(' / ');
   const dynamicLabel = isVisible ? (parts[1] || 'Hide') : (parts[0] || 'Show');
 
-  const contextMenu = Menu.buildFromTemplate([
+  return [
     {
       label: `CyberLauncher v${version}`,
       enabled: false,
@@ -666,16 +704,52 @@ function rebuildTrayMenu(): void {
         app.quit();
       },
     },
-  ]);
+  ];
+}
 
-  tray.setContextMenu(contextMenu);
+function rebuildTrayMenu(): void {
+  if (!tray) return;
+
+  // Never replace the open Windows tray menu — that crashes on hover.
+  if (isTrayMenuGuardActive()) {
+    pendingTrayRebuild = true;
+    if (!trayRebuildTimer) {
+      const delay = Math.max(150, trayMenuGuardUntil - Date.now() + 50);
+      trayRebuildTimer = setTimeout(() => {
+        trayRebuildTimer = null;
+        if (pendingTrayRebuild) {
+          pendingTrayRebuild = false;
+          rebuildTrayMenu();
+        }
+      }, delay);
+    }
+    return;
+  }
+
+  pendingTrayRebuild = false;
+  const version = app.getVersion();
   tray.setToolTip(`CyberLauncher v${version}`);
+
+  // Windows: menu is shown via popUpContextMenu on right-click (so right-click fires).
+  // Other platforms keep a persistent context menu.
+  if (process.platform !== 'win32') {
+    tray.setContextMenu(Menu.buildFromTemplate(getTrayMenuTemplate()));
+  }
 }
 
 function createTray() {
   if (tray) return;
   tray = new Tray(getTrayIcon());
   rebuildTrayMenu();
+
+  if (process.platform === 'win32') {
+    tray.on('right-click', (_event, bounds) => {
+      armTrayMenuGuard(6000);
+      // Build with current visibility BEFORE any hide-on-blur can race the label.
+      const menu = Menu.buildFromTemplate(getTrayMenuTemplate());
+      tray!.popUpContextMenu(menu, bounds);
+    });
+  }
 
   tray.on('click', () => toggleWindow());
   tray.on('double-click', () => {

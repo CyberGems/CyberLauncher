@@ -218,6 +218,8 @@ const playCyberBeep = () => {
   }
 };
 
+const RESOURCE_ALERT_THRESHOLD = 85;
+
 const SystemMonitor = React.memo(() => {
   const [memPercent, setMemPercent] = useState<number>(0);
   const [memUsed, setMemUsed] = useState<number>(0);
@@ -251,9 +253,15 @@ const SystemMonitor = React.memo(() => {
     return () => clearInterval(interval);
   }, []);
 
+  const isAlert = memPercent >= RESOURCE_ALERT_THRESHOLD;
+
   return (
     <div 
-      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+        isAlert
+          ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
+          : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
+      }`}
     >
       <Cpu className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
       <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-11 text-right tabular-nums">
@@ -285,10 +293,16 @@ const DiskMonitor = React.memo(() => {
   }, []);
 
   const mainDisk = disks[0];
+  const diskPercent = mainDisk?.percent ?? 0;
+  const isAlert = diskPercent >= RESOURCE_ALERT_THRESHOLD;
 
   return (
     <div 
-      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/85 hover:bg-cyan-300 text-slate-900 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] rounded-lg border border-transparent hover:border-cyan-200/50 cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group"
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+        isAlert
+          ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
+          : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
+      }`}
     >
       <HardDrive className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
       <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-7 text-right tabular-nums">
@@ -883,7 +897,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
           setUptime(3600 * 2.5);
         }
       } catch (err) {
-        console.error('Error fetching neural metrics:', err);
+        console.error('Error fetching system metrics:', err);
       }
     };
 
@@ -923,7 +937,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
                 <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
                 <div>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_system_title')}</h2>
-                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">NEURAL COCKPIT SYSTEM v1.4</p>
+                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">SYSTEM MONITOR v1.4</p>
                 </div>
               </div>
               <button 
@@ -984,7 +998,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
                   <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> {t('hud_system_parameters')}
                 </h3>
                 <div className="font-mono text-[10px] space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
-                  <div className="text-emerald-400/90">&gt; NEURAL_LINK_STABLE: OK</div>
+                  <div className="text-emerald-400/90">&gt; SYSTEM_LINK_STABLE: OK</div>
                   <div className="text-slate-400">&gt; {t('hud_system_launches', { count: dailyLaunchCount.toString() })}</div>
                   <div className="text-slate-400">&gt; {t('hud_system_shortcut', { shortcut: activationShortcut })}</div>
                   <div className="text-slate-400">&gt; SYSTEM_PLATFORM: WINDOWS_NT_x64</div>
@@ -1030,7 +1044,7 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
           ]);
         }
       } catch (err) {
-        console.error('Error fetching storage neural metrics:', err);
+        console.error('Error fetching storage metrics:', err);
       }
     };
 
@@ -1076,7 +1090,7 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
                 <HardDrive className="w-5 h-5 text-purple-400 animate-pulse" />
                 <div>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_storage_title')}</h2>
-                  <p className="text-[10px] text-purple-500/80 font-mono tracking-wider text-left">STORAGE NEURAL SYSTEM v1.4</p>
+                  <p className="text-[10px] text-purple-500/80 font-mono tracking-wider text-left">STORAGE MONITOR v1.4</p>
                 </div>
               </div>
               <button 
@@ -3525,7 +3539,7 @@ export default function App() {
             
             <HeaderClock
               onClick={() => setIsClockHUDOpen(true)}
-              title="Abrir Reloj Neuronal y Programador de Ejecuciones"
+              title={t('hud_clock')}
             />
           </div>
         </header>
@@ -3701,7 +3715,7 @@ export default function App() {
               {isSearchingSystem && displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-3">
                   <div className="w-8 h-8 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                  <span className="text-xs font-cyber animate-pulse">ESCANEAR CON NEURAL INDEX...</span>
+                  <span className="text-xs font-cyber animate-pulse">{t('search_indexing')}</span>
                 </div>
               ) : displayedResults.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-2">
@@ -4849,26 +4863,37 @@ export default function App() {
               <div className="flex flex-1 min-h-0">
                 {/* Left Sidebar Navigation */}
                 <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
-                  {([
-                    ['general', t('tab_general'), '⌨'],
-                    ['appearance', t('tab_appearance'), '🎨'],
-                    ['system', t('tab_system'), '⚙'],
-                    ['indexer', t('tab_indexer'), '🔍'],
-                    ['uwp', t('tab_uwp'), '🛍']
-                  ] as const).map(([id,label,icon]) => (
-                    <button 
-                      key={id} 
-                      onClick={() => setSettingsTab(id as any)}
-                      className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 ${
-                        settingsTab === id 
-                          ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
-                          : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
-                      }`}
+                  <div className="flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                    {([
+                      ['general', t('tab_general'), '⌨'],
+                      ['appearance', t('tab_appearance'), '🎨'],
+                      ['system', t('tab_system'), '⚙'],
+                      ['indexer', t('tab_indexer'), '🔍'],
+                      ['uwp', t('tab_uwp'), '🛍']
+                    ] as const).map(([id,label,icon]) => (
+                      <button 
+                        key={id} 
+                        onClick={() => setSettingsTab(id as any)}
+                        className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 ${
+                          settingsTab === id 
+                            ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
+                            : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <span className="text-sm">{icon}</span>
+                        <span>{label.toUpperCase()}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-auto pt-3 px-3 shrink-0 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setIsSettingsOpen(false)}
+                      className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
                     >
-                      <span className="text-sm">{icon}</span>
-                      <span>{label.toUpperCase()}</span>
+                      {t('tooltip_close').toUpperCase()}
                     </button>
-                  ))}
+                  </div>
                 </div>
 
                 {/* Right Scrollable Panel Content */}

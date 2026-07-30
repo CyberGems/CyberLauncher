@@ -1,15 +1,15 @@
 export const translations = {
   es: {
     // Top Bar & General Placeholders
-    top_time: "Reloj Neuronal",
+    top_time: "Reloj",
     search_placeholder_normal: "Buscar en CyberLauncher...",
     search_placeholder_system: "Buscar en todo el sistema...",
     search_placeholder_console: "Escribe un comando de consola...",
     clear_search: "Limpiar búsqueda",
     hud_system: "Abrir Diagnóstico de Recursos de Sistema",
     hud_storage: "Abrir Diagnóstico de Almacenamiento Físico",
-    hud_clock: "Abrir Reloj Neuronal y Programador de Ejecuciones",
-    search_guide_tooltip_title: "GUÍA DE INTERFAZ NEURAL",
+    hud_clock: "Abrir reloj y programador de ejecuciones",
+    search_guide_tooltip_title: "GUÍA DE INTERFAZ",
     tooltip_pin_on: "Anclar ventana (Mantener al frente)",
     tooltip_pin_off: "Desanclar ventana (No mantener al frente)",
     tooltip_about: "Acerca de CyberLauncher",
@@ -144,7 +144,7 @@ export const translations = {
     sys_animations_desc: "Habilita efectos fluidos y transiciones holográficas premium.",
     
     // Indexer Settings Tab
-    idx_title: "NEURO-INDEX GLOBAL",
+    idx_title: "ÍNDICE GLOBAL",
     idx_desc: "Motor de indexación híbrido de archivos y accesos directos",
     idx_master: "SERVICIO DE BÚSQUEDA INDEXADA",
     idx_master_desc: "Habilita la indexación global de archivos en segundo plano con velocidad Everything.",
@@ -218,6 +218,7 @@ export const translations = {
     search_results_searching: "BUSCANDO...",
     search_results_empty: "NO SE ENCONTRARON COINCIDENCIAS",
     search_results_empty_hint: "Comprueba la ortografía o intenta con otro término / filtro",
+    search_indexing: "Buscando en el índice...",
     search_nav_hint: "↑↓ navegar  ·  ←→ menú  ·  Ctrl+←/→ filtro  ·  Enter abrir  ·  Esc cierra menú",
     cat_all: "Todas",
     cat_ai: "AI",
@@ -253,7 +254,7 @@ export const translations = {
     hud_storage_config_dir: "CONFIG DIR",
 
     // Clock HUD
-    hud_clock_title: "PROGRAMADOR NEURAL",
+    hud_clock_title: "PROGRAMADOR",
     hud_clock_new_timer: "NUEVA PROGRAMACIÓN",
     hud_clock_launch_app: "LANZAR APP",
     hud_clock_console_cmd: "CONSOLA CMD",
@@ -274,9 +275,9 @@ export const translations = {
     hud_clock_task_cmd_prefix: "Consola",
 
     // History HUD
-    hud_history: "Abrir Historial de Ejecuciones Neurales",
+    hud_history: "Abrir historial de ejecuciones",
     hud_history_title: "HISTORIAL DE EJECUCIONES",
-    hud_history_empty: "No hay registros en la memoria neural",
+    hud_history_empty: "No hay registros en el historial",
     hud_history_clear: "LIMPIAR MEMORIA",
     hud_history_path: "RUTA",
     hud_history_time: "TIEMPO",
@@ -311,7 +312,7 @@ export const translations = {
     uwp_req_title: "Escaneo de Sistema Requerido",
     uwp_req_desc: "Para catalogar y extraer los accesos directos, iniciaremos un escaneo en los manifiestos de WindowsApps.",
     uwp_req_btn: "INICIAR ESCANEO DE APLICACIONES ⚡",
-    uwp_terminal_title: "NEURAL TERMINAL DE DIAGNÓSTICO",
+    uwp_terminal_title: "TERMINAL DE DIAGNÓSTICO",
     uwp_terminal_status: "DUMP_MEMORIA: ESCANEANDO...",
     uwp_search_placeholder: "Buscar en la Windows Store...",
     uwp_rescan_btn: "REESCANEAR 🔄",
@@ -321,7 +322,7 @@ export const translations = {
     uwp_confirm_category: "CATEGORÍA DE DESTINO",
     uwp_confirm_cancel: "Cancelar",
     uwp_confirm_ok: "CONFIRMAR",
-    uwp_log_init: "INICIANDO SCANNER NEURONAL DE WINDOWS STORE...",
+    uwp_log_init: "INICIANDO ESCANEO DE WINDOWS STORE...",
     uwp_log_connect: "CONECTANDO CON EL PROTOCOLO VIRTUAL shell:AppsFolder...",
     uwp_log_decrypt: "DESENCRIPTANDO BASE DE DATOS AppxManifest.xml...",
     uwp_log_load_aumid: "CARGANDO IDENTIFICADORES DE MODELO DE APLICACIÓN (AUMID)...",
@@ -340,15 +341,15 @@ export const translations = {
   },
   en: {
     // Top Bar & General Placeholders
-    top_time: "Neural Clock",
+    top_time: "Clock",
     search_placeholder_normal: "Search in CyberLauncher...",
     search_placeholder_system: "Search system-wide...",
     search_placeholder_console: "Type a console command...",
     clear_search: "Clear search",
     hud_system: "Open System Resource Diagnostics",
     hud_storage: "Open Physical Storage Diagnostics",
-    hud_clock: "Open Neural Clock & Execution Scheduler",
-    search_guide_tooltip_title: "NEURAL INTERFACE GUIDE",
+    hud_clock: "Open clock & execution scheduler",
+    search_guide_tooltip_title: "INTERFACE GUIDE",
     tooltip_pin_on: "Pin window (Keep on top)",
     tooltip_pin_off: "Unpin window (Do not keep on top)",
     tooltip_about: "About CyberLauncher",
@@ -483,7 +484,7 @@ export const translations = {
     sys_animations_desc: "Enable fluid interface motions and premium holographic transitions.",
     
     // Indexer Settings Tab
-    idx_title: "GLOBAL NEURO-INDEX",
+    idx_title: "GLOBAL INDEX",
     idx_desc: "Hybrid indexing file system and application shortcut engine",
     idx_master: "INDEXED SEARCH SERVICE",
     idx_master_desc: "Enable global background file indexing with Everything-grade speed.",
@@ -557,6 +558,7 @@ export const translations = {
     search_results_searching: "SEARCHING...",
     search_results_empty: "NO MATCHES FOUND",
     search_results_empty_hint: "Check spelling or try another term / filter",
+    search_indexing: "Searching the index...",
     search_nav_hint: "↑↓ navigate  ·  ←→ menu  ·  Ctrl+←/→ filter  ·  Enter open  ·  Esc closes menu",
     cat_all: "All",
     cat_ai: "AI",
@@ -592,7 +594,7 @@ export const translations = {
     hud_storage_config_dir: "CONFIG DIR",
 
     // Clock HUD
-    hud_clock_title: "NEURAL SCHEDULER",
+    hud_clock_title: "SCHEDULER",
     hud_clock_new_timer: "NEW SCHEDULED TASK",
     hud_clock_launch_app: "LAUNCH APP",
     hud_clock_console_cmd: "CONSOLE CMD",
@@ -613,9 +615,9 @@ export const translations = {
     hud_clock_task_cmd_prefix: "Console",
 
     // History HUD
-    hud_history: "Open Neural Execution History",
+    hud_history: "Open execution history",
     hud_history_title: "EXECUTION HISTORY",
-    hud_history_empty: "No records found in neural memory",
+    hud_history_empty: "No records found in history",
     hud_history_clear: "CLEAR MEMORY",
     hud_history_path: "PATH",
     hud_history_time: "TIME",
@@ -650,7 +652,7 @@ export const translations = {
     uwp_req_title: "System Scan Required",
     uwp_req_desc: "To catalog and extract application shortcuts, we will perform a scan of WindowsApps manifests.",
     uwp_req_btn: "START APPLICATION SCAN ⚡",
-    uwp_terminal_title: "DIAGNOSTIC NEURAL TERMINAL",
+    uwp_terminal_title: "DIAGNOSTIC TERMINAL",
     uwp_terminal_status: "MEM_DUMP: SCANNING...",
     uwp_search_placeholder: "Search in the Windows Store...",
     uwp_rescan_btn: "RESCAN 🔄",
@@ -660,7 +662,7 @@ export const translations = {
     uwp_confirm_category: "DESTINATION CATEGORY",
     uwp_confirm_cancel: "Cancel",
     uwp_confirm_ok: "CONFIRM",
-    uwp_log_init: "STARTING WINDOWS STORE NEURAL SCANNER...",
+    uwp_log_init: "STARTING WINDOWS STORE SCAN...",
     uwp_log_connect: "CONNECTING TO VIRTUAL PROTOCOL shell:AppsFolder...",
     uwp_log_decrypt: "DECRYPTING AppxManifest.xml DATABASE...",
     uwp_log_load_aumid: "LOADING APPLICATION USER MODEL IDS (AUMID)...",
