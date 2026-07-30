@@ -63,12 +63,27 @@ const INITIAL_APPS: LauncherApp[] = [];
 
 const DEFAULT_BG_IMAGE = 'bg_default.jpg';
 
+/** Packaged presets only — relative names so they survive install on any PC. */
 const PRESET_IMAGES = [
   DEFAULT_BG_IMAGE,
-  'bg_abstract.jpg',
-  'bg_cyberpunk.jpg',
-  'bg_geom.jpg',
+  'bg_waves.jpg',
+  'bg_bubbles.png',
 ];
+
+/** Filename → packaged relative asset (absolute/dev paths normalize to these). */
+const PACKAGED_BG_BY_FILENAME: Record<string, string> = {
+  'bg_default.jpg': DEFAULT_BG_IMAGE,
+  'default_background.jpg': DEFAULT_BG_IMAGE,
+  'bg_waves.jpg': 'bg_waves.jpg',
+  'default02.jpg': 'bg_waves.jpg',
+  'bg_bubbles.png': 'bg_bubbles.png',
+  'default03.png': 'bg_bubbles.png',
+  'default03.jpg': 'bg_bubbles.png',
+  // Legacy presets still shipped in public/ for saved configs
+  'bg_abstract.jpg': 'bg_abstract.jpg',
+  'bg_cyberpunk.jpg': 'bg_cyberpunk.jpg',
+  'bg_geom.jpg': 'bg_geom.jpg',
+};
 
 const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
 
@@ -76,21 +91,23 @@ const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
 const normalizeBgImage = (path: string | null | undefined): string => {
   if (!path) return DEFAULT_BG_IMAGE;
   if (path.includes('antigravity_projects')) return DEFAULT_BG_IMAGE;
-  const normalized = path.replace(/\//g, '\\');
-  if (/([\\/])default_background\.jpg$/i.test(normalized) && normalized.includes(':')) {
-    return DEFAULT_BG_IMAGE;
-  }
-  if (normalized === 'C:\\CyberGems\\CyberLauncher\\default_background.jpg') {
-    return DEFAULT_BG_IMAGE;
-  }
+
+  const trimmed = path.replace(/^\.\//, '');
+  const fileName = trimmed.replace(/^.*[\\/]/, '').toLowerCase();
+  const packaged = PACKAGED_BG_BY_FILENAME[fileName];
+  if (packaged) return packaged;
+
   return path;
 };
+
+/** Resolve packaged assets with ./ so file:// and Electron loadFile both work. */
+const toPackagedAssetUrl = (relativeName: string) =>
+  relativeName.startsWith('./') ? relativeName : `./${relativeName}`;
 
 const toThumbnailUrl = (path: string) => {
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   if (!path.includes(':') && !path.includes('\\')) {
-    // Es un asset empaquetado relativo, resolver directo de la raíz del build (dist)
-    return path;
+    return toPackagedAssetUrl(path.replace(/^\.\//, ''));
   }
   return `local-resource:///${path.replace(/\\/g, '/')}`;
 };
@@ -1941,7 +1958,28 @@ export default function App() {
   const [bgImage, setBgImage] = useState(() => {
     return normalizeBgImage(localStorage.getItem('bgImage'));
   });
-  const [customImageUrl, setCustomImageUrl] = useState(() => localStorage.getItem('customImageUrl') || '');
+  const [customImageUrl, setCustomImageUrl] = useState(() => {
+    const saved = localStorage.getItem('customImageUrl') || '';
+    // Ignore leftover non-URL junk (e.g. old "CyberLauncher" text in the field)
+    if (!saved || (!/^https?:\/\//i.test(saved) && !saved.includes('.') && !saved.includes('/'))) {
+      return '';
+    }
+    return saved;
+  });
+  /** 4th grid slot: user-picked image (persists until cleared with X). */
+  const [customSlotImage, setCustomSlotImage] = useState(() => {
+    const resolveCustomSlot = (raw: string | null) => {
+      if (!raw) return '';
+      const normalized = normalizeBgImage(raw);
+      // Artifact/absolute paths that map to current presets belong in the preset grid
+      if (PRESET_IMAGES.includes(normalized)) return '';
+      return normalized;
+    };
+    return (
+      resolveCustomSlot(localStorage.getItem('customSlotImage')) ||
+      resolveCustomSlot(localStorage.getItem('bgImage'))
+    );
+  });
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
   const [startMinimized, setStartMinimized] = useState(() => localStorage.getItem('startMinimized') === 'true');
   const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
@@ -1963,6 +2001,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('bgType', bgType); }, [bgType]);
   useEffect(() => { localStorage.setItem('bgImage', bgImage); }, [bgImage]);
   useEffect(() => { localStorage.setItem('customImageUrl', customImageUrl); }, [customImageUrl]);
+  useEffect(() => { localStorage.setItem('customSlotImage', customSlotImage); }, [customSlotImage]);
   useEffect(() => { localStorage.setItem('bgColor', bgColor); }, [bgColor]);
   useEffect(() => { localStorage.setItem('resetOnLaunch', resetOnLaunch.toString()); }, [resetOnLaunch]);
   useEffect(() => { localStorage.setItem('startWithWindows', startWithWindows.toString()); }, [startWithWindows]);
@@ -2013,8 +2052,8 @@ export default function App() {
         if (bgImage.startsWith('http') || bgImage.startsWith('data:')) {
           setBgDataUrl(bgImage);
         } else if (!bgImage.includes(':') && !bgImage.includes('\\')) {
-          // Es un asset empaquetado relativo, se carga directo desde la raíz de la app
-          setBgDataUrl(bgImage);
+          // Packaged relative asset from dist/public — use ./ for file:// / loadFile
+          setBgDataUrl(toPackagedAssetUrl(bgImage));
         } else if (isElectron) {
           // Es una ruta física absoluta, pedir a Electron el Base64
           const dataUrl = await window.electronAPI!.getImageData(bgImage);
@@ -2080,6 +2119,13 @@ export default function App() {
           if (source.bgType) setBgType(source.bgType);
           if (source.bgImage) setBgImage(normalizeBgImage(source.bgImage));
           if (source.customImageUrl !== undefined) setCustomImageUrl(source.customImageUrl);
+          if (source.customSlotImage !== undefined) {
+            const slot = normalizeBgImage(source.customSlotImage);
+            setCustomSlotImage(PRESET_IMAGES.includes(slot) ? '' : (source.customSlotImage ? slot : ''));
+          } else if (source.bgImage) {
+            const normalized = normalizeBgImage(source.bgImage);
+            if (!PRESET_IMAGES.includes(normalized)) setCustomSlotImage(normalized);
+          }
           if (source.bgColor) setBgColor(source.bgColor);
           if (source.bgGradient) setBgGradient(source.bgGradient);
           if (source.glassIntensity !== undefined) setGlassIntensity(source.glassIntensity);
@@ -2123,8 +2169,8 @@ export default function App() {
   }, []);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -2145,7 +2191,7 @@ export default function App() {
         const appsClean = apps.map(({ icon, ...rest }: any) => rest);
         cleanConfig = JSON.parse(JSON.stringify({
           apps: appsClean, categories, favoriteIds, taskbarAppIds,
-          bgType, bgImage, customImageUrl, bgColor,
+          bgType, bgImage, customImageUrl, customSlotImage, bgColor,
           bgGradient, glassIntensity, bgOpacity,
           startWithWindows, startMinimized, activationShortcut,
           hotspotCorners, hotspotDelay,
@@ -2169,7 +2215,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [
     apps, categories, favoriteIds, taskbarAppIds,
-    bgType, bgImage, customImageUrl, bgColor,
+    bgType, bgImage, customImageUrl, customSlotImage, bgColor,
     bgGradient, glassIntensity, bgOpacity,
     startWithWindows, startMinimized, activationShortcut,
     hotspotCorners, hotspotDelay,
@@ -2290,7 +2336,7 @@ export default function App() {
 
     const stateKeys = [
       'apps', 'categories', 'favoriteIds', 'taskbarAppIds',
-      'bgType', 'bgImage', 'customImageUrl', 'bgColor',
+      'bgType', 'bgImage', 'customImageUrl', 'customSlotImage', 'bgColor',
       'bgGradient', 'glassIntensity', 'bgOpacity',
       'startWithWindows', 'startMinimized', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
@@ -2364,6 +2410,20 @@ export default function App() {
       if (config.customImageUrl !== undefined) {
         setCustomImageUrl(config.customImageUrl);
         localStorage.setItem('customImageUrl', config.customImageUrl);
+      }
+      if (config.customSlotImage !== undefined) {
+        const slot = config.customSlotImage
+          ? normalizeBgImage(config.customSlotImage)
+          : '';
+        const resolved = slot && !PRESET_IMAGES.includes(slot) ? slot : '';
+        setCustomSlotImage(resolved);
+        localStorage.setItem('customSlotImage', resolved);
+      } else if (config.bgImage) {
+        const cleanBgImage = normalizeBgImage(config.bgImage);
+        if (!PRESET_IMAGES.includes(cleanBgImage)) {
+          setCustomSlotImage(cleanBgImage);
+          localStorage.setItem('customSlotImage', cleanBgImage);
+        }
       }
       if (config.bgColor) {
         setBgColor(config.bgColor);
@@ -2730,6 +2790,7 @@ export default function App() {
         bgType,
         bgImage,
         customImageUrl,
+        customSlotImage,
         bgColor,
         bgGradient,
         glassIntensity,
@@ -2778,6 +2839,15 @@ export default function App() {
         if (data.settings.bgType !== undefined) setBgType(data.settings.bgType);
         if (data.settings.bgImage !== undefined) setBgImage(normalizeBgImage(data.settings.bgImage));
         if (data.settings.customImageUrl !== undefined) setCustomImageUrl(data.settings.customImageUrl);
+        if (data.settings.customSlotImage !== undefined) {
+          const slot = data.settings.customSlotImage
+            ? normalizeBgImage(data.settings.customSlotImage)
+            : '';
+          setCustomSlotImage(slot && !PRESET_IMAGES.includes(slot) ? slot : '');
+        } else if (data.settings.bgImage !== undefined) {
+          const normalized = normalizeBgImage(data.settings.bgImage);
+          if (!PRESET_IMAGES.includes(normalized)) setCustomSlotImage(normalized);
+        }
         if (data.settings.bgColor !== undefined) setBgColor(data.settings.bgColor);
         if (data.settings.bgGradient !== undefined) setBgGradient(data.settings.bgGradient);
         if (data.settings.glassIntensity !== undefined) setGlassIntensity(data.settings.glassIntensity);
@@ -5165,12 +5235,14 @@ export default function App() {
                     <div className="space-y-4">
                       <div className="space-y-3">
                         <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                          {language === 'es' ? 'IMÁGENES PREDETERMINADAS' : 'PRESET BACKGROUND IMAGES'}
+                          {t('app_bg_presets')}
                         </label>
+                        <p className="text-xs text-slate-500 -mt-1">{t('app_bg_presets_hint')}</p>
                         <div className="grid grid-cols-2 gap-3">
                           {PRESET_IMAGES.map((img, i) => (
                             <button
                               key={i}
+                              type="button"
                               onClick={() => setBgImage(img)}
                               className={`h-24 rounded-xl bg-cover bg-center border-2 transition-all overflow-hidden relative ${
                                 bgImage === img ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20'
@@ -5180,44 +5252,105 @@ export default function App() {
                                {bgImage === img && <div className="absolute inset-0 bg-blue-500/20" />}
                             </button>
                           ))}
+
+                          {/* Custom browse slot (4th) */}
+                          <div
+                            className={`h-24 rounded-xl border-2 transition-all overflow-hidden relative group ${
+                              customSlotImage && bgImage === customSlotImage
+                                ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+                                : customSlotImage
+                                  ? 'border-transparent hover:border-white/20'
+                                  : 'border-dashed border-white/15 bg-black/40 hover:border-white/30 hover:bg-white/5'
+                            }`}
+                          >
+                            {customSlotImage ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setBgImage(customSlotImage)}
+                                  className="absolute inset-0 bg-cover bg-center cursor-pointer"
+                                  style={{ backgroundImage: `url(${toThumbnailUrl(customSlotImage)})` }}
+                                  aria-label={t('app_bg_image')}
+                                />
+                                {bgImage === customSlotImage && (
+                                  <div className="absolute inset-0 bg-blue-500/20 pointer-events-none" />
+                                )}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 flex items-center justify-center gap-2 px-2">
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!isElectron) return;
+                                      const path = await window.electronAPI!.selectImage();
+                                      if (path) {
+                                        setCustomSlotImage(path);
+                                        setBgImage(path);
+                                      }
+                                    }}
+                                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                                  >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    {t('app_bg_browse')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={t('app_bg_clear_custom')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const wasActive = bgImage === customSlotImage;
+                                      setCustomSlotImage('');
+                                      if (wasActive) setBgImage(DEFAULT_BG_IMAGE);
+                                    }}
+                                    className="flex items-center justify-center bg-red-500/90 hover:bg-red-500 text-white p-1.5 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!isElectron) return;
+                                  const path = await window.electronAPI!.selectImage();
+                                  if (path) {
+                                    setCustomSlotImage(path);
+                                    setBgImage(path);
+                                  }
+                                }}
+                                className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Upload className="w-5 h-5" />
+                                <span className="text-xs font-medium tracking-wide">{t('app_bg_browse')}</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-2">
                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                           <Link className="w-3 h-3" /> {language === 'es' ? 'IMAGEN PERSONALIZADA (URL O ARCHIVO LOCAL)' : 'CUSTOM BACKGROUND (URL OR LOCAL FILE)'}
+                           <Link className="w-3 h-3" /> {t('app_bg_custom_url')}
                          </label>
                          <div className="flex gap-2">
                            <input 
                              type="text" 
-                             placeholder="https://..."
+                             placeholder={t('app_bg_url_placeholder')}
                              value={customImageUrl}
                              onChange={(e) => setCustomImageUrl(e.target.value)}
                              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/50"
                            />
                            <button 
                              onClick={() => {
-                               if(customImageUrl) {
+                               if (customImageUrl) {
+                                 setCustomSlotImage(customImageUrl);
                                  setBgImage(customImageUrl);
                                  setCustomImageUrl('');
                                }
                              }}
                              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                            >
-                             {language === 'es' ? 'Aplicar' : 'Apply'}
+                             {t('app_bg_apply')}
                            </button>
-                            <button 
-                              onClick={async () => {
-                                if (isElectron) {
-                                  const path = await window.electronAPI!.selectImage();
-                                  if (path) {
-                                    setBgImage(path);
-                                  }
-                                }
-                              }}
-                              className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5"
-                            >
-                              <Upload className="w-4 h-4 mr-2" /> {language === 'es' ? 'PC' : 'My Computer'}
-                            </button>
                          </div>
                       </div>
                       
