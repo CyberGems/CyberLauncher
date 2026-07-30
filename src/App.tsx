@@ -567,6 +567,12 @@ const ClockHUD = ({
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
 
+  const adjustTimer = (deltaSeconds: number) => {
+    const next = Math.max(0, timerMinutes * 60 + timerSeconds + deltaSeconds);
+    setTimerMinutes(Math.floor(next / 60));
+    setTimerSeconds(next % 60);
+  };
+
   // Set default app selection when apps list loads
   useEffect(() => {
     if (apps && apps.length > 0 && !selectedAppId) {
@@ -657,7 +663,7 @@ const ClockHUD = ({
               <div className="w-[300px] h-full flex flex-col overflow-hidden">
                 <div className="px-4 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
                     <h3 className="text-xs font-cyber font-bold text-white tracking-widest truncate">{t('hud_clock_status_title')}</h3>
                   </div>
                   <button
@@ -670,10 +676,10 @@ const ClockHUD = ({
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                   <CyberAnalogClock />
 
-                  <div className="text-left">
+                  <div className="text-left mt-8 pt-6 border-t border-cyan-500/10">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">{t('hud_clock_active_tasks')}</h3>
                       <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
@@ -765,27 +771,27 @@ const ClockHUD = ({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
-                <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 text-left">
-                  <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">{t('hud_clock_new_timer')}</h3>
-                  
-                  <div className="flex gap-2 mb-3.5">
+              <div className="flex-1 min-h-0 flex flex-col p-5">
+                <div className="flex-1 min-h-0 flex flex-col bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-5 text-left overflow-y-auto custom-scrollbar">
+                  <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-4 tracking-widest shrink-0">{t('hud_clock_new_timer')}</h3>
+
+                  <div className="flex gap-2 mb-5 shrink-0">
                     <button
                       onClick={() => setSelectedType('app')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
-                        selectedType === 'app' 
-                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
-                          : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                      className={`flex-1 py-2.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                        selectedType === 'app'
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]'
+                          : 'bg-transparent text-slate-400 border-white/5 hover:text-slate-200 hover:border-white/10'
                       }`}
                     >
                       {t('hud_clock_launch_app')}
                     </button>
                     <button
                       onClick={() => setSelectedType('command')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
-                        selectedType === 'command' 
-                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
-                          : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                      className={`flex-1 py-2.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                        selectedType === 'command'
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]'
+                          : 'bg-transparent text-slate-400 border-white/5 hover:text-slate-200 hover:border-white/10'
                       }`}
                     >
                       {t('hud_clock_console_cmd')}
@@ -793,17 +799,19 @@ const ClockHUD = ({
                   </div>
 
                   {selectedType === 'app' ? (
-                    <div className="mb-4">
-                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_select_app')}</label>
+                    <div className="mb-5 shrink-0">
+                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_select_app')}</label>
                       <select
                         value={selectedAppId}
                         onChange={(e) => setSelectedAppId(e.target.value)}
-                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                       >
                         {apps.length === 0 ? (
                           <option value="" className="bg-slate-900 text-slate-500">{t('hud_clock_no_apps')}</option>
                         ) : (
-                          apps.map(app => (
+                          [...apps]
+                            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+                            .map(app => (
                             <option key={app.id} value={app.id} className="bg-slate-900 text-white">
                               {app.name} ({getCategoryDisplayName(app.category, t)})
                             </option>
@@ -812,83 +820,76 @@ const ClockHUD = ({
                       </select>
                     </div>
                   ) : (
-                    <div className="mb-4">
-                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_console_command')}</label>
+                    <div className="mb-5 shrink-0">
+                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_console_command')}</label>
                       <input
                         type="text"
                         placeholder="Ej. shutdown /s /t 0"
                         value={customCommand}
                         onChange={(e) => setCustomCommand(e.target.value)}
-                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                       />
                     </div>
                   )}
 
-                  <div className="mb-4.5">
-                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_wait_time')}</label>
-                    <div className="flex items-center gap-3 bg-slate-950/60 border border-cyan-500/10 rounded-lg px-3 py-2">
-                      <div className="flex-1 flex flex-col items-center">
-                        <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_minutes')}</span>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max="999" 
-                          value={timerMinutes} 
+                  <div className="flex-1 flex flex-col justify-center min-h-[220px] mb-5">
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-3 tracking-wider">{t('hud_clock_wait_time')}</label>
+                    <div className="flex items-center gap-4 bg-slate-950/60 border border-cyan-500/10 rounded-xl px-4 py-5 mb-4">
+                      <div className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_minutes')}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="999"
+                          value={timerMinutes}
                           onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                          className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
+                          className="bg-transparent text-center text-white font-digits font-bold text-4xl w-full focus:outline-none tabular-nums leading-none"
                         />
                       </div>
-                      <div className="text-cyan-500/40 font-digits font-bold text-[20px] mb-2">:</div>
-                      <div className="flex-1 flex flex-col items-center">
-                        <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max="59" 
-                          value={timerSeconds} 
+                      <div className="text-cyan-500/50 font-digits font-bold text-3xl pb-1">:</div>
+                      <div className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={timerSeconds}
                           onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                          className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
+                          className="bg-transparent text-center text-white font-digits font-bold text-4xl w-full focus:outline-none tabular-nums leading-none"
                         />
                       </div>
                     </div>
 
-                    <div className="flex gap-1.5 mt-2.5">
+                    <div className="grid grid-cols-4 gap-2 mb-2">
                       {[
-                        { l: '+30s', v: () => { setTimerSeconds(s => (s + 30) % 60); if (timerSeconds >= 30) setTimerMinutes(m => m + 1); } },
-                        { l: '+1m', v: () => setTimerMinutes(m => m + 1) },
-                        { l: '+5m', v: () => setTimerMinutes(m => m + 5) },
-                        { l: '+15m', v: () => setTimerMinutes(m => m + 15) }
-                      ].map((preset, idx) => (
+                        { l: '+30s', v: 30 },
+                        { l: '+1m', v: 60 },
+                        { l: '+5m', v: 300 },
+                        { l: '+15m', v: 900 },
+                      ].map((preset) => (
                         <button
-                          key={idx}
-                          onClick={preset.v}
-                          className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono cursor-pointer"
+                          key={preset.l}
+                          type="button"
+                          onClick={() => adjustTimer(preset.v)}
+                          className="py-3 rounded-lg bg-slate-900/90 border border-cyan-500/20 text-xs text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all font-mono font-bold cursor-pointer"
                         >
                           {preset.l}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex gap-1.5 mt-1.5">
+                    <div className="grid grid-cols-4 gap-2">
                       {[
-                        { l: '-30s', v: () => { 
-                          if (timerSeconds >= 30) {
-                            setTimerSeconds(s => s - 30);
-                          } else if (timerMinutes > 0) {
-                            setTimerMinutes(m => m - 1);
-                            setTimerSeconds(s => s + 30);
-                          } else {
-                            setTimerSeconds(0);
-                          }
-                        } },
-                        { l: '-1m', v: () => setTimerMinutes(m => Math.max(0, m - 1)) },
-                        { l: '-5m', v: () => setTimerMinutes(m => Math.max(0, m - 5)) },
-                        { l: '-15m', v: () => setTimerMinutes(m => Math.max(0, m - 15)) }
-                      ].map((preset, idx) => (
+                        { l: '-30s', v: -30 },
+                        { l: '-1m', v: -60 },
+                        { l: '-5m', v: -300 },
+                        { l: '-15m', v: -900 },
+                      ].map((preset) => (
                         <button
-                          key={idx}
-                          onClick={preset.v}
-                          className="flex-1 py-1 rounded bg-slate-900 border border-red-500/10 text-[9px] text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-mono cursor-pointer"
+                          key={preset.l}
+                          type="button"
+                          onClick={() => adjustTimer(preset.v)}
+                          className="py-3 rounded-lg bg-slate-900/90 border border-red-500/20 text-xs text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-all font-mono font-bold cursor-pointer"
                         >
                           {preset.l}
                         </button>
@@ -899,7 +900,7 @@ const ClockHUD = ({
                   <button
                     onClick={handleAddTask}
                     disabled={selectedType === 'app' && apps.length === 0}
-                    className="w-full py-2.5 bg-cyan-400/90 hover:bg-cyan-300 disabled:bg-cyan-400/40 disabled:cursor-not-allowed text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full shrink-0 mt-auto py-3.5 bg-cyan-400/90 hover:bg-cyan-300 disabled:bg-cyan-400/40 disabled:cursor-not-allowed text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     {t('hud_clock_schedule_btn')}
@@ -948,12 +949,18 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
   }, [isOpen]);
 
   const formatUptime = (seconds: number) => {
-    if (seconds <= 0) return '00:00:00';
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    const total = Math.max(0, Math.floor(seconds));
+    if (total <= 0) return '00:00:00';
+    const hrs = Math.floor(total / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const memTotalGb = memPercent > 0 ? Math.round(memUsed / (memPercent / 100)) : 0;
+  const platformLabel = typeof navigator !== 'undefined'
+    ? `${navigator.platform || 'Unknown'}${/\bwow64|win64|x64\b/i.test(navigator.userAgent) ? ' x64' : ''}`
+    : '—';
 
   return (
     <AnimatePresence>
@@ -971,92 +978,93 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+            onClick={(e) => e.stopPropagation()}
+            className="fixed right-0 top-0 bottom-0 w-[420px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col overflow-hidden select-none"
           >
-            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
-              <div className="flex items-center gap-3">
-                <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_system_title')}</h2>
-                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">SYSTEM MONITOR v1.4</p>
-                </div>
-              </div>
+            <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
+              <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-cyan-400 shrink-0" />
+                {t('hud_system_title')}
+              </h2>
               <button 
                 type="button"
                 onClick={onClose}
-                className="p-1.5 hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/30 rounded-lg text-slate-400 hover:text-cyan-400 transition-all focus:outline-none"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
-              <div className="bg-cyan-950/10 border border-cyan-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 text-left">
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 space-y-4">
                 <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
                   <Monitor className="w-3.5 h-3.5" /> {t('hud_system_performance')}
                 </h3>
                 
-                <div className="space-y-3">
-                  <div className="space-y-1">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
                     <div className="flex justify-between text-[11px] font-mono">
                       <span className="text-slate-400">{t('hud_system_ram')}</span>
-                      <span className="text-cyan-400 font-bold">{Math.round(memPercent)}%</span>
+                      <span className="text-cyan-400 font-bold tabular-nums">{Math.round(memPercent)}%</span>
                     </div>
-                    <div className="h-2 bg-slate-950/80 rounded-full border border-cyan-500/10 overflow-hidden p-0.5">
+                    <div className="h-2 bg-slate-950/80 rounded-full border border-cyan-500/10 overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${memPercent}%` }}
-                        className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                        animate={{ width: `${Math.min(100, Math.max(0, memPercent))}%` }}
+                        className="h-full bg-cyan-500/80 rounded-full"
                       />
                     </div>
-                    <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-500">
                       <span>{t('hud_system_used', { used: memUsed.toFixed(1) })}</span>
-                      <span>{t('hud_system_total', { total: Math.round(memUsed / (memPercent || 1) * 100).toString() })}</span>
+                      <span>{t('hud_system_total', { total: memTotalGb.toString() })}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-1 pt-2 border-t border-cyan-500/5">
+                  <div className="space-y-1.5 pt-3 border-t border-cyan-500/10">
                     <div className="flex justify-between text-[11px] font-mono">
                       <span className="text-slate-400">{t('hud_system_cpu')}</span>
-                      <span className="text-purple-400 font-bold">{t('hud_system_cores', { cores: (cpuInfo?.cores || 8).toString() })}</span>
+                      <span className="text-cyan-400 font-bold">{t('hud_system_cores', { cores: (cpuInfo?.cores || 0).toString() })}</span>
                     </div>
-                    <p className="text-[10px] font-mono text-purple-300/80 truncate bg-slate-950/60 p-2 rounded-lg border border-purple-500/10">
-                      {cpuInfo?.model || 'Intel Core / AMD Ryzen Processor'}
+                    <p className="text-[11px] font-mono text-slate-300 truncate bg-slate-950/60 px-3 py-2 rounded-lg border border-cyan-500/10">
+                      {cpuInfo?.model || '—'}
                     </p>
                   </div>
 
-                  <div className="space-y-1 pt-2 border-t border-cyan-500/5">
-                    <div className="flex justify-between text-[11px] font-mono">
-                      <span className="text-slate-400">{t('hud_system_uptime')}</span>
-                      <span className="text-emerald-400 font-bold">{formatUptime(uptime)}</span>
-                    </div>
+                  <div className="flex justify-between items-center text-[11px] font-mono pt-3 border-t border-cyan-500/10">
+                    <span className="text-slate-400">{t('hud_system_uptime')}</span>
+                    <span className="text-white font-bold font-digits tabular-nums tracking-wider">{formatUptime(uptime)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
-                <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> {t('hud_system_parameters')}
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
+                  <TerminalSquare className="w-3.5 h-3.5" /> {t('hud_system_parameters')}
                 </h3>
-                <div className="font-mono text-[10px] space-y-1.5 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
-                  <div className="text-emerald-400/90">&gt; SYSTEM_LINK_STABLE: OK</div>
-                  <div className="text-slate-400">&gt; {t('hud_system_launches', { count: dailyLaunchCount.toString() })}</div>
-                  <div className="text-slate-400">&gt; {t('hud_system_shortcut', { shortcut: activationShortcut })}</div>
-                  <div className="text-slate-400">&gt; SYSTEM_PLATFORM: WINDOWS_NT_x64</div>
+                <div className="space-y-2.5 text-[11px] font-mono">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 shrink-0">{t('hud_system_launches_label')}</span>
+                    <span className="text-slate-200 text-right tabular-nums">{t('hud_system_launches_value', { count: dailyLaunchCount.toString() })}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 shrink-0">{t('hud_system_shortcut_label')}</span>
+                    <span className="text-slate-200 text-right">{activationShortcut}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 shrink-0">{t('hud_system_platform_label')}</span>
+                    <span className="text-slate-200 text-right truncate">{platformLabel}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="relative z-10 border-t border-cyan-500/20 pt-4 mt-6 flex gap-3 shrink-0">
+            <div className="px-5 py-4 border-t border-cyan-500/20 shrink-0">
               <button
                 type="button"
-                onClick={() => {
-                  window.electronAPI?.openDevTools();
-                  onClose();
-                }}
-                className="flex-1 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-400 rounded-xl transition-all font-mono text-[10px] font-bold tracking-widest text-center"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
               >
-                DEVTOOLS
+                {t('tooltip_close').toUpperCase()}
               </button>
             </div>
           </motion.div>
@@ -1124,78 +1132,89 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-purple-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+            onClick={(e) => e.stopPropagation()}
+            className="fixed right-0 top-0 bottom-0 w-[420px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col overflow-hidden select-none"
           >
-            <div className="relative z-10 flex items-center justify-between border-b border-purple-500/20 pb-4 mb-6">
-              <div className="flex items-center gap-3">
-                <HardDrive className="w-5 h-5 text-purple-400 animate-pulse" />
-                <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_storage_title')}</h2>
-                  <p className="text-[10px] text-purple-500/80 font-mono tracking-wider text-left">STORAGE MONITOR v1.4</p>
-                </div>
-              </div>
+            <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
+              <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-cyan-400 shrink-0" />
+                {t('hud_storage_title')}
+              </h2>
               <button 
                 type="button"
                 onClick={onClose}
-                className="p-1.5 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 rounded-lg text-slate-400 hover:text-purple-400 transition-all focus:outline-none"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-1 text-left">
-              <div className="bg-purple-950/10 border border-purple-500/15 rounded-xl p-4 space-y-4 shadow-lg shadow-black/40">
-                <h3 className="text-xs font-cyber font-bold text-purple-400 tracking-wider flex items-center gap-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 text-left">
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 space-y-4">
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
                   <HardDrive className="w-3.5 h-3.5" /> {t('hud_storage_drives')}
                 </h3>
                 
                 <div className="space-y-4">
-                  {disksList.map((disk) => (
-                    <div key={disk.drive} className="space-y-1">
-                      <div className="flex justify-between text-[11px] font-mono">
-                        <span className="text-slate-300 font-bold">{t('hud_storage_drive', { drive: disk.drive })}</span>
-                        <span className="text-purple-400 font-bold">{Math.round(disk.percent)}%</span>
+                  {disksList.map((disk) => {
+                    const isAlert = disk.percent >= RESOURCE_ALERT_THRESHOLD;
+                    return (
+                      <div key={disk.drive} className="space-y-1.5">
+                        <div className="flex justify-between text-[11px] font-mono">
+                          <span className="text-slate-300 font-bold">{t('hud_storage_drive', { drive: disk.drive })}</span>
+                          <span className={`font-bold tabular-nums ${isAlert ? 'text-amber-400' : 'text-cyan-400'}`}>
+                            {Math.round(disk.percent)}%
+                          </span>
+                        </div>
+                        <div className="h-2 bg-slate-950/80 rounded-full border border-cyan-500/10 overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, Math.max(0, disk.percent))}%` }}
+                            className={`h-full rounded-full ${isAlert ? 'bg-amber-500/80' : 'bg-cyan-500/80'}`}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                          <span>{t('hud_storage_free', { free: disk.free.toFixed(1) })}</span>
+                          <span>{t('hud_storage_total', { total: disk.total.toFixed(1) })}</span>
+                        </div>
                       </div>
-                      <div className="h-2 bg-slate-950/80 rounded-full border border-purple-500/10 overflow-hidden p-0.5">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${disk.percent}%` }}
-                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.6)]"
-                        />
-                      </div>
-                      <div className="flex justify-between text-[9px] font-mono text-slate-500">
-                        <span>{t('hud_storage_free', { free: disk.free.toFixed(1) })}</span>
-                        <span>{t('hud_storage_total', { total: disk.total.toFixed(1) })}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {disksList.length === 0 && (
-                    <p className="text-xs text-slate-500 font-mono italic">{t('hud_storage_scanning')}</p>
+                    <p className="text-xs text-slate-500 font-mono">{t('hud_storage_scanning')}</p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4 space-y-3 shadow-inner">
-                <h3 className="text-xs font-cyber font-bold text-slate-400 tracking-wider flex items-center gap-2">
-                  <TerminalSquare className="w-3.5 h-3.5 text-slate-500" /> {t('hud_storage_config_params')}
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 space-y-3">
+                <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
+                  <FolderOpen className="w-3.5 h-3.5" /> {t('hud_storage_config_params')}
                 </h3>
-                <div className="font-mono text-[10px] space-y-1.5">
-                  <div className="text-slate-400">&gt; CONFIG_FILE_PATH:</div>
-                  <div className="text-slate-500 break-all select-all bg-black/40 p-2.5 rounded-lg border border-white/5">{configPath || 'C:\\CyberGems\\...'}</div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-mono text-slate-500">{t('hud_storage_config_path')}</span>
+                    <button
+                      type="button"
+                      onClick={() => window.electronAPI?.openDataFolder()}
+                      className="text-[10px] font-cyber font-bold tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors focus:outline-none"
+                    >
+                      {t('hud_storage_open_folder')}
+                    </button>
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-400 break-all select-all bg-slate-950/60 px-3 py-2.5 rounded-lg border border-cyan-500/10">
+                    {configPath || '—'}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="relative z-10 border-t border-purple-500/20 pt-4 mt-6 flex gap-3 shrink-0">
+            <div className="px-5 py-4 border-t border-cyan-500/20 shrink-0">
               <button
                 type="button"
-                onClick={() => {
-                  window.electronAPI?.openDataFolder();
-                  onClose();
-                }}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl transition-all font-mono text-[10px] font-bold tracking-widest text-center"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
               >
-                {t('hud_storage_config_dir')}
+                {t('tooltip_close').toUpperCase()}
               </button>
             </div>
           </motion.div>
@@ -2853,11 +2872,19 @@ export default function App() {
     return a.name.localeCompare(b.name);
   }), [categories, apps]);
 
-  const filteredApps = useMemo(() => apps.filter(app => {
-    const matchesCategory = activeCategory === 'all' || categories.find(c => c.id === activeCategory)?.name === app.category;
-    const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  }).sort((a, b) => a.name.localeCompare(b.name)), [apps, activeCategory, categories, searchQuery]);
+  const filteredApps = useMemo(() => {
+    const locale = language === 'es' ? 'es' : 'en';
+    return apps.filter(app => {
+      const matchesCategory = activeCategory === 'all' || categories.find(c => c.id === activeCategory)?.name === app.category;
+      const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    }).sort((a, b) => a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' }));
+  }, [apps, activeCategory, categories, searchQuery, language]);
+
+  const appNameLetter = (name: string) => {
+    const ch = (name || '').normalize('NFD').replace(/\p{M}/gu, '').charAt(0).toUpperCase();
+    return /[A-Z0-9]/i.test(ch) ? ch : '#';
+  };
 
   const favorites = useMemo(
     () => favoriteIds.map(id => apps.find(a => a.id === id)).filter(Boolean) as LauncherApp[],
@@ -4017,19 +4044,10 @@ export default function App() {
                     }
                   : {};
                 
-                if (viewMode === 'list') {
-                  const firstLetter = app.name.charAt(0).toUpperCase();
-                  const pLetter = firstLetter.match(/[A-Z0-9]/i) ? firstLetter : '#';
+                if (viewMode === 'list' || viewMode === 'grid') {
+                  const pLetter = appNameLetter(app.name);
                   const prevApp = index > 0 ? filteredApps[index - 1] : null;
-                  let showHeader = false;
-                  
-                  if (prevApp) {
-                    const prevFirstLetter = prevApp.name.charAt(0).toUpperCase();
-                    const prevPLetter = prevFirstLetter.match(/[A-Z0-9]/i) ? prevFirstLetter : '#';
-                    showHeader = pLetter !== prevPLetter;
-                  } else {
-                    showHeader = true;
-                  }
+                  const showHeader = !prevApp || appNameLetter(prevApp.name) !== pLetter;
 
                   if (showHeader) {
                     const HeaderShell: any = animateAppCards ? motion.div : 'div';
@@ -4041,7 +4059,7 @@ export default function App() {
                           transition: { duration: 0.2, delay: Math.min(index, 12) * 0.015 },
                         } : {})}
                         key={`header-${viewMode}-${activeCategory}-${pLetter}`}
-                        className="col-span-full mt-2 mb-1 flex items-center gap-4 opacity-70" 
+                        className={`col-span-full flex items-center gap-4 opacity-70 ${viewMode === 'list' ? 'mt-2 mb-1' : 'mt-3 mb-0.5'}`}
                         style={{ gridColumn: '1 / -1' }}
                       >
                         <span className="text-base font-bold font-cyber text-slate-400 w-8 pl-1">{pLetter}</span>
