@@ -8,11 +8,11 @@ import {
   MonitorSmartphone, PenTool, KeyRound, MousePointer2, FileUp,
   Gamepad2, TerminalSquare, Binary, MessageCircle, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
-  Minus, Square, X, ChevronRight, ChevronDown, LayoutGrid, Image as ImageIcon,
+  Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, Eye, Pin, Play, Pause, Timer,
+  FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw
 } from 'lucide-react';
 
@@ -145,6 +145,7 @@ declare global {
       windowHideToTray: () => Promise<void>;
       setAutoLaunch: (enabled: boolean, startMinimized?: boolean) => Promise<{ success: boolean; enabled: boolean; startMinimized?: boolean }>;
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
+      setUiModalOpen: (open: boolean) => Promise<{ success: boolean; open: boolean }>;
       setShowTaskbarIcon: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
@@ -316,7 +317,7 @@ const UptimeMonitor = React.memo(() => {
   const m = Math.floor((uptime % 3600) / 60);
 
   return (
-    <span className="text-sm font-digits text-slate-400 tracking-wide tabular-nums">
+    <span className="text-sm font-mono text-slate-400 tracking-wide tabular-nums">
       {h > 0 ? `${h}h ${m}m` : `${m}m`}
     </span>
   );
@@ -624,9 +625,6 @@ const ClockHUD = ({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
           >
-            {/* Tech grid bg overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(34,211,238,0.04)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(34,211,238,0.04)_95%)] bg-[size:20px_20px] pointer-events-none" />
-
             {/* Header */}
             <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-4">
               <div className="flex items-center gap-3">
@@ -920,8 +918,6 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
           >
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(6,182,212,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
-
             <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-6">
               <div className="flex items-center gap-3">
                 <Cpu className="w-5 h-5 text-cyan-400 animate-pulse" />
@@ -1075,8 +1071,6 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-purple-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
           >
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(168,85,247,0.05)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(168,85,247,0.05)_95%)] bg-[size:20px_20px] pointer-events-none" />
-
             <div className="relative z-10 flex items-center justify-between border-b border-purple-500/20 pb-4 mb-6">
               <div className="flex items-center gap-3">
                 <HardDrive className="w-5 h-5 text-purple-400 animate-pulse" />
@@ -1925,6 +1919,8 @@ export default function App() {
   const rightAsideRef = useRef<HTMLElement>(null);
   const pendingLeftWidth = useRef<number | null>(null);
   const pendingRightWidth = useRef<number | null>(null);
+  /** Suppress hide-on-dead-spot for the click that follows a column resize mouseup. */
+  const suppressDeadSpotHideRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('leftSidebarWidth', leftSidebarWidth.toString());
@@ -2116,6 +2112,16 @@ export default function App() {
     }
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
+
+  // While Add/Edit App or Settings is open, block hide-on-blur (separate from native dialogs).
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI) return;
+    const open = !!(isAddingApp || editingApp || isSettingsOpen);
+    window.electronAPI.setUiModalOpen(open);
+    return () => {
+      window.electronAPI?.setUiModalOpen(false);
+    };
+  }, [isAddingApp, editingApp, isSettingsOpen]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -2362,6 +2368,8 @@ export default function App() {
 
   const startResizingLeft = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    suppressDeadSpotHideRef.current = true;
     setIsDraggingLeft(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -2382,6 +2390,8 @@ export default function App() {
       document.body.style.userSelect = '';
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      // Clear after the synthetic click that follows mouseup in the same gesture.
+      setTimeout(() => { suppressDeadSpotHideRef.current = false; }, 0);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -2390,6 +2400,8 @@ export default function App() {
 
   const startResizingRight = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    suppressDeadSpotHideRef.current = true;
     setIsDraggingRight(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -2410,6 +2422,8 @@ export default function App() {
       document.body.style.userSelect = '';
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      // Clear after the synthetic click that follows mouseup in the same gesture.
+      setTimeout(() => { suppressDeadSpotHideRef.current = false; }, 0);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -3010,6 +3024,8 @@ export default function App() {
       onDrop={handleSystemDrop}
       onClick={(e) => {
         if (!hideOnClickDeadSpot || !isElectron) return;
+        if (suppressDeadSpotHideRef.current) return;
+        if (isAddingApp || editingApp || isSettingsOpen) return;
         const target = e.target as HTMLElement;
         if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
         if (isAlwaysOnTop) {
@@ -3154,30 +3170,36 @@ export default function App() {
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
+                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
                 {t('title_apps')}
               </div>
-              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
-                {apps.length}
-              </span>
+              <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
+                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                  {apps.length}
+                </span>
+              </Tooltip>
             </div>
             <div className="flex justify-between items-center text-xs">
                <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
+                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
                 {t('title_categories')}
               </div>
-              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
-                {categories.length - 1}
-              </span>
+              <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
+                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                  {categories.length - 1}
+                </span>
+              </Tooltip>
             </div>
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-slate-500" style={{ boxShadow: '0 0 6px rgba(100,116,139,0.55)' }} />
+                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
                 {t('title_launches')}
               </div>
-              <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20">
-                {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
-              </span>
+              <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
+                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                  {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
+                </span>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -3185,6 +3207,7 @@ export default function App() {
 
       {/* Resize Handle Left */}
       <div 
+        data-no-hide
         className="w-[2px] cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 z-50 transition-colors shrink-0"
         onMouseDown={startResizingLeft}
       />
@@ -3889,7 +3912,7 @@ export default function App() {
                 <Tooltip label={t('tooltip_view_grid')} placement="bottom">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     <Grid className="w-4 h-4" />
                   </button>
@@ -3897,7 +3920,7 @@ export default function App() {
                 <Tooltip label={t('tooltip_view_list')} placement="bottom">
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     <ListIcon className="w-4 h-4" />
                   </button>
@@ -3990,8 +4013,8 @@ export default function App() {
                       containIntrinsicSize: viewMode === 'grid' ? '120px' : '56px',
                     }}
                     className={viewMode === 'grid'
-                      ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 transition-colors shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
-                      : "flex items-center justify-between bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 group cursor-pointer transition-colors shadow-md overflow-hidden"
+                      ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10 active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out will-change-transform shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
+                      : "flex items-center justify-between bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01] active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out will-change-transform shadow-md overflow-hidden"
                     }
                   >
                     {viewMode === 'grid' ? (
@@ -4004,12 +4027,13 @@ export default function App() {
                             />
                           </Tooltip>
                         )}
+                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.04] transition-opacity duration-100 pointer-events-none" />
                         <div 
-                          className="flex flex-col items-center justify-center text-center h-full"
+                          className="flex flex-col items-center justify-center text-center h-full relative z-10"
                           style={{ gap: `${8 * (cardScale / 100)}px` }}
                         >
                           <AppIcon app={app}
-                            className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_currentColor] drop-shadow-lg transition-all duration-300 ${app.color}`}
+                            className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${app.color}`}
                             style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
                             strokeWidth={1.5} 
                           />
@@ -4033,7 +4057,7 @@ export default function App() {
                       <>
                         <div className="flex items-center" style={{ gap: `${16 * (cardScale / 100)}px` }}>
                           <AppIcon app={app}
-                            className={`flex-shrink-0 drop-shadow-lg ${app.color}`}
+                            className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${app.color}`}
                             style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
                             strokeWidth={1.5}
                           />
@@ -4083,6 +4107,7 @@ export default function App() {
 
       {/* Resize Handle Right */}
       <div 
+        data-no-hide
         className="w-[2px] cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 z-50 transition-colors shrink-0"
         onMouseDown={startResizingRight}
       />
@@ -4368,42 +4393,208 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- ADD/EDIT APP MODAL --- */}
+      {/* --- ADD/EDIT APP DRAWER --- */}
       <AnimatePresence>
         {(editingApp || isAddingApp) && (
-          <motion.div 
+          <>
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            data-no-hide
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); }}
+          />
+          <motion.div
+            initial={{ x: '100%', opacity: 0.9 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            data-no-hide
+            onClick={(e) => e.stopPropagation()}
+            className="fixed right-0 top-0 bottom-0 z-[60] flex shadow-2xl"
           >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            {/* Advanced options column (left of main form) */}
+            <motion.div
+              initial={false}
+              animate={{ width: advancedOptionsOpen ? 280 : 0, opacity: advancedOptionsOpen ? 1 : 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className={`h-full overflow-hidden shrink-0 bg-[#070b13]/95 backdrop-blur-2xl ${advancedOptionsOpen ? 'border-l border-cyan-500/15' : ''}`}
             >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <PenBox className="w-5 h-5 text-blue-400" />
-                  {isAddingApp ? 'Añadir App' : 'Editar App'}
-                </h2>
-                <button 
+              <div className="w-[280px] h-full flex flex-col overflow-hidden">
+                <div className="px-4 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <SlidersHorizontal className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <h3 className="text-xs font-cyber font-bold text-white tracking-widest truncate">{t('app_advanced_title')}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOptionsOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
+                    title={t('app_advanced_hide')}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                  {/* Launch as Admin Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
+                        <Lock className="w-4 h-4 text-red-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
+                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Pin to Favorites Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
+                        <Star className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_fav_title')}</h4>
+                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_fav_desc')}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Pin to Taskbar Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                        <Pin className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_taskbar_title')}</h4>
+                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_taskbar_desc')}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Custom App Hotkey Recorder Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Keyboard className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1 text-left">{t('app_shortcut_title')}</h4>
+                          <p className="text-[11px] text-slate-500 text-left leading-snug">{t('app_shortcut_desc')}</p>
+                        </div>
+                      </div>
+                      {editForm.shortcut && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, shortcut: '' }))}
+                          className="text-xs text-red-400 hover:text-red-300 font-cyber transition-colors shrink-0"
+                        >
+                          {t('app_shortcut_clear')}
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsRecordingAppShortcut(true)}
+                      onKeyDown={(e) => {
+                        if (isRecordingAppShortcut) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                              keys.push(keyName);
+                              const newShortcut = keys.join('+');
+                              setEditForm(prev => ({ ...prev, shortcut: newShortcut }));
+                              setIsRecordingAppShortcut(false);
+                          }
+                        }
+                      }}
+                      onBlur={() => setIsRecordingAppShortcut(false)}
+                      className={`w-full text-center px-3 py-2.5 rounded-lg text-xs font-mono outline-none transition-all ${
+                        isRecordingAppShortcut
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                          : 'bg-black/30 text-slate-300 hover:bg-white/5 border border-white/10'
+                      }`}
+                    >
+                      {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('app_shortcut_none'))}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Main form panel */}
+            <div className="w-[420px] max-w-[100vw] h-full bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 flex flex-col overflow-hidden">
+              <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOptionsOpen(prev => !prev)}
+                    className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
+                      advancedOptionsOpen
+                        ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
+                        : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
+                    }`}
+                    title={advancedOptionsOpen ? t('app_advanced_hide') : t('app_advanced_show')}
+                  >
+                    {advancedOptionsOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                  </button>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate">
+                    {isAddingApp ? t('app_add_title') : t('app_edit_title')}
+                  </h2>
+                </div>
+                <button
                   onClick={() => { setEditingApp(null); setIsAddingApp(false); }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+
+              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
                 <div className="space-y-4">
                   {/* Name field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">NOMBRE</label>
-                    <input 
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_name')}</label>
+                    <input
                       type="text"
                       className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                       value={editForm.name}
@@ -4415,7 +4606,7 @@ export default function App() {
 
                   {/* Icon path field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">RUTA LOCAL DEL ÍCONO (OPCIONAL)</label>
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_icon')}</label>
                     <div className="flex gap-3 items-center">
                       <div className="w-11 h-11 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-inner group">
                          {editForm.iconPath ? (
@@ -4427,18 +4618,17 @@ export default function App() {
                       <div className="flex-1 flex gap-2">
                         <input
                           type="text"
-                          value={editForm.iconPath.startsWith('data:image') ? 'Ícono extraído del sistema' : editForm.iconPath}
+                          value={editForm.iconPath.startsWith('data:image') ? t('app_icon_extracted') : editForm.iconPath}
                           onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
                           onContextMenu={handleInputContextMenu}
-                          placeholder="Ej. C:\Icons\vscode.png"
+                          placeholder={t('app_icon_placeholder')}
                           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                         {isElectron ? (
-                          <button 
+                          <button
                             onClick={async () => {
                               const filePath = await window.electronAPI!.selectImage();
                               if (filePath) {
-                                // Convertir la ruta del ícono a Base64 para que se guarde en apps y sea visible
                                 const dataUrl = await window.electronAPI!.getImageData(filePath);
                                 if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
                               }
@@ -4450,44 +4640,44 @@ export default function App() {
                         ) : (
                           <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
                             <Upload className="w-4 h-4 mr-2" /> PC
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="hidden" 
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   const objectUrl = URL.createObjectURL(file);
                                   setEditForm(prev => ({ ...prev, iconPath: objectUrl }));
                                 }
-                              }} 
+                              }}
                             />
                           </label>
                         )}
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">Si se deja vacío, utilizará el ícono por defecto.</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{t('app_icon_hint')}</p>
                   </div>
 
                   {/* Shortcut path field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">RUTA DEL ACCESO O URL</label>
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_path')}</label>
                     <div className="flex gap-2">
-                      <input 
+                      <input
                         type="text"
                         className="flex-1 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors font-mono"
                         value={editForm.path}
                         onChange={(e) => setEditForm(prev => ({ ...prev, path: e.target.value }))}
                         onContextMenu={handleInputContextMenu}
-                        placeholder="Ej. C:\Program Files\App\app.exe"
+                        placeholder={t('app_path_placeholder')}
                       />
                       {isElectron ? (
-                        <button 
+                        <button
                           onClick={async () => {
                             const fileInfo = await window.electronAPI!.selectFile();
                             if (fileInfo && typeof fileInfo === 'object') {
-                              setEditForm(prev => ({ 
-                                ...prev, 
+                              setEditForm(prev => ({
+                                ...prev,
                                 path: fileInfo.path,
                                 name: prev.name || fileInfo.name,
                                 iconPath: prev.iconPath || fileInfo.iconPath
@@ -4501,15 +4691,15 @@ export default function App() {
                       ) : (
                         <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
                           <Upload className="w-4 h-4 mr-2" /> PC
-                          <input 
-                            type="file" 
-                            className="hidden" 
+                          <input
+                            type="file"
+                            className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
                                 setEditForm(prev => ({ ...prev, path: `C:\\Local\\${file.name}` }));
                               }
-                            }} 
+                            }}
                           />
                         </label>
                       )}
@@ -4518,14 +4708,14 @@ export default function App() {
 
                   {/* Category Field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">CATEGORÍA <span className="text-red-400">*</span></label>
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_category')} <span className="text-red-400">*</span></label>
                     <div className="relative">
-                      <select 
+                      <select
                         value={editForm.category}
                         onChange={(e) => setEditForm(prev => ({...prev, category: e.target.value}))}
                         className={`w-full bg-black/30 border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50 transition-colors appearance-none ${editForm.category ? 'text-white border-white/10' : 'text-slate-500 border-white/10'}`}
                       >
-                        <option value="" disabled className="bg-[#0f172a] text-sm text-slate-500">Seleccionar...</option>
+                        <option value="" disabled className="bg-[#0f172a] text-sm text-slate-500">{t('app_category_placeholder')}</option>
                         {categories.filter(c => c.id !== 'all').sort((a,b) => a.name.localeCompare(b.name)).map(cat => (
                           <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
                             {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
@@ -4535,164 +4725,20 @@ export default function App() {
                       <ChevronRight className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                     {!editForm.category && (
-                      <p className="text-[10px] text-red-400/80 mt-1">Debes seleccionar una categoría</p>
+                      <p className="text-[10px] text-red-400/80 mt-1">{t('app_category_required')}</p>
                     )}
                   </div>
-
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setAdvancedOptionsOpen(prev => !prev)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-colors text-left group"
-                >
-                  <span className="text-xs font-cyber font-bold text-slate-400 tracking-widest">OPCIONES AVANZADAS</span>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${advancedOptionsOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {advancedOptionsOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      className="overflow-hidden space-y-4"
-                    >
-
-                  {/* Launch as Admin Field */}
-                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
-                        <Lock className="w-4 h-4 text-red-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Ejecutar como Administrador</h4>
-                        <p className="text-xs text-slate-500">Solicita privilegios elevados de administrador al iniciar.</p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Pin to Favorites Field */}
-                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                        <Star className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Anclar a favoritos</h4>
-                        <p className="text-xs text-slate-500">Muestra esta app en la sección de favoritos.</p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Pin to Taskbar Field */}
-                  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                        <Pin className="w-4 h-4 text-cyan-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">Anclar a barra de tareas</h4>
-                        <p className="text-xs text-slate-500">Muestra esta app en la barra de tareas inferior.</p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Custom App Hotkey Recorder Field */}
-                  <div className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                          <Keyboard className="w-4 h-4 text-cyan-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1 text-left">Atajo de Teclado Global</h4>
-                          <p className="text-xs text-slate-500 text-left">Lanza este acceso directo desde cualquier lugar del sistema.</p>
-                        </div>
-                      </div>
-                      {editForm.shortcut && (
-                        <button
-                          type="button"
-                          onClick={() => setEditForm(prev => ({ ...prev, shortcut: '' }))}
-                          className="text-xs text-red-400 hover:text-red-300 font-cyber transition-colors"
-                        >
-                          Limpiar
-                        </button>
-                      )}
-                    </div>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setIsRecordingAppShortcut(true)}
-                      onKeyDown={(e) => {
-                        if (isRecordingAppShortcut) {
-                          e.preventDefault();
-                          const keys = [];
-                          if (e.ctrlKey) keys.push('Ctrl');
-                          if (e.altKey) keys.push('Alt');
-                          if (e.shiftKey) keys.push('Shift');
-                          if (e.metaKey) keys.push('Meta');
-                          
-                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
-                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
-                              keys.push(keyName);
-                              const newShortcut = keys.join('+');
-                              setEditForm(prev => ({ ...prev, shortcut: newShortcut }));
-                              setIsRecordingAppShortcut(false);
-                          }
-                        }
-                      }}
-                      onBlur={() => setIsRecordingAppShortcut(false)}
-                      className={`w-full text-center px-4 py-2.5 rounded-lg text-xs font-mono outline-none transition-all ${
-                        isRecordingAppShortcut 
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]' 
-                          : 'bg-black/30 text-slate-300 hover:bg-white/5 border border-white/10'
-                      }`}
-                    >
-                      {isRecordingAppShortcut ? 'Presiona combinación de teclas...' : (editForm.shortcut || 'Ninguno (Haz clic para asignar)')}
-                    </button>
-                  </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
-              <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3 bg-black/20">
-                <button 
+              <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
+                <button
                   onClick={() => { setEditingApp(null); setIsAddingApp(false); }}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                  Cancelar
+                  {t('app_cancel')}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (isAddingApp) {
                       const newId = Date.now();
@@ -4701,7 +4747,7 @@ export default function App() {
                         name: editForm.name || 'Nueva App',
                         path: editForm.path,
                         iconPath: editForm.iconPath,
-                        icon: Package, // Fallback icon component
+                        icon: Package,
                         category: editForm.category,
                         color: 'text-cyan-400',
                         isFav: false,
@@ -4757,45 +4803,50 @@ export default function App() {
                       : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20'
                   }`}
                 >
-                  {isAddingApp ? 'Añadir App' : 'Guardar Cambios'}
+                  {isAddingApp ? t('app_add_submit') : t('app_edit_submit')}
                 </button>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* --- SETTINGS MODAL --- */}
+      {/* --- SETTINGS DRAWER --- */}
       <AnimatePresence>
         {isSettingsOpen && (
+          <>
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            data-no-hide
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
-          >
+          />
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ x: '100%', opacity: 0.9 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0.9 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              data-no-hide
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[75vh] max-h-[580px]"
+              className="fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col select-none"
             >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
-                <h2 className="text-sm font-cyber font-bold text-white flex items-center gap-2 tracking-wider">
-                  <Settings className="w-4.5 h-4.5 text-cyan-400" />
-                  {t('settings_title')}
-                </h2>
+              <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('settings_title')}</h2>
+                </div>
                 <button 
                   onClick={() => setIsSettingsOpen(false)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="flex flex-1 min-h-0 bg-[#070b13]/40">
+              <div className="flex flex-1 min-h-0">
                 {/* Left Sidebar Navigation */}
                 <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
                   {([
@@ -5712,7 +5763,7 @@ export default function App() {
                       
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
                         <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_registered')}</span>
-                        <span className="text-lg font-digits font-bold text-cyan-400 mt-0.5">
+                        <span className="text-lg font-mono font-semibold text-cyan-400/90 mt-0.5 tabular-nums tracking-normal">
                           {indexerStats.totalFiles.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}
                         </span>
                       </div>
@@ -5895,7 +5946,7 @@ export default function App() {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
 

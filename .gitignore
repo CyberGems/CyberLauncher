@@ -25,6 +25,9 @@ scratch/
 *.backup*
 *.bak
 
+# Build / agent artifacts
+artifacts/
+
 # Private local control files (never push)
 AGENTS.md
 CLAUDE.md

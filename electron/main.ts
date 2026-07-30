@@ -32,6 +32,8 @@ let lastHotspotCorner = '';
 let hotspotEntryTime = 0;
 let isSavingConfig = false;
 let isDialogOpen = false;
+/** React UI modals (e.g. Add/Edit App) that must block hide-on-blur independently of native dialogs. */
+let isUiModalOpen = false;
 // ── STATE MACHINE & GUARDS ──
 type VisibilityState = 'hidden-intentional' | 'shown-intentional' | 'hidden-blur' | 'hidden-os';
 let windowVisibilityState: VisibilityState = 'hidden-intentional';
@@ -517,7 +519,7 @@ function createWindow() {
     }
     setTimeout(() => {
       if (Date.now() < bootBlurGuardUntil) return;
-      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && hideOnBlurEnabled) {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && !isUiModalOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
         windowVisibilityState = 'hidden-blur';
         hideMainWindow();
@@ -1811,6 +1813,11 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('set-hide-on-blur', (_event, enabled: boolean) => {
     hideOnBlurEnabled = enabled;
     return { success: true, enabled };
+  });
+
+  ipcMain.handle('set-ui-modal-open', (_event, open: boolean) => {
+    isUiModalOpen = !!open;
+    return { success: true, open: isUiModalOpen };
   });
 
   ipcMain.handle('set-show-taskbar-icon', (_event, enabled: boolean) => {
