@@ -1990,11 +1990,11 @@ export default function App() {
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
     const saved = localStorage.getItem('glassIntensity');
-    return saved ? parseInt(saved, 10) : 80;
+    return saved ? parseInt(saved, 10) : 60;
   });
   const [bgOpacity, setBgOpacity] = useState(() => {
     const saved = localStorage.getItem('bgOpacity');
-    return saved ? parseInt(saved, 10) : 80;
+    return saved ? parseInt(saved, 10) : 60;
   });
   // (CyberTray state removed)
 
