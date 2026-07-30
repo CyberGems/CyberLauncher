@@ -228,7 +228,10 @@ export const translations = {
     cat_dev: "Desarrollo",
     cat_ent: "Entretenimiento",
     cat_gaming: "Juegos",
+    cat_office: "Office",
     cat_utils: "Utilidades",
+    apps_empty_title: "Aún no hay aplicaciones",
+    apps_empty_hint: "Añade accesos a tus programas, archivos o URLs para empezar.",
 
     // System HUD
     hud_system_title: "TELEMETRÍA DE RECURSOS",
@@ -255,6 +258,10 @@ export const translations = {
 
     // Clock HUD
     hud_clock_title: "PROGRAMADOR",
+    hud_clock_status_title: "RELOJ Y TAREAS",
+    hud_clock_status_show: "Mostrar reloj y tareas",
+    hud_clock_status_hide: "Ocultar reloj y tareas",
+    hud_clock_no_apps: "No hay apps — añade una primero",
     hud_clock_new_timer: "NUEVA PROGRAMACIÓN",
     hud_clock_launch_app: "LANZAR APP",
     hud_clock_console_cmd: "CONSOLA CMD",
@@ -568,7 +575,10 @@ export const translations = {
     cat_dev: "Development",
     cat_ent: "Entertainment",
     cat_gaming: "Gaming",
+    cat_office: "Office",
     cat_utils: "Utilities",
+    apps_empty_title: "No apps yet",
+    apps_empty_hint: "Add shortcuts to your programs, files, or URLs to get started.",
 
     // System HUD
     hud_system_title: "RESOURCE TELEMETRY",
@@ -595,6 +605,10 @@ export const translations = {
 
     // Clock HUD
     hud_clock_title: "SCHEDULER",
+    hud_clock_status_title: "CLOCK & TASKS",
+    hud_clock_status_show: "Show clock and tasks",
+    hud_clock_status_hide: "Hide clock and tasks",
+    hud_clock_no_apps: "No apps — add one first",
     hud_clock_new_timer: "NEW SCHEDULED TASK",
     hud_clock_launch_app: "LAUNCH APP",
     hud_clock_console_cmd: "CONSOLE CMD",

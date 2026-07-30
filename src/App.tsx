@@ -4,15 +4,13 @@ import Tooltip from './Tooltip';
 import AboutModal, { UpdateStatus } from './AboutModal';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Terminal, Music, Globe, Calculator, Code, Bot, Lock,
-  MonitorSmartphone, PenTool, KeyRound, MousePointer2, FileUp,
-  Gamepad2, TerminalSquare, Binary, MessageCircle, Star,
+  Terminal, Globe, Lock, MousePointer2, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
   Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal,
+  FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw
 } from 'lucide-react';
 
@@ -32,8 +30,9 @@ export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { classNa
 );
 
 // --- MOCK DATA ---
+/** Stable English names are matching keys; UI labels come from cat_* locales. */
 const INITIAL_CATEGORIES = [
-  { id: 'all', name: 'Todas', color: '#a1a1aa' },
+  { id: 'all', name: 'All', color: '#a1a1aa' },
   { id: 'ai', name: 'AI', color: '#34d399' },
   { id: 'browsers', name: 'Browsers', color: '#f97316' },
   { id: 'comm', name: 'Communication', color: '#6366f1' },
@@ -41,27 +40,26 @@ const INITIAL_CATEGORIES = [
   { id: 'dev', name: 'Development', color: '#38bdf8' },
   { id: 'ent', name: 'Entertainment', color: '#22c55e' },
   { id: 'gaming', name: 'Gaming', color: '#d4d4d8' },
-  { id: 'utils', name: 'Utilidades', color: '#60a5fa' },
+  { id: 'office', name: 'Office', color: '#a78bfa' },
+  { id: 'utils', name: 'Utilities', color: '#60a5fa' },
 ];
 
-const INITIAL_APPS = [
-  { id: 1, name: 'Terminal', category: 'Utilidades', icon: Terminal, color: 'text-sky-400', isFav: true, usage: 96 },
-  { id: 2, name: 'Spotify', category: 'Entertainment', icon: Music, color: 'text-green-500', isFav: false, usage: 56 },
-  { id: 3, name: 'Brave Browser', category: 'Browsers', icon: Globe, color: 'text-orange-500', isFav: false, usage: 43 },
-  { id: 4, name: 'Calculator', category: 'Utilidades', icon: Calculator, color: 'text-zinc-300', isFav: true, usage: 22 },
-  { id: 5, name: 'Python IDLE', category: 'Development', icon: Code, color: 'text-yellow-400', isFav: false, usage: 8 },
-  { id: 6, name: 'ChatGPT', category: 'AI', icon: Bot, color: 'text-emerald-400', isFav: false, usage: 2 },
-  { id: 7, name: 'VeraCrypt', category: 'Utilidades', icon: Lock, color: 'text-sky-300', isFav: true, usage: 2 },
-  { id: 8, name: 'AnyDesk', category: 'Utilidades', icon: MonitorSmartphone, color: 'text-red-500', isFav: true, usage: 1 },
-  { id: 9, name: 'CorelDRAW 2026', category: 'Design', icon: PenTool, color: 'text-green-400', isFav: false, usage: 1 },
-  { id: 10, name: '2fast', category: 'Utilidades', icon: KeyRound, color: 'text-yellow-500', isFav: true, usage: 1 },
-  { id: 11, name: 'Cursor', category: 'AI', icon: MousePointer2, color: 'text-zinc-300', isFav: false, usage: 1 },
-  { id: 12, name: 'Filezilla', category: 'Utilidades', icon: FileUp, color: 'text-red-600', isFav: false, usage: 0 },
-  { id: 13, name: 'Steam', category: 'Gaming', icon: Gamepad2, color: 'text-sky-500', isFav: false, usage: 0 },
-  { id: 14, name: 'Warp', category: 'Utilidades', icon: TerminalSquare, color: 'text-indigo-400', isFav: false, usage: 0 },
-  { id: 15, name: 'Codex', category: 'Development', icon: Binary, color: 'text-blue-500', isFav: false, usage: 0 },
-  { id: 16, name: 'WhatsApp', category: 'Communication', icon: MessageCircle, color: 'text-green-500', isFav: true, usage: 0 },
-];
+type LauncherApp = {
+  id: number;
+  name: string;
+  category: string;
+  color: string;
+  usage: number;
+  icon?: any;
+  iconPath?: string;
+  path?: string;
+  isFav?: boolean;
+  isAdmin?: boolean;
+  shortcut?: string;
+};
+
+/** Fresh install starts empty — user adds their own apps. */
+const INITIAL_APPS: LauncherApp[] = [];
 
 const DEFAULT_BG_IMAGE = 'bg_default.jpg';
 
@@ -354,8 +352,8 @@ const CyberAnalogClock = () => {
   const secDeg = secs * 6;
 
   return (
-    <div className="flex flex-col items-center justify-center my-5 relative">
-      <div className="w-40 h-40 rounded-full border-2 border-cyan-500/25 bg-black/45 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.12)] flex items-center justify-center relative overflow-hidden">
+    <div className="flex flex-col items-center justify-center my-2 relative">
+      <div className="w-36 h-36 rounded-full border-2 border-cyan-500/25 bg-black/45 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.12)] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#22d3ee_0%,_transparent_70%)] pointer-events-none" />
         <div className="absolute w-[92%] h-[92%] rounded-full border border-dashed border-cyan-500/10 pointer-events-none" />
         
@@ -530,7 +528,7 @@ interface HistoryItem {
 
 const getCategoryDisplayName = (categoryName: string, t: any) => {
   let id = '';
-  if (categoryName === 'Todas') id = 'all';
+  if (categoryName === 'Todas' || categoryName === 'All') id = 'all';
   else if (categoryName === 'AI') id = 'ai';
   else if (categoryName === 'Browsers') id = 'browsers';
   else if (categoryName === 'Communication') id = 'comm';
@@ -538,7 +536,8 @@ const getCategoryDisplayName = (categoryName: string, t: any) => {
   else if (categoryName === 'Development') id = 'dev';
   else if (categoryName === 'Entertainment') id = 'ent';
   else if (categoryName === 'Gaming') id = 'gaming';
-  else if (categoryName === 'Utilidades') id = 'utils';
+  else if (categoryName === 'Office') id = 'office';
+  else if (categoryName === 'Utilidades' || categoryName === 'Utilities') id = 'utils';
 
   if (!id) return categoryName;
   const translationKey = `cat_${id}`;
@@ -621,6 +620,14 @@ const ClockHUD = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const [statusPanelOpen, setStatusPanelOpen] = useState(() => {
+    try { return localStorage.getItem('cl_clock_panel_open') !== 'false'; } catch { return true; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('cl_clock_panel_open', statusPanelOpen ? 'true' : 'false'); } catch { /* ignore */ }
+  }, [statusPanelOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -637,233 +644,267 @@ const ClockHUD = ({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-[420px] z-50 bg-[#070b13]/90 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col p-6 overflow-hidden select-none"
+            onClick={(e) => e.stopPropagation()}
+            className="fixed right-0 top-0 bottom-0 z-50 flex shadow-2xl select-none"
           >
-            {/* Header */}
-            <div className="relative z-10 flex items-center justify-between border-b border-cyan-500/20 pb-4 mb-4">
-              <div className="flex items-center gap-3">
-                <Timer className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <div>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('hud_clock_title')}</h2>
-                  <p className="text-[10px] text-cyan-500/80 font-mono tracking-wider text-left">EXECUTION TIMERS v1.5</p>
+            {/* Left status panel: clock + active tasks */}
+            <motion.div
+              initial={false}
+              animate={{ width: statusPanelOpen ? 300 : 0, opacity: statusPanelOpen ? 1 : 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className={`h-full overflow-hidden shrink-0 bg-[#070b13]/95 backdrop-blur-2xl ${statusPanelOpen ? 'border-l border-cyan-500/15' : ''}`}
+            >
+              <div className="w-[300px] h-full flex flex-col overflow-hidden">
+                <div className="px-4 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <h3 className="text-xs font-cyber font-bold text-white tracking-widest truncate">{t('hud_clock_status_title')}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStatusPanelOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
+                    title={t('hud_clock_status_hide')}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+                  <CyberAnalogClock />
+
+                  <div className="text-left">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">{t('hud_clock_active_tasks')}</h3>
+                      <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
+                        {t('hud_clock_active_count', { count: scheduledTasks.length.toString() })}
+                      </span>
+                    </div>
+
+                    {scheduledTasks.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-6 border border-dashed border-cyan-500/10 rounded-xl bg-cyan-500/[0.02] opacity-70">
+                        <Timer className="w-7 h-7 text-cyan-500/30 mb-2" />
+                        <p className="text-[10px] font-mono text-slate-400 tracking-wide text-center px-2">{t('hud_clock_no_tasks')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {scheduledTasks.map((task) => {
+                          const percent = (task.remainingSeconds / task.totalSeconds) * 100;
+                          return (
+                            <div 
+                              key={task.id} 
+                              className="relative overflow-hidden bg-slate-950/80 border border-cyan-500/15 rounded-xl p-3 flex items-center justify-between shadow-lg"
+                            >
+                              <div 
+                                className="absolute bottom-0 left-0 top-0 bg-cyan-500/5 transition-all duration-1000 ease-linear pointer-events-none"
+                                style={{ width: `${percent}%` }}
+                              />
+                              <div className="relative z-10 flex-1 min-w-0 pr-2 text-left">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.type === 'app' ? 'bg-cyan-400' : 'bg-orange-400 animate-pulse'}`} />
+                                  <h4 className="text-[11px] font-cyber font-bold text-white truncate uppercase tracking-wider">{task.name}</h4>
+                                </div>
+                                <p className="text-[9px] font-mono text-slate-500 truncate">
+                                  {task.type === 'app' ? t('hud_clock_task_type_local') : `${t('hud_clock_task_type_cmd')}: ${task.command}`}
+                                </p>
+                              </div>
+                              <div className="relative z-10 flex items-center gap-2 shrink-0">
+                                <div className="text-right">
+                                  <span className="block text-sm font-digits font-bold text-cyan-400 tracking-wider tabular-nums leading-none">
+                                    {formatRemaining(task.remainingSeconds)}
+                                  </span>
+                                  <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
+                                    {t('hud_clock_countdown')}
+                                  </span>
+                                </div>
+                                <Tooltip label={t('hud_clock_cancel')} placement="left">
+                                  <button
+                                    onClick={() => handleRemoveTask(task.id)}
+                                    className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={onClose}
-                className="w-8 h-8 rounded-lg border border-cyan-500/10 hover:border-cyan-500/40 text-cyan-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all flex items-center justify-center focus:outline-none"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            </motion.div>
 
-            {/* Scrollable Container */}
-            <div className="relative z-10 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-              {/* Cyber Analog Clock Face */}
-              <CyberAnalogClock />
-
-              {/* Form container */}
-              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4.5 mb-6 text-left">
-                <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">{t('hud_clock_new_timer')}</h3>
-                
-                {/* Type Selection */}
-                <div className="flex gap-2 mb-3.5">
+            {/* Main panel: schedule form */}
+            <div className="w-[420px] max-w-[100vw] h-full bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 flex flex-col overflow-hidden">
+              <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
-                    onClick={() => setSelectedType('app')}
-                    className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
-                      selectedType === 'app' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
-                        : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                    type="button"
+                    onClick={() => setStatusPanelOpen(prev => !prev)}
+                    className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
+                      statusPanelOpen
+                        ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
+                        : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
                     }`}
+                    title={statusPanelOpen ? t('hud_clock_status_hide') : t('hud_clock_status_show')}
                   >
-                    {t('hud_clock_launch_app')}
+                    {statusPanelOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                   </button>
-                  <button
-                    onClick={() => setSelectedType('command')}
-                    className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
-                      selectedType === 'command' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
-                        : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
-                    }`}
-                  >
-                    {t('hud_clock_console_cmd')}
-                  </button>
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
+                    {t('hud_clock_title')}
+                  </h2>
                 </div>
-
-                {/* Form Fields */}
-                {selectedType === 'app' ? (
-                  <div className="mb-4">
-                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_select_app')}</label>
-                    <select
-                      value={selectedAppId}
-                      onChange={(e) => setSelectedAppId(e.target.value)}
-                      className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
-                    >
-                      {apps.map(app => (
-                        <option key={app.id} value={app.id} className="bg-slate-900 text-white">
-                          {app.name} ({getCategoryDisplayName(app.category, t)})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="mb-4">
-                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_console_command')}</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. shutdown /s /t 0"
-                      value={customCommand}
-                      onChange={(e) => setCustomCommand(e.target.value)}
-                      className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
-                    />
-                  </div>
-                )}
-
-                {/* Time Picker */}
-                <div className="mb-4.5">
-                  <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_wait_time')}</label>
-                  <div className="flex items-center gap-3 bg-slate-950/60 border border-cyan-500/10 rounded-lg px-3 py-2">
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_minutes')}</span>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="999" 
-                        value={timerMinutes} 
-                        onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
-                      />
-                    </div>
-                    <div className="text-cyan-500/40 font-digits font-bold text-[20px] mb-2">:</div>
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="59" 
-                        value={timerSeconds} 
-                        onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                        className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Preset Buttons */}
-                  <div className="flex gap-1.5 mt-2.5">
-                    {[
-                      { l: '+30s', v: () => { setTimerSeconds(s => (s + 30) % 60); if (timerSeconds >= 30) setTimerMinutes(m => m + 1); } },
-                      { l: '+1m', v: () => setTimerMinutes(m => m + 1) },
-                      { l: '+5m', v: () => setTimerMinutes(m => m + 5) },
-                      { l: '+15m', v: () => setTimerMinutes(m => m + 15) }
-                    ].map((preset, idx) => (
-                      <button
-                        key={idx}
-                        onClick={preset.v}
-                        className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono cursor-pointer"
-                      >
-                        {preset.l}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Subtract Preset Buttons */}
-                  <div className="flex gap-1.5 mt-1.5">
-                    {[
-                      { l: '-30s', v: () => { 
-                        if (timerSeconds >= 30) {
-                          setTimerSeconds(s => s - 30);
-                        } else if (timerMinutes > 0) {
-                          setTimerMinutes(m => m - 1);
-                          setTimerSeconds(s => s + 30);
-                        } else {
-                          setTimerSeconds(0);
-                        }
-                      } },
-                      { l: '-1m', v: () => setTimerMinutes(m => Math.max(0, m - 1)) },
-                      { l: '-5m', v: () => setTimerMinutes(m => Math.max(0, m - 5)) },
-                      { l: '-15m', v: () => setTimerMinutes(m => Math.max(0, m - 15)) }
-                    ].map((preset, idx) => (
-                      <button
-                        key={idx}
-                        onClick={preset.v}
-                        className="flex-1 py-1 rounded bg-slate-900 border border-red-500/10 text-[9px] text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-mono cursor-pointer"
-                      >
-                        {preset.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleAddTask}
-                  className="w-full py-2.5 bg-cyan-400/90 hover:bg-cyan-300 text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                <button 
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
                 >
-                  <Plus className="w-4 h-4" />
-                  {t('hud_clock_schedule_btn')}
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Tasks List */}
-              <div className="text-left">
-                <div className="flex items-center justify-between mb-3.5">
-                  <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">{t('hud_clock_active_tasks')}</h3>
-                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
-                    {t('hud_clock_active_count', { count: scheduledTasks.length.toString() })}
-                  </span>
-                </div>
-
-                {scheduledTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 border border-dashed border-cyan-500/10 rounded-xl bg-cyan-500/2 opacity-60">
-                    <Timer className="w-8 h-8 text-cyan-500/30 mb-2" />
-                    <p className="text-[10px] font-mono text-slate-400 tracking-wide">{t('hud_clock_no_tasks')}</p>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
+                <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 text-left">
+                  <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-3 tracking-widest">{t('hud_clock_new_timer')}</h3>
+                  
+                  <div className="flex gap-2 mb-3.5">
+                    <button
+                      onClick={() => setSelectedType('app')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                        selectedType === 'app' 
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
+                          : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                      }`}
+                    >
+                      {t('hud_clock_launch_app')}
+                    </button>
+                    <button
+                      onClick={() => setSelectedType('command')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-bold font-cyber tracking-wider transition-all text-center ${
+                        selectedType === 'command' 
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.25)]' 
+                          : 'bg-transparent text-slate-400 border-transparent hover:text-slate-200'
+                      }`}
+                    >
+                      {t('hud_clock_console_cmd')}
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {scheduledTasks.map((task) => {
-                      const percent = (task.remainingSeconds / task.totalSeconds) * 100;
-                      return (
-                        <div 
-                          key={task.id} 
-                          className="relative overflow-hidden bg-slate-950/80 border border-cyan-500/15 rounded-xl p-3.5 flex items-center justify-between shadow-lg"
+
+                  {selectedType === 'app' ? (
+                    <div className="mb-4">
+                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_select_app')}</label>
+                      <select
+                        value={selectedAppId}
+                        onChange={(e) => setSelectedAppId(e.target.value)}
+                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                      >
+                        {apps.length === 0 ? (
+                          <option value="" className="bg-slate-900 text-slate-500">{t('hud_clock_no_apps')}</option>
+                        ) : (
+                          apps.map(app => (
+                            <option key={app.id} value={app.id} className="bg-slate-900 text-white">
+                              {app.name} ({getCategoryDisplayName(app.category, t)})
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-1.5 tracking-wider">{t('hud_clock_console_command')}</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. shutdown /s /t 0"
+                        value={customCommand}
+                        onChange={(e) => setCustomCommand(e.target.value)}
+                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mb-4.5">
+                    <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_wait_time')}</label>
+                    <div className="flex items-center gap-3 bg-slate-950/60 border border-cyan-500/10 rounded-lg px-3 py-2">
+                      <div className="flex-1 flex flex-col items-center">
+                        <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_minutes')}</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="999" 
+                          value={timerMinutes} 
+                          onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
+                        />
+                      </div>
+                      <div className="text-cyan-500/40 font-digits font-bold text-[20px] mb-2">:</div>
+                      <div className="flex-1 flex flex-col items-center">
+                        <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{t('hud_clock_seconds')}</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="59" 
+                          value={timerSeconds} 
+                          onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                          className="bg-transparent text-center text-white font-digits font-bold text-[18px] w-full focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5 mt-2.5">
+                      {[
+                        { l: '+30s', v: () => { setTimerSeconds(s => (s + 30) % 60); if (timerSeconds >= 30) setTimerMinutes(m => m + 1); } },
+                        { l: '+1m', v: () => setTimerMinutes(m => m + 1) },
+                        { l: '+5m', v: () => setTimerMinutes(m => m + 5) },
+                        { l: '+15m', v: () => setTimerMinutes(m => m + 15) }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          onClick={preset.v}
+                          className="flex-1 py-1 rounded bg-slate-900 border border-cyan-500/10 text-[9px] text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all font-mono cursor-pointer"
                         >
-                          {/* Progress bar background slider */}
-                          <div 
-                            className="absolute bottom-0 left-0 top-0 bg-cyan-500/5 transition-all duration-1000 ease-linear pointer-events-none"
-                            style={{ width: `${percent}%` }}
-                          />
+                          {preset.l}
+                        </button>
+                      ))}
+                    </div>
 
-                          <div className="relative z-10 flex-1 min-w-0 pr-4 text-left">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${task.type === 'app' ? 'bg-cyan-400' : 'bg-orange-400 animate-pulse'}`} />
-                              <h4 className="text-xs font-cyber font-cyber font-bold text-white truncate uppercase tracking-wider">{task.name}</h4>
-                            </div>
-                            <p className="text-[9px] font-mono text-slate-500 truncate">
-                              {task.type === 'app' ? t('hud_clock_task_type_local') : `${t('hud_clock_task_type_cmd')}: ${task.command}`}
-                            </p>
-                          </div>
-
-                          <div className="relative z-10 flex items-center gap-3 shrink-0">
-                            <div className="text-right">
-                              <span className="block text-[15px] font-digits font-bold text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.5)] tracking-widest tabular-nums leading-none">
-                                {formatRemaining(task.remainingSeconds)}
-                              </span>
-                              <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
-                                {t('hud_clock_countdown')}
-                              </span>
-                            </div>
-                            <Tooltip label={t('hud_clock_cancel')} placement="left">
-                              <button
-                                onClick={() => handleRemoveTask(task.id)}
-                                className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </Tooltip>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <div className="flex gap-1.5 mt-1.5">
+                      {[
+                        { l: '-30s', v: () => { 
+                          if (timerSeconds >= 30) {
+                            setTimerSeconds(s => s - 30);
+                          } else if (timerMinutes > 0) {
+                            setTimerMinutes(m => m - 1);
+                            setTimerSeconds(s => s + 30);
+                          } else {
+                            setTimerSeconds(0);
+                          }
+                        } },
+                        { l: '-1m', v: () => setTimerMinutes(m => Math.max(0, m - 1)) },
+                        { l: '-5m', v: () => setTimerMinutes(m => Math.max(0, m - 5)) },
+                        { l: '-15m', v: () => setTimerMinutes(m => Math.max(0, m - 15)) }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          onClick={preset.v}
+                          className="flex-1 py-1 rounded bg-slate-900 border border-red-500/10 text-[9px] text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all font-mono cursor-pointer"
+                        >
+                          {preset.l}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
+
+                  <button
+                    onClick={handleAddTask}
+                    disabled={selectedType === 'app' && apps.length === 0}
+                    className="w-full py-2.5 bg-cyan-400/90 hover:bg-cyan-300 disabled:bg-cyan-400/40 disabled:cursor-not-allowed text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('hud_clock_schedule_btn')}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -1187,7 +1228,7 @@ export default function App() {
   });
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('favoriteIds');
-    return saved ? JSON.parse(saved) : INITIAL_APPS.filter(app => app.isFav).map(app => app.id);
+    return saved ? JSON.parse(saved) : [];
   });
   const [draggedFavId, setDraggedFavId] = useState<number | null>(null);
   const [favDropTarget, setFavDropTarget] = useState<number | null>(null);
@@ -1195,7 +1236,7 @@ export default function App() {
   // Taskbar State
   const [taskbarAppIds, setTaskbarAppIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('taskbarAppIds');
-    return saved ? JSON.parse(saved) : INITIAL_APPS.slice(0, 4).map(app => app.id);
+    return saved ? JSON.parse(saved) : [];
   });
   const [draggedTaskbarId, setDraggedTaskbarId] = useState<number | null>(null);
   const [taskbarDropTarget, setTaskbarDropTarget] = useState<number | null>(null);
@@ -1362,7 +1403,7 @@ export default function App() {
   }, [viewMode]);
 
   // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: typeof INITIAL_APPS[0] | null } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: LauncherApp | null } | null>(null);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -1591,7 +1632,7 @@ export default function App() {
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
   const updateNotifSeenRef = useRef<string>('');
-  const [editingApp, setEditingApp] = useState<typeof INITIAL_APPS[0] | null>(null);
+  const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
@@ -2528,7 +2569,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp, searchQuery, categories, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen]);
 
-  const handleLaunchApp = async (app: typeof INITIAL_APPS[0]) => {
+  const handleLaunchApp = async (app: LauncherApp) => {
     // Incrementar contadores de uso
     setApps(prevApps => prevApps.map(a => a.id === app.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
     setDailyLaunchCount(prev => {
@@ -2564,7 +2605,7 @@ export default function App() {
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent, app: typeof INITIAL_APPS[0]) => {
+  const handleContextMenu = (e: React.MouseEvent, app: LauncherApp) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, app });
@@ -2819,7 +2860,7 @@ export default function App() {
   }).sort((a, b) => a.name.localeCompare(b.name)), [apps, activeCategory, categories, searchQuery]);
 
   const favorites = useMemo(
-    () => favoriteIds.map(id => apps.find(a => a.id === id)).filter(Boolean) as typeof INITIAL_APPS,
+    () => favoriteIds.map(id => apps.find(a => a.id === id)).filter(Boolean) as LauncherApp[],
     [favoriteIds, apps]
   );
   const mostUsed = useMemo(
@@ -3859,7 +3900,7 @@ export default function App() {
           ) : (
             <>
               {/* Favorites Section */}
-          {!searchQuery && activeCategory === 'all' && (
+          {!searchQuery && activeCategory === 'all' && favorites.length > 0 && (
             <section className="mb-10 pt-4">
               <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest flex items-center gap-2 mb-4 drop-shadow-sm">
                 <Star className="w-4 h-4 fill-slate-400" />
@@ -4108,9 +4149,23 @@ export default function App() {
             </div>
             
             {filteredApps.length === 0 && (
-              <div className="text-center py-20 text-slate-400">
-                <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>No se encontraron aplicaciones</p>
+              <div className="text-center py-16 text-slate-400 flex flex-col items-center gap-4">
+                <Package className="w-12 h-12 opacity-20" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-300">{t('apps_empty_title')}</p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">{t('apps_empty_hint')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                    setIsAddingApp(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t('tooltip_add_app')}
+                </button>
               </div>
             )}
           </section>
@@ -5655,7 +5710,7 @@ export default function App() {
                                       <button
                                         onClick={() => {
                                           setImportingUwpApp(app);
-                                          setUwpImportCategory(categories.find(c => c.id !== 'all')?.name || 'Utilidades');
+                                          setUwpImportCategory(categories.find(c => c.id !== 'all')?.name || 'Utilities');
                                         }}
                                         className="text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)]"
                                       >
