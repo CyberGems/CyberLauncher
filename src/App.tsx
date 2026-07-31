@@ -711,14 +711,15 @@ const ClockHUD = ({
                     <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
                     <h3 className="text-xs font-cyber font-bold text-white tracking-widest truncate">{t('hud_clock_status_title')}</h3>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setStatusPanelOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
-                    title={t('hud_clock_status_hide')}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <Tooltip label={t('hud_clock_status_hide')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setStatusPanelOpen(false)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
@@ -791,20 +792,21 @@ const ClockHUD = ({
             <div className="w-[420px] max-w-[100vw] h-full bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 flex flex-col overflow-hidden">
               <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setStatusPanelOpen(prev => !prev)}
-                    className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
-                      statusPanelOpen
-                        ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
-                        : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
-                    }`}
-                    title={statusPanelOpen ? t('hud_clock_status_hide') : t('hud_clock_status_show')}
-                  >
-                    {statusPanelOpen
-                      ? <Timer className="w-4 h-4" />
-                      : <ChevronLeft className="w-4 h-4" />}
-                  </button>
+                  <Tooltip label={statusPanelOpen ? t('hud_clock_status_hide') : t('hud_clock_status_show')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setStatusPanelOpen(prev => !prev)}
+                      className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
+                        statusPanelOpen
+                          ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
+                          : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
+                      }`}
+                    >
+                      {statusPanelOpen
+                        ? <Timer className="w-4 h-4" />
+                        : <ChevronLeft className="w-4 h-4" />}
+                    </button>
+                  </Tooltip>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate">
                     {t('hud_clock_title')}
                   </h2>
@@ -819,7 +821,10 @@ const ClockHUD = ({
 
               <div className="flex-1 min-h-0 flex flex-col p-5">
                 <div className="flex-1 min-h-0 flex flex-col bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-5 text-left overflow-y-auto custom-scrollbar">
-                  <h3 className="text-xs font-cyber font-bold text-cyan-400 mb-4 tracking-widest shrink-0">{t('hud_clock_new_timer')}</h3>
+                  <div className="shrink-0 mb-4">
+                    <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-widest">{t('hud_clock_new_timer')}</h3>
+                    <p className="text-[11px] text-slate-500 leading-snug mt-1.5">{t('hud_clock_helper')}</p>
+                  </div>
 
                   <div className="flex gap-2 mb-5 shrink-0">
                     <button
@@ -4645,14 +4650,15 @@ export default function App() {
                     <SlidersHorizontal className="w-4 h-4 text-cyan-400 shrink-0" />
                     <h3 className="text-xs font-cyber font-bold text-white tracking-widest truncate">{t('app_advanced_title')}</h3>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setAdvancedOptionsOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
-                    title={t('app_advanced_hide')}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <Tooltip label={t('app_advanced_hide')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedOptionsOpen(false)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors shrink-0"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
                   {/* Pin to Favorites Field */}
@@ -4783,20 +4789,21 @@ export default function App() {
             <div className="w-[420px] max-w-[100vw] h-full bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 flex flex-col overflow-hidden">
               <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setAdvancedOptionsOpen(prev => !prev)}
-                    className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
-                      advancedOptionsOpen
-                        ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
-                        : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
-                    }`}
-                    title={advancedOptionsOpen ? t('app_advanced_hide') : t('app_advanced_show')}
-                  >
-                    {advancedOptionsOpen
-                      ? <SlidersHorizontal className="w-4 h-4" />
-                      : <ChevronLeft className="w-4 h-4" />}
-                  </button>
+                  <Tooltip label={advancedOptionsOpen ? t('app_advanced_hide') : t('app_advanced_show')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedOptionsOpen(prev => !prev)}
+                      className={`p-1.5 rounded-lg border transition-all shrink-0 focus:outline-none ${
+                        advancedOptionsOpen
+                          ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
+                          : 'border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
+                      }`}
+                    >
+                      {advancedOptionsOpen
+                        ? <SlidersHorizontal className="w-4 h-4" />
+                        : <ChevronLeft className="w-4 h-4" />}
+                    </button>
+                  </Tooltip>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate">
                     {isAddingApp ? t('app_add_title') : t('app_edit_title')}
                   </h2>
