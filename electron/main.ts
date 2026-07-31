@@ -1557,6 +1557,8 @@ function setupIpcHandlers() {
   });
 
   // --- Seleccionar archivo desde el explorador de Windows ---
+  // Devuelve path/nombre al cerrar el diálogo; el ícono se resuelve aparte en el renderer
+  // para poder mostrar un loader sin bloquear durante el cuadro de diálogo.
   ipcMain.handle('select-file', async (_event, options?: { filters?: Electron.FileFilter[] }) => {
     if (!mainWindow) return null;
     isDialogOpen = true;
@@ -1570,9 +1572,11 @@ function setupIpcHandlers() {
     isDialogOpen = false;
     showMainWindow();
     if (result.canceled || result.filePaths.length === 0) return null;
-    
-    // Devolver la información completa, incluyendo el ícono
-    return await resolveFullFileInfo(result.filePaths[0]);
+
+    const selectedPath = result.filePaths[0];
+    const base = path.basename(selectedPath);
+    const name = path.extname(base) ? base.replace(/\.[^/.]+$/, '') : base;
+    return { name, path: selectedPath, iconPath: '' };
   });
 
   // --- Seleccionar imagen desde el explorador de Windows ---

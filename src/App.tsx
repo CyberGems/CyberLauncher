@@ -4841,13 +4841,25 @@ export default function App() {
                           <button
                             onClick={async () => {
                               const fileInfo = await window.electronAPI!.selectFile();
-                              if (fileInfo && typeof fileInfo === 'object') {
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  path: fileInfo.path,
-                                  name: prev.name || fileInfo.name,
-                                  iconPath: prev.iconPath || fileInfo.iconPath || ''
-                                }));
+                              if (!fileInfo || typeof fileInfo !== 'object') return;
+                              setEditForm(prev => ({
+                                ...prev,
+                                path: fileInfo.path,
+                                name: prev.name || fileInfo.name,
+                              }));
+                              setIsResolvingIcon(true);
+                              try {
+                                const resolved = await window.electronAPI!.resolveFilePath(fileInfo.path);
+                                if (resolved) {
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    path: resolved.path || prev.path,
+                                    name: prev.name || resolved.name,
+                                    iconPath: prev.iconPath || resolved.iconPath || '',
+                                  }));
+                                }
+                              } finally {
+                                setIsResolvingIcon(false);
                               }
                             }}
                             disabled={isResolvingIcon}
