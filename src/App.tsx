@@ -79,10 +79,10 @@ const PACKAGED_BG_BY_FILENAME: Record<string, string> = {
   'bg_bubbles.png': 'bg_bubbles.png',
   'default03.png': 'bg_bubbles.png',
   'default03.jpg': 'bg_bubbles.png',
-  // Legacy presets still shipped in public/ for saved configs
-  'bg_abstract.jpg': 'bg_abstract.jpg',
-  'bg_cyberpunk.jpg': 'bg_cyberpunk.jpg',
-  'bg_geom.jpg': 'bg_geom.jpg',
+  // Pre-release legacy names → current presets (files no longer shipped)
+  'bg_abstract.jpg': 'bg_waves.jpg',
+  'bg_cyberpunk.jpg': 'bg_bubbles.png',
+  'bg_geom.jpg': DEFAULT_BG_IMAGE,
 };
 
 const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
