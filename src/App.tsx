@@ -805,8 +805,7 @@ const ClockHUD = ({
                       ? <Timer className="w-4 h-4" />
                       : <ChevronLeft className="w-4 h-4" />}
                   </button>
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate flex items-center gap-2">
-                    <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate">
                     {t('hud_clock_title')}
                   </h2>
                 </div>
@@ -4841,28 +4840,20 @@ export default function App() {
                         <Tooltip label={t('tooltip_browse_file')} placement="top">
                           <button
                             onClick={async () => {
-                              setIsResolvingIcon(true);
-                              try {
-                                const fileInfo = await window.electronAPI!.selectFile();
-                                if (fileInfo && typeof fileInfo === 'object') {
-                                  setEditForm(prev => ({
-                                    ...prev,
-                                    path: fileInfo.path,
-                                    name: prev.name || fileInfo.name,
-                                    iconPath: prev.iconPath || fileInfo.iconPath || ''
-                                  }));
-                                }
-                              } finally {
-                                setIsResolvingIcon(false);
+                              const fileInfo = await window.electronAPI!.selectFile();
+                              if (fileInfo && typeof fileInfo === 'object') {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  path: fileInfo.path,
+                                  name: prev.name || fileInfo.name,
+                                  iconPath: prev.iconPath || fileInfo.iconPath || ''
+                                }));
                               }
                             }}
                             disabled={isResolvingIcon}
                             className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
                           >
-                            {isResolvingIcon
-                              ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
-                              : <Upload className="w-4 h-4 mr-2" />}
-                            PC
+                            <Upload className="w-4 h-4 mr-2" /> PC
                           </button>
                         </Tooltip>
                       ) : (
@@ -4917,13 +4908,12 @@ export default function App() {
                           <Tooltip label={t('tooltip_browse_icon')} placement="top">
                             <button
                               onClick={async () => {
+                                const filePath = await window.electronAPI!.selectImage();
+                                if (!filePath) return;
                                 setIsResolvingIcon(true);
                                 try {
-                                  const filePath = await window.electronAPI!.selectImage();
-                                  if (filePath) {
-                                    const dataUrl = await window.electronAPI!.getImageData(filePath);
-                                    if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
-                                  }
+                                  const dataUrl = await window.electronAPI!.getImageData(filePath);
+                                  if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
                                 } finally {
                                   setIsResolvingIcon(false);
                                 }
