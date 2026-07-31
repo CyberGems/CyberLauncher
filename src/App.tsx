@@ -4173,7 +4173,7 @@ export default function App() {
                     }
                   : {};
                 
-                if (viewMode === 'list' || viewMode === 'grid') {
+                if (viewMode === 'list') {
                   const pLetter = appNameLetter(app.name);
                   const prevApp = index > 0 ? filteredApps[index - 1] : null;
                   const showHeader = !prevApp || appNameLetter(prevApp.name) !== pLetter;
@@ -4188,7 +4188,7 @@ export default function App() {
                           transition: { duration: 0.2, delay: Math.min(index, 12) * 0.015 },
                         } : {})}
                         key={`header-${viewMode}-${activeCategory}-${pLetter}`}
-                        className={`col-span-full flex items-center gap-4 opacity-70 ${viewMode === 'list' ? 'mt-2 mb-1' : 'mt-3 mb-0.5'}`}
+                        className="col-span-full flex items-center gap-4 opacity-70 mt-2 mb-1"
                         style={{ gridColumn: '1 / -1' }}
                       >
                         <span className="text-base font-bold font-cyber text-slate-400 w-8 pl-1">{pLetter}</span>
