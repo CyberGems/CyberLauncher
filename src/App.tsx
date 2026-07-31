@@ -31,8 +31,13 @@ export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { classNa
 
 // --- MOCK DATA ---
 /** Stable English names are matching keys; UI labels come from cat_* locales. */
+const UNCATEGORIZED_ID = 'uncategorized';
+const UNCATEGORIZED_NAME = 'Uncategorized';
+const UNCATEGORIZED_COLOR = '#71717a';
+
 const INITIAL_CATEGORIES = [
   { id: 'all', name: 'All', color: '#a1a1aa' },
+  { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR },
   { id: 'ai', name: 'AI', color: '#34d399' },
   { id: 'browsers', name: 'Browsers', color: '#f97316' },
   { id: 'comm', name: 'Communication', color: '#6366f1' },
@@ -43,6 +48,28 @@ const INITIAL_CATEGORIES = [
   { id: 'office', name: 'Office', color: '#a78bfa' },
   { id: 'utils', name: 'Utilities', color: '#60a5fa' },
 ];
+
+const ensureUncategorizedCategory = (cats: typeof INITIAL_CATEGORIES) => {
+  if (cats.some(c => c.id === UNCATEGORIZED_ID)) return cats;
+  const allIdx = cats.findIndex(c => c.id === 'all');
+  const insertAt = allIdx >= 0 ? allIdx + 1 : 0;
+  return [
+    ...cats.slice(0, insertAt),
+    { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR },
+    ...cats.slice(insertAt),
+  ];
+};
+
+const emptyEditForm = () => ({
+  name: '',
+  path: '',
+  iconPath: '',
+  category: UNCATEGORIZED_NAME,
+  isAdmin: false,
+  shortcut: '',
+  pinToFavorites: false,
+  pinToTaskbar: false,
+});
 
 type LauncherApp = {
   id: number;
@@ -546,6 +573,7 @@ interface HistoryItem {
 const getCategoryDisplayName = (categoryName: string, t: any) => {
   let id = '';
   if (categoryName === 'Todas' || categoryName === 'All') id = 'all';
+  else if (categoryName === 'Sin Categoría' || categoryName === 'Uncategorized') id = UNCATEGORIZED_ID;
   else if (categoryName === 'AI') id = 'ai';
   else if (categoryName === 'Browsers') id = 'browsers';
   else if (categoryName === 'Communication') id = 'comm';
@@ -1256,7 +1284,7 @@ export default function App() {
 
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+    return ensureUncategorizedCategory(saved ? JSON.parse(saved) : INITIAL_CATEGORIES);
   });
   const [apps, setApps] = useState(() => {
     const saved = localStorage.getItem('apps');
@@ -1675,7 +1703,7 @@ export default function App() {
   const updateNotifSeenRef = useRef<string>('');
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+  const [editForm, setEditForm] = useState(emptyEditForm);
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(() => {
     try { return localStorage.getItem('cl_advanced_open') === 'true'; } catch { return false; }
@@ -1774,7 +1802,7 @@ export default function App() {
   };
 
   const handleSaveCategory = () => {
-    if (!editingCategory) return;
+    if (!editingCategory || editingCategory.id === 'all' || editingCategory.id === UNCATEGORIZED_ID) return;
     const oldName = editingCategory.name;
     setCategories(cats => cats.map(c => c.id === editingCategory.id ? { ...c, name: editCategoryForm.name, color: editCategoryForm.color } : c));
     if (editCategoryForm.name !== oldName) {
@@ -1784,7 +1812,7 @@ export default function App() {
   };
 
   const handleDeleteCategory = () => {
-    if (!editingCategory) return;
+    if (!editingCategory || editingCategory.id === 'all' || editingCategory.id === UNCATEGORIZED_ID) return;
     setCategories(cats => cats.filter(c => c.id !== editingCategory.id));
     if (activeCategory === editingCategory.id) setActiveCategory('all');
     setEditingCategory(null);
@@ -2117,7 +2145,7 @@ export default function App() {
         if (source) {
           console.log('CONFIGURACIÓN CENTRALIZADA CARGADA - apps:', source.apps?.length, 'favs:', source.favoriteIds?.length, 'taskbar:', source.taskbarAppIds?.length);
           if (source.apps) { console.log('  apps names:', source.apps.map((a: any) => a.name).join(', ')); setApps(source.apps); }
-          if (source.categories) setCategories(source.categories);
+          if (source.categories) setCategories(ensureUncategorizedCategory(source.categories));
           if (source.favoriteIds) setFavoriteIds(source.favoriteIds);
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
           // Datos de UI pueden variar entre versiones sin problema
@@ -2393,8 +2421,9 @@ export default function App() {
         localStorage.setItem('apps', JSON.stringify(config.apps));
       }
       if (config.categories) {
-        setCategories(config.categories);
-        localStorage.setItem('categories', JSON.stringify(config.categories));
+        const cats = ensureUncategorizedCategory(config.categories);
+        setCategories(cats);
+        localStorage.setItem('categories', JSON.stringify(cats));
       }
       if (config.favoriteIds) {
         setFavoriteIds(config.favoriteIds);
@@ -2835,7 +2864,7 @@ export default function App() {
       const data = JSON.parse(content);
       
       if (data.apps) setApps(data.apps);
-      if (data.categories) setCategories(data.categories);
+      if (data.categories) setCategories(ensureUncategorizedCategory(data.categories));
       if (data.favoriteIds) setFavoriteIds(data.favoriteIds);
       if (data.taskbarAppIds) setTaskbarAppIds(data.taskbarAppIds);
       if (data.viewMode) setViewMode(data.viewMode);
@@ -3144,7 +3173,7 @@ export default function App() {
             name: resolved.name,
             path: resolved.path,
             iconPath: resolved.iconPath || '',
-            category: '',
+            category: UNCATEGORIZED_NAME,
             isAdmin: false,
             shortcut: '',
             pinToFavorites: false,
@@ -3161,7 +3190,7 @@ export default function App() {
           name: fileName,
           path: filePath || `C:\\Program Files\\${fileName}\\${file.name}`,
           iconPath: '',
-          category: '',
+          category: UNCATEGORIZED_NAME,
           isAdmin: false,
           shortcut: '',
           pinToFavorites: false,
@@ -3295,7 +3324,7 @@ export default function App() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                {cat.id !== 'all' && (
+                {cat.id !== 'all' && cat.id !== UNCATEGORIZED_ID && (
                   <Tooltip label={t('tooltip_edit_category')} placement="right">
                     <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
                       onClick={(e) => {
@@ -4063,7 +4092,13 @@ export default function App() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
-                {activeCategory === 'all' ? t('title_all_apps') : categories.find(c => c.id === activeCategory)?.name.toUpperCase()}
+                {activeCategory === 'all'
+                  ? t('title_all_apps')
+                  : (() => {
+                      const cat = categories.find(c => c.id === activeCategory);
+                      if (!cat) return '';
+                      return getCategoryDisplayName(cat.name, t).toUpperCase();
+                    })()}
               </h3>
               
               <div className="flex items-center bg-black/30 backdrop-blur-md rounded-lg p-1 border border-white/5">
@@ -4087,7 +4122,7 @@ export default function App() {
                 <Tooltip label={t('tooltip_add_app')} placement="bottom">
                   <button 
                     onClick={() => {
-                      setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                      setEditForm(emptyEditForm());
                       setIsAddingApp(true);
                     }}
                     className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
@@ -4252,7 +4287,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                    setEditForm(emptyEditForm());
                     setIsAddingApp(true);
                   }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors"
@@ -4505,7 +4540,7 @@ export default function App() {
               <Tooltip label={t('tooltip_add_app')} placement="top">
                 <button 
                   onClick={() => {
-                    setEditForm({ name: '', path: '', iconPath: '', category: '', isAdmin: false, shortcut: '', pinToFavorites: false, pinToTaskbar: false });
+                    setEditForm(emptyEditForm());
                     setIsAddingApp(true);
                   }}
                   className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
@@ -4580,11 +4615,11 @@ export default function App() {
             {/* Advanced options column (left of main form) */}
             <motion.div
               initial={false}
-              animate={{ width: advancedOptionsOpen ? 280 : 0, opacity: advancedOptionsOpen ? 1 : 0 }}
+              animate={{ width: advancedOptionsOpen ? 300 : 0, opacity: advancedOptionsOpen ? 1 : 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
               className={`h-full overflow-hidden shrink-0 bg-[#070b13]/95 backdrop-blur-2xl ${advancedOptionsOpen ? 'border-l border-cyan-500/15' : ''}`}
             >
-              <div className="w-[280px] h-full flex flex-col overflow-hidden">
+              <div className="w-[300px] h-full flex flex-col overflow-hidden">
                 <div className="px-4 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <SlidersHorizontal className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -4600,70 +4635,48 @@ export default function App() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-                  {/* Launch as Admin Field */}
-                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
-                    <div className="flex items-start gap-2.5">
-                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
-                        <Lock className="w-4 h-4 text-red-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
-                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
-                  </div>
-
                   {/* Pin to Favorites Field */}
-                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                     <div className="flex items-start gap-2.5">
                       <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
                         <Star className="w-4 h-4 text-blue-400" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_fav_title')}</h4>
                         <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_fav_desc')}</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-0.5 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
                   </div>
 
                   {/* Pin to Taskbar Field */}
-                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                     <div className="flex items-start gap-2.5">
                       <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
                         <Pin className="w-4 h-4 text-cyan-400" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_taskbar_title')}</h4>
                         <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_taskbar_desc')}</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 mt-0.5 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
                   </div>
 
                   {/* Custom App Hotkey Recorder Field */}
@@ -4720,6 +4733,28 @@ export default function App() {
                       {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('app_shortcut_none'))}
                     </button>
                   </div>
+
+                  {/* Launch as Admin Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
+                        <Lock className="w-4 h-4 text-red-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
+                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 mt-0.5 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -4763,63 +4798,8 @@ export default function App() {
                       value={editForm.name}
                       onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                       onContextMenu={handleInputContextMenu}
-                      placeholder="Ej. Visual Studio Code"
+                      placeholder={t('app_name_placeholder')}
                     />
-                  </div>
-
-                  {/* Icon path field */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_icon')}</label>
-                    <div className="flex gap-3 items-center">
-                      <div className="w-11 h-11 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-inner group">
-                         {editForm.iconPath ? (
-                           <img src={editForm.iconPath} alt="Preview" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
-                         ) : (
-                           <Package className="w-5 h-5 text-slate-600 group-hover:text-slate-400 transition-colors" />
-                         )}
-                      </div>
-                      <div className="flex-1 flex gap-2">
-                        <input
-                          type="text"
-                          value={editForm.iconPath.startsWith('data:image') ? t('app_icon_extracted') : editForm.iconPath}
-                          onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
-                          onContextMenu={handleInputContextMenu}
-                          placeholder={t('app_icon_placeholder')}
-                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
-                        />
-                        {isElectron ? (
-                          <button
-                            onClick={async () => {
-                              const filePath = await window.electronAPI!.selectImage();
-                              if (filePath) {
-                                const dataUrl = await window.electronAPI!.getImageData(filePath);
-                                if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
-                              }
-                            }}
-                            className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
-                          >
-                            <Upload className="w-4 h-4 mr-2" /> PC
-                          </button>
-                        ) : (
-                          <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
-                            <Upload className="w-4 h-4 mr-2" /> PC
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const objectUrl = URL.createObjectURL(file);
-                                  setEditForm(prev => ({ ...prev, iconPath: objectUrl }));
-                                }
-                              }}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">{t('app_icon_hint')}</p>
                   </div>
 
                   {/* Shortcut path field */}
@@ -4835,51 +4815,114 @@ export default function App() {
                         placeholder={t('app_path_placeholder')}
                       />
                       {isElectron ? (
-                        <button
-                          onClick={async () => {
-                            const fileInfo = await window.electronAPI!.selectFile();
-                            if (fileInfo && typeof fileInfo === 'object') {
-                              setEditForm(prev => ({
-                                ...prev,
-                                path: fileInfo.path,
-                                name: prev.name || fileInfo.name,
-                                iconPath: prev.iconPath || fileInfo.iconPath
-                              }));
-                            }
-                          }}
-                          className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
-                        >
-                          <Upload className="w-4 h-4 mr-2" /> PC
-                        </button>
-                      ) : (
-                        <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
-                          <Upload className="w-4 h-4 mr-2" /> PC
-                          <input
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setEditForm(prev => ({ ...prev, path: `C:\\Local\\${file.name}` }));
+                        <Tooltip label={t('tooltip_browse_file')} placement="top">
+                          <button
+                            onClick={async () => {
+                              const fileInfo = await window.electronAPI!.selectFile();
+                              if (fileInfo && typeof fileInfo === 'object') {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  path: fileInfo.path,
+                                  name: prev.name || fileInfo.name,
+                                  iconPath: prev.iconPath || fileInfo.iconPath
+                                }));
                               }
                             }}
-                          />
-                        </label>
+                            className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
+                          >
+                            <Upload className="w-4 h-4 mr-2" /> PC
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip label={t('tooltip_browse_file')} placement="top">
+                          <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
+                            <Upload className="w-4 h-4 mr-2" /> PC
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setEditForm(prev => ({ ...prev, path: `C:\\Local\\${file.name}` }));
+                                }
+                              }}
+                            />
+                          </label>
+                        </Tooltip>
                       )}
                     </div>
                   </div>
 
+                  {/* Icon path field — only when an icon is present */}
+                  {editForm.iconPath && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_icon')}</label>
+                    <div className="flex gap-3 items-center">
+                      <div className="w-11 h-11 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-inner group">
+                         <img src={editForm.iconPath} alt="Preview" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
+                      </div>
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="text"
+                          value={editForm.iconPath.startsWith('data:image') ? t('app_icon_extracted') : editForm.iconPath}
+                          onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
+                          onContextMenu={handleInputContextMenu}
+                          placeholder={t('app_icon_placeholder')}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
+                        />
+                        {isElectron ? (
+                          <Tooltip label={t('tooltip_browse_icon')} placement="top">
+                            <button
+                              onClick={async () => {
+                                const filePath = await window.electronAPI!.selectImage();
+                                if (filePath) {
+                                  const dataUrl = await window.electronAPI!.getImageData(filePath);
+                                  if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
+                                }
+                              }}
+                              className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
+                            >
+                              <Upload className="w-4 h-4 mr-2" /> PC
+                            </button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip label={t('tooltip_browse_icon')} placement="top">
+                            <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
+                              <Upload className="w-4 h-4 mr-2" /> PC
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const objectUrl = URL.createObjectURL(file);
+                                    setEditForm(prev => ({ ...prev, iconPath: objectUrl }));
+                                  }
+                                }}
+                              />
+                            </label>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  )}
+
                   {/* Category Field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_category')} <span className="text-red-400">*</span></label>
+                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_category')}</label>
                     <div className="relative">
                       <select
                         value={editForm.category}
                         onChange={(e) => setEditForm(prev => ({...prev, category: e.target.value}))}
-                        className={`w-full bg-black/30 border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50 transition-colors appearance-none ${editForm.category ? 'text-white border-white/10' : 'text-slate-500 border-white/10'}`}
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors appearance-none"
                       >
-                        <option value="" disabled className="bg-[#0f172a] text-sm text-slate-500">{t('app_category_placeholder')}</option>
-                        {categories.filter(c => c.id !== 'all').sort((a,b) => a.name.localeCompare(b.name)).map(cat => (
+                        {categories.filter(c => c.id !== 'all').sort((a, b) => {
+                          if (a.id === UNCATEGORIZED_ID) return -1;
+                          if (b.id === UNCATEGORIZED_ID) return 1;
+                          return a.name.localeCompare(b.name);
+                        }).map(cat => (
                           <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
                             {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
                           </option>
@@ -4887,9 +4930,6 @@ export default function App() {
                       </select>
                       <ChevronRight className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
-                    {!editForm.category && (
-                      <p className="text-[10px] text-red-400/80 mt-1">{t('app_category_required')}</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -4911,7 +4951,7 @@ export default function App() {
                         path: editForm.path,
                         iconPath: editForm.iconPath,
                         icon: Package,
-                        category: editForm.category,
+                        category: editForm.category || UNCATEGORIZED_NAME,
                         color: 'text-cyan-400',
                         isFav: false,
                         usage: 0,
@@ -4937,7 +4977,7 @@ export default function App() {
                             path: editForm.path,
                             // @ts-ignore
                             iconPath: editForm.iconPath,
-                            category: editForm.category,
+                            category: editForm.category || UNCATEGORIZED_NAME,
                             isAdmin: editForm.isAdmin,
                             shortcut: editForm.shortcut
                           };
@@ -4959,12 +4999,7 @@ export default function App() {
                       setEditingApp(null);
                     }
                   }}
-                  disabled={!editForm.category}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg ${
-                    !editForm.category
-                      ? 'bg-blue-600/40 cursor-not-allowed shadow-blue-500/10'
-                      : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20'
-                  }`}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20"
                 >
                   {isAddingApp ? t('app_add_submit') : t('app_edit_submit')}
                 </button>
@@ -5867,7 +5902,7 @@ export default function App() {
                                       <button
                                         onClick={() => {
                                           setImportingUwpApp(app);
-                                          setUwpImportCategory(categories.find(c => c.id !== 'all')?.name || 'Utilities');
+                                          setUwpImportCategory(categories.find(c => c.id === UNCATEGORIZED_ID)?.name || UNCATEGORIZED_NAME);
                                         }}
                                         className="text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)]"
                                       >
