@@ -31,8 +31,8 @@ export const translations = {
     tooltip_sidebar_launches: "Total de lanzamientos",
 
     // Add/Edit App drawer
-    app_add_title: "Añadir App",
-    app_edit_title: "Editar App",
+    app_add_title: "Agregar nuevo acceso",
+    app_edit_title: "Editar acceso",
     app_advanced_title: "AVANZADAS",
     app_advanced_show: "Mostrar opciones avanzadas",
     app_advanced_hide: "Ocultar opciones avanzadas",
@@ -42,6 +42,7 @@ export const translations = {
     app_field_category: "CATEGORÍA",
     app_name_placeholder: "Ej. Calculadora",
     app_icon_extracted: "Autodetectado",
+    app_icon_resolving: "Resolviendo ícono…",
     app_icon_hint: "Si se deja vacío, utilizará el ícono por defecto.",
     app_icon_placeholder: "Ej. C:\\Users\\Public\\Pictures\\vscode.png",
     app_path_placeholder: "Ej. C:\\Program Files\\Microsoft VS Code\\Code.exe",
@@ -59,7 +60,7 @@ export const translations = {
     app_shortcut_recording: "Presiona combinación de teclas...",
     app_shortcut_none: "Ninguno (clic)",
     app_cancel: "Cancelar",
-    app_add_submit: "Añadir App",
+    app_add_submit: "Agregar acceso",
     app_edit_submit: "Guardar Cambios",
 
     // About & Updates
@@ -392,8 +393,8 @@ export const translations = {
     tooltip_sidebar_launches: "Total launches",
 
     // Add/Edit App drawer
-    app_add_title: "Add App",
-    app_edit_title: "Edit App",
+    app_add_title: "Add new shortcut",
+    app_edit_title: "Edit shortcut",
     app_advanced_title: "ADVANCED",
     app_advanced_show: "Show advanced options",
     app_advanced_hide: "Hide advanced options",
@@ -403,6 +404,7 @@ export const translations = {
     app_field_category: "CATEGORY",
     app_name_placeholder: "E.g. Calculator",
     app_icon_extracted: "Auto-detected",
+    app_icon_resolving: "Resolving icon…",
     app_icon_hint: "If left empty, the default icon will be used.",
     app_icon_placeholder: "E.g. C:\\Users\\Public\\Pictures\\vscode.png",
     app_path_placeholder: "E.g. C:\\Program Files\\Microsoft VS Code\\Code.exe",
@@ -420,7 +422,7 @@ export const translations = {
     app_shortcut_recording: "Press key combination...",
     app_shortcut_none: "None (click)",
     app_cancel: "Cancel",
-    app_add_submit: "Add App",
+    app_add_submit: "Add shortcut",
     app_edit_submit: "Save Changes",
 
     // About & Updates

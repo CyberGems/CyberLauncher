@@ -801,7 +801,9 @@ const ClockHUD = ({
                     }`}
                     title={statusPanelOpen ? t('hud_clock_status_hide') : t('hud_clock_status_show')}
                   >
-                    {statusPanelOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                    {statusPanelOpen
+                      ? <Timer className="w-4 h-4" />
+                      : <ChevronLeft className="w-4 h-4" />}
                   </button>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate flex items-center gap-2">
                     <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -1704,6 +1706,7 @@ export default function App() {
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [editForm, setEditForm] = useState(emptyEditForm);
+  const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(() => {
     try { return localStorage.getItem('cl_advanced_open') === 'true'; } catch { return false; }
@@ -3166,22 +3169,37 @@ export default function App() {
       }
       
       if (filePath && isElectron) {
-        const resolved = await window.electronAPI!.resolveFilePath(filePath);
-        if (resolved) {
-          console.log('[ICON] Resuelto:', resolved.name, '| iconSize:', resolved.iconPath?.length || 0, '| debug:', JSON.stringify(resolved.debug));
-          setEditForm({
-            name: resolved.name,
-            path: resolved.path,
-            iconPath: resolved.iconPath || '',
-            category: UNCATEGORIZED_NAME,
-            isAdmin: false,
-            shortcut: '',
-            pinToFavorites: false,
-            pinToTaskbar: false
-          });
-          setIsAddingApp(true);
-        } else {
-          console.error('La API de resolución devolvió null para:', filePath);
+        setEditForm({
+          name: file.name.replace(/\.[^/.]+$/, '') || file.name,
+          path: filePath,
+          iconPath: '',
+          category: UNCATEGORIZED_NAME,
+          isAdmin: false,
+          shortcut: '',
+          pinToFavorites: false,
+          pinToTaskbar: false
+        });
+        setIsAddingApp(true);
+        setIsResolvingIcon(true);
+        try {
+          const resolved = await window.electronAPI!.resolveFilePath(filePath);
+          if (resolved) {
+            console.log('[ICON] Resuelto:', resolved.name, '| iconSize:', resolved.iconPath?.length || 0, '| debug:', JSON.stringify(resolved.debug));
+            setEditForm({
+              name: resolved.name,
+              path: resolved.path,
+              iconPath: resolved.iconPath || '',
+              category: UNCATEGORIZED_NAME,
+              isAdmin: false,
+              shortcut: '',
+              pinToFavorites: false,
+              pinToTaskbar: false
+            });
+          } else {
+            console.error('La API de resolución devolvió null para:', filePath);
+          }
+        } finally {
+          setIsResolvingIcon(false);
         }
       } else {
         // Fallback para navegador
@@ -4123,6 +4141,7 @@ export default function App() {
                   <button 
                     onClick={() => {
                       setEditForm(emptyEditForm());
+                      setIsResolvingIcon(false);
                       setIsAddingApp(true);
                     }}
                     className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
@@ -4288,6 +4307,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setEditForm(emptyEditForm());
+                    setIsResolvingIcon(false);
                     setIsAddingApp(true);
                   }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors"
@@ -4541,6 +4561,7 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setEditForm(emptyEditForm());
+                    setIsResolvingIcon(false);
                     setIsAddingApp(true);
                   }}
                   className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
@@ -4601,7 +4622,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             data-no-hide
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
-            onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); }}
+            onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
           />
           <motion.div
             initial={{ x: '100%', opacity: 0.9 }}
@@ -4782,7 +4803,7 @@ export default function App() {
                   </h2>
                 </div>
                 <button
-                  onClick={() => { setEditingApp(null); setIsAddingApp(false); }}
+                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
                 >
                   <X className="w-5 h-5" />
@@ -4820,19 +4841,28 @@ export default function App() {
                         <Tooltip label={t('tooltip_browse_file')} placement="top">
                           <button
                             onClick={async () => {
-                              const fileInfo = await window.electronAPI!.selectFile();
-                              if (fileInfo && typeof fileInfo === 'object') {
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  path: fileInfo.path,
-                                  name: prev.name || fileInfo.name,
-                                  iconPath: prev.iconPath || fileInfo.iconPath
-                                }));
+                              setIsResolvingIcon(true);
+                              try {
+                                const fileInfo = await window.electronAPI!.selectFile();
+                                if (fileInfo && typeof fileInfo === 'object') {
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    path: fileInfo.path,
+                                    name: prev.name || fileInfo.name,
+                                    iconPath: prev.iconPath || fileInfo.iconPath || ''
+                                  }));
+                                }
+                              } finally {
+                                setIsResolvingIcon(false);
                               }
                             }}
-                            className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
+                            disabled={isResolvingIcon}
+                            className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
                           >
-                            <Upload className="w-4 h-4 mr-2" /> PC
+                            {isResolvingIcon
+                              ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
+                              : <Upload className="w-4 h-4 mr-2" />}
+                            PC
                           </button>
                         </Tooltip>
                       ) : (
@@ -4855,23 +4885,29 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Icon path field — only when an icon is present */}
-                  {editForm.iconPath && (
+                  {/* Icon path field — when resolving or an icon is present */}
+                  {(editForm.iconPath || isResolvingIcon) && (
                   <div>
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_icon')}</label>
                     <div className="flex gap-3 items-center">
                       <div className="w-11 h-11 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-inner group">
-                         <img src={editForm.iconPath} alt="Preview" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
+                         {isResolvingIcon ? (
+                           <div className="w-5 h-5 border-2 border-cyan-500/25 border-t-cyan-400 rounded-full animate-spin" />
+                         ) : (
+                           <img src={editForm.iconPath} alt="Preview" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
+                         )}
                       </div>
                       <div className="flex-1 flex gap-2">
                         <input
                           type="text"
                           value={
-                            editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')
-                              ? t('app_icon_extracted')
-                              : editForm.iconPath
+                            isResolvingIcon
+                              ? t('app_icon_resolving')
+                              : editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')
+                                ? t('app_icon_extracted')
+                                : editForm.iconPath
                           }
-                          readOnly={editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')}
+                          readOnly={isResolvingIcon || editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')}
                           onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
                           onContextMenu={handleInputContextMenu}
                           placeholder={t('app_icon_placeholder')}
@@ -4881,15 +4917,24 @@ export default function App() {
                           <Tooltip label={t('tooltip_browse_icon')} placement="top">
                             <button
                               onClick={async () => {
-                                const filePath = await window.electronAPI!.selectImage();
-                                if (filePath) {
-                                  const dataUrl = await window.electronAPI!.getImageData(filePath);
-                                  if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
+                                setIsResolvingIcon(true);
+                                try {
+                                  const filePath = await window.electronAPI!.selectImage();
+                                  if (filePath) {
+                                    const dataUrl = await window.electronAPI!.getImageData(filePath);
+                                    if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
+                                  }
+                                } finally {
+                                  setIsResolvingIcon(false);
                                 }
                               }}
-                              className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0"
+                              disabled={isResolvingIcon}
+                              className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
                             >
-                              <Upload className="w-4 h-4 mr-2" /> PC
+                              {isResolvingIcon
+                                ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
+                                : <Upload className="w-4 h-4 mr-2" />}
+                              PC
                             </button>
                           </Tooltip>
                         ) : (
@@ -4943,7 +4988,7 @@ export default function App() {
 
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
                 <button
-                  onClick={() => { setEditingApp(null); setIsAddingApp(false); }}
+                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
                 >
                   {t('app_cancel')}
