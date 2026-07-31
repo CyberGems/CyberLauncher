@@ -4679,6 +4679,28 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Launch as Admin Field */}
+                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                        <Lock className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
+                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 mt-0.5 ${editForm.isAdmin ? 'bg-amber-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Custom App Hotkey Recorder Field */}
                   <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -4733,28 +4755,6 @@ export default function App() {
                       {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('app_shortcut_none'))}
                     </button>
                   </div>
-
-                  {/* Launch as Admin Field */}
-                  <div className="bg-black/20 p-3.5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="flex items-start gap-2.5">
-                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
-                        <Lock className="w-4 h-4 text-red-400" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
-                        <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50 mt-0.5 ${editForm.isAdmin ? 'bg-red-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-red-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </motion.div>
@@ -4773,7 +4773,9 @@ export default function App() {
                     }`}
                     title={advancedOptionsOpen ? t('app_advanced_hide') : t('app_advanced_show')}
                   >
-                    {advancedOptionsOpen ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                    {advancedOptionsOpen
+                      ? <SlidersHorizontal className="w-4 h-4" />
+                      : <ChevronLeft className="w-4 h-4" />}
                   </button>
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest truncate">
                     {isAddingApp ? t('app_add_title') : t('app_edit_title')}
@@ -4864,7 +4866,12 @@ export default function App() {
                       <div className="flex-1 flex gap-2">
                         <input
                           type="text"
-                          value={editForm.iconPath.startsWith('data:image') ? t('app_icon_extracted') : editForm.iconPath}
+                          value={
+                            editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')
+                              ? t('app_icon_extracted')
+                              : editForm.iconPath
+                          }
+                          readOnly={editForm.iconPath.startsWith('data:image') || editForm.iconPath.startsWith('local-resource://')}
                           onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
                           onContextMenu={handleInputContextMenu}
                           placeholder={t('app_icon_placeholder')}
