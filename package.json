@@ -30,7 +30,8 @@
       "icon": "public/icon.png",
       "target": [
         "nsis"
-      ]
+      ],
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

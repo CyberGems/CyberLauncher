@@ -1482,7 +1482,12 @@ export default function App() {
   React.useEffect(() => {
     systemContextMenuIndexRef.current = systemContextMenuIndex;
   }, [systemContextMenuIndex]);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'info' | 'error';
+    /** Optional click action (e.g. update toast → About). */
+    action?: 'open-about';
+  } | null>(null);
   const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }>({
     enabled: true,
     maxDepth: 2,
@@ -2314,6 +2319,7 @@ export default function App() {
             ? t('about_notif_available', { version: status.version })
             : t('about_notif_downloaded', { version: status.version }),
           type: 'info',
+          action: 'open-about',
         });
       }
     };
@@ -6561,10 +6567,33 @@ export default function App() {
       <AnimatePresence>
         {notification && (
           <motion.div
+            data-no-hide
+            role={notification.action ? 'button' : undefined}
+            tabIndex={notification.action ? 0 : undefined}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (notification.action === 'open-about') {
+                setIsAboutOpen(true);
+                setNotification(null);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (!notification.action) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (notification.action === 'open-about') {
+                  setIsAboutOpen(true);
+                  setNotification(null);
+                }
+              }
+            }}
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
+              notification.action ? 'cursor-pointer hover:brightness-110' : ''
+            } ${
               notification.type === 'success'
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
                 : notification.type === 'error'
@@ -6581,7 +6610,12 @@ export default function App() {
             }`} />
             <span className="text-xs font-cyber font-bold tracking-wide uppercase">{notification.message}</span>
             <button
-              onClick={() => setNotification(null)}
+              type="button"
+              data-no-hide
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotification(null);
+              }}
               className="ml-2 hover:opacity-80 transition-opacity"
             >
               <X className="w-3.5 h-3.5" />
