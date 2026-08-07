@@ -51,6 +51,17 @@ const HOTSPOT_LAG_THRESHOLD_MS = 400;
 let hotspotsPausedByUAC = false;
 let uacResumeTimer: NodeJS.Timeout | null = null;
 let uacGuardTimer: NodeJS.Timeout | null = null;
+let cachedDisplays: Electron.Display[] = [];
+
+function updateCachedDisplays() {
+  try {
+    cachedDisplays = screen.getAllDisplays();
+    console.log(`[MONITOR] Cached ${cachedDisplays.length} displays`);
+  } catch (e) {
+    console.error('[MONITOR] Error updating cached displays:', e);
+  }
+}
+
 
 let appShortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }> = [];
 
@@ -800,6 +811,17 @@ function stopHotspotPolling() {
   }
 }
 
+function checkUACActive(callback: (active: boolean) => void) {
+  if (process.platform !== 'win32') {
+    callback(false);
+    return;
+  }
+  exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
+    const isActive = !err && stdout.includes('consent.exe');
+    callback(isActive);
+  });
+}
+
 function startHotspotPolling() {
   stopHotspotPolling();
   lastHotspotPollTime = Date.now();
@@ -830,7 +852,7 @@ function startHotspotPolling() {
     if (hotspotCorners.length === 0) return;
 
     const { x, y } = screen.getCursorScreenPoint();
-    const displays = screen.getAllDisplays();
+    const displays = cachedDisplays.length > 0 ? cachedDisplays : screen.getAllDisplays();
     let currentCorner = '';
 
     for (const display of displays) {
@@ -869,8 +891,16 @@ function startHotspotPolling() {
         if (timeInCorner >= hotspotDelay) {
           if (mainWindow && !mainWindow.isDestroyed()) {
             console.log(`ACTIVACIÓN VÁLIDA: ${currentCorner} tras ${timeInCorner}ms (vis=${mainWindow.isVisible()})`);
-            toggleWindow();
-            hotspotCooldown = true;
+            checkUACActive((isUAC) => {
+              if (isUAC) {
+                console.log('[HOTSPOT] Ignored activation due to UAC detection');
+                pauseHotspots();
+                resumeHotspotsAfterUAC(1500);
+              } else {
+                toggleWindow();
+                hotspotCooldown = true;
+              }
+            });
           }
           lastHotspotCorner = ''; 
         }
@@ -880,9 +910,17 @@ function startHotspotPolling() {
         // Si delay es 0, activar inmediatamente sin esperar otro ciclo
         if (hotspotDelay === 0 && mainWindow && !mainWindow.isDestroyed()) {
           console.log(`ACTIVACIÓN INMEDIATA: ${currentCorner} (vis=${mainWindow.isVisible()})`);
-          toggleWindow();
-          hotspotCooldown = true;
-          lastHotspotCorner = '';
+          checkUACActive((isUAC) => {
+            if (isUAC) {
+              console.log('[HOTSPOT] Ignored immediate activation due to UAC detection');
+              pauseHotspots();
+              resumeHotspotsAfterUAC(1500);
+            } else {
+              toggleWindow();
+              hotspotCooldown = true;
+              lastHotspotCorner = '';
+            }
+          });
         }
       }
     } else {
@@ -893,47 +931,10 @@ function startHotspotPolling() {
   }, 100);
 }
 
-// =====================================
-// UAC GUARD (detecta consent.exe para pausar hotspots)
-// =====================================
-function startUACGuard() {
-  if (uacGuardTimer) clearInterval(uacGuardTimer);
-  let uacWasActive = false;
-  let queryInFlight = false;
-
-  uacGuardTimer = setInterval(() => {
-    // Nothing to protect: no hotspots armed and window already hidden → skip the spawn.
-    if (hotspotCorners.length === 0 && (!mainWindow || !mainWindow.isVisible())) return;
-    // Coalesce: never pile up tasklist invocations if the previous one hasn't returned.
-    if (queryInFlight) return;
-    queryInFlight = true;
-
-    exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
-      queryInFlight = false;
-      const isActive = !err && stdout.includes('consent.exe');
-      if (isActive && !uacWasActive) {
-        console.log('[UAC-GUARD] UAC detected (consent.exe) — pausing hotspots');
-        pauseHotspots();
-        if (mainWindow && mainWindow.isVisible()) {
-          windowVisibilityState = 'hidden-os';
-          hideMainWindow();
-        }
-      } else if (!isActive && uacWasActive) {
-        console.log('[UAC-GUARD] UAC closed — scheduling hotspot resume');
-        resumeHotspotsAfterUAC(1500);
-      }
-      uacWasActive = isActive;
-    });
-  }, 1500);
-}
-
-function stopUACGuard() {
-  if (uacGuardTimer) {
-    clearInterval(uacGuardTimer);
-    uacGuardTimer = null;
-    console.log('[UAC-GUARD] Stopped');
-  }
-}
+// UAC Guard continuous timer has been removed to conserve CPU.
+// UAC status is now checked on-demand when a hotspot triggers.
+function startUACGuard() {}
+function stopUACGuard() {}
 
 // =====================================
 // GLOBAL SHORTCUT REGISTRATION
@@ -2304,6 +2305,12 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
 
+  // Initialize display cache and listen for changes
+  updateCachedDisplays();
+  screen.on('display-added', updateCachedDisplays);
+  screen.on('display-removed', updateCachedDisplays);
+  screen.on('display-metrics-changed', updateCachedDisplays);
+
   // Auto-update (GitHub Releases via electron-updater)
   let bootAutoUpdate = true;
   try {
@@ -2316,9 +2323,6 @@ app.whenReady().then(() => {
 
   // Iniciar guardia de hotspots
   startHotspotPolling();
-
-  // Iniciar detector de UAC (consent.exe polling)
-  startUACGuard();
 
   // Vigilar cambios en el archivo de configuracion para sincronizar entre instancias
   let configWatcherReloadTimer: NodeJS.Timeout | null = null;
