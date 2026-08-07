@@ -1,7 +1,7 @@
 {
   "name": "cyber-launcher",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "CyberLauncher — launcher de escritorio rápido y personalizable, por CyberGems",
   "type": "module",
   "author": "CyberGems <info@cybergems.org>",
