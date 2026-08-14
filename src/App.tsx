@@ -3342,7 +3342,7 @@ export default function App() {
                 )}
               </span>
               <span className="font-cyber font-bold text-[15px] tracking-wide text-white truncate leading-none">
-                cyber<span className="text-cyan-400">launcher</span>
+                Cyber<span className="text-cyan-400">Launcher</span>
               </span>
             </button>
           </Tooltip>
