@@ -52,6 +52,8 @@ let hotspotsPausedByUAC = false;
 let uacResumeTimer: NodeJS.Timeout | null = null;
 let uacGuardTimer: NodeJS.Timeout | null = null;
 let cachedDisplays: Electron.Display[] = [];
+/** Keep Chromium awake while hidden only if the renderer must tick (scheduled tasks). */
+let keepRendererAwake = false;
 
 function updateCachedDisplays() {
   try {
@@ -176,6 +178,13 @@ function hideMainWindow() {
     console.log('[WM] hideMainWindow');
     mainWindow.hide();
   }
+}
+
+/** Sleep Chromium while the launcher is in the tray; stay awake only if visible or a countdown is running. */
+function applyRendererThrottling() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const mustRun = keepRendererAwake || mainWindow.isVisible();
+  mainWindow.webContents.setBackgroundThrottling(!mustRun);
 }
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
@@ -441,7 +450,10 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: false,
-      backgroundThrottling: false,
+      // Default: throttle while hidden. applyRendererThrottling() wakes Chromium on show
+      // (and while scheduled tasks need a 1 Hz tick). A permanent `false` keeps the
+      // renderer + GPU compositing at full rate in the tray (~10% idle CPU).
+      backgroundThrottling: true,
     },
     autoHideMenuBar: true,
   });
@@ -502,11 +514,13 @@ function createWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('launcher-shown');
     }
+    applyRendererThrottling();
     rebuildTrayMenu();
   });
 
   mainWindow.on('hide', () => {
     console.log('[WM EVENT] hide');
+    applyRendererThrottling();
     // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
     rebuildTrayMenu();
   });
@@ -873,7 +887,6 @@ function startHotspotPolling() {
       if (detected) {
         if (hotspotCorners.includes(detected)) {
           currentCorner = detected;
-          console.log(`[HOTSPOT] Esquina detectada: ${detected}`);
         }
         break; 
       } else if (isTop || isBottom || isLeft || isRight) {
@@ -2062,6 +2075,13 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('open-data-folder', () => {
     const dir = path.dirname(CONFIG_FILE);
     shell.openPath(dir);
+  });
+
+  // --- Keep renderer awake while hidden (scheduled-task countdowns) ---
+  ipcMain.handle('set-renderer-awake', (_event, awake: boolean) => {
+    keepRendererAwake = !!awake;
+    applyRendererThrottling();
+    return { success: true, awake: keepRendererAwake };
   });
 
   // --- Window Pinning (Always-on-top) ---

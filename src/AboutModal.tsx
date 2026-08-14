@@ -158,17 +158,15 @@ export default function AboutModal({
         </div>
 
         <div className="overflow-y-auto custom-scrollbar px-7 pb-5 text-center">
-          <div className="relative w-[72px] h-[72px] mx-auto mb-4">
-            <div className="absolute -inset-1 bg-cyan-500/20 rounded-full blur-xl pointer-events-none" />
-            <div className="relative w-[72px] h-[72px] rounded-2xl bg-black/50 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_18px_rgba(34,211,238,0.2)] overflow-hidden">
-              <img
-                src="./icon.png"
-                srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-256.png 256w, ./icon.png 1024w"
-                sizes="72px"
-                className="w-11 h-11"
-                alt="CyberLauncher"
-              />
-            </div>
+          <div className="relative w-[88px] h-[88px] mx-auto mb-4 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-2xl bg-cyan-400/25 blur-xl pointer-events-none" />
+            <img
+              src="./icon.png"
+              srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-256.png 256w, ./icon.png 1024w"
+              sizes="72px"
+              className="relative w-[72px] h-[72px] drop-shadow-[0_0_14px_rgba(34,211,238,0.4)]"
+              alt="CyberLauncher"
+            />
           </div>
 
           <h1 className="text-[26px] font-cyber font-bold tracking-wide text-white mb-1">

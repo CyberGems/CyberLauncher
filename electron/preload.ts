@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // --- Window Pinning (Always-on-top) ---
   setAlwaysOnTop: (enabled: boolean) => ipcRenderer.invoke('set-always-on-top', enabled),
+  setRendererAwake: (awake: boolean) => ipcRenderer.invoke('set-renderer-awake', awake),
 
   // --- Dynamic shortcuts ---
   registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) =>

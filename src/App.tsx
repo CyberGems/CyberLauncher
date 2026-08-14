@@ -213,6 +213,7 @@ declare global {
       onLauncherShown: (callback: () => void) => () => void;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
+      setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) => Promise<{ success: boolean }>;
       runShellCommand: (command: string) => Promise<{ success: boolean; cmdId?: string; error?: string }>;
       onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
@@ -236,6 +237,20 @@ declare global {
 }
 
 const isElectron = !!window.electronAPI;
+
+/** Pause visual-only timers while the BrowserWindow is hidden (tray). */
+function useDocumentVisible() {
+  const [visible, setVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  );
+  useEffect(() => {
+    const sync = () => setVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', sync);
+    sync();
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+  return visible;
+}
 
 const playCyberBeep = () => {
   try {
@@ -266,8 +281,10 @@ const SystemMonitor = React.memo(() => {
   const [memPercent, setMemPercent] = useState<number>(0);
   const [memUsed, setMemUsed] = useState<number>(0);
   const [uptime, setUptime] = useState<number>(0);
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
     const fetchMem = async () => {
       try {
         if (isElectron) {
@@ -293,7 +310,7 @@ const SystemMonitor = React.memo(() => {
     fetchMem();
     const interval = setInterval(fetchMem, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [visible]);
 
   const isAlert = memPercent >= RESOURCE_ALERT_THRESHOLD;
 
@@ -315,8 +332,10 @@ const SystemMonitor = React.memo(() => {
 
 const DiskMonitor = React.memo(() => {
   const [disks, setDisks] = useState<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>([]);
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
     const fetchDisks = async () => {
       if (isElectron) {
         const info = await window.electronAPI!.getDiskInfo();
@@ -332,7 +351,7 @@ const DiskMonitor = React.memo(() => {
     fetchDisks();
     const interval = setInterval(fetchDisks, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [visible]);
 
   const mainDisk = disks[0];
   const diskPercent = mainDisk?.percent ?? 0;
@@ -356,8 +375,10 @@ const DiskMonitor = React.memo(() => {
 
 const UptimeMonitor = React.memo(() => {
   const [uptime, setUptime] = useState<number>(0);
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
     const fetchUptime = async () => {
       if (isElectron) {
         const info = await window.electronAPI!.getSystemInfo();
@@ -367,7 +388,7 @@ const UptimeMonitor = React.memo(() => {
     fetchUptime();
     const interval = setInterval(fetchUptime, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [visible]);
 
   const h = Math.floor(uptime / 3600);
   const m = Math.floor((uptime % 3600) / 60);
@@ -381,11 +402,14 @@ const UptimeMonitor = React.memo(() => {
 
 const CyberAnalogClock = () => {
   const [time, setTime] = useState(new Date());
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
+    setTime(new Date());
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [visible]);
 
   const hrs = time.getHours();
   const mins = time.getMinutes();
@@ -460,11 +484,14 @@ const CyberAnalogClock = () => {
 /** Isolated digital clock — ticks without re-rendering the full App tree. */
 const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title: string }) => {
   const [time, setTime] = useState(() => new Date());
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
+    setTime(new Date());
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [visible]);
 
   return (
     <Tooltip label={title} placement="bottom">
@@ -482,9 +509,12 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
 /** Footer date — updates once per minute (enough for calendar day). */
 const FooterDate = React.memo(({ title }: { title: string }) => {
   const [now, setNow] = useState(() => new Date());
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
     const tick = () => setNow(new Date());
+    tick();
     const msToNextMinute = 60_000 - (Date.now() % 60_000);
     let intervalId: number | undefined;
     const alignId = window.setTimeout(() => {
@@ -495,7 +525,7 @@ const FooterDate = React.memo(({ title }: { title: string }) => {
       clearTimeout(alignId);
       if (intervalId !== undefined) clearInterval(intervalId);
     };
-  }, []);
+  }, [visible]);
 
   return (
     <Tooltip label={title} placement="top">
@@ -517,13 +547,15 @@ const RotatingSearchPlaceholder = React.memo(({
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
 }) => {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const visible = useDocumentVisible();
 
   useEffect(() => {
+    if (!visible) return;
     const interval = setInterval(() => {
       setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [visible]);
 
   const text =
     mode === 'console'
@@ -1890,6 +1922,16 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(timer);
+  }, [scheduledTasks.length > 0]);
+
+  // Scheduled-task countdowns live in the renderer — keep Chromium awake in the tray while any are pending.
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.setRendererAwake) return;
+    const awake = scheduledTasks.length > 0;
+    window.electronAPI.setRendererAwake(awake);
+    return () => {
+      window.electronAPI?.setRendererAwake(false);
+    };
   }, [scheduledTasks.length > 0]);
 
   const triggerPinFlash = useCallback(() => {
@@ -3291,9 +3333,10 @@ export default function App() {
           <Tooltip label={t('tooltip_about')} placement="bottom">
             <button 
               onClick={() => setIsAboutOpen(true)}
-              className="group relative w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex flex-shrink-0 items-center justify-center border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
+              className="group relative flex-shrink-0 cursor-pointer"
             >
-              <CyberLogo className="w-9 h-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all group-hover:drop-shadow-[0_0_14px_rgba(34,211,238,0.9)]" />
+              <span className="absolute inset-[-4px] rounded-2xl bg-cyan-400/20 blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <CyberLogo className="relative w-11 h-11 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)] transition-all group-hover:drop-shadow-[0_0_16px_rgba(34,211,238,0.75)]" />
               {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
               )}
@@ -4094,7 +4137,7 @@ export default function App() {
                       onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
                       onContextMenu={(e: any) => handleContextMenu(e, app)}
                       onClick={() => handleLaunchApp(app)}
-                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 will-change-transform ${app.color} ${
+                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
                         draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
                       } ${favDropTarget === app.id
                         ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
@@ -4220,8 +4263,8 @@ export default function App() {
                       containIntrinsicSize: viewMode === 'grid' ? '120px' : '56px',
                     }}
                     className={viewMode === 'grid'
-                      ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10 active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out will-change-transform shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
-                      : "flex items-center justify-between bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01] active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out will-change-transform shadow-md overflow-hidden"
+                      ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10 active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
+                      : "flex items-center justify-between bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01] active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-md overflow-hidden"
                     }
                   >
                     {viewMode === 'grid' ? (
@@ -4502,21 +4545,18 @@ export default function App() {
 
       {/* --- TASKBAR DE ESCRITORIO --- */}
       <div className="flex-shrink-0 flex items-center justify-between w-full bg-black/60 backdrop-blur-3xl border-t border-white/10 px-6 py-2 z-40 relative">
-        {/* Lado izquierdo: Inicio y Favoritos */}
+        {/* Lado izquierdo: Agregar acceso y Favoritos */}
         <div className="flex items-center gap-4">
-          <Tooltip label="Menú Inicio / Acerca de (Click derecho: Configuración)" placement="top">
+          <Tooltip label={t('tooltip_add_taskbar_access')} placement="top">
             <button 
-              onClick={() => setIsAboutOpen(!isAboutOpen)} 
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setIsSettingsOpen(true);
+              onClick={() => {
+                setEditForm({ ...emptyEditForm(), pinToTaskbar: true });
+                setIsResolvingIcon(false);
+                setIsAddingApp(true);
               }}
-              className="relative hover:scale-110 transition-transform flex-shrink-0"
+              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed flex-shrink-0"
             >
-              <CyberLogo className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
-              {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
-              )}
+              <Plus className="w-5 h-5" />
             </button>
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
@@ -4558,22 +4598,6 @@ export default function App() {
                 </Tooltip>
               );
             })}
-            
-            {/* Botón "+" para agregar app */}
-            <div className="relative">
-              <Tooltip label={t('tooltip_add_app')} placement="top">
-                <button 
-                  onClick={() => {
-                    setEditForm(emptyEditForm());
-                    setIsResolvingIcon(false);
-                    setIsAddingApp(true);
-                  }}
-                  className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </Tooltip>
-            </div>
           </div>
         </div>
 
