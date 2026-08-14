@@ -174,6 +174,13 @@ function showMainWindow() {
 }
 
 function hideMainWindow() {
+  // Only block while the native menu HWND exists. A time-based guard here
+  // made Show/Hide from the tray stuck (window could not hide for up to 60s).
+  if (trayMenuOpen) {
+    if (!pendingTrayAction) pendingHideAfterTray = true;
+    console.log('[WM] skip hideMainWindow — tray menu open');
+    return;
+  }
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] hideMainWindow');
     mainWindow.hide();
@@ -181,10 +188,33 @@ function hideMainWindow() {
 }
 
 /** Sleep Chromium while the launcher is in the tray; stay awake only if visible or a countdown is running. */
+let throttlingTimer: ReturnType<typeof setTimeout> | null = null;
 function applyRendererThrottling() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  const mustRun = keepRendererAwake || mainWindow.isVisible();
-  mainWindow.webContents.setBackgroundThrottling(!mustRun);
+  if (throttlingTimer) clearTimeout(throttlingTimer);
+  throttlingTimer = setTimeout(() => {
+    throttlingTimer = null;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Native tray menus crash on Windows if Chromium is put to sleep mid-popup.
+    if (trayMenuOpen) return;
+    const mustRun = keepRendererAwake || mainWindow.isVisible();
+    try {
+      mainWindow.webContents.setBackgroundThrottling(!mustRun);
+    } catch {
+      /* ignore */
+    }
+  }, 80);
+}
+
+/** True when the cursor is over the Windows taskbar / tray (outside the display work area). */
+function isCursorInShellChrome() {
+  try {
+    const pt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(pt);
+    const wa = display.workArea;
+    return pt.x < wa.x || pt.y < wa.y || pt.x >= wa.x + wa.width || pt.y >= wa.y + wa.height;
+  } catch {
+    return false;
+  }
 }
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
@@ -248,21 +278,39 @@ function getAppIcon() {
   return nativeImage.createEmpty();
 }
 
-// Icono para la bandeja del sistema - usa icon-16 para maxima nitidez en tray
-function getTrayIconPath(): string {
+// Tray: never use a lone 16×16 PNG — Windows HiDPI upscales it and it looks
+// softer than the taskbar icon (which loads the multi-size ICO). Build a
+// nativeImage with 16/20/24/32 representations from the generated PNGs; ICO fallback.
+function getTrayIcon() {
   const dir = VITE_DEV_SERVER_URL
     ? path.join(__dirname, '../public')
     : path.join(__dirname, '../dist');
-  const p16 = path.join(dir, 'icon-16.png');
-  if (fs.existsSync(p16)) return p16;
-  return path.join(dir, 'icon.png');
-}
 
-function getTrayIcon() {
-  const iconPath = getTrayIconPath();
-  if (fs.existsSync(iconPath)) {
-    const icon = nativeImage.createFromPath(iconPath);
-    if (!icon.isEmpty()) return icon;
+  const img = nativeImage.createEmpty();
+  const reps: Array<{ scale: number; file: string; size: number }> = [
+    { scale: 1, file: 'icon-16.png', size: 16 },
+    { scale: 1.25, file: 'icon-20.png', size: 20 },
+    { scale: 1.5, file: 'icon-24.png', size: 24 },
+    { scale: 2, file: 'icon-32.png', size: 32 },
+  ];
+  for (const r of reps) {
+    const p = path.join(dir, r.file);
+    if (!fs.existsSync(p)) continue;
+    const slice = nativeImage.createFromPath(p);
+    if (slice.isEmpty()) continue;
+    img.addRepresentation({
+      scaleFactor: r.scale,
+      width: r.size,
+      height: r.size,
+      buffer: slice.toPNG(),
+    });
+  }
+  if (!img.isEmpty()) return img;
+
+  const icoPath = path.join(dir, 'icon.ico');
+  if (fs.existsSync(icoPath)) {
+    const ico = nativeImage.createFromPath(icoPath);
+    if (!ico.isEmpty()) return ico;
   }
   return getAppIcon();
 }
@@ -553,6 +601,17 @@ function createWindow() {
         console.log('[WM] Ignoring blur during tray menu (delayed)');
         return;
       }
+      if (trayMenuOpen) {
+        console.log('[WM] Ignoring blur — tray menu open');
+        return;
+      }
+      // Right-click on the tray blurs the window ~200ms before Electron's right-click
+      // event. Hiding (and throttling Chromium) in that gap crashes the native menu.
+      if (isCursorInShellChrome()) {
+        console.log('[WM] Ignoring blur — cursor in taskbar/tray');
+        armTrayMenuGuard(4000);
+        return;
+      }
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused() && !isDialogOpen && !isUiModalOpen && hideOnBlurEnabled) {
         console.log('[MAIN] Window lost focus, hiding to tray');
         windowVisibilityState = 'hidden-blur';
@@ -640,13 +699,12 @@ function getMenuIconsDir(): string {
     : path.join(__dirname, '../dist/menu-icons');
 }
 
-function loadMenuIcon(name: string) {
+function loadMenuIcon(name: string): Electron.NativeImage | undefined {
   const iconPath = path.join(getMenuIconsDir(), name);
-  if (fs.existsSync(iconPath)) {
-    const img = nativeImage.createFromPath(iconPath);
-    if (!img.isEmpty()) return img;
-  }
-  return nativeImage.createEmpty();
+  if (!fs.existsSync(iconPath)) return undefined;
+  const img = nativeImage.createFromPath(iconPath);
+  if (img.isEmpty()) return undefined;
+  return img;
 }
 
 /**
@@ -656,22 +714,20 @@ function loadMenuIcon(name: string) {
 let trayMenuGuardUntil = 0;
 let pendingTrayRebuild = false;
 let trayRebuildTimer: ReturnType<typeof setTimeout> | null = null;
+/** True while the native tray menu HWND exists. */
+let trayMenuOpen = false;
+let lastTrayRightClickAt = 0;
+let trayClickTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingHideAfterTray = false;
+let trayMenuCloseFallback: ReturnType<typeof setTimeout> | null = null;
+/** Bumped on every right-click / menu-will-show so a delayed left-click can cancel. */
+let trayRightClickSeq = 0;
+type TrayPendingAction = 'show' | 'hide' | 'settings' | 'about' | 'quit';
+let pendingTrayAction: TrayPendingAction | null = null;
 
-function armTrayMenuGuard(ms = 5000) {
+/** Brief post-menu blur ignore only — never used to block hideMainWindow. */
+function armTrayMenuGuard(ms = 400) {
   trayMenuGuardUntil = Math.max(trayMenuGuardUntil, Date.now() + ms);
-  // After the menu closes, apply hide-on-blur if the window is still unfocused.
-  setTimeout(() => {
-    if (isTrayMenuGuardActive()) return;
-    if (!hideOnBlurEnabled) return;
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.isFocused() || mainWindow.isAlwaysOnTop()) return;
-    if (isDialogOpen || isUiModalOpen) return;
-    if (mainWindow.isVisible()) {
-      console.log('[WM] Applying deferred hide-on-blur after tray menu');
-      windowVisibilityState = 'hidden-blur';
-      hideMainWindow();
-    }
-  }, ms + 50);
 }
 
 function isTrayMenuGuardActive() {
@@ -682,52 +738,41 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const lang = getTrayLanguage();
   const t = TRAY_I18N[lang];
   const version = app.getVersion();
-  // Guard keeps the window from hide-on-blur while the menu is opening, so isVisible() is reliable here.
   const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
   const parts = t.showHide.split(' / ');
   const dynamicLabel = isVisible ? (parts[1] || 'Hide') : (parts[0] || 'Show');
+  const iconShow = loadMenuIcon('show-hide.png');
+  const iconSettings = loadMenuIcon('settings.png');
+  const iconAbout = loadMenuIcon('about.png');
+  const iconQuit = loadMenuIcon('quit.png');
 
   return [
     {
       label: `CyberLauncher v${version}`,
-      enabled: false,
-      icon: nativeImage.createEmpty(),
+      click: () => { pendingTrayAction = 'about'; },
     },
     { type: 'separator' },
     {
       label: dynamicLabel,
-      icon: loadMenuIcon('show-hide.png'),
+      ...(iconShow ? { icon: iconShow } : {}),
       accelerator: currentShortcut || undefined,
-      click: () => toggleWindow(),
+      click: () => { pendingTrayAction = isVisible ? 'hide' : 'show'; },
     },
     {
       label: t.settings,
-      icon: loadMenuIcon('settings.png'),
-      click: () => {
-        showMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('open-settings');
-        }
-      },
+      ...(iconSettings ? { icon: iconSettings } : {}),
+      click: () => { pendingTrayAction = 'settings'; },
     },
     {
       label: t.about,
-      icon: loadMenuIcon('about.png'),
-      click: () => {
-        showMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('open-about');
-        }
-      },
+      ...(iconAbout ? { icon: iconAbout } : {}),
+      click: () => { pendingTrayAction = 'about'; },
     },
     { type: 'separator' },
     {
       label: t.quit,
-      icon: loadMenuIcon('quit.png'),
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      },
+      ...(iconQuit ? { icon: iconQuit } : {}),
+      click: () => { pendingTrayAction = 'quit'; },
     },
   ];
 }
@@ -735,19 +780,9 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
 function rebuildTrayMenu(): void {
   if (!tray) return;
 
-  // Never replace the open Windows tray menu — that crashes on hover.
-  if (isTrayMenuGuardActive()) {
+  // Replacing the open Windows tray menu crashes on hover.
+  if (trayMenuOpen) {
     pendingTrayRebuild = true;
-    if (!trayRebuildTimer) {
-      const delay = Math.max(150, trayMenuGuardUntil - Date.now() + 50);
-      trayRebuildTimer = setTimeout(() => {
-        trayRebuildTimer = null;
-        if (pendingTrayRebuild) {
-          pendingTrayRebuild = false;
-          rebuildTrayMenu();
-        }
-      }, delay);
-    }
     return;
   }
 
@@ -755,11 +790,93 @@ function rebuildTrayMenu(): void {
   const version = app.getVersion();
   tray.setToolTip(`CyberLauncher v${version}`);
 
-  // Windows: menu is shown via popUpContextMenu on right-click (so right-click fires).
-  // Other platforms keep a persistent context menu.
-  if (process.platform !== 'win32') {
-    tray.setContextMenu(Menu.buildFromTemplate(getTrayMenuTemplate()));
+  const menu = Menu.buildFromTemplate(getTrayMenuTemplate());
+  menu.on('menu-will-show', () => {
+    trayMenuOpen = true;
+    trayRightClickSeq++;
+    lastTrayRightClickAt = Date.now();
+    pendingTrayAction = null;
+    pendingHideAfterTray = false;
+    if (trayMenuCloseFallback) clearTimeout(trayMenuCloseFallback);
+    trayMenuCloseFallback = setTimeout(() => {
+      if (!trayMenuOpen) return;
+      console.log('[TRAY] menu close fallback');
+      onTrayMenuClosed();
+    }, 15_000);
+  });
+  menu.on('menu-will-close', () => {
+    console.log('[TRAY] menu-will-close');
+    onTrayMenuClosed();
+  });
+  tray.setContextMenu(menu);
+}
+
+function executePendingTrayAction() {
+  const action = pendingTrayAction;
+  pendingTrayAction = null;
+  const blurHide = pendingHideAfterTray;
+  pendingHideAfterTray = false;
+
+  console.log('[TRAY] menu closed, action=' + (action || 'none'));
+
+  if (action === 'quit') {
+    isQuitting = true;
+    app.quit();
+    return;
   }
+  if (action === 'hide') {
+    windowVisibilityState = 'hidden-intentional';
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      console.log('[WM] hideMainWindow (tray Hide)');
+      mainWindow.hide();
+    }
+    applyRendererThrottling();
+    return;
+  }
+  if (action === 'show' || action === 'settings' || action === 'about') {
+    showMainWindow();
+    if (action !== 'show' && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(action === 'settings' ? 'open-settings' : 'open-about');
+    }
+    applyRendererThrottling();
+    return;
+  }
+
+  if (
+    blurHide &&
+    hideOnBlurEnabled &&
+    mainWindow &&
+    !mainWindow.isDestroyed() &&
+    !mainWindow.isFocused() &&
+    !mainWindow.isAlwaysOnTop() &&
+    !isDialogOpen &&
+    !isUiModalOpen
+  ) {
+    console.log('[WM] Applying deferred hide after tray menu dismissed');
+    windowVisibilityState = 'hidden-blur';
+    console.log('[WM] hideMainWindow');
+    mainWindow.hide();
+  }
+  applyRendererThrottling();
+}
+
+function onTrayMenuClosed() {
+  if (!trayMenuOpen) return;
+  if (trayMenuCloseFallback) {
+    clearTimeout(trayMenuCloseFallback);
+    trayMenuCloseFallback = null;
+  }
+  trayMenuOpen = false;
+  lastTrayRightClickAt = Date.now();
+  armTrayMenuGuard(400);
+  // Windows often fires menu-will-close BEFORE the item click handler.
+  setTimeout(() => {
+    executePendingTrayAction();
+    if (pendingTrayRebuild) {
+      pendingTrayRebuild = false;
+      rebuildTrayMenu();
+    }
+  }, 50);
 }
 
 function createTray() {
@@ -768,15 +885,45 @@ function createTray() {
   rebuildTrayMenu();
 
   if (process.platform === 'win32') {
-    tray.on('right-click', (_event, bounds) => {
-      armTrayMenuGuard(6000);
-      // Build with current visibility BEFORE any hide-on-blur can race the label.
-      const menu = Menu.buildFromTemplate(getTrayMenuTemplate());
-      tray!.popUpContextMenu(menu, bounds);
+    tray.on('mouse-enter', () => {
+      if (!trayMenuOpen) rebuildTrayMenu();
+    });
+    // Flag only — Windows shows tray.setContextMenu() itself.
+    // Calling popUpContextMenu on top of that crashes / races with left-click toggle.
+    tray.on('right-click', () => {
+      trayRightClickSeq++;
+      lastTrayRightClickAt = Date.now();
+      trayMenuOpen = true;
+      pendingTrayAction = null;
+      pendingHideAfterTray = false;
+      if (trayMenuCloseFallback) clearTimeout(trayMenuCloseFallback);
+      trayMenuCloseFallback = setTimeout(() => {
+        if (!trayMenuOpen) return;
+        console.log('[TRAY] menu close fallback');
+        onTrayMenuClosed();
+      }, 15_000);
     });
   }
 
-  tray.on('click', () => toggleWindow());
+  // Windows also emits `click` on right-click, often BEFORE `right-click`.
+  // Delay + sequence check: a right-click cancels the pending toggle.
+  tray.on('click', () => {
+    if (process.platform === 'win32') {
+      const seq = trayRightClickSeq;
+      if (trayClickTimer) clearTimeout(trayClickTimer);
+      trayClickTimer = setTimeout(() => {
+        trayClickTimer = null;
+        if (trayMenuOpen || trayRightClickSeq !== seq || Date.now() - lastTrayRightClickAt < 400) {
+          console.log('[TRAY] skip click (context menu)');
+          return;
+        }
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        toggleWindow();
+      }, 120);
+      return;
+    }
+    toggleWindow();
+  });
   tray.on('double-click', () => {
     if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow();
@@ -807,6 +954,10 @@ function toggleWindow(forceShow = false) {
     // Si la ventana está anclada (Always on Top), no ocultar y alertar al frontend para destellar el Pin
     if (mainWindow.isAlwaysOnTop()) {
       mainWindow.webContents.send('always-on-top-blur-attempt');
+      return;
+    }
+    if (trayMenuOpen) {
+      console.log('[TOGGLE] ignored — tray menu open');
       return;
     }
     hideMainWindow();

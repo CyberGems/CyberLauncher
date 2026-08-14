@@ -3329,23 +3329,23 @@ export default function App() {
               className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-colors duration-200'}`}
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
-        <div className="p-6 flex items-center gap-3">
+        <div className="p-6 flex items-center gap-2.5 min-w-0">
           <Tooltip label={t('tooltip_about')} placement="bottom">
             <button 
               onClick={() => setIsAboutOpen(true)}
-              className="group relative flex-shrink-0 cursor-pointer"
+              className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer"
             >
-              <span className="absolute inset-[-4px] rounded-2xl bg-cyan-400/20 blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              <CyberLogo className="relative w-11 h-11 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)] transition-all group-hover:drop-shadow-[0_0_16px_rgba(34,211,238,0.75)]" />
-              {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
-              )}
+              <span className="relative flex-shrink-0">
+                <CyberLogo className="w-8 h-8 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
+                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+                )}
+              </span>
+              <span className="font-cyber font-bold text-[15px] tracking-wide text-white truncate leading-none">
+                cyber<span className="text-cyan-400">launcher</span>
+              </span>
             </button>
           </Tooltip>
-          <div>
-            <h1 className="font-cyber font-bold text-white tracking-wider text-sm drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">CYBER</h1>
-            <h2 className="text-xs text-cyan-400 font-cyber tracking-widest font-bold drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">LAUNCHER</h2>
-          </div>
         </div>
 
         <div className="px-6 pb-2 flex items-center justify-between">

@@ -158,13 +158,12 @@ export default function AboutModal({
         </div>
 
         <div className="overflow-y-auto custom-scrollbar px-7 pb-5 text-center">
-          <div className="relative w-[88px] h-[88px] mx-auto mb-4 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-2xl bg-cyan-400/25 blur-xl pointer-events-none" />
+          <div className="relative w-[72px] h-[72px] mx-auto mb-4 flex items-center justify-center">
             <img
               src="./icon.png"
               srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-256.png 256w, ./icon.png 1024w"
               sizes="72px"
-              className="relative w-[72px] h-[72px] drop-shadow-[0_0_14px_rgba(34,211,238,0.4)]"
+              className="w-[72px] h-[72px] drop-shadow-[0_0_8px_rgba(34,211,238,0.28)]"
               alt="CyberLauncher"
             />
           </div>
