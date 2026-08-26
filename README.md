@@ -15,6 +15,15 @@
   <img src="https://img.shields.io/badge/license-GPL--3.0-green?style=flat-square" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/CyberGems/CyberLauncher/releases/latest">
+    <img src="https://img.shields.io/badge/⚡_Download_Latest_Release-(Windows_64--bit)-00F2FF?style=for-the-badge&logo=windows&logoColor=000000" alt="Download Latest Release" />
+  </a>
+  <a href="https://github.com/CyberGems/CyberLauncher/releases">
+    <img src="https://img.shields.io/badge/All_Releases-Changelog-18181B?style=for-the-badge&logo=github&logoColor=white" alt="All Releases" />
+  </a>
+</p>
+
 ---
 
 ## Overview
