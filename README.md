@@ -187,3 +187,13 @@ If you'd like to support this work, a donation would mean a lot. Thank you! 🙏
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](./LICENSE) file for details.
 
 Copyright (C) 2026 CyberGems
+---
+
+<div align="center" style="background:#0D0F17; border:1px solid rgba(0,255,255,0.12); border-radius:12px; padding:28px 20px; margin-top:32px;">
+
+### Thanks for using CyberLauncher! 🎉
+
+Made by [**CyberGems**](https://cybergems.org)
+
+</div>
+
