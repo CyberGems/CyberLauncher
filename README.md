@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/platform-Windows-0078D4.svg?logo=windows&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/version-1.8.1-00F0FF.svg" alt="Version" />
   <img src="https://img.shields.io/badge/Electron-42-512BD4.svg?logo=electron&logoColor=white" alt="Electron" />
-  📖 [Wiki](https://github.com/CyberGems/CyberLauncher/wiki)
+  <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/%F0%9F%93%96_Wiki-Documentation-222222?style=flat-square&logo=github&logoColor=white" alt="Wiki" /></a>
 </p>
 
 A full-screen, glassmorphic application launcher built with **Electron + React + TypeScript**. Designed to replace the traditional Windows Start Menu, CyberLauncher provides a fast, keyboard-driven workflow to organize, search, and launch your apps — all wrapped in a sleek cyberpunk interface with neon accents.
