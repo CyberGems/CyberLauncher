@@ -1521,9 +1521,18 @@ export default function App() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const isAltHeldRef = useRef(false);
+  const altNumpadBlockedRef = useRef(false);
+  const altNumpadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   type KeyboardNavTarget = { section: 'favorites' | 'apps'; index: number };
   const [keyboardNav, setKeyboardNav] = useState<KeyboardNavTarget | null>(null);
+
+  useEffect(() => {
+    if (keyboardNav) {
+      searchInputRef.current?.blur();
+    }
+  }, [keyboardNav]);
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -2990,14 +2999,27 @@ export default function App() {
     fetchMonitors();
   }, []);
 
-  const categoriesWithCount = useMemo(() => categories.map(cat => ({
-    ...cat,
-    count: cat.id === 'all' ? apps.length : apps.filter(app => app.category === cat.name).length
-  })).sort((a, b) => {
-    if (a.id === 'all') return -1;
-    if (b.id === 'all') return 1;
-    return a.name.localeCompare(b.name);
-  }), [categories, apps]);
+  const categoriesWithCount = useMemo(() => {
+    const locale = language === 'es' ? 'es' : 'en';
+    const getCatDisplayName = (cat: { id: string; name: string }) => {
+      const translationKey = `cat_${cat.id}` as TranslationKey;
+      const translated = t(translationKey);
+      return translated !== translationKey ? translated : cat.name;
+    };
+
+    return categories.map(cat => ({
+      ...cat,
+      count: cat.id === 'all' ? apps.length : apps.filter(app => app.category === cat.name).length
+    })).sort((a, b) => {
+      if (a.id === 'all') return -1;
+      if (b.id === 'all') return 1;
+      if (a.id === UNCATEGORIZED_ID) return 1;
+      if (b.id === UNCATEGORIZED_ID) return -1;
+      const nameA = getCatDisplayName(a);
+      const nameB = getCatDisplayName(b);
+      return nameA.localeCompare(nameB, locale, { numeric: true, sensitivity: 'base' });
+    });
+  }, [categories, apps, language, t]);
 
   const filteredApps = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
@@ -3130,6 +3152,7 @@ export default function App() {
     if (!keyboardNav) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        searchInputRef.current?.blur();
         if (totalFavs > 0) {
           setKeyboardNav({ section: 'favorites', index: 0 });
         } else if (totalApps > 0) {
@@ -3146,6 +3169,7 @@ export default function App() {
       if (e.key === 'ArrowRight') {
         if (searchQuery === '') {
           e.preventDefault();
+          searchInputRef.current?.blur();
           if (totalFavs > 0) {
             setKeyboardNav({ section: 'favorites', index: 0 });
           } else if (totalApps > 0) {
@@ -3164,6 +3188,7 @@ export default function App() {
       if (e.key === 'Home') {
         if (searchQuery === '') {
           e.preventDefault();
+          searchInputRef.current?.blur();
           if (totalFavs > 0) {
             setKeyboardNav({ section: 'favorites', index: 0 });
           } else if (totalApps > 0) {
@@ -3177,6 +3202,7 @@ export default function App() {
       if (e.key === 'End') {
         if (searchQuery === '') {
           e.preventDefault();
+          searchInputRef.current?.blur();
           if (totalApps > 0) {
             setKeyboardNav({ section: 'apps', index: totalApps - 1 });
           } else if (totalFavs > 0) {
@@ -3189,6 +3215,7 @@ export default function App() {
 
       if (e.key === 'PageDown') {
         e.preventDefault();
+        searchInputRef.current?.blur();
         if (totalApps > 0) {
           setKeyboardNav({ section: 'apps', index: 0 });
         } else if (totalFavs > 0) {
@@ -3369,15 +3396,41 @@ export default function App() {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (isRecordingShortcut) return;
 
-      // Category speed dialing: Alt + number (1 to 9)
-      if (e.altKey && e.key >= '1' && e.key <= '9') {
-        const index = parseInt(e.key, 10) - 1;
-        if (index < categories.length) {
-          e.preventDefault();
-          setActiveCategory(categories[index].id);
-          setKeyboardNav(null);
+      if (e.key === 'Alt') {
+        isAltHeldRef.current = true;
+      }
+
+      // Category speed dialing: Alt + number (1 to 9) via Digit1..9 or Numpad1..9
+      if (e.altKey) {
+        let num: number | null = null;
+        if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '1' && e.code[5] <= '9') {
+          num = parseInt(e.code[5], 10);
+        } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '1' && e.code[6] <= '9') {
+          num = parseInt(e.code[6], 10);
+        } else if (e.key >= '1' && e.key <= '9') {
+          num = parseInt(e.key, 10);
         }
-        return;
+
+        if (num !== null) {
+          e.preventDefault();
+          e.stopPropagation();
+          altNumpadBlockedRef.current = true;
+          searchInputRef.current?.blur();
+          const index = num - 1;
+          if (index < categoriesWithCount.length) {
+            setActiveCategory(categoriesWithCount[index].id);
+            setKeyboardNav(null);
+          }
+          return;
+        }
+
+        if (e.code.startsWith('Numpad')) {
+          e.preventDefault();
+          e.stopPropagation();
+          altNumpadBlockedRef.current = true;
+          searchInputRef.current?.blur();
+          return;
+        }
       }
 
       if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) {
@@ -3435,17 +3488,32 @@ export default function App() {
           return;
         }
 
-        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace')) {
           searchInputRef.current?.focus();
         }
       }
     };
 
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        isAltHeldRef.current = false;
+        if (altNumpadTimerRef.current) clearTimeout(altNumpadTimerRef.current);
+        altNumpadTimerRef.current = setTimeout(() => {
+          altNumpadBlockedRef.current = false;
+        }, 150);
+      }
+    };
+
     window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('keyup', handleGlobalKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      window.removeEventListener('keyup', handleGlobalKeyUp);
+      if (altNumpadTimerRef.current) clearTimeout(altNumpadTimerRef.current);
+    };
   }, [
     isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
-    searchQuery, categories, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
+    searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
   ]);
 
@@ -3768,50 +3836,81 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-0.5 custom-scrollbar">
-          {categoriesWithCount.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border border-transparent ${
-                activeCategory === cat.id 
-                  ? 'bg-blue-500/20 text-white border-blue-500/20 shadow-[inset_2px_0_0_0_#3b82f6]' 
-                  : 'hover:bg-white/5 hover:text-white hover:border-white/5 text-slate-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ 
-                    backgroundColor: cat.color,
-                    boxShadow: `0 0 8px ${cat.color}`
-                  }} 
-                />
-                <span className="text-sm font-medium drop-shadow-sm">
-                  {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {cat.id !== 'all' && cat.id !== UNCATEGORIZED_ID && (
-                  <Tooltip label={t('tooltip_edit_category')} placement="right">
-                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditCategoryForm({ name: cat.name, color: cat.color });
-                        setEditingCategory(cat);
-                      }}
-                    />
-                  </Tooltip>
-                )}
-                <span className={`text-xs px-2 py-0.5 rounded-md border tabular-nums font-medium transition-colors ${
-                  activeCategory === cat.id
-                    ? 'bg-blue-500/[0.08] border-blue-500/25 text-blue-300'
-                    : 'bg-white/[0.03] border-white/10 text-slate-500 group-hover:border-white/15 group-hover:text-slate-400'
-                }`}>
-                  {cat.count}
-                </span>
-              </div>
-            </button>
-          ))}
+          {categoriesWithCount.map((cat, index) => {
+            const isUncategorized = cat.id === UNCATEGORIZED_ID;
+            const hotkey = index < 9 ? `Alt+${index + 1}` : null;
+            const displayName = t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name;
+
+            const buttonEl = (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border border-transparent ${
+                  activeCategory === cat.id 
+                    ? 'bg-blue-500/20 text-white border-blue-500/20 shadow-[inset_2px_0_0_0_#3b82f6]' 
+                    : 'hover:bg-white/5 hover:text-white hover:border-white/5 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0" 
+                    style={{ 
+                      backgroundColor: cat.color,
+                      boxShadow: `0 0 8px ${cat.color}`
+                    }} 
+                  />
+                  <span className={`text-sm truncate transition-colors ${
+                    isUncategorized
+                      ? 'italic text-slate-400 font-normal tracking-wide'
+                      : 'font-medium drop-shadow-sm'
+                  }`}>
+                    {displayName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {cat.id !== 'all' && cat.id !== UNCATEGORIZED_ID && (
+                    <Tooltip label={t('tooltip_edit_category')} placement="top">
+                      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditCategoryForm({ name: cat.name, color: cat.color });
+                          setEditingCategory(cat);
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                  <span className={`text-xs px-2 py-0.5 rounded-md border tabular-nums font-medium transition-colors ${
+                    activeCategory === cat.id
+                      ? 'bg-blue-500/[0.08] border-blue-500/25 text-blue-300'
+                      : 'bg-white/[0.03] border-white/10 text-slate-500 group-hover:border-white/15 group-hover:text-slate-400'
+                  }`}>
+                    {cat.count}
+                  </span>
+                </div>
+              </button>
+            );
+
+            if (hotkey) {
+              return (
+                <Tooltip
+                  key={cat.id}
+                  placement="right"
+                  label={
+                    <div className="flex items-center gap-2 font-medium text-xs">
+                      <span>{displayName}</span>
+                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-cyan-500/20 border border-cyan-400/40 rounded text-cyan-300 font-bold tracking-wide">
+                        {hotkey}
+                      </kbd>
+                    </div>
+                  }
+                >
+                  {buttonEl}
+                </Tooltip>
+              );
+            }
+
+            return buttonEl;
+          })}
         </div>
 
         <div className="p-6 pt-4">
@@ -3921,12 +4020,23 @@ export default function App() {
               type="text" 
               placeholder=""
               value={searchQuery}
+              onFocus={() => {
+                setKeyboardNav(null);
+              }}
               onBlur={() => {
                 setShowSearchGuide(false);
                 if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
                 if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
               }}
+              onBeforeInput={(e: any) => {
+                if (altNumpadBlockedRef.current || (isAltHeldRef.current && !e.nativeEvent?.getModifierState?.('AltGraph'))) {
+                  e.preventDefault();
+                }
+              }}
               onChange={(e) => {
+                if (altNumpadBlockedRef.current || (isAltHeldRef.current && !('getModifierState' in e && (e as any).getModifierState?.('AltGraph')))) {
+                  return;
+                }
                 const val = e.target.value;
                 setSearchQuery(val);
                 setKeyboardNav(null);
@@ -3943,6 +4053,38 @@ export default function App() {
                 }
               }}
               onKeyDown={async (e) => {
+                if (e.altKey) {
+                  let num: number | null = null;
+                  if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '1' && e.code[5] <= '9') {
+                    num = parseInt(e.code[5], 10);
+                  } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '1' && e.code[6] <= '9') {
+                    num = parseInt(e.code[6], 10);
+                  } else if (e.key >= '1' && e.key <= '9') {
+                    num = parseInt(e.key, 10);
+                  }
+
+                  if (num !== null) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    altNumpadBlockedRef.current = true;
+                    searchInputRef.current?.blur();
+                    const index = num - 1;
+                    if (index < categoriesWithCount.length) {
+                      setActiveCategory(categoriesWithCount[index].id);
+                      setKeyboardNav(null);
+                    }
+                    return;
+                  }
+
+                  if (e.code.startsWith('Numpad')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    altNumpadBlockedRef.current = true;
+                    searchInputRef.current?.blur();
+                    return;
+                  }
+                }
+
                 if (e.key === 'Tab') {
                   e.preventDefault();
                   if (!searchQuery.startsWith('>')) {
@@ -5449,7 +5591,9 @@ export default function App() {
                         {categories.filter(c => c.id !== 'all').sort((a, b) => {
                           if (a.id === UNCATEGORIZED_ID) return -1;
                           if (b.id === UNCATEGORIZED_ID) return 1;
-                          return a.name.localeCompare(b.name);
+                          const nameA = t(`cat_${a.id}` as TranslationKey) !== `cat_${a.id}` ? t(`cat_${a.id}` as TranslationKey) : a.name;
+                          const nameB = t(`cat_${b.id}` as TranslationKey) !== `cat_${b.id}` ? t(`cat_${b.id}` as TranslationKey) : b.name;
+                          return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
                         }).map(cat => (
                           <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
                             {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
@@ -6473,7 +6617,13 @@ export default function App() {
                                 onChange={(e) => setUwpImportCategory(e.target.value)}
                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/40"
                               >
-                                {categories.filter(c => c.id !== 'all').map(cat => (
+                                {categories.filter(c => c.id !== 'all').sort((a, b) => {
+                                  if (a.id === UNCATEGORIZED_ID) return -1;
+                                  if (b.id === UNCATEGORIZED_ID) return 1;
+                                  const nameA = t(`cat_${a.id}` as TranslationKey) !== `cat_${a.id}` ? t(`cat_${a.id}` as TranslationKey) : a.name;
+                                  const nameB = t(`cat_${b.id}` as TranslationKey) !== `cat_${b.id}` ? t(`cat_${b.id}` as TranslationKey) : b.name;
+                                  return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
+                                }).map(cat => (
                                   <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
                                     {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
                                   </option>
