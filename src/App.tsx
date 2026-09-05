@@ -3461,7 +3461,7 @@ export default function App() {
     return { backgroundImage: bgGradient };
   };
 
-  const getGlassStyle = (baseAlpha: number, isBlurry: boolean = true) => {
+  const getGlassStyle = (baseAlpha: number, isBlurry: boolean = false) => {
     // Adjust opacity based on 'glassIntensity' slider when an image is used, 
     // or keep it more solid if solid/gradient is used to maintain contrast.
     const alpha = bgType === 'image' 
@@ -3684,8 +3684,12 @@ export default function App() {
       {/* --- OVERLAYS FOR IMAGE BACKGROUND --- */}
       {bgType === 'image' && (
         <div 
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300" 
-          style={{ backgroundColor: `rgba(0, 0, 0, ${bgOpacity / 100})` }}
+          className="absolute inset-0 pointer-events-none transition-all duration-300 z-0" 
+          style={{ 
+            backgroundColor: `rgba(0, 0, 0, ${bgOpacity / 100})`,
+            backdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`,
+            WebkitBackdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`
+          }}
         />
       )}
 
@@ -3717,7 +3721,10 @@ export default function App() {
         transition={{ duration: 0.12, ease: 'easeOut' }}
         className="flex flex-col w-full h-full relative z-10"
       >
-        <div className="flex-1 flex overflow-hidden">
+        <div 
+          className="flex-1 flex overflow-hidden relative z-10"
+          style={getGlassStyle(0.4)}
+        >
             {/* --- LEFT SIDEBAR (Categories) --- */}
             <aside 
               ref={leftAsideRef}
@@ -3855,7 +3862,8 @@ export default function App() {
       {/* Resize Handle Left */}
       <div 
         data-no-hide
-        className="w-[2px] cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 z-50 transition-colors shrink-0"
+        className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
+        style={getGlassStyle(0.6)}
         onMouseDown={startResizingLeft}
       />
 
@@ -4806,7 +4814,8 @@ export default function App() {
       {/* Resize Handle Right */}
       <div 
         data-no-hide
-        className="w-[2px] cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 z-50 transition-colors shrink-0"
+        className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
+        style={getGlassStyle(0.6)}
         onMouseDown={startResizingRight}
       />
 
