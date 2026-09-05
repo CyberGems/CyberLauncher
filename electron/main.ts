@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net, powerMonitor } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { exec, execSync, spawn } from 'node:child_process';
@@ -52,7 +52,8 @@ let lastHotspotPollTime = 0;
 const HOTSPOT_LAG_THRESHOLD_MS = 400;
 let hotspotsPausedByUAC = false;
 let uacResumeTimer: NodeJS.Timeout | null = null;
-let uacGuardTimer: NodeJS.Timeout | null = null;
+let uacWatchdogTimer: NodeJS.Timeout | null = null;
+let isCheckingUAC = false;
 let cachedDisplays: Electron.Display[] = [];
 /** Keep Chromium awake while hidden only if the renderer must tick (scheduled tasks). */
 let keepRendererAwake = false;
@@ -66,6 +67,35 @@ function updateCachedDisplays() {
   }
 }
 
+function checkUACActive(callback: (active: boolean) => void) {
+  if (process.platform !== 'win32') {
+    callback(false);
+    return;
+  }
+  exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
+    const isActive = !err && stdout.includes('consent.exe');
+    callback(isActive);
+  });
+}
+
+function watchUACUntilExit() {
+  if (process.platform !== 'win32') return;
+  if (uacWatchdogTimer) return; // Vigilante ya activo
+
+  console.log('[UAC-GUARD] Starting watchdog for consent.exe exit');
+  uacWatchdogTimer = setInterval(() => {
+    checkUACActive((isActive) => {
+      if (!isActive) {
+        console.log('[UAC-GUARD] consent.exe finished — scheduling hotspot resume');
+        if (uacWatchdogTimer) {
+          clearInterval(uacWatchdogTimer);
+          uacWatchdogTimer = null;
+        }
+        resumeHotspotsAfterUAC(600);
+      }
+    });
+  }, 1000);
+}
 
 let appShortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }> = [];
 
@@ -99,6 +129,8 @@ function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: strin
           console.log(`[GLOBAL HOTKEY] Launching app ${item.id} via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
           
           if (item.isAdmin && process.platform === 'win32') {
+            pauseHotspots();
+            watchUACUntilExit();
             const escapedPath = item.path.replace(/'/g, "''");
             const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
             exec(command, { windowsHide: true });
@@ -120,7 +152,12 @@ function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: strin
 
 function resumeHotspotsImmediate() {
   if (uacResumeTimer) clearTimeout(uacResumeTimer);
+  if (uacWatchdogTimer) {
+    clearInterval(uacWatchdogTimer);
+    uacWatchdogTimer = null;
+  }
   hotspotsPausedByUAC = false;
+  isCheckingUAC = false;
   console.log('[HOTSPOT] Resumed immediately (user action)');
 }
 
@@ -129,17 +166,24 @@ function pauseHotspots() {
   hotspotsPausedByUAC = true;
   lastHotspotCorner = '';
   hotspotEntryTime = 0;
-  hotspotCooldown = false;
-  console.log('[HOTSPOT] Paused by secure-desktop guard');
+  hotspotCooldown = true;
+  console.log('[HOTSPOT] Paused by secure-desktop / UAC guard');
 }
 
-function resumeHotspotsAfterUAC(delayMs = 1500) {
+function resumeHotspotsAfterUAC(delayMs = 600) {
   if (uacResumeTimer) clearTimeout(uacResumeTimer);
+  if (uacWatchdogTimer) {
+    clearInterval(uacWatchdogTimer);
+    uacWatchdogTimer = null;
+  }
   uacResumeTimer = setTimeout(() => {
     hotspotsPausedByUAC = false;
+    isCheckingUAC = false;
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
-    console.log('[HOTSPOT] Resumed after UAC delay');
+    hotspotCooldown = false;
+    hasCursorExitedSinceLastAction = false;
+    console.log('[HOTSPOT] Resumed after UAC exit buffer');
   }, delayMs);
 }
 
@@ -1100,7 +1144,7 @@ function startHotspotPolling() {
   }
   
   hotspotTimer = setInterval(() => {
-    if (hotspotsPausedByUAC) return;
+    if (hotspotsPausedByUAC || isCheckingUAC) return;
 
     const now = Date.now();
     const elapsed = now - lastHotspotPollTime;
@@ -1202,16 +1246,40 @@ function startHotspotPolling() {
             lastHotspotActionTime = now;
             lastHotspotCorner = currentCorner;
 
-            if (mainWindow.isVisible()) {
-              console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-              if (mainWindow.isAlwaysOnTop()) {
-                mainWindow.webContents.send('always-on-top-blur-attempt');
+            const executeHotspotAction = () => {
+              if (!mainWindow || mainWindow.isDestroyed()) return;
+              if (mainWindow.isVisible()) {
+                console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+                if (mainWindow.isAlwaysOnTop()) {
+                  mainWindow.webContents.send('always-on-top-blur-attempt');
+                } else {
+                  hideMainWindow();
+                }
               } else {
-                hideMainWindow();
+                console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+                showMainWindow();
               }
+            };
+
+            const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
+            if (isVulnerableToUAC) {
+              isCheckingUAC = true;
+              checkUACActive((isUAC) => {
+                isCheckingUAC = false;
+                if (isUAC) {
+                  console.log('[HOTSPOT] Ignored activation due to UAC detection (consent.exe)');
+                  pauseHotspots();
+                  watchUACUntilExit();
+                  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+                    windowVisibilityState = 'hidden-os';
+                    hideMainWindow();
+                  }
+                } else {
+                  executeHotspotAction();
+                }
+              });
             } else {
-              console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-              showMainWindow();
+              executeHotspotAction();
             }
           }
         }
@@ -1225,16 +1293,40 @@ function startHotspotPolling() {
           lastHotspotActionTime = now;
           lastHotspotCorner = currentCorner;
 
-          if (mainWindow.isVisible()) {
-            console.log(`OCULTAMIENTO INMEDIATO POR HOTSPOT: ${currentCorner}`);
-            if (mainWindow.isAlwaysOnTop()) {
-              mainWindow.webContents.send('always-on-top-blur-attempt');
+          const executeImmediateAction = () => {
+            if (!mainWindow || mainWindow.isDestroyed()) return;
+            if (mainWindow.isVisible()) {
+              console.log(`OCULTAMIENTO INMEDIATO POR HOTSPOT: ${currentCorner}`);
+              if (mainWindow.isAlwaysOnTop()) {
+                mainWindow.webContents.send('always-on-top-blur-attempt');
+              } else {
+                hideMainWindow();
+              }
             } else {
-              hideMainWindow();
+              console.log(`ACTIVACIÓN INMEDIATA POR HOTSPOT: ${currentCorner}`);
+              showMainWindow();
             }
+          };
+
+          const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
+          if (isVulnerableToUAC) {
+            isCheckingUAC = true;
+            checkUACActive((isUAC) => {
+              isCheckingUAC = false;
+              if (isUAC) {
+                console.log('[HOTSPOT] Ignored immediate activation due to UAC detection (consent.exe)');
+                pauseHotspots();
+                watchUACUntilExit();
+                if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+                  windowVisibilityState = 'hidden-os';
+                  hideMainWindow();
+                }
+              } else {
+                executeImmediateAction();
+              }
+            });
           } else {
-            console.log(`ACTIVACIÓN INMEDIATA POR HOTSPOT: ${currentCorner}`);
-            showMainWindow();
+            executeImmediateAction();
           }
         }
       }
@@ -1242,10 +1334,18 @@ function startHotspotPolling() {
   }, 100);
 }
 
-// UAC Guard continuous timer has been removed to conserve CPU.
-// UAC status is now checked on-demand when a hotspot triggers.
+// UAC Guard continuous timer has been replaced with on-demand check + watchdog on exit.
 function startUACGuard() {}
-function stopUACGuard() {}
+function stopUACGuard() {
+  if (uacWatchdogTimer) {
+    clearInterval(uacWatchdogTimer);
+    uacWatchdogTimer = null;
+  }
+  if (uacResumeTimer) {
+    clearTimeout(uacResumeTimer);
+    uacResumeTimer = null;
+  }
+}
 
 // =====================================
 // GLOBAL SHORTCUT REGISTRATION
@@ -1959,6 +2059,8 @@ function setupIpcHandlers() {
 
       if (isAdmin && process.platform === 'win32') {
         console.log(`[LAUNCH] Intentando lanzar como administrador: ${normalizedPath}`);
+        pauseHotspots();
+        watchUACUntilExit();
         // Escapar comillas simples para PowerShell
         const escapedPath = normalizedPath.replace(/'/g, "''");
         const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
@@ -2633,6 +2735,28 @@ app.whenReady().then(() => {
   screen.on('display-added', updateCachedDisplays);
   screen.on('display-removed', updateCachedDisplays);
   screen.on('display-metrics-changed', updateCachedDisplays);
+
+  // Listen for session lock / suspend to guard hotspots
+  powerMonitor.on('lock-screen', () => {
+    console.log('[POWER] Screen locked — pausing hotspots');
+    pauseHotspots();
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && hideOnBlurEnabled) {
+      windowVisibilityState = 'hidden-os';
+      hideMainWindow();
+    }
+  });
+  powerMonitor.on('unlock-screen', () => {
+    console.log('[POWER] Screen unlocked — resuming hotspots');
+    resumeHotspotsAfterUAC(1000);
+  });
+  powerMonitor.on('suspend', () => {
+    console.log('[POWER] System suspended — pausing hotspots');
+    pauseHotspots();
+  });
+  powerMonitor.on('resume', () => {
+    console.log('[POWER] System resumed — resuming hotspots');
+    resumeHotspotsAfterUAC(1500);
+  });
 
   // Auto-update (GitHub Releases via electron-updater)
   let bootAutoUpdate = true;
