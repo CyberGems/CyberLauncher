@@ -1401,11 +1401,12 @@ async function persistIconPng(sourcePath: string, pngBuffer: Buffer): Promise<st
   return `${toLocalResourceUrl(outPath)}?t=${Date.now()}`;
 }
 
-function resolvePathAndTarget(filePath: string): { normalized: string; resolvedPath: string; resolvedName: string; ext: string } {
+function resolvePathAndTarget(filePath: string): { normalized: string; resolvedPath: string; resolvedName: string; ext: string; shortcutIcon?: string } {
   const normalized = path.resolve(filePath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1'));
   let ext = path.extname(normalized).toLowerCase();
   let resolvedPath = normalized;
   let resolvedName = path.basename(normalized, ext);
+  let shortcutIcon: string | undefined;
 
   if (ext === '.lnk') {
     try {
@@ -1422,15 +1423,89 @@ function resolvePathAndTarget(filePath: string): { normalized: string; resolvedP
           }
         } catch { /* ignore fallback error */ }
       }
+      if (shortcut.icon && fs.existsSync(shortcut.icon)) {
+        shortcutIcon = path.resolve(shortcut.icon);
+      }
       ext = path.extname(resolvedPath).toLowerCase();
       resolvedName = path.basename(resolvedPath, ext);
     } catch { /* ignore error */ }
   }
 
-  return { normalized, resolvedPath, resolvedName, ext };
+  return { normalized, resolvedPath, resolvedName, ext, shortcutIcon };
 }
 
-async function extractAndCacheIcon(resolvedPath: string, force: boolean = false): Promise<{ iconPath: string; reextracted: boolean }> {
+function isGenericIcon(buf: Buffer): boolean {
+  if (!buf || buf.length <= 600) return true;
+  const sha256 = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16);
+  // c8c32689cde5c561: Windows generic executable window
+  // 9afcae3fbafc7fc5: Windows generic shortcut document sheet
+  // 20fd95c1eac7c058: Windows generic document
+  if (sha256 === 'c8c32689cde5c561' || sha256 === '9afcae3fbafc7fc5' || sha256 === '20fd95c1eac7c058') {
+    return true;
+  }
+  return false;
+}
+
+function tryVisualElementsManifest(exePath: string): Buffer | null {
+  try {
+    const dir = path.dirname(exePath);
+    const base = path.basename(exePath, path.extname(exePath));
+    const manifestPath = path.join(dir, `${base}.VisualElementsManifest.xml`);
+    if (fs.existsSync(manifestPath)) {
+      const content = fs.readFileSync(manifestPath, 'utf-8');
+      const match = content.match(/\bSquare(?:150x150|70x70|44x44)Logo=["']([^"']+)["']/i);
+      if (match && match[1]) {
+        const logoPath = path.resolve(dir, match[1]);
+        if (fs.existsSync(logoPath) && fs.statSync(logoPath).size > 100) {
+          return fs.readFileSync(logoPath);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[ICON] VisualElementsManifest error:', e);
+  }
+  return null;
+}
+
+function tryCompanionIcons(exePath: string): Buffer | null {
+  try {
+    const dir = path.dirname(exePath);
+    const base = path.basename(exePath, path.extname(exePath));
+    const candidates = [
+      path.join(dir, `${base}.ico`),
+      path.join(dir, `${base}.png`),
+      path.join(dir, 'app.ico'),
+      path.join(dir, 'icon.ico'),
+      path.join(dir, 'resources', 'app', 'resources', 'win32', 'default.ico'),
+      path.join(dir, 'resources', 'app.ico'),
+      path.join(dir, 'resources', 'icon.ico'),
+      path.join(dir, 'resources', 'app', 'icon.ico')
+    ];
+    for (const cand of candidates) {
+      if (fs.existsSync(cand) && fs.statSync(cand).size > 100) {
+        if (cand.endsWith('.png')) {
+          return fs.readFileSync(cand);
+        }
+        const img = nativeImage.createFromPath(cand);
+        if (img && !img.isEmpty()) {
+          const buf = img.toPNG();
+          if (buf.length > 500 && !isGenericIcon(buf)) {
+            return buf;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[ICON] Companion icons error:', e);
+  }
+  return null;
+}
+
+async function extractAndCacheIcon(
+  resolvedPath: string,
+  force: boolean = false,
+  shortcutIcon?: string
+): Promise<{ iconPath: string; reextracted: boolean }> {
   if (!resolvedPath || !fs.existsSync(resolvedPath)) {
     return { iconPath: '', reextracted: false };
   }
@@ -1444,7 +1519,11 @@ async function extractAndCacheIcon(resolvedPath: string, force: boolean = false)
       if (cacheStat.size > 100) {
         const targetStat = fs.statSync(resolvedPath);
         if (targetStat.mtimeMs <= cacheStat.mtimeMs) {
-          return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
+          const cachedBuf = fs.readFileSync(cachedIconPath);
+          if (!isGenericIcon(cachedBuf)) {
+            return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
+          }
+          // Si el icono en cache es genérico, procedemos a re-extraer para obtener el real
         }
       }
     } catch {
@@ -1454,23 +1533,52 @@ async function extractAndCacheIcon(resolvedPath: string, force: boolean = false)
 
   let pngBuffer: Buffer | null = null;
 
-  // 1. Intentar getFileIcon nativo de Electron
-  try {
-    let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
-    if (!icon || icon.isEmpty()) {
-      icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
-    }
-    if (icon && !icon.isEmpty()) {
-      const buf = icon.toPNG();
-      if (buf.length >= 400) {
-        pngBuffer = buf;
+  // 1. Icono explícito de acceso directo (.lnk) si existe
+  if (shortcutIcon && fs.existsSync(shortcutIcon)) {
+    try {
+      if (shortcutIcon.endsWith('.png')) {
+        pngBuffer = fs.readFileSync(shortcutIcon);
+      } else {
+        const img = nativeImage.createFromPath(shortcutIcon);
+        if (img && !img.isEmpty()) {
+          const buf = img.toPNG();
+          if (!isGenericIcon(buf)) pngBuffer = buf;
+        }
       }
+    } catch {
+      // continuar
     }
-  } catch (e) {
-    console.warn('[ICON] getFileIcon failed:', e);
   }
 
-  // 2. Fallback con PowerShell System.Drawing.Icon ExtractAssociatedIcon
+  // 2. VisualElementsManifest.xml (Apps modernas de Windows, VS Code, Antigravity IDE, Cursor, etc.)
+  if (!pngBuffer) {
+    pngBuffer = tryVisualElementsManifest(resolvedPath);
+  }
+
+  // 3. Iconos compañeros en la carpeta (.ico / .png / resources) (Ollama, CyberManager, etc.)
+  if (!pngBuffer) {
+    pngBuffer = tryCompanionIcons(resolvedPath);
+  }
+
+  // 4. Extracción nativa con getFileIcon de Electron (si no es genérico)
+  if (!pngBuffer) {
+    try {
+      let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
+      if (!icon || icon.isEmpty()) {
+        icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
+      }
+      if (icon && !icon.isEmpty()) {
+        const buf = icon.toPNG();
+        if (!isGenericIcon(buf)) {
+          pngBuffer = buf;
+        }
+      }
+    } catch (e) {
+      console.warn('[ICON] getFileIcon failed:', e);
+    }
+  }
+
+  // 5. Fallback con PowerShell System.Drawing.Icon ExtractAssociatedIcon
   if (!pngBuffer) {
     try {
       const escapedPath = resolvedPath.replace(/'/g, "''");
@@ -1486,7 +1594,7 @@ async function extractAndCacheIcon(resolvedPath: string, force: boolean = false)
       if (psOutput && fs.existsSync(psOutput)) {
         const buf = await fs.promises.readFile(psOutput);
         await fs.promises.unlink(psOutput).catch(() => {});
-        if (buf.length > 100) {
+        if (buf.length > 100 && !isGenericIcon(buf)) {
           pngBuffer = buf;
         }
       }
@@ -1509,8 +1617,8 @@ async function extractAndCacheIcon(resolvedPath: string, force: boolean = false)
 
 async function resolveFullFileInfo(filePath: string) {
   try {
-    const { normalized, resolvedPath, resolvedName, ext } = resolvePathAndTarget(filePath);
-    const { iconPath } = await extractAndCacheIcon(resolvedPath, false);
+    const { normalized, resolvedPath, resolvedName, ext, shortcutIcon } = resolvePathAndTarget(filePath);
+    const { iconPath } = await extractAndCacheIcon(resolvedPath, false, shortcutIcon);
 
     return {
       name: resolvedName,
@@ -2408,8 +2516,8 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('refresh-app-icon', async (_event, appPath: string) => {
     try {
       if (!appPath) return { success: false, error: 'Path is required' };
-      const { resolvedPath } = resolvePathAndTarget(appPath);
-      const { iconPath } = await extractAndCacheIcon(resolvedPath, true);
+      const { resolvedPath, shortcutIcon } = resolvePathAndTarget(appPath);
+      const { iconPath } = await extractAndCacheIcon(resolvedPath, true, shortcutIcon);
       if (iconPath) {
         return { success: true, iconPath, resolvedPath };
       }
@@ -2435,11 +2543,11 @@ foreach (\$app in \$startApps) {
             const item = queue.shift();
             if (!item || !item.path) continue;
             try {
-              const { resolvedPath } = resolvePathAndTarget(item.path);
+              const { resolvedPath, shortcutIcon } = resolvePathAndTarget(item.path);
               const hash = crypto.createHash('sha1').update(resolvedPath.toLowerCase()).digest('hex').slice(0, 24);
               activeHashes.add(hash);
 
-              const result = await extractAndCacheIcon(resolvedPath, force);
+              const result = await extractAndCacheIcon(resolvedPath, force, shortcutIcon);
               if (result.iconPath && (force || result.reextracted)) {
                 updatedIcons[item.id] = result.iconPath;
               }
