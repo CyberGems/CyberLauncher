@@ -34,3 +34,6 @@ CLAUDE.md
 .cursorrules
 .cursor/
 .github/copilot-instructions.md
+
+## GitHub Wiki (local copy — wiki lives on GitHub Wiki)
+docs/wiki/

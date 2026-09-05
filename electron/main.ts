@@ -42,6 +42,8 @@ let inOwnShowCall = 0;
 let ownRestoreCallId = 0;
 let inOwnRestoreCall = 0;
 let hotspotCooldown = false;
+let lastHotspotActionTime = 0;
+let hasCursorExitedSinceLastAction = true;
 let hideOnBlurEnabled = true;
 let showTaskbarIcon = false;
 /** Ignore hide-on-blur during initial boot / first maximize (Windows steals focus briefly). */
@@ -119,9 +121,6 @@ function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: strin
 function resumeHotspotsImmediate() {
   if (uacResumeTimer) clearTimeout(uacResumeTimer);
   hotspotsPausedByUAC = false;
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  hotspotCooldown = false;
   console.log('[HOTSPOT] Resumed immediately (user action)');
 }
 
@@ -140,7 +139,6 @@ function resumeHotspotsAfterUAC(delayMs = 1500) {
     hotspotsPausedByUAC = false;
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
-    hotspotCooldown = false;
     console.log('[HOTSPOT] Resumed after UAC delay');
   }, delayMs);
 }
@@ -157,9 +155,20 @@ function showMainWindow() {
       const callId = ++ownShowCallId;
       inOwnShowCall = callId;
       windowVisibilityState = 'shown-intentional';
-      bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + (dpiSettle ? 1200 : 0));
+      // Siempre mantener al menos 1500ms de guarda contra desenfoque tras mostrar
+      bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + 1500);
+      lastHotspotActionTime = Date.now();
+      hasCursorExitedSinceLastAction = false;
+      hotspotCooldown = true;
       mainWindow.show();
-      mainWindow.focus();
+      const pinned = mainWindow.isAlwaysOnTop();
+      if (!pinned) {
+        mainWindow.setAlwaysOnTop(true);
+        mainWindow.focus();
+        mainWindow.setAlwaysOnTop(false);
+      } else {
+        mainWindow.focus();
+      }
       if (inOwnShowCall === callId) inOwnShowCall = 0;
       setImmediate(() => { if (inOwnShowCall === callId) inOwnShowCall = 0; });
     };
@@ -568,6 +577,11 @@ function createWindow() {
 
   mainWindow.on('hide', () => {
     console.log('[WM EVENT] hide');
+    lastHotspotCorner = '';
+    hotspotEntryTime = 0;
+    lastHotspotActionTime = Date.now();
+    hasCursorExitedSinceLastAction = false;
+    hotspotCooldown = true;
     applyRendererThrottling();
     // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
     rebuildTrayMenu();
@@ -976,16 +990,9 @@ function stopHotspotPolling() {
   }
 }
 
-function checkUACActive(callback: (active: boolean) => void) {
-  if (process.platform !== 'win32') {
-    callback(false);
-    return;
-  }
-  exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
-    const isActive = !err && stdout.includes('consent.exe');
-    callback(isActive);
-  });
-}
+const HOTSPOT_CORNER_THRESHOLD = 4; // px: margen de entrada en la esquina (amigable con HiDPI)
+const HOTSPOT_EXIT_THRESHOLD = 30; // px: distancia mínima para considerar que el cursor abandonó la esquina
+const HOTSPOT_TOGGLE_SAFETY_MS = 1500; // ms: tiempo de seguridad tras activar/ocultar antes de permitir nueva acción
 
 function startHotspotPolling() {
   stopHotspotPolling();
@@ -993,6 +1000,7 @@ function startHotspotPolling() {
   lastHotspotCorner = '';
   hotspotEntryTime = 0;
   hotspotCooldown = false;
+  hasCursorExitedSinceLastAction = true;
 
   if (hotspotCorners.length === 0) {
     console.log('[HOTSPOT] No corners configured — polling stopped');
@@ -1019,15 +1027,16 @@ function startHotspotPolling() {
     const { x, y } = screen.getCursorScreenPoint();
     const displays = cachedDisplays.length > 0 ? cachedDisplays : screen.getAllDisplays();
     let currentCorner = '';
+    let isWithinExitZone = false;
 
     for (const display of displays) {
       const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
       
-      // Detección de PIXEL EXACTO para máxima precisión
-      const isTop = y === dy;
-      const isBottom = y === dy + dh - 1;
-      const isLeft = x === dx;
-      const isRight = x === dx + dw - 1;
+      // Detección de entrada con tolerancia de 4px para HiDPI/escalados
+      const isTop = y <= dy + HOTSPOT_CORNER_THRESHOLD;
+      const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD;
+      const isLeft = x <= dx + HOTSPOT_CORNER_THRESHOLD;
+      const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD;
 
       let detected = '';
       if (isTop && isLeft) detected = 'top-left';
@@ -1039,58 +1048,88 @@ function startHotspotPolling() {
         if (hotspotCorners.includes(detected)) {
           currentCorner = detected;
         }
+        isWithinExitZone = true;
         break; 
-      } else if (isTop || isBottom || isLeft || isRight) {
-         // Si estamos en un borde pero NO es una esquina exacta, reseteamos.
-         // console.log(`[HOTSPOT] Borde detectado en (${x},${y}), ignorando.`);
-         currentCorner = '';
+      }
+
+      // Comprobar zona de histéresis/salida para esquinas
+      const inExitTop = y <= dy + HOTSPOT_EXIT_THRESHOLD;
+      const inExitBottom = y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD;
+      const inExitLeft = x <= dx + HOTSPOT_EXIT_THRESHOLD;
+      const inExitRight = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD;
+
+      if ((inExitTop && inExitLeft) || (inExitTop && inExitRight) ||
+          (inExitBottom && inExitLeft) || (inExitBottom && inExitRight)) {
+        isWithinExitZone = true;
+      }
+    }
+
+    // Gestionar salida de la zona de seguridad
+    if (!isWithinExitZone) {
+      hasCursorExitedSinceLastAction = true;
+      // Solo rearmar el cooldown si ya transcurrió el tiempo de seguridad
+      if (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS) {
+        lastHotspotCorner = '';
+        hotspotCooldown = false;
       }
     }
 
     if (currentCorner) {
-      if (hotspotCooldown) {
-        // Cursor still in corner after previous activation — do nothing until it leaves
+      // Para poder actuar, se deben cumplir tres condiciones:
+      // 1. No estar en cooldown activo.
+      // 2. El cursor debió haber salido físicamente de la zona tras la última acción.
+      // 3. Haber transcurrido al menos HOTSPOT_TOGGLE_SAFETY_MS (1.5s) desde la última acción.
+      const isSafetyMet = !hotspotCooldown &&
+                          hasCursorExitedSinceLastAction &&
+                          (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS);
+
+      if (!isSafetyMet) {
+        // En periodo de seguridad o cooldown: ignorar mientras el cursor permanezca en la esquina
       } else if (currentCorner === lastHotspotCorner) {
-        const timeInCorner = Date.now() - hotspotEntryTime;
+        const timeInCorner = now - hotspotEntryTime;
         if (timeInCorner >= hotspotDelay) {
           if (mainWindow && !mainWindow.isDestroyed()) {
-            console.log(`ACTIVACIÓN VÁLIDA: ${currentCorner} tras ${timeInCorner}ms (vis=${mainWindow.isVisible()})`);
-            checkUACActive((isUAC) => {
-              if (isUAC) {
-                console.log('[HOTSPOT] Ignored activation due to UAC detection');
-                pauseHotspots();
-                resumeHotspotsAfterUAC(1500);
+            hotspotCooldown = true;
+            hasCursorExitedSinceLastAction = false;
+            lastHotspotActionTime = now;
+            lastHotspotCorner = currentCorner;
+
+            if (mainWindow.isVisible()) {
+              console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+              if (mainWindow.isAlwaysOnTop()) {
+                mainWindow.webContents.send('always-on-top-blur-attempt');
               } else {
-                toggleWindow();
-                hotspotCooldown = true;
+                hideMainWindow();
               }
-            });
+            } else {
+              console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+              showMainWindow();
+            }
           }
-          lastHotspotCorner = ''; 
         }
       } else {
         lastHotspotCorner = currentCorner;
-        hotspotEntryTime = Date.now();
-        // Si delay es 0, activar inmediatamente sin esperar otro ciclo
+        hotspotEntryTime = now;
+        // Si delay es 0, activar/ocultar inmediatamente sin esperar otro ciclo
         if (hotspotDelay === 0 && mainWindow && !mainWindow.isDestroyed()) {
-          console.log(`ACTIVACIÓN INMEDIATA: ${currentCorner} (vis=${mainWindow.isVisible()})`);
-          checkUACActive((isUAC) => {
-            if (isUAC) {
-              console.log('[HOTSPOT] Ignored immediate activation due to UAC detection');
-              pauseHotspots();
-              resumeHotspotsAfterUAC(1500);
+          hotspotCooldown = true;
+          hasCursorExitedSinceLastAction = false;
+          lastHotspotActionTime = now;
+          lastHotspotCorner = currentCorner;
+
+          if (mainWindow.isVisible()) {
+            console.log(`OCULTAMIENTO INMEDIATO POR HOTSPOT: ${currentCorner}`);
+            if (mainWindow.isAlwaysOnTop()) {
+              mainWindow.webContents.send('always-on-top-blur-attempt');
             } else {
-              toggleWindow();
-              hotspotCooldown = true;
-              lastHotspotCorner = '';
+              hideMainWindow();
             }
-          });
+          } else {
+            console.log(`ACTIVACIÓN INMEDIATA POR HOTSPOT: ${currentCorner}`);
+            showMainWindow();
+          }
         }
       }
-    } else {
-      // Cursor left the corner — allow future activations
-      lastHotspotCorner = '';
-      hotspotCooldown = false;
     }
   }, 100);
 }
