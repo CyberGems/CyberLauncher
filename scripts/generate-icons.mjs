@@ -32,6 +32,47 @@ async function svgToPng16(svgBuf, dest) {
     .toFile(dest);
 }
 
+async function extractIcoLayers(icoBuf) {
+  const count = icoBuf.readUInt16LE(4);
+  const layers = new Map();
+  for (let i = 0; i < count; i++) {
+    const off = 6 + i * 16;
+    const w = icoBuf.readUInt8(off) || 256;
+    const h = icoBuf.readUInt8(off + 1) || 256;
+    const bpp = icoBuf.readUInt16LE(off + 6);
+    const size = icoBuf.readUInt32LE(off + 8);
+    const offset = icoBuf.readUInt32LE(off + 12);
+    if (bpp !== 32) continue;
+
+    const slice = icoBuf.subarray(offset, offset + size);
+    if (slice.readUInt32BE(0) === 0x89504e47) {
+      // Direct PNG layer
+      layers.set(w, slice);
+    } else {
+      // 32bpp DIB (BITMAPINFOHEADER + BGRA pixels)
+      const dibHeaderSize = slice.readUInt32LE(0);
+      const rawPixels = slice.subarray(dibHeaderSize, dibHeaderSize + w * h * 4);
+      const pixels = Buffer.alloc(w * h * 4);
+      for (let y = 0; y < h; y++) {
+        const srcRow = h - 1 - y;
+        for (let x = 0; x < w; x++) {
+          const srcIdx = (srcRow * w + x) * 4;
+          const dstIdx = (y * w + x) * 4;
+          pixels[dstIdx] = rawPixels[srcIdx + 2]; // R
+          pixels[dstIdx + 1] = rawPixels[srcIdx + 1]; // G
+          pixels[dstIdx + 2] = rawPixels[srcIdx]; // B
+          pixels[dstIdx + 3] = rawPixels[srcIdx + 3]; // A
+        }
+      }
+      const pngBuf = await sharp(pixels, { raw: { width: w, height: h, channels: 4 } })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      layers.set(w, pngBuf);
+    }
+  }
+  return layers;
+}
+
 async function main() {
   if (!fs.existsSync(srcPng)) {
     throw new Error(`Missing ${srcPng} — place the 1024×1024 master PNG in artifacts/`);
@@ -43,15 +84,25 @@ async function main() {
   fs.mkdirSync(pub, { recursive: true });
   fs.mkdirSync(menuDir, { recursive: true });
 
+  const icoBuf = fs.readFileSync(srcIco);
+  const icoLayers = await extractIcoLayers(icoBuf);
+
   fs.copyFileSync(srcIco, path.join(pub, 'icon.ico'));
   fs.copyFileSync(srcPng, path.join(pub, 'icon.png'));
 
-  for (const size of [16, 20, 24, 32, 256]) {
-    await sharp(srcPng)
-      .resize(size, size, { kernel: 'lanczos3', fit: 'contain' })
-      .png({ compressionLevel: 9 })
-      .toFile(path.join(pub, `icon-${size}.png`));
-    console.log('wrote', `icon-${size}.png`);
+  // Generate or extract pixel-perfect representations for tray (16, 20, 24, 32, 40) and web/readme (256)
+  for (const size of [16, 20, 24, 32, 40, 256]) {
+    const dest = path.join(pub, `icon-${size}.png`);
+    if (icoLayers.has(size)) {
+      fs.writeFileSync(dest, icoLayers.get(size));
+      console.log('extracted from ICO:', `icon-${size}.png`);
+    } else {
+      await sharp(srcPng)
+        .resize(size, size, { kernel: 'lanczos3', fit: 'contain' })
+        .png({ compressionLevel: 9 })
+        .toFile(dest);
+      console.log('resized from PNG:', `icon-${size}.png`);
+    }
   }
   console.log('wrote icon.ico, icon.png');
 

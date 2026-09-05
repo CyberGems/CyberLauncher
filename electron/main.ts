@@ -296,18 +296,22 @@ function getAppIcon() {
 
 // Tray: never use a lone 16×16 PNG — Windows HiDPI upscales it and it looks
 // softer than the taskbar icon (which loads the multi-size ICO). Build a
-// nativeImage with 16/20/24/32 representations from the generated PNGs; ICO fallback.
+// nativeImage with 16/20/24/32/40 representations from the generated PNGs; ICO fallback.
+// IMPORTANT: in addRepresentation(), width and height must be the logical DIP size (16),
+// NOT the physical pixel size. Otherwise Electron registers them under non-16 DIP slots
+// and Windows falls back to upscaling the 1.0x 16px bitmap, causing severe blurriness.
 function getTrayIcon() {
   const dir = VITE_DEV_SERVER_URL
     ? path.join(__dirname, '../public')
     : path.join(__dirname, '../dist');
 
   const img = nativeImage.createEmpty();
-  const reps: Array<{ scale: number; file: string; size: number }> = [
-    { scale: 1, file: 'icon-16.png', size: 16 },
-    { scale: 1.25, file: 'icon-20.png', size: 20 },
-    { scale: 1.5, file: 'icon-24.png', size: 24 },
-    { scale: 2, file: 'icon-32.png', size: 32 },
+  const reps: Array<{ scale: number; file: string }> = [
+    { scale: 1, file: 'icon-16.png' },
+    { scale: 1.25, file: 'icon-20.png' },
+    { scale: 1.5, file: 'icon-24.png' },
+    { scale: 2, file: 'icon-32.png' },
+    { scale: 2.5, file: 'icon-40.png' },
   ];
   for (const r of reps) {
     const p = path.join(dir, r.file);
@@ -316,8 +320,8 @@ function getTrayIcon() {
     if (slice.isEmpty()) continue;
     img.addRepresentation({
       scaleFactor: r.scale,
-      width: r.size,
-      height: r.size,
+      width: 16,
+      height: 16,
       buffer: slice.toPNG(),
     });
   }
