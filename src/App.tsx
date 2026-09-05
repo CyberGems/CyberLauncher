@@ -220,7 +220,7 @@ declare global {
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
-      onOpenAbout: (callback: () => void) => () => void;
+      onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
       getAppVersions: () => Promise<{
         app: string; electron: string; chrome: string; node: string;
         platform: string; arch: string; osRelease: string; osType: string;
@@ -1736,6 +1736,7 @@ export default function App() {
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
   const updateNotifSeenRef = useRef<string>('');
@@ -1966,7 +1967,8 @@ export default function App() {
       }));
     }
     if (window.electronAPI.onOpenAbout) {
-      unsubs.push(window.electronAPI.onOpenAbout(() => {
+      unsubs.push(window.electronAPI.onOpenAbout((opts) => {
+        setAboutAutoCheck(!!opts?.checkUpdates);
         setIsAboutOpen(true);
       }));
     }
@@ -4639,8 +4641,13 @@ export default function App() {
             t={t}
             autoUpdate={autoUpdate}
             onAutoUpdateChange={handleAutoUpdateChange}
-            onClose={() => setIsAboutOpen(false)}
+            onClose={() => {
+              setIsAboutOpen(false);
+              setAboutAutoCheck(false);
+            }}
             isElectron={isElectron}
+            autoCheck={aboutAutoCheck}
+            onAutoCheckHandled={() => setAboutAutoCheck(false)}
           />
         )}
       </AnimatePresence>

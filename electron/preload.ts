@@ -114,8 +114,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-settings', handler);
     return () => { ipcRenderer.removeListener('open-settings', handler); };
   },
-  onOpenAbout: (callback: () => void) => {
-    const handler = () => callback();
+  onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => {
+    const handler = (_event: any, opts?: { checkUpdates?: boolean }) => callback(opts);
     ipcRenderer.on('open-about', handler);
     return () => { ipcRenderer.removeListener('open-about', handler); };
   },

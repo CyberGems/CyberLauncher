@@ -693,17 +693,31 @@ function createWindow() {
 // =====================================
 // SYSTEM TRAY (Bandeja del sistema)
 // =====================================
+// MENU CONTEXTUAL DEL TRAY (BILINGÜE)
+// =====================================
 const TRAY_I18N = {
   es: {
     showHide: 'Mostrar / Ocultar',
     settings: 'Configuración...',
+    help: 'Ayuda',
+    faq: 'Preguntas frecuentes',
+    changelog: 'Changelog',
+    homepage: 'Sitio web',
+    donate: 'Donar',
     about: 'Acerca de...',
+    checkUpdates: 'Buscar actualizaciones...',
     quit: 'Salir',
   },
   en: {
     showHide: 'Show / Hide',
     settings: 'Settings...',
+    help: 'Help',
+    faq: 'Frequently Asked Questions',
+    changelog: 'Changelog',
+    homepage: 'Website',
+    donate: 'Donate',
     about: 'About...',
+    checkUpdates: 'Check for Update...',
     quit: 'Exit',
   },
 } as const;
@@ -747,7 +761,7 @@ let pendingHideAfterTray = false;
 let trayMenuCloseFallback: ReturnType<typeof setTimeout> | null = null;
 /** Bumped on every right-click / menu-will-show so a delayed left-click can cancel. */
 let trayRightClickSeq = 0;
-type TrayPendingAction = 'show' | 'hide' | 'settings' | 'about' | 'quit';
+type TrayPendingAction = 'show' | 'hide' | 'settings' | 'about' | 'check-updates' | 'quit';
 let pendingTrayAction: TrayPendingAction | null = null;
 
 /** Brief post-menu blur ignore only — never used to block hideMainWindow. */
@@ -766,14 +780,22 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
   const parts = t.showHide.split(' / ');
   const dynamicLabel = isVisible ? (parts[1] || 'Hide') : (parts[0] || 'Show');
+  const iconBrand = loadMenuIcon('brand.png');
   const iconShow = loadMenuIcon('show-hide.png');
   const iconSettings = loadMenuIcon('settings.png');
+  const iconHelp = loadMenuIcon('help.png');
+  const iconFaq = loadMenuIcon('faq.png');
+  const iconChangelog = loadMenuIcon('changelog.png');
+  const iconHome = loadMenuIcon('homepage.png');
+  const iconDonate = loadMenuIcon('donate.png');
   const iconAbout = loadMenuIcon('about.png');
+  const iconUpdate = loadMenuIcon('update.png');
   const iconQuit = loadMenuIcon('quit.png');
 
   return [
     {
       label: `CyberLauncher v${version}`,
+      ...(iconBrand ? { icon: iconBrand } : {}),
       click: () => { pendingTrayAction = 'about'; },
     },
     { type: 'separator' },
@@ -789,9 +811,46 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       click: () => { pendingTrayAction = 'settings'; },
     },
     {
-      label: t.about,
-      ...(iconAbout ? { icon: iconAbout } : {}),
-      click: () => { pendingTrayAction = 'about'; },
+      label: t.help,
+      ...(iconHelp ? { icon: iconHelp } : {}),
+      submenu: [
+        {
+          label: t.help,
+          ...(iconHelp ? { icon: iconHelp } : {}),
+          click: () => { void shell.openExternal('https://github.com/CyberGems/CyberLauncher/wiki'); },
+        },
+        {
+          label: t.faq,
+          ...(iconFaq ? { icon: iconFaq } : {}),
+          click: () => { void shell.openExternal('https://github.com/CyberGems/CyberLauncher/wiki/FAQ'); },
+        },
+        {
+          label: t.changelog,
+          ...(iconChangelog ? { icon: iconChangelog } : {}),
+          click: () => { void shell.openExternal('https://github.com/CyberGems/CyberLauncher/releases'); },
+        },
+        {
+          label: t.homepage,
+          ...(iconHome ? { icon: iconHome } : {}),
+          click: () => { void shell.openExternal('https://cybergems.org'); },
+        },
+        {
+          label: t.donate,
+          ...(iconDonate ? { icon: iconDonate } : {}),
+          click: () => { void shell.openExternal('https://github.com/CyberGems/CyberLauncher#%EF%B8%8F-donate'); },
+        },
+        { type: 'separator' },
+        {
+          label: t.about,
+          ...(iconAbout ? { icon: iconAbout } : {}),
+          click: () => { pendingTrayAction = 'about'; },
+        },
+        {
+          label: t.checkUpdates,
+          ...(iconUpdate ? { icon: iconUpdate } : {}),
+          click: () => { pendingTrayAction = 'check-updates'; },
+        },
+      ],
     },
     { type: 'separator' },
     {
@@ -858,10 +917,16 @@ function executePendingTrayAction() {
     applyRendererThrottling();
     return;
   }
-  if (action === 'show' || action === 'settings' || action === 'about') {
+  if (action === 'show' || action === 'settings' || action === 'about' || action === 'check-updates') {
     showMainWindow();
     if (action !== 'show' && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(action === 'settings' ? 'open-settings' : 'open-about');
+      if (action === 'settings') {
+        mainWindow.webContents.send('open-settings');
+      } else if (action === 'check-updates') {
+        mainWindow.webContents.send('open-about', { checkUpdates: true });
+      } else {
+        mainWindow.webContents.send('open-about', { checkUpdates: false });
+      }
     }
     applyRendererThrottling();
     return;

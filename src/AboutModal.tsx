@@ -36,6 +36,8 @@ type Props = {
   onAutoUpdateChange: (enabled: boolean) => void;
   onClose: () => void;
   isElectron: boolean;
+  autoCheck?: boolean;
+  onAutoCheckHandled?: () => void;
 };
 
 function platformLabel(platform: string): string {
@@ -52,6 +54,8 @@ export default function AboutModal({
   onAutoUpdateChange,
   onClose,
   isElectron,
+  autoCheck,
+  onAutoCheckHandled,
 }: Props) {
   const [versions, setVersions] = useState<AppVersions | null>(null);
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
@@ -73,7 +77,7 @@ export default function AboutModal({
 
   const appVersion = versions?.app || '';
 
-  const handleCheck = async () => {
+  const handleCheck = useCallback(async () => {
     if (!window.electronAPI?.checkForUpdates) {
       setStatus({ state: 'error', message: 'Updater unavailable in this environment' });
       return;
@@ -93,7 +97,14 @@ export default function AboutModal({
     } catch (e) {
       setStatus({ state: 'error', message: String((e as Error)?.message || e) });
     }
-  };
+  }, [appVersion]);
+
+  useEffect(() => {
+    if (autoCheck) {
+      onAutoCheckHandled?.();
+      void handleCheck();
+    }
+  }, [autoCheck, handleCheck, onAutoCheckHandled]);
 
   const handleDownload = async () => {
     await window.electronAPI?.downloadUpdate?.();
