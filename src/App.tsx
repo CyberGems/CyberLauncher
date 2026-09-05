@@ -1519,7 +1519,11 @@ export default function App() {
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  type KeyboardNavTarget = { section: 'favorites' | 'apps'; index: number };
+  const [keyboardNav, setKeyboardNav] = useState<KeyboardNavTarget | null>(null);
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -2370,6 +2374,8 @@ export default function App() {
         searchInputRef.current?.select();
       }, 50);
 
+      setKeyboardNav(null);
+
       if (localStorage.getItem('resetOnLaunch') === 'false') return;
 
       setActiveCategory(prev => (prev === 'all' ? prev : 'all'));
@@ -2693,53 +2699,11 @@ export default function App() {
     const handleGlobalClick = () => {
       if (contextMenu) setContextMenu(null);
       if (systemContextMenu) setSystemContextMenu(null);
+      setKeyboardNav(null);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
   }, [contextMenu, systemContextMenu]);
-
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (isRecordingShortcut) return;
-
-      // Category speed dialing: Alt + number (1 to 9)
-      if (e.altKey && e.key >= '1' && e.key <= '9') {
-        const index = parseInt(e.key, 10) - 1;
-        if (index < categories.length) {
-          e.preventDefault();
-          setActiveCategory(categories[index].id);
-        }
-      }
-
-      if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-      } else if (e.code === 'Escape') {
-        if (isRecordingAppShortcut) {
-          setIsRecordingAppShortcut(false);
-        } else if (isSystemHUDOpen) {
-          setIsSystemHUDOpen(false);
-        } else if (isStorageHUDOpen) {
-          setIsStorageHUDOpen(false);
-        } else if (isSettingsOpen) {
-          setIsSettingsOpen(false);
-        } else if (isAboutOpen) {
-          setIsAboutOpen(false);
-        } else if (editingApp) {
-          setEditingApp(null);
-        } else if (isAddingApp) {
-          setIsAddingApp(false);
-        } else if (searchQuery) {
-          setSearchQuery('');
-        } else if (isElectron) {
-          window.electronAPI!.windowHideToTray();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp, searchQuery, categories, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen]);
 
   const handleLaunchApp = async (app: LauncherApp) => {
     // Incrementar contadores de uso
@@ -3062,6 +3026,428 @@ export default function App() {
     [launchHistory]
   );
   const animateAppCards = filteredApps.length <= 48;
+
+  const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen;
+
+  const getGridColumnCount = useCallback((): number => {
+    if (!gridContainerRef.current) return 1;
+    const cards = gridContainerRef.current.querySelectorAll<HTMLElement>('[data-app-card]');
+    if (cards.length <= 1) return 1;
+    const firstTop = cards[0].offsetTop;
+    let cols = 0;
+    for (let i = 0; i < cards.length; i++) {
+      if (Math.abs(cards[i].offsetTop - firstTop) < 8) {
+        cols++;
+      } else {
+        break;
+      }
+    }
+    return Math.max(1, cols);
+  }, []);
+
+  // Auto-scroll cuando cambia la selección por teclado
+  useEffect(() => {
+    if (!keyboardNav) return;
+    const selector = keyboardNav.section === 'favorites'
+      ? `[data-nav-fav-index="${keyboardNav.index}"]`
+      : `[data-nav-app-index="${keyboardNav.index}"]`;
+    const el = document.querySelector(selector);
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [keyboardNav]);
+
+  // Reset keyboardNav cuando cambia categoría activa o modo de búsqueda
+  useEffect(() => {
+    setKeyboardNav(null);
+  }, [activeCategory, searchScope]);
+
+  const handleCyberKeyboardNav = useCallback((e: React.KeyboardEvent | KeyboardEvent): boolean => {
+    if (isAnyModalOpen || contextMenu || systemContextMenu) return false;
+    if (searchScope !== 'cyber' || searchQuery.startsWith('>')) return false;
+
+    const totalApps = filteredApps.length;
+    const totalFavs = isFavoritesVisible ? favorites.length : 0;
+    const cols = getGridColumnCount();
+
+    // Context Menu (tecla ContextMenu o Shift+F10)
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+      if (keyboardNav) {
+        e.preventDefault();
+        const app = keyboardNav.section === 'favorites'
+          ? favorites[keyboardNav.index]
+          : filteredApps[keyboardNav.index];
+        if (app) {
+          const selector = keyboardNav.section === 'favorites'
+            ? `[data-nav-fav-index="${keyboardNav.index}"]`
+            : `[data-nav-app-index="${keyboardNav.index}"]`;
+          const el = document.querySelector(selector);
+          const rect = el?.getBoundingClientRect();
+          setContextMenu({
+            x: rect ? Math.min(rect.right - 10, window.innerWidth - 220) : 200,
+            y: rect ? Math.min(rect.bottom - 10, window.innerHeight - 250) : 200,
+            app
+          });
+        }
+        return true;
+      }
+      return false;
+    }
+
+    // Escape con elemento seleccionado: deselecciona y regresa el foco al buscador
+    if (e.key === 'Escape') {
+      if (keyboardNav) {
+        e.preventDefault();
+        setKeyboardNav(null);
+        searchInputRef.current?.focus();
+        return true;
+      }
+      return false;
+    }
+
+    // Enter
+    if (e.key === 'Enter') {
+      if (keyboardNav) {
+        e.preventDefault();
+        const app = keyboardNav.section === 'favorites'
+          ? favorites[keyboardNav.index]
+          : filteredApps[keyboardNav.index];
+        if (app) {
+          handleLaunchApp(app);
+          setKeyboardNav(null);
+        }
+        return true;
+      } else if (searchQuery.trim() !== '' && totalApps > 0) {
+        e.preventDefault();
+        handleLaunchApp(filteredApps[0]);
+        return true;
+      }
+      return false;
+    }
+
+    // Sin elemento seleccionado aún
+    if (!keyboardNav) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (totalFavs > 0) {
+          setKeyboardNav({ section: 'favorites', index: 0 });
+        } else if (totalApps > 0) {
+          setKeyboardNav({ section: 'apps', index: 0 });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowUp') {
+        // Sin loop: el foco ya está en el extremo superior (buscador)
+        return false;
+      }
+
+      if (e.key === 'ArrowRight') {
+        if (searchQuery === '') {
+          e.preventDefault();
+          if (totalFavs > 0) {
+            setKeyboardNav({ section: 'favorites', index: 0 });
+          } else if (totalApps > 0) {
+            setKeyboardNav({ section: 'apps', index: 0 });
+          }
+          return true;
+        }
+        return false;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        // Sin loop hacia el final
+        return false;
+      }
+
+      if (e.key === 'Home') {
+        if (searchQuery === '') {
+          e.preventDefault();
+          if (totalFavs > 0) {
+            setKeyboardNav({ section: 'favorites', index: 0 });
+          } else if (totalApps > 0) {
+            setKeyboardNav({ section: 'apps', index: 0 });
+          }
+          return true;
+        }
+        return false;
+      }
+
+      if (e.key === 'End') {
+        if (searchQuery === '') {
+          e.preventDefault();
+          if (totalApps > 0) {
+            setKeyboardNav({ section: 'apps', index: totalApps - 1 });
+          } else if (totalFavs > 0) {
+            setKeyboardNav({ section: 'favorites', index: totalFavs - 1 });
+          }
+          return true;
+        }
+        return false;
+      }
+
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        if (totalApps > 0) {
+          setKeyboardNav({ section: 'apps', index: 0 });
+        } else if (totalFavs > 0) {
+          setKeyboardNav({ section: 'favorites', index: 0 });
+        }
+        return true;
+      }
+
+      if (e.key === 'PageUp') {
+        return false;
+      }
+
+      return false;
+    }
+
+    // Navegación en FAVORITOS
+    if (keyboardNav.section === 'favorites') {
+      const idx = keyboardNav.index;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (idx < totalFavs - 1) {
+          setKeyboardNav({ section: 'favorites', index: idx + 1 });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (idx > 0) {
+          setKeyboardNav({ section: 'favorites', index: idx - 1 });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (totalApps > 0) {
+          setKeyboardNav({ section: 'apps', index: Math.min(idx, totalApps - 1, cols - 1) });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setKeyboardNav(null);
+        searchInputRef.current?.focus();
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+        return true;
+      }
+
+      if (e.key === 'Home') {
+        e.preventDefault();
+        setKeyboardNav({ section: 'favorites', index: 0 });
+        return true;
+      }
+
+      if (e.key === 'End') {
+        e.preventDefault();
+        setKeyboardNav({ section: 'favorites', index: totalFavs - 1 });
+        return true;
+      }
+
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        if (totalApps > 0) {
+          setKeyboardNav({ section: 'apps', index: 0 });
+        }
+        return true;
+      }
+
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        setKeyboardNav(null);
+        searchInputRef.current?.focus();
+        if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+        return true;
+      }
+
+      return false;
+    }
+
+    // Navegación en APPS
+    if (keyboardNav.section === 'apps') {
+      const idx = keyboardNav.index;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (idx < totalApps - 1) {
+          setKeyboardNav({ section: 'apps', index: idx + 1 });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (idx > 0) {
+          setKeyboardNav({ section: 'apps', index: idx - 1 });
+        }
+        return true;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentRow = Math.floor(idx / cols);
+        const totalRows = Math.ceil(totalApps / cols);
+        // Si no estamos en la última fila, avanzar a la siguiente fila
+        if (currentRow < totalRows - 1) {
+          const next = Math.min(totalApps - 1, idx + cols);
+          setKeyboardNav({ section: 'apps', index: next });
+        }
+        // Si ya estamos en la última fila, no hacer nada (tope sin loop)
+        return true;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = idx - cols;
+        if (prev >= 0) {
+          setKeyboardNav({ section: 'apps', index: prev });
+        } else {
+          if (totalFavs > 0) {
+            setKeyboardNav({ section: 'favorites', index: Math.min(idx, totalFavs - 1) });
+          } else {
+            setKeyboardNav(null);
+            searchInputRef.current?.focus();
+            if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+          }
+        }
+        return true;
+      }
+
+      if (e.key === 'Home') {
+        e.preventDefault();
+        setKeyboardNav({ section: 'apps', index: 0 });
+        return true;
+      }
+
+      if (e.key === 'End') {
+        e.preventDefault();
+        setKeyboardNav({ section: 'apps', index: totalApps - 1 });
+        return true;
+      }
+
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        const pageSize = Math.max(cols * 4, 8);
+        setKeyboardNav({ section: 'apps', index: Math.min(totalApps - 1, idx + pageSize) });
+        return true;
+      }
+
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        const pageSize = Math.max(cols * 4, 8);
+        const target = idx - pageSize;
+        if (target >= 0) {
+          setKeyboardNav({ section: 'apps', index: target });
+        } else if (totalFavs > 0) {
+          setKeyboardNav({ section: 'favorites', index: 0 });
+        } else {
+          setKeyboardNav({ section: 'apps', index: 0 });
+        }
+        return true;
+      }
+
+      return false;
+    }
+
+    return false;
+  }, [
+    isAnyModalOpen, contextMenu, systemContextMenu, searchScope, searchQuery,
+    filteredApps, favorites, isFavoritesVisible, getGridColumnCount, keyboardNav,
+    handleLaunchApp
+  ]);
+
+  // Keyboard Shortcuts globales
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (isRecordingShortcut) return;
+
+      // Category speed dialing: Alt + number (1 to 9)
+      if (e.altKey && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key, 10) - 1;
+        if (index < categories.length) {
+          e.preventDefault();
+          setActiveCategory(categories[index].id);
+          setKeyboardNav(null);
+        }
+        return;
+      }
+
+      if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if (contextMenu && e.key === 'Escape') {
+        e.preventDefault();
+        setContextMenu(null);
+        return;
+      }
+
+      if (systemContextMenu && e.key === 'Escape') {
+        e.preventDefault();
+        setSystemContextMenu(null);
+        return;
+      }
+
+      if (e.code === 'Escape') {
+        if (isRecordingAppShortcut) {
+          setIsRecordingAppShortcut(false);
+        } else if (keyboardNav) {
+          e.preventDefault();
+          setKeyboardNav(null);
+          searchInputRef.current?.focus();
+        } else if (isSystemHUDOpen) {
+          setIsSystemHUDOpen(false);
+        } else if (isStorageHUDOpen) {
+          setIsStorageHUDOpen(false);
+        } else if (isSettingsOpen) {
+          setIsSettingsOpen(false);
+        } else if (isAboutOpen) {
+          setIsAboutOpen(false);
+        } else if (editingApp) {
+          setEditingApp(null);
+        } else if (isAddingApp) {
+          setIsAddingApp(false);
+        } else if (searchQuery) {
+          setSearchQuery('');
+        } else if (isElectron) {
+          window.electronAPI!.windowHideToTray();
+        }
+        return;
+      }
+
+      // Si el foco no está en un input/textarea:
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+
+      if (!isInputFocused && !isAnyModalOpen) {
+        if (handleCyberKeyboardNav(e)) {
+          return;
+        }
+
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+          searchInputRef.current?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
+    searchQuery, categories, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
+    contextMenu, systemContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
+  ]);
 
   const getBackgroundStyle = () => {
     if (bgType === 'image') {
@@ -3535,6 +3921,7 @@ export default function App() {
               onChange={(e) => {
                 const val = e.target.value;
                 setSearchQuery(val);
+                setKeyboardNav(null);
                 if (val.length > 0) {
                   setShowSearchGuide(false);
                   if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
@@ -3552,6 +3939,15 @@ export default function App() {
                   e.preventDefault();
                   if (!searchQuery.startsWith('>')) {
                     setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
+                  }
+                  return;
+                }
+
+                if (contextMenu) {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setContextMenu(null);
+                    return;
                   }
                 }
 
@@ -3653,6 +4049,10 @@ export default function App() {
                     }
                     return;
                   }
+                }
+
+                if (handleCyberKeyboardNav(e)) {
+                  return;
                 }
 
                 if (e.key === 'Enter' && searchQuery.trim().startsWith('>')) {
@@ -4122,42 +4522,51 @@ export default function App() {
                   e.dataTransfer.dropEffect = 'move';
                 }}
               >
-                {favorites.map((app) => (
-                  <Tooltip
-                    key={`fav-${app.id}`}
-                    placement="bottom"
-                    label={
-                      <span className="flex flex-col items-center gap-0.5">
-                        <span>{app.name}</span>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
-                          {getCategoryDisplayName(app.category, t)}
+                {favorites.map((app, favIdx) => {
+                  const isFavSelected = keyboardNav?.section === 'favorites' && keyboardNav.index === favIdx;
+                  return (
+                    <Tooltip
+                      key={`fav-${app.id}`}
+                      placement="bottom"
+                      label={
+                        <span className="flex flex-col items-center gap-0.5">
+                          <span>{app.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
+                            {getCategoryDisplayName(app.category, t)}
+                          </span>
                         </span>
-                      </span>
-                    }
-                  >
-                    <div
-                      draggable
-                      // @ts-ignore
-                      onDragStart={(e) => handleDragStart(e, app.id)}
-                      onDragOver={(e) => handleFavDragOver(e, app.id)}
-                      onDrop={(e) => handleDrop(e, app.id)}
-                      // @ts-ignore
-                      onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
-                      onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
-                      onContextMenu={(e: any) => handleContextMenu(e, app)}
-                      onClick={() => handleLaunchApp(app)}
-                      className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
-                        draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
-                      } ${favDropTarget === app.id
-                        ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
-                        : 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95'
-                      } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
+                      }
                     >
-                      <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.05] rounded-2xl transition-opacity duration-100 pointer-events-none" />
-                      <AppIcon app={app} className="w-6 h-6 z-10" />
-                    </div>
-                  </Tooltip>
-                ))}
+                      <div
+                        data-nav-fav-index={favIdx}
+                        draggable
+                        // @ts-ignore
+                        onDragStart={(e) => handleDragStart(e, app.id)}
+                        onDragOver={(e) => handleFavDragOver(e, app.id)}
+                        onDrop={(e) => handleDrop(e, app.id)}
+                        // @ts-ignore
+                        onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
+                        onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
+                        onContextMenu={(e: any) => handleContextMenu(e, app)}
+                        onClick={() => {
+                          setKeyboardNav(null);
+                          handleLaunchApp(app);
+                        }}
+                        className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
+                          isFavSelected
+                            ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 scale-105 -translate-y-0.5 z-30'
+                            : draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
+                        } ${!isFavSelected && favDropTarget === app.id
+                          ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
+                          : !isFavSelected ? 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95' : ''
+                        } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
+                      >
+                        <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.05] rounded-2xl transition-opacity duration-100 pointer-events-none" />
+                        <AppIcon app={app} className="w-6 h-6 z-10" />
+                      </div>
+                    </Tooltip>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -4209,6 +4618,7 @@ export default function App() {
             </div>
 
             <div 
+              ref={gridContainerRef}
               className={viewMode === 'grid' ? "grid" : "grid items-start content-start"}
               style={{
                 gridTemplateColumns: viewMode === 'grid' 
@@ -4220,6 +4630,7 @@ export default function App() {
               }}
             >
               {filteredApps.flatMap((app, index) => {
+                const isAppSelected = keyboardNav?.section === 'apps' && keyboardNav.index === index;
                 const elements = [];
                 const CardShell: any = animateAppCards ? motion.div : 'div';
                 const motionProps = animateAppCards
@@ -4259,8 +4670,13 @@ export default function App() {
                   <CardShell
                     {...motionProps}
                     key={`app-${viewMode}-${activeCategory}-${app.id}`}
+                    data-app-card="true"
+                    data-nav-app-index={index}
                     onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, app)}
-                    onClick={() => handleLaunchApp(app)}
+                    onClick={() => {
+                      setKeyboardNav(null);
+                      handleLaunchApp(app);
+                    }}
                     style={{
                       padding: viewMode === 'grid' 
                         ? `${12 * (cardScale / 100)}px` 
@@ -4272,8 +4688,16 @@ export default function App() {
                       containIntrinsicSize: viewMode === 'grid' ? '120px' : '56px',
                     }}
                     className={viewMode === 'grid'
-                      ? "relative group bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10 active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-xl shadow-black/30 focus-within:ring-2 focus-within:ring-blue-500/50 cursor-pointer overflow-hidden"
-                      : "flex items-center justify-between bg-black/20 backdrop-blur-xl border border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01] active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-md overflow-hidden"
+                      ? `relative group bg-black/20 backdrop-blur-xl border ${
+                          isAppSelected
+                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.45),0_8px_20px_rgba(0,0,0,0.5)] bg-white/[0.12] scale-[1.03] -translate-y-0.5 z-20"
+                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10"
+                        } active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-xl shadow-black/30 cursor-pointer overflow-hidden`
+                      : `flex items-center justify-between bg-black/20 backdrop-blur-xl border ${
+                          isAppSelected
+                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_16px_rgba(34,211,238,0.4),0_6px_16px_rgba(0,0,0,0.45)] bg-white/[0.12] scale-[1.01] z-20"
+                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01]"
+                        } active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-md overflow-hidden`
                     }
                   >
                     {viewMode === 'grid' ? (

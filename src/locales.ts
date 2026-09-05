@@ -199,7 +199,7 @@ export const translations = {
     // Placeholder Info Text below input
     hint_console_enter: "Presiona [Enter] para ejecutar",
     hint_system_tab: "Presiona [Tab] para volver al Launcher",
-    hint_normal_console: "Escribe '>' para consola o [Tab] para buscar en sistema",
+    hint_normal_console: "Navega con [↑/↓/←/→] • '>' consola • [Tab] sistema",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexando unidad entera {drive}...",
@@ -567,7 +567,7 @@ export const translations = {
     // Placeholder Info Text below input
     hint_console_enter: "Press [Enter] to execute command",
     hint_system_tab: "Press [Tab] to go back to Launcher",
-    hint_normal_console: "Type '>' for console or [Tab] to search system files",
+    hint_normal_console: "Navigate with [↑/↓/←/→] • '>' console • [Tab] system",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexing full drive {drive}...",
