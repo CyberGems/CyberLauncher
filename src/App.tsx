@@ -156,9 +156,24 @@ const CyberIcon = ({ className, style }: { className?: string, style?: React.CSS
 );
 
 const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [app.iconPath]);
+
   // 1. Usar imagen personalizada (Base64 o local) si existe
-  if (app.iconPath) {
-    return <img src={app.iconPath} alt={app.name} className={`${className} object-contain`} style={style} draggable="false" />;
+  if (app.iconPath && !imgFailed) {
+    return (
+      <img
+        src={app.iconPath}
+        alt=""
+        onError={() => setImgFailed(true)}
+        className={`${className} object-contain`}
+        style={style}
+        draggable="false"
+      />
+    );
   }
 
   // 2. Usar componente de Lucide si es válido (solo para apps iniciales en la misma sesión)

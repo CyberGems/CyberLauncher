@@ -2777,12 +2777,14 @@ app.whenReady().then(() => {
   // Configurar el protocolo local-resource para cargar archivos locales
   protocol.handle('local-resource', async (request) => {
     try {
-      // Obtener la ruta cruda eliminando el prefijo del protocolo
-      const urlText = request.url;
-      let filePath = decodeURIComponent(urlText.replace('local-resource://', ''));
+      // Obtener la ruta cruda eliminando el prefijo del protocolo y los parámetros query/hash (?t=...)
+      const rawUrl = request.url.split('?')[0].split('#')[0];
+      let filePath = decodeURIComponent(rawUrl.replace(/^local-resource:\/\//i, ''));
       
       // En Windows, a veces quedan barras triples o iniciales
-      if (filePath.startsWith('/')) filePath = filePath.slice(1);
+      while (filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+      }
       
       // Asegurarnos de que las barras sean las del sistema
       filePath = path.normalize(filePath);
@@ -2804,7 +2806,10 @@ app.whenReady().then(() => {
       };
 
       return new Response(buffer, {
-        headers: { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' }
+        headers: {
+          'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+          'Cache-Control': 'no-cache'
+        }
       });
     } catch (e) {
       console.error('Error en protocolo local-resource:', e);
