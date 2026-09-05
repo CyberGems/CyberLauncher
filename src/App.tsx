@@ -3400,14 +3400,14 @@ export default function App() {
         isAltHeldRef.current = true;
       }
 
-      // Category speed dialing: Alt + number (1 to 9) via Digit1..9 or Numpad1..9
+      // Category speed dialing: Alt + number (1 to 9) or Alt + 0 for Uncategorized
       if (e.altKey) {
         let num: number | null = null;
-        if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '1' && e.code[5] <= '9') {
+        if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '0' && e.code[5] <= '9') {
           num = parseInt(e.code[5], 10);
-        } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '1' && e.code[6] <= '9') {
+        } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '0' && e.code[6] <= '9') {
           num = parseInt(e.code[6], 10);
-        } else if (e.key >= '1' && e.key <= '9') {
+        } else if (e.key >= '0' && e.key <= '9') {
           num = parseInt(e.key, 10);
         }
 
@@ -3416,6 +3416,11 @@ export default function App() {
           e.stopPropagation();
           altNumpadBlockedRef.current = true;
           searchInputRef.current?.blur();
+          if (num === 0) {
+            setActiveCategory(UNCATEGORIZED_ID);
+            setKeyboardNav(null);
+            return;
+          }
           const index = num - 1;
           if (index < categoriesWithCount.length) {
             setActiveCategory(categoriesWithCount[index].id);
@@ -3838,7 +3843,7 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-0.5 custom-scrollbar">
           {categoriesWithCount.map((cat, index) => {
             const isUncategorized = cat.id === UNCATEGORIZED_ID;
-            const hotkey = index < 9 ? `Alt+${index + 1}` : null;
+            const hotkey = isUncategorized ? 'Alt+0' : (index < 9 ? `Alt+${index + 1}` : null);
             const displayName = t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name;
 
             const buttonEl = (
@@ -4055,11 +4060,11 @@ export default function App() {
               onKeyDown={async (e) => {
                 if (e.altKey) {
                   let num: number | null = null;
-                  if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '1' && e.code[5] <= '9') {
+                  if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '0' && e.code[5] <= '9') {
                     num = parseInt(e.code[5], 10);
-                  } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '1' && e.code[6] <= '9') {
+                  } else if (e.code.startsWith('Numpad') && e.code.length === 7 && e.code[6] >= '0' && e.code[6] <= '9') {
                     num = parseInt(e.code[6], 10);
-                  } else if (e.key >= '1' && e.key <= '9') {
+                  } else if (e.key >= '0' && e.key <= '9') {
                     num = parseInt(e.key, 10);
                   }
 
@@ -4068,6 +4073,11 @@ export default function App() {
                     e.stopPropagation();
                     altNumpadBlockedRef.current = true;
                     searchInputRef.current?.blur();
+                    if (num === 0) {
+                      setActiveCategory(UNCATEGORIZED_ID);
+                      setKeyboardNav(null);
+                      return;
+                    }
                     const index = num - 1;
                     if (index < categoriesWithCount.length) {
                       setActiveCategory(categoriesWithCount[index].id);
