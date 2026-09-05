@@ -62,21 +62,27 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
   }, [anchor, placement]);
 
   useEffect(() => {
-    if (!anchor) return;
     const hide = () => setAnchor(null);
     window.addEventListener('scroll', hide, true);
     window.addEventListener('wheel', hide, true);
+    window.addEventListener('contextmenu', hide, true);
+    window.addEventListener('cyber-hide-tooltips', hide, true);
     return () => {
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('wheel', hide, true);
+      window.removeEventListener('contextmenu', hide, true);
+      window.removeEventListener('cyber-hide-tooltips', hide, true);
     };
-  }, [anchor]);
+  }, []);
 
   if (!isValidElement(children)) return children;
   const child = children as ReactElement<any>;
 
   const show = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseEnter?.(e);
+    if (document.body.getAttribute('data-context-menu-active') === 'true') {
+      return;
+    }
     if (label) setAnchor(e.currentTarget.getBoundingClientRect());
   };
   const hide = (e: ReactMouseEvent<HTMLElement>) => {
@@ -87,11 +93,16 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
     child.props.onClick?.(e);
     setAnchor(null);
   };
+  const contextMenuHide = (e: ReactMouseEvent<HTMLElement>) => {
+    child.props.onContextMenu?.(e);
+    setAnchor(null);
+  };
 
   const cloned = cloneElement(child, {
     onMouseEnter: show,
     onMouseLeave: hide,
     onClick: clickHide,
+    onContextMenu: contextMenuHide,
   });
 
   return (
@@ -102,7 +113,7 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
           position: 'fixed',
           left: pos ? pos.left : -9999,
           top: pos ? pos.top : -9999,
-          zIndex: 1000001,
+          zIndex: 90,
           pointerEvents: 'none',
           visibility: pos ? 'visible' : 'hidden',
         }}>

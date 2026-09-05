@@ -232,7 +232,8 @@ declare global {
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
-      registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) => Promise<{ success: boolean }>;
+      registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
+      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => () => void;
       runShellCommand: (command: string) => Promise<{ success: boolean; cmdId?: string; error?: string }>;
       onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
@@ -1526,6 +1527,7 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: LauncherApp | null } | null>(null);
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; category: typeof INITIAL_CATEGORIES[0] } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
+  const lastContextMenuDismissedRef = useRef(0);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -1581,6 +1583,17 @@ export default function App() {
   React.useEffect(() => {
     systemContextMenuIndexRef.current = systemContextMenuIndex;
   }, [systemContextMenuIndex]);
+
+  const isAnyContextMenuOpen = !!(contextMenu || systemContextMenu || categoryContextMenu);
+
+  useEffect(() => {
+    if (isAnyContextMenuOpen) {
+      document.body.setAttribute('data-context-menu-active', 'true');
+      window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+    } else {
+      document.body.removeAttribute('data-context-menu-active');
+    }
+  }, [isAnyContextMenuOpen]);
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'info' | 'error';
@@ -1916,27 +1929,79 @@ export default function App() {
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
+  const MAX_HISTORY_DAYS = 7;
+  const MAX_HISTORY_MS = MAX_HISTORY_DAYS * 24 * 60 * 60 * 1000;
+
+  const normalizeHistoryKey = (str?: string) => (str || '').trim().toLowerCase().replace(/\\/g, '/');
+
   const [launchHistory, setLaunchHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('cyber_launch_history');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: HistoryItem[] = JSON.parse(saved);
+      const now = Date.now();
+      const seen = new Set<string>();
+      const valid = parsed.filter(item => {
+        if (!item || !item.name) return false;
+        if (now - item.timestamp > MAX_HISTORY_MS) return false;
+        const key = normalizeHistoryKey(item.path) || normalizeHistoryKey(item.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return valid.slice(0, 10);
+    } catch {
+      return [];
+    }
   });
 
   const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string) => {
     setLaunchHistory(prev => {
-      const filtered = prev.filter(item => item.path !== path);
+      const normPath = normalizeHistoryKey(path);
+      const normName = normalizeHistoryKey(name);
+      const now = Date.now();
+
+      // Find any known app matching this item to ensure consistent name/path comparison
+      const matchedApp = apps.find(a => 
+        (normPath && normalizeHistoryKey(a.path) === normPath) || 
+        (normName && normalizeHistoryKey(a.name) === normName)
+      );
+      const finalNormPath = matchedApp?.path ? normalizeHistoryKey(matchedApp.path) : normPath;
+      const finalNormName = matchedApp?.name ? normalizeHistoryKey(matchedApp.name) : normName;
+
+      // Filter out any previous occurrences of this app (by path or name) and prune old items (> 7 days)
+      const filtered = prev.filter(item => {
+        const itemNormPath = normalizeHistoryKey(item.path);
+        const itemNormName = normalizeHistoryKey(item.name);
+
+        const isSamePath = Boolean(
+          (normPath && itemNormPath && normPath === itemNormPath) || 
+          (finalNormPath && itemNormPath && finalNormPath === itemNormPath)
+        );
+        const isSameName = Boolean(
+          (normName && itemNormName && normName === itemNormName) ||
+          (finalNormName && itemNormName && finalNormName === itemNormName)
+        );
+
+        if (isSamePath || isSameName) return false;
+        if (now - item.timestamp > MAX_HISTORY_MS) return false;
+        return true;
+      });
+
       const newItem: HistoryItem = {
-        id: `${Date.now()}-${Math.random()}`,
-        name,
-        path,
-        type,
-        timestamp: Date.now(),
-        icon
+        id: `${now}-${Math.random()}`,
+        name: matchedApp?.name || name,
+        path: matchedApp?.path || path,
+        type: (matchedApp as any)?.type || type,
+        timestamp: now,
+        icon: (matchedApp as any)?.iconPath || (matchedApp as any)?.icon || icon || ''
       };
+
       const updated = [newItem, ...filtered].slice(0, 10);
       localStorage.setItem('cyber_launch_history', JSON.stringify(updated));
       return updated;
     });
-  }, []);
+  }, [apps]);
 
   const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
   const [isPinFlashing, setIsPinFlashing] = useState(false);
@@ -1958,6 +2023,7 @@ export default function App() {
               } else {
                 console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
               }
+              addToHistory(task.name, task.targetPath, 'app');
             } else if (task.type === 'command' && task.command) {
               if (isElectron) {
                 window.electronAPI!.runShellCommand(task.command);
@@ -2037,6 +2103,9 @@ export default function App() {
       const shortcutList = apps
         .filter(app => (app as any).path && (app as any).shortcut)
         .map(app => ({
+          id: app.id,
+          name: app.name,
+          icon: (app as any).iconPath || (app as any).icon || '',
           path: (app as any).path,
           shortcut: (app as any).shortcut,
           isAdmin: !!(app as any).isAdmin
@@ -2044,6 +2113,23 @@ export default function App() {
       window.electronAPI.registerAppShortcuts(shortcutList);
     }
   }, [apps, isConfigLoaded]);
+
+  // Handle hotkey launches triggered natively in main process
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onAppLaunchedViaHotkey) return;
+    const unsub = window.electronAPI.onAppLaunchedViaHotkey((data) => {
+      const targetApp = apps.find(a => (data.id && a.id === data.id) || (data.path && a.path === data.path) || (data.name && a.name === data.name));
+      if (targetApp) {
+        setApps(prevApps => prevApps.map(a => a.id === targetApp.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
+        setDailyLaunchCount(prev => prev + 1);
+        addToHistory(targetApp.name, targetApp.path || data.path, (targetApp as any).type || 'app', (targetApp as any).iconPath || (targetApp as any).icon || '');
+      } else {
+        setDailyLaunchCount(prev => prev + 1);
+        addToHistory(data.name || 'App', data.path, 'app', data.icon || '');
+      }
+    });
+    return unsub;
+  }, [apps, addToHistory]);
 
   // Mini Console Command Runner States
   const [consoleLogs, setConsoleLogs] = useState<Array<{ type: 'input' | 'stdout' | 'stderr' | 'system'; text: string; id: string }>>([]);
@@ -2776,9 +2862,12 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalClick = () => {
-      if (contextMenu) setContextMenu(null);
-      if (systemContextMenu) setSystemContextMenu(null);
-      if (categoryContextMenu) setCategoryContextMenu(null);
+      if (contextMenu || systemContextMenu || categoryContextMenu) {
+        lastContextMenuDismissedRef.current = Date.now();
+        if (contextMenu) setContextMenu(null);
+        if (systemContextMenu) setSystemContextMenu(null);
+        if (categoryContextMenu) setCategoryContextMenu(null);
+      }
       setKeyboardNav(null);
     };
     window.addEventListener('click', handleGlobalClick);
@@ -3896,7 +3985,7 @@ export default function App() {
       onClick={(e) => {
         if (!hideOnClickDeadSpot || !isElectron) return;
         if (suppressDeadSpotHideRef.current) return;
-        if (isAddingApp || editingApp || isSettingsOpen) return;
+        if (isAnyModalOpen || isAnyContextMenuOpen || (Date.now() - lastContextMenuDismissedRef.current < 300)) return;
         const target = e.target as HTMLElement;
         if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
         if (isAlwaysOnTop) {
@@ -7428,6 +7517,7 @@ export default function App() {
               data-system-menu-index={0}
               onMouseEnter={() => setSystemContextMenuIndex(0)}
               onClick={() => {
+                addToHistory(systemContextMenu.item.name, systemContextMenu.item.path, systemContextMenu.item.type, systemContextMenu.item.icon);
                 if (isElectron) {
                   window.electronAPI!.launchApp(systemContextMenu.item.path);
                 }

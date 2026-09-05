@@ -97,9 +97,18 @@ function watchUACUntilExit() {
   }, 1000);
 }
 
-let appShortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }> = [];
+interface AppShortcutItem {
+  id: number;
+  path: string;
+  shortcut: string;
+  isAdmin: boolean;
+  name?: string;
+  icon?: string;
+}
 
-function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) {
+let appShortcuts: Array<AppShortcutItem> = [];
+
+function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
   // First, unregister all existing custom app shortcuts
   for (const item of appShortcuts) {
     if (item.shortcut) {
@@ -126,7 +135,7 @@ function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: strin
       
       const success = globalShortcut.register(electronShortcut, () => {
         try {
-          console.log(`[GLOBAL HOTKEY] Launching app ${item.id} via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
+          console.log(`[GLOBAL HOTKEY] Launching app ${item.id} (${item.name || item.path}) via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
           
           if (item.isAdmin && process.platform === 'win32') {
             pauseHotspots();
@@ -136,6 +145,15 @@ function registerAppShortcutsList(shortcutsList: Array<{ id: number; path: strin
             exec(command, { windowsHide: true });
           } else {
             shell.openPath(item.path);
+          }
+
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-launched-via-hotkey', {
+              id: item.id,
+              path: item.path,
+              name: item.name,
+              icon: item.icon
+            });
           }
         } catch (launchErr) {
           console.error('[GLOBAL HOTKEY] Error launching shortcut app:', launchErr);

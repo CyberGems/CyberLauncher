@@ -92,8 +92,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setRendererAwake: (awake: boolean) => ipcRenderer.invoke('set-renderer-awake', awake),
 
   // --- Dynamic shortcuts ---
-  registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean }>) =>
+  registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) =>
     ipcRenderer.invoke('register-app-shortcuts', shortcuts),
+  onAppLaunchedViaHotkey: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('app-launched-via-hotkey', handler);
+    return () => { ipcRenderer.removeListener('app-launched-via-hotkey', handler); };
+  },
 
   // --- Shell runner ---
   runShellCommand: (command: string) => ipcRenderer.invoke('run-shell-command', command),
