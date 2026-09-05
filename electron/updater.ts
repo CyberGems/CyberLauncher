@@ -41,7 +41,7 @@ export function setAutoUpdate(enabled: boolean): void {
 export function initUpdater(opts: { autoUpdate: boolean }): void {
   autoUpdateEnabled = opts.autoUpdate;
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.removeAllListeners();
 
@@ -49,11 +49,6 @@ export function initUpdater(opts: { autoUpdate: boolean }): void {
 
   autoUpdater.on('update-available', (info) => {
     broadcast({ state: 'available', version: info.version });
-    if (autoUpdateEnabled) {
-      autoUpdater.downloadUpdate().catch((err) => {
-        broadcast({ state: 'error', message: String(err?.message || err) });
-      });
-    }
   });
 
   autoUpdater.on('update-not-available', (info) => {

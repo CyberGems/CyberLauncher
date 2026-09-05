@@ -249,8 +249,11 @@ export default function AboutModal({
                 {diagCopied ? t('about_diagnostics_copied') : t('about_copy_diagnostics')}
               </button>
 
-              <div className="flex items-center justify-between px-1 py-2 mt-1">
-                <span className="text-xs text-slate-400 font-medium">{t('about_auto_updates')}</span>
+              <div className="flex items-center justify-between px-1 py-2 mt-1 gap-3">
+                <div className="flex flex-col text-left">
+                  <span className="text-xs text-slate-200 font-medium leading-tight">{t('about_auto_updates')}</span>
+                  <span className="text-[11px] text-slate-400 leading-snug mt-0.5">{t('about_auto_updates_desc')}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => onAutoUpdateChange(!autoUpdate)}
@@ -258,6 +261,7 @@ export default function AboutModal({
                     autoUpdate ? 'bg-cyan-500' : 'bg-slate-700'
                   }`}
                   aria-pressed={autoUpdate}
+                  aria-label={t('about_auto_updates')}
                 >
                   <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow ${
                     autoUpdate ? 'translate-x-5' : 'translate-x-0'
