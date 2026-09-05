@@ -209,6 +209,13 @@ export const translations = {
     ctx_copy_path: "Copiar ruta completa al portapapeles",
     ctx_pin_fav: "Anclar a Favoritos de CyberLauncher",
     ctx_pin_bar: "Anclar a Barra de Tareas de CyberLauncher",
+    ctx_edit_category: "Editar categoría",
+    ctx_delete_category: "Eliminar categoría",
+    confirm_delete_category_title: "¿Eliminar categoría?",
+    confirm_delete_category_desc: "¿Estás seguro de que deseas eliminar la categoría \"{name}\"? Las aplicaciones asignadas pasarán a Sin categoría.",
+    confirm_delete_category_btn_confirm: "Eliminar",
+    confirm_delete_category_btn_cancel: "Cancelar",
+    category_deleted_notif: "Categoría \"{name}\" eliminada",
     
     // Placeholder Info Text below input
     hint_console_enter: "Presiona [Enter] para ejecutar",
@@ -591,6 +598,13 @@ export const translations = {
     ctx_copy_path: "Copy full path to clipboard",
     ctx_pin_fav: "Pin to CyberLauncher Favorites",
     ctx_pin_bar: "Pin to CyberLauncher Taskbar",
+    ctx_edit_category: "Edit category",
+    ctx_delete_category: "Delete category",
+    confirm_delete_category_title: "Delete category?",
+    confirm_delete_category_desc: "Are you sure you want to delete category \"{name}\"? Assigned applications will be moved to Uncategorized.",
+    confirm_delete_category_btn_confirm: "Delete",
+    confirm_delete_category_btn_cancel: "Cancel",
+    category_deleted_notif: "Category \"{name}\" deleted",
     
     // Placeholder Info Text below input
     hint_console_enter: "Press [Enter] to execute command",

@@ -1524,6 +1524,8 @@ export default function App() {
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: LauncherApp | null } | null>(null);
+  const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; category: typeof INITIAL_CATEGORIES[0] } | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -1889,11 +1891,25 @@ export default function App() {
     setEditingCategory(null);
   };
 
+  const handleConfirmDeleteCategory = (targetCategory: typeof INITIAL_CATEGORIES[0]) => {
+    if (!targetCategory || targetCategory.id === 'all' || targetCategory.id === UNCATEGORIZED_ID) return;
+    const deletedName = targetCategory.name;
+    setCategories(cats => cats.filter(c => c.id !== targetCategory.id));
+    setApps(apps => apps.map(app => app.category === deletedName ? { ...app, category: UNCATEGORIZED_NAME } : app));
+    if (activeCategory === targetCategory.id) setActiveCategory('all');
+    setCategoryToDelete(null);
+    setCategoryContextMenu(null);
+    setNotification({
+      message: t('category_deleted_notif', { name: deletedName }),
+      type: 'info'
+    });
+  };
+
   const handleDeleteCategory = () => {
     if (!editingCategory || editingCategory.id === 'all' || editingCategory.id === UNCATEGORIZED_ID) return;
-    setCategories(cats => cats.filter(c => c.id !== editingCategory.id));
-    if (activeCategory === editingCategory.id) setActiveCategory('all');
+    const target = editingCategory;
     setEditingCategory(null);
+    setCategoryToDelete(target);
   };
 
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(() => localStorage.getItem('isAlwaysOnTop') === 'true');
@@ -2762,11 +2778,12 @@ export default function App() {
     const handleGlobalClick = () => {
       if (contextMenu) setContextMenu(null);
       if (systemContextMenu) setSystemContextMenu(null);
+      if (categoryContextMenu) setCategoryContextMenu(null);
       setKeyboardNav(null);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
-  }, [contextMenu, systemContextMenu]);
+  }, [contextMenu, systemContextMenu, categoryContextMenu]);
 
   const handleLaunchApp = async (app: LauncherApp) => {
     // Incrementar contadores de uso
@@ -2875,6 +2892,8 @@ export default function App() {
   const handleContextMenu = (e: React.MouseEvent, app: LauncherApp) => {
     e.preventDefault();
     e.stopPropagation();
+    setCategoryContextMenu(null);
+    setSystemContextMenu(null);
     setContextMenu({ x: e.clientX, y: e.clientY, app });
   };
 
@@ -3172,7 +3191,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || !!categoryToDelete;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -3208,7 +3227,7 @@ export default function App() {
   }, [activeCategory, searchScope]);
 
   const handleCyberKeyboardNav = useCallback((e: React.KeyboardEvent | KeyboardEvent): boolean => {
-    if (isAnyModalOpen || contextMenu || systemContextMenu) return false;
+    if (isAnyModalOpen || contextMenu || systemContextMenu || categoryContextMenu) return false;
     if (searchScope !== 'cyber' || searchQuery.startsWith('>')) return false;
 
     const totalApps = filteredApps.length;
@@ -3579,8 +3598,18 @@ export default function App() {
         return;
       }
 
+      if (categoryContextMenu && e.key === 'Escape') {
+        e.preventDefault();
+        setCategoryContextMenu(null);
+        return;
+      }
+
       if (e.code === 'Escape') {
-        if (isRecordingAppShortcut) {
+        if (categoryToDelete) {
+          setCategoryToDelete(null);
+        } else if (editingCategory) {
+          setEditingCategory(null);
+        } else if (isRecordingAppShortcut) {
           setIsRecordingAppShortcut(false);
         } else if (keyboardNav) {
           e.preventDefault();
@@ -3640,8 +3669,9 @@ export default function App() {
     };
   }, [
     isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
+    editingCategory, categoryToDelete,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
-    contextMenu, systemContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
+    contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
   ]);
 
   const getBackgroundStyle = () => {
@@ -3965,6 +3995,9 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-0.5 custom-scrollbar">
           {categoriesWithCount.map((cat, index) => {
             const isUncategorized = cat.id === UNCATEGORIZED_ID;
+            const isCanEditOrDelete = cat.id !== 'all' && !isUncategorized;
+            const isCatContextActive = categoryContextMenu?.category?.id === cat.id;
+            const isCatActive = activeCategory === cat.id;
             const hotkey = isUncategorized ? 'Alt+0' : (index < 9 ? `Alt+${index + 1}` : null);
             const displayName = t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name;
 
@@ -3972,32 +4005,49 @@ export default function App() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border border-transparent ${
-                  activeCategory === cat.id 
-                    ? 'bg-blue-500/20 text-white border-blue-500/20 shadow-[inset_2px_0_0_0_#3b82f6]' 
-                    : 'hover:bg-white/5 hover:text-white hover:border-white/5 text-slate-300'
+                onContextMenu={(e) => {
+                  if (isCanEditOrDelete) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextMenu(null);
+                    setSystemContextMenu(null);
+                    setCategoryContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      category: cat
+                    });
+                  }
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border ${
+                  isCatContextActive
+                    ? 'bg-blue-500/30 text-white border-cyan-400/70 shadow-[inset_2px_0_0_0_#22d3ee,0_0_12px_rgba(34,211,238,0.35)] ring-1 ring-cyan-400/60'
+                    : isCatActive 
+                      ? 'bg-blue-500/20 text-white border-blue-500/20 shadow-[inset_2px_0_0_0_#3b82f6]' 
+                      : 'border-transparent hover:bg-white/5 hover:text-white hover:border-white/5 text-slate-300'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div 
-                    className="w-2 h-2 rounded-full flex-shrink-0" 
+                    className="w-2 h-2 rounded-full flex-shrink-0 transition-shadow" 
                     style={{ 
                       backgroundColor: cat.color,
-                      boxShadow: `0 0 8px ${cat.color}`
+                      boxShadow: isCatContextActive ? `0 0 12px ${cat.color}` : `0 0 8px ${cat.color}`
                     }} 
                   />
                   <span className={`text-sm truncate transition-colors ${
-                    isUncategorized
-                      ? 'italic text-slate-400 font-normal tracking-wide'
-                      : 'font-medium drop-shadow-sm'
+                    isCatContextActive
+                      ? 'font-semibold text-white drop-shadow-md'
+                      : isUncategorized
+                        ? 'italic text-slate-400 font-normal tracking-wide'
+                        : 'font-medium drop-shadow-sm'
                   }`}>
                     {displayName}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {cat.id !== 'all' && cat.id !== UNCATEGORIZED_ID && (
+                  {isCanEditOrDelete && (
                     <Tooltip label={t('tooltip_edit_category')} placement="top">
-                      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400 transition-all cursor-pointer"
+                      <Pencil className={`w-3 h-3 ${isCatContextActive ? 'opacity-100 text-blue-400' : 'opacity-0 group-hover:opacity-100 text-slate-500 hover:text-blue-400'} transition-all cursor-pointer`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditCategoryForm({ name: cat.name, color: cat.color });
@@ -4007,9 +4057,11 @@ export default function App() {
                     </Tooltip>
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-md border tabular-nums font-medium transition-colors ${
-                    activeCategory === cat.id
-                      ? 'bg-blue-500/[0.08] border-blue-500/25 text-blue-300'
-                      : 'bg-white/[0.03] border-white/10 text-slate-500 group-hover:border-white/15 group-hover:text-slate-400'
+                    isCatContextActive
+                      ? 'bg-cyan-500/20 border-cyan-400/40 text-cyan-200'
+                      : isCatActive
+                        ? 'bg-blue-500/[0.08] border-blue-500/25 text-blue-300'
+                        : 'bg-white/[0.03] border-white/10 text-slate-500 group-hover:border-white/15 group-hover:text-slate-400'
                   }`}>
                     {cat.count}
                   </span>
@@ -4656,6 +4708,8 @@ export default function App() {
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
                   {displayedResults.map((item, index) => {
                     const isSelected = index === systemSearchSelectedIndex;
+                    const isContextActive = systemContextMenu?.item?.path === item.path;
+                    const isHighlighted = isSelected || isContextActive;
                     const displayName = item.name.replace(/\.lnk$/i, '');
                     return (
                     <motion.div
@@ -4673,6 +4727,8 @@ export default function App() {
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        setContextMenu(null);
+                        setCategoryContextMenu(null);
                         setSystemSearchSelectedIndex(index);
                         setSystemContextMenuIndex(0);
                         systemContextMenuIndexRef.current = 0;
@@ -4683,22 +4739,20 @@ export default function App() {
                         });
                       }}
                       onMouseEnter={() => {
-                        setSystemSearchSelectedIndex(index);
-                        // Si el menú está abierto sobre otro ítem, cerrarlo al hover
-                        if (systemContextMenu && systemContextMenu.item?.path !== item.path) {
-                          setSystemContextMenu(null);
+                        if (!systemContextMenu) {
+                          setSystemSearchSelectedIndex(index);
                         }
                       }}
                       className={`group flex items-center justify-between p-3 rounded-xl border transition-colors duration-150 cursor-pointer shadow-lg relative overflow-hidden ${
-                        isSelected
-                          ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                        isHighlighted
+                          ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/40'
                           : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-emerald-500/30'
                       }`}
                     >
                       {/* Left: icon + name & path */}
                       <div className="flex items-center gap-3.5 min-w-0 flex-1">
                         <div className={`w-10 h-10 rounded-lg bg-black/30 flex items-center justify-center border transition-all duration-300 relative shrink-0 ${
-                          isSelected ? 'border-emerald-500/40' : 'border-white/10 group-hover:border-emerald-500/30'
+                          isHighlighted ? 'border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]' : 'border-white/10 group-hover:border-emerald-500/30'
                         }`}>
                           {item.icon ? (
                             <img src={item.icon} alt={displayName} className="w-7 h-7 object-contain" />
@@ -4712,7 +4766,7 @@ export default function App() {
                         </div>
                         <div className="min-w-0 flex-1 text-left">
                           <div className={`text-sm font-semibold truncate transition-colors duration-150 ${
-                            isSelected ? 'text-emerald-300' : 'text-slate-200 group-hover:text-emerald-400'
+                            isHighlighted ? 'text-emerald-300' : 'text-slate-200 group-hover:text-emerald-400'
                           }`}>
                             {displayName}
                           </div>
@@ -4806,6 +4860,8 @@ export default function App() {
               >
                 {favorites.map((app, favIdx) => {
                   const isFavSelected = keyboardNav?.section === 'favorites' && keyboardNav.index === favIdx;
+                  const isFavContextActive = contextMenu?.app?.id === app.id;
+                  const isFavActive = isFavSelected || isFavContextActive;
                   return (
                     <Tooltip
                       key={`fav-${app.id}`}
@@ -4835,16 +4891,16 @@ export default function App() {
                           handleLaunchApp(app);
                         }}
                         className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
-                          isFavSelected
+                          isFavActive
                             ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 scale-105 -translate-y-0.5 z-30'
                             : draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
-                        } ${!isFavSelected && favDropTarget === app.id
+                        } ${!isFavActive && favDropTarget === app.id
                           ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
-                          : !isFavSelected ? 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95' : ''
+                          : !isFavActive ? 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95' : ''
                         } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
                       >
-                        <div className="absolute inset-0 bg-current opacity-0 group-hover:opacity-[0.05] rounded-2xl transition-opacity duration-100 pointer-events-none" />
-                        <AppIcon app={app} className="w-6 h-6 z-10" />
+                        <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
+                        <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
                       </div>
                     </Tooltip>
                   );
@@ -4913,6 +4969,8 @@ export default function App() {
             >
               {filteredApps.flatMap((app, index) => {
                 const isAppSelected = keyboardNav?.section === 'apps' && keyboardNav.index === index;
+                const isAppContextActive = contextMenu?.app?.id === app.id;
+                const isAppHighlighted = isAppSelected || isAppContextActive;
                 const elements = [];
                 const CardShell: any = animateAppCards ? motion.div : 'div';
                 const motionProps = animateAppCards
@@ -4971,13 +5029,13 @@ export default function App() {
                     }}
                     className={viewMode === 'grid'
                       ? `relative group bg-black/20 backdrop-blur-xl border ${
-                          isAppSelected
-                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.45),0_8px_20px_rgba(0,0,0,0.5)] bg-white/[0.12] scale-[1.03] -translate-y-0.5 z-20"
+                          isAppHighlighted
+                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.45),0_8px_20px_rgba(0,0,0,0.5)] bg-white/[0.14] scale-[1.03] -translate-y-0.5 z-20"
                             : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10"
                         } active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-xl shadow-black/30 cursor-pointer overflow-hidden`
                       : `flex items-center justify-between bg-black/20 backdrop-blur-xl border ${
-                          isAppSelected
-                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_16px_rgba(34,211,238,0.4),0_6px_16px_rgba(0,0,0,0.45)] bg-white/[0.12] scale-[1.01] z-20"
+                          isAppHighlighted
+                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_16px_rgba(34,211,238,0.4),0_6px_16px_rgba(0,0,0,0.45)] bg-white/[0.14] scale-[1.01] z-20"
                             : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01]"
                         } active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-md overflow-hidden`
                     }
@@ -4992,13 +5050,15 @@ export default function App() {
                             />
                           </Tooltip>
                         )}
-                        <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.04] transition-opacity duration-100 pointer-events-none" />
+                        <div className={`absolute inset-0 bg-white ${isAppContextActive ? 'opacity-[0.06]' : 'opacity-0 group-hover:opacity-[0.04]'} transition-opacity duration-100 pointer-events-none`} />
                         <div 
                           className="flex flex-col items-center justify-center text-center h-full relative z-10"
                           style={{ gap: `${8 * (cardScale / 100)}px` }}
                         >
                           <AppIcon app={app}
-                            className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${app.color}`}
+                            className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${
+                              isAppContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''
+                            } ${app.color}`}
                             style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
                             strokeWidth={1.5} 
                           />
@@ -5022,7 +5082,9 @@ export default function App() {
                       <>
                         <div className="flex items-center" style={{ gap: `${16 * (cardScale / 100)}px` }}>
                           <AppIcon app={app}
-                            className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${app.color}`}
+                            className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${
+                              isAppContextActive ? 'scale-105' : ''
+                            } ${app.color}`}
                             style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
                             strokeWidth={1.5}
                           />
@@ -5175,6 +5237,7 @@ export default function App() {
                     return <div key={`recent-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
                   }
                   const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
+                  const isRecentContextActive = !!(appInfo && contextMenu?.app?.id === appInfo.id);
                   return (
                     <button
                       key={`recent-${item.id}`}
@@ -5184,7 +5247,11 @@ export default function App() {
                         if (appInfo) handleContextMenu(e, appInfo);
                         else e.preventDefault();
                       }}
-                      className="w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border border-transparent hover:bg-white/5 hover:border-white/10 group transition-colors"
+                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                        isRecentContextActive
+                          ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
+                          : 'border-transparent hover:bg-white/5 hover:border-white/10 text-slate-300'
+                      } group`}
                     >
                       <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
                         <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
@@ -5230,13 +5297,18 @@ export default function App() {
                 if (!app) {
                   return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
                 }
+                const isMostUsedContextActive = contextMenu?.app?.id === app.id;
                 return (
                   <button
                     key={`most-used-${app.id}`}
                     type="button"
                     onContextMenu={(e) => handleContextMenu(e, app)}
                     onClick={() => handleLaunchApp(app)}
-                    className="w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border border-transparent hover:bg-white/5 hover:border-white/10 group transition-colors"
+                    className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                      isMostUsedContextActive
+                        ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
+                        : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
+                    }`}
                   >
                     <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
                       <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
@@ -5289,6 +5361,7 @@ export default function App() {
             {taskbarAppIds.map(id => {
               const app = apps.find(a => a.id === id);
               if (!app) return null;
+              const isTaskbarContextActive = contextMenu?.app?.id === app.id;
               return (
                 <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top">
                   <button 
@@ -5301,13 +5374,15 @@ export default function App() {
                     onContextMenu={(e) => handleContextMenu(e, app)}
                     onClick={() => handleLaunchApp(app)}
                     className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing ${
-                      draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
+                      isTaskbarContextActive
+                        ? 'bg-cyan-500/25 rounded-lg ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-105'
+                        : draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
                     } ${taskbarDropTarget === app.id ? 'bg-cyan-500/20 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110' : ''}`} 
                   >
                     <div className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}>
-                      <AppIcon app={app} className="w-5 h-5 drop-shadow-md" />
+                      <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center ${isTaskbarContextActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none`}>
                       <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
                     </div>
                   </button>
@@ -7513,6 +7588,135 @@ export default function App() {
             >
               {language === 'es' ? "Anclar a Barra" : "Pin to Taskbar"} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CATEGORY CONTEXT MENU --- */}
+      <AnimatePresence>
+        {categoryContextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[200px] text-sm select-none"
+            style={{ 
+              left: Math.min(categoryContextMenu.x, window.innerWidth - 220), 
+              top: Math.min(categoryContextMenu.y, window.innerHeight - 150) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3.5 py-1.5 mb-1 border-b border-white/10 flex items-center gap-2.5">
+              <div 
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ 
+                  backgroundColor: categoryContextMenu.category.color,
+                  boxShadow: `0 0 6px ${categoryContextMenu.category.color}`
+                }}
+              />
+              <span className="text-xs font-semibold text-slate-300 truncate">
+                {t(`cat_${categoryContextMenu.category.id}` as TranslationKey) !== `cat_${categoryContextMenu.category.id}` 
+                  ? t(`cat_${categoryContextMenu.category.id}` as TranslationKey) 
+                  : categoryContextMenu.category.name}
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                const cat = categoryContextMenu.category;
+                setCategoryContextMenu(null);
+                setEditCategoryForm({ name: cat.name, color: cat.color });
+                setEditingCategory(cat);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+            >
+              {t('ctx_edit_category')} <Pencil className="w-4 h-4 ml-2 text-cyan-400" />
+            </button>
+
+            <button
+              onClick={() => {
+                const cat = categoryContextMenu.category;
+                setCategoryContextMenu(null);
+                setCategoryToDelete(cat);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400 cursor-pointer"
+            >
+              {t('ctx_delete_category')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CATEGORY DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {categoryToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-400 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                  {t('confirm_delete_category_title')}
+                </h2>
+                <button 
+                  onClick={() => setCategoryToDelete(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('confirm_delete_category_desc', { 
+                    name: t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
+                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
+                      : categoryToDelete.name 
+                  })}
+                </p>
+
+                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/10">
+                  <div 
+                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                    style={{ 
+                      backgroundColor: categoryToDelete.color,
+                      boxShadow: `0 0 8px ${categoryToDelete.color}`
+                    }} 
+                  />
+                  <span className="text-sm font-semibold text-white truncate">
+                    {t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
+                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
+                      : categoryToDelete.name}
+                  </span>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-medium text-sm border border-red-500/30 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_delete_category_btn_confirm')}
+                  </button>
+                  <button 
+                    onClick={() => setCategoryToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
