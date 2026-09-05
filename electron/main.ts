@@ -1040,14 +1040,26 @@ function startHotspotPolling() {
     let currentCorner = '';
     let isWithinExitZone = false;
 
-    for (const display of displays) {
-      const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
-      
-      // Detección de entrada con tolerancia de 4px para HiDPI/escalados
-      const isTop = y <= dy + HOTSPOT_CORNER_THRESHOLD;
-      const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD;
-      const isLeft = x <= dx + HOTSPOT_CORNER_THRESHOLD;
-      const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD;
+    // Encontrar la pantalla sobre la que se encuentra el cursor
+    let activeDisplay = displays.find(
+      (d) =>
+        x >= d.bounds.x &&
+        x < d.bounds.x + d.bounds.width &&
+        y >= d.bounds.y &&
+        y < d.bounds.y + d.bounds.height
+    );
+    if (!activeDisplay) {
+      activeDisplay = screen.getDisplayNearestPoint({ x, y });
+    }
+
+    if (activeDisplay) {
+      const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.bounds;
+
+      // Detección estricta de esquina (delimitada en ambos ejes dentro de la pantalla activa)
+      const isTop = y >= dy && y <= dy + HOTSPOT_CORNER_THRESHOLD;
+      const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD && y <= dy + dh - 1;
+      const isLeft = x >= dx && x <= dx + HOTSPOT_CORNER_THRESHOLD;
+      const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD && x <= dx + dw - 1;
 
       let detected = '';
       if (isTop && isLeft) detected = 'top-left';
@@ -1055,23 +1067,27 @@ function startHotspotPolling() {
       else if (isBottom && isLeft) detected = 'bottom-left';
       else if (isBottom && isRight) detected = 'bottom-right';
 
-      if (detected) {
-        if (hotspotCorners.includes(detected)) {
-          currentCorner = detected;
+      if (detected && hotspotCorners.includes(detected)) {
+        currentCorner = detected;
+        isWithinExitZone = true;
+      } else {
+        // Comprobar zona de histéresis/salida solo para las esquinas configuradas en esta pantalla
+        for (const corner of hotspotCorners) {
+          let inZone = false;
+          if (corner === 'top-left') {
+            inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
+          } else if (corner === 'top-right') {
+            inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
+          } else if (corner === 'bottom-left') {
+            inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
+          } else if (corner === 'bottom-right') {
+            inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
+          }
+          if (inZone) {
+            isWithinExitZone = true;
+            break;
+          }
         }
-        isWithinExitZone = true;
-        break; 
-      }
-
-      // Comprobar zona de histéresis/salida para esquinas
-      const inExitTop = y <= dy + HOTSPOT_EXIT_THRESHOLD;
-      const inExitBottom = y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD;
-      const inExitLeft = x <= dx + HOTSPOT_EXIT_THRESHOLD;
-      const inExitRight = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD;
-
-      if ((inExitTop && inExitLeft) || (inExitTop && inExitRight) ||
-          (inExitBottom && inExitLeft) || (inExitBottom && inExitRight)) {
-        isWithinExitZone = true;
       }
     }
 
