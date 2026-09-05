@@ -36,8 +36,7 @@ type Props = {
   onAutoUpdateChange: (enabled: boolean) => void;
   onClose: () => void;
   isElectron: boolean;
-  autoCheck?: boolean;
-  onAutoCheckHandled?: () => void;
+  autoCheckSeq?: number;
 };
 
 function platformLabel(platform: string): string {
@@ -54,13 +53,13 @@ export default function AboutModal({
   onAutoUpdateChange,
   onClose,
   isElectron,
-  autoCheck,
-  onAutoCheckHandled,
+  autoCheckSeq,
 }: Props) {
   const [versions, setVersions] = useState<AppVersions | null>(null);
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
   const [diagCopied, setDiagCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHandledSeqRef = useRef(0);
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
@@ -97,14 +96,11 @@ export default function AboutModal({
   }, [appVersion]);
 
   useEffect(() => {
-    if (autoCheck) {
-      onAutoCheckHandled?.();
-      const timer = setTimeout(() => {
-        void handleCheck();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (autoCheckSeq && autoCheckSeq > lastHandledSeqRef.current) {
+      lastHandledSeqRef.current = autoCheckSeq;
+      void handleCheck();
     }
-  }, [autoCheck, handleCheck, onAutoCheckHandled]);
+  }, [autoCheckSeq, handleCheck]);
 
   const handleDownload = async () => {
     await window.electronAPI?.downloadUpdate?.();

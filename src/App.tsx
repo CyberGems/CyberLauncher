@@ -1736,7 +1736,7 @@ export default function App() {
   };
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [aboutAutoCheck, setAboutAutoCheck] = useState(false);
+  const [aboutAutoCheckSeq, setAboutAutoCheckSeq] = useState(0);
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
   const updateNotifSeenRef = useRef<string>('');
@@ -1968,7 +1968,9 @@ export default function App() {
     }
     if (window.electronAPI.onOpenAbout) {
       unsubs.push(window.electronAPI.onOpenAbout((opts) => {
-        setAboutAutoCheck(!!opts?.checkUpdates);
+        if (opts?.checkUpdates) {
+          setAboutAutoCheckSeq(prev => prev + 1);
+        }
         setIsAboutOpen(true);
       }));
     }
@@ -4641,13 +4643,9 @@ export default function App() {
             t={t}
             autoUpdate={autoUpdate}
             onAutoUpdateChange={handleAutoUpdateChange}
-            onClose={() => {
-              setIsAboutOpen(false);
-              setAboutAutoCheck(false);
-            }}
+            onClose={() => setIsAboutOpen(false)}
             isElectron={isElectron}
-            autoCheck={aboutAutoCheck}
-            onAutoCheckHandled={() => setAboutAutoCheck(false)}
+            autoCheckSeq={aboutAutoCheckSeq}
           />
         )}
       </AnimatePresence>

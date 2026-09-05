@@ -777,11 +777,6 @@ function triggerOpenAbout(checkUpdates = false) {
   showMainWindow();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('open-about', { checkUpdates });
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('open-about', { checkUpdates });
-      }
-    }, 120);
   }
 }
 
@@ -809,7 +804,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       label: `CyberLauncher v${version}`,
       ...(iconBrand ? { icon: iconBrand } : {}),
       click: () => {
-        pendingTrayAction = 'about';
+        pendingTrayAction = null;
         triggerOpenAbout(false);
       },
     },
@@ -859,7 +854,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
           label: t.about,
           ...(iconAbout ? { icon: iconAbout } : {}),
           click: () => {
-            pendingTrayAction = 'about';
+            pendingTrayAction = null;
             triggerOpenAbout(false);
           },
         },
@@ -867,7 +862,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
           label: t.checkUpdates,
           ...(iconUpdate ? { icon: iconUpdate } : {}),
           click: () => {
-            pendingTrayAction = 'check-updates';
+            pendingTrayAction = null;
             triggerOpenAbout(true);
           },
         },
