@@ -1524,7 +1524,13 @@ export default function App() {
   }, [viewMode]);
 
   // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, app: LauncherApp | null } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    app: LauncherApp | null;
+    source?: 'most-used' | 'recent' | 'grid' | 'favorites' | 'taskbar';
+    recentItem?: HistoryItem;
+  } | null>(null);
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; category: typeof INITIAL_CATEGORIES[0] } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const lastContextMenuDismissedRef = useRef(0);
@@ -2978,12 +2984,49 @@ export default function App() {
     }
   }, [apps, isRefreshingIcons, language, t]);
 
-  const handleContextMenu = (e: React.MouseEvent, app: LauncherApp) => {
+  const handleResetMostUsed = useCallback(() => {
+    setApps(prev => prev.map(a => ({ ...a, usage: 0 })));
+    setNotification({
+      message: t('notif_most_used_reset'),
+      type: 'success'
+    });
+  }, [t]);
+
+  const handleResetRecents = useCallback(() => {
+    setLaunchHistory([]);
+    localStorage.removeItem('cyber_launch_history');
+    setNotification({
+      message: t('notif_recents_reset'),
+      type: 'success'
+    });
+  }, [t]);
+
+  const handleRemoveSingleRecent = useCallback((target: HistoryItem | LauncherApp) => {
+    setLaunchHistory(prev => {
+      const filtered = prev.filter(item => {
+        const isSamePath = (target as any).path && item.path && normalizeHistoryKey((target as any).path) === normalizeHistoryKey(item.path);
+        const isSameName = target.name && item.name && normalizeHistoryKey(target.name) === normalizeHistoryKey(item.name);
+        return !isSamePath && !isSameName;
+      });
+      localStorage.setItem('cyber_launch_history', JSON.stringify(filtered));
+      return filtered;
+    });
+    setNotification({
+      message: t('notif_recent_removed'),
+      type: 'success'
+    });
+  }, [t]);
+
+  const handleContextMenu = (
+    e: React.MouseEvent,
+    app: LauncherApp,
+    source?: 'most-used' | 'recent' | 'grid' | 'favorites' | 'taskbar'
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setCategoryContextMenu(null);
     setSystemContextMenu(null);
-    setContextMenu({ x: e.clientX, y: e.clientY, app });
+    setContextMenu({ x: e.clientX, y: e.clientY, app, source });
   };
 
   const handleDragStart = (e: React.DragEvent, id: number) => {
@@ -5309,11 +5352,101 @@ export default function App() {
         </div>
 
         <div className="flex-1 min-h-0 px-2 pb-2 flex flex-col overflow-hidden">
-          {/* Recientes */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest px-2 py-0.5 shrink-0 drop-shadow-sm">
-              {t('title_recent')}
-            </h3>
+          {/* Más usadas (Top) */}
+          <div 
+            className="flex-1 min-h-0 flex flex-col group/mostused"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSystemContextMenu(null);
+              setCategoryContextMenu(null);
+              setContextMenu({ x: e.clientX, y: e.clientY, app: null, source: 'most-used' });
+            }}
+          >
+            <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
+              <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
+                {t('title_most_used')}
+              </h3>
+              <Tooltip label={t('ctx_reset_most_used')} placement="left">
+                <button
+                  type="button"
+                  onClick={handleResetMostUsed}
+                  className="opacity-0 group-hover/mostused:opacity-100 hover:opacity-100 text-slate-500 hover:text-cyan-400 transition-all p-0.5 rounded cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </Tooltip>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col">
+              {Array.from({ length: 10 }, (_, index) => {
+                const app = mostUsed[index];
+                if (!app) {
+                  return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
+                }
+                const isMostUsedContextActive = !!(contextMenu?.app?.id === app.id && contextMenu?.source === 'most-used');
+                return (
+                  <button
+                    key={`most-used-${app.id}`}
+                    type="button"
+                    onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
+                    onClick={() => handleLaunchApp(app)}
+                    className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                      isMostUsedContextActive
+                        ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
+                        : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
+                      <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
+                        {index + 1}.
+                      </span>
+                      <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                      <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                        {app.name}
+                      </span>
+                    </div>
+                    <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
+                      {app.usage > 0 ? app.usage : '-'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 py-1.5 px-2 opacity-30 shrink-0">
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+          </div>
+
+          {/* Recientes (Bottom) */}
+          <div 
+            className="flex-1 min-h-0 flex flex-col group/recents"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSystemContextMenu(null);
+              setCategoryContextMenu(null);
+              setContextMenu({ x: e.clientX, y: e.clientY, app: null, source: 'recent' });
+            }}
+          >
+            <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
+              <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
+                {t('title_recent')}
+              </h3>
+              {recentLaunches.length > 0 && (
+                <Tooltip label={t('ctx_reset_recents')} placement="left">
+                  <button
+                    type="button"
+                    onClick={handleResetRecents}
+                    className="opacity-0 group-hover/recents:opacity-100 hover:opacity-100 text-slate-500 hover:text-cyan-400 transition-all p-0.5 rounded cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
             <div className="flex-1 min-h-0 flex flex-col">
               {recentLaunches.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center px-2">
@@ -5326,15 +5459,27 @@ export default function App() {
                     return <div key={`recent-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
                   }
                   const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
-                  const isRecentContextActive = !!(appInfo && contextMenu?.app?.id === appInfo.id);
+                  const isRecentContextActive = !!(
+                    (appInfo && contextMenu?.app?.id === appInfo.id && contextMenu?.source === 'recent') ||
+                    (contextMenu?.recentItem?.id === item.id)
+                  );
                   return (
                     <button
                       key={`recent-${item.id}`}
                       type="button"
                       onClick={() => handleLaunchHistoryItem(item)}
                       onContextMenu={(e) => {
-                        if (appInfo) handleContextMenu(e, appInfo);
-                        else e.preventDefault();
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCategoryContextMenu(null);
+                        setSystemContextMenu(null);
+                        setContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          app: appInfo || null,
+                          source: 'recent',
+                          recentItem: item
+                        });
                       }}
                       className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
                         isRecentContextActive
@@ -5366,54 +5511,6 @@ export default function App() {
                   );
                 })
               )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 py-1.5 px-2 opacity-30 shrink-0">
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-          </div>
-
-          {/* Más usadas */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest px-2 py-0.5 shrink-0 drop-shadow-sm">
-              {t('title_most_used')}
-            </h3>
-            <div className="flex-1 min-h-0 flex flex-col">
-              {Array.from({ length: 10 }, (_, index) => {
-                const app = mostUsed[index];
-                if (!app) {
-                  return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
-                }
-                const isMostUsedContextActive = contextMenu?.app?.id === app.id;
-                return (
-                  <button
-                    key={`most-used-${app.id}`}
-                    type="button"
-                    onContextMenu={(e) => handleContextMenu(e, app)}
-                    onClick={() => handleLaunchApp(app)}
-                    className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
-                      isMostUsedContextActive
-                        ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
-                        : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
-                      <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
-                        {index + 1}.
-                      </span>
-                      <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
-                      <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
-                        {app.name}
-                      </span>
-                    </div>
-                    <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
-                      {app.usage > 0 ? app.usage : '-'}
-                    </span>
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -7381,119 +7478,197 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[200px] text-sm"
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[210px] text-sm select-none"
             style={{ 
-              left: Math.min(contextMenu.x, window.innerWidth - 220), 
-              top: Math.min(contextMenu.y, window.innerHeight - 250) 
+              left: Math.min(contextMenu.x, window.innerWidth - 230), 
+              top: Math.min(contextMenu.y, window.innerHeight - (contextMenu.app ? 320 : 130)) 
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {taskbarAppIds.includes(contextMenu.app!.id) ? (
-              <button 
-                onClick={() => {
-                  setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-              >
-                Desanclar de la barra <Minus className="w-4 h-4 ml-2 text-slate-400" />
-              </button>
+            {contextMenu.app ? (
+              <>
+                {taskbarAppIds.includes(contextMenu.app.id) ? (
+                  <button 
+                    onClick={() => {
+                      setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    Desanclar de la barra <Minus className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setTaskbarAppIds([...taskbarAppIds, contextMenu.app!.id]);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    Anclar a la barra <Plus className="w-4 h-4 ml-2 text-blue-400" />
+                  </button>
+                )}
+
+                {favoriteIds.includes(contextMenu.app.id) ? (
+                  <button 
+                    onClick={() => {
+                      setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    Quitar de favoritos <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setFavoriteIds([...favoriteIds, contextMenu.app!.id]);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    Agregar a favoritos <Star className="w-4 h-4 ml-2 fill-blue-500 text-blue-400" />
+                  </button>
+                )}
+
+                <div className="h-px bg-white/10 my-1 mx-2" />
+
+                {(contextMenu.app as any).path && (
+                  <button
+                    onClick={() => {
+                      window.electronAPI!.openFileLocation((contextMenu.app as any).path);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    Abrir ubicación <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                )}
+
+                {(contextMenu.app as any).path && isElectron && (
+                  <button
+                    onClick={() => {
+                      const targetApp = contextMenu.app!;
+                      setContextMenu(null);
+                      handleRefreshSingleAppIcon(targetApp);
+                    }}
+                    disabled={refreshingAppId === contextMenu.app.id}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 disabled:opacity-50"
+                  >
+                    {refreshingAppId === contextMenu.app.id ? t('ctx_refreshing_icon') : t('ctx_refresh_icon')}
+                    <RotateCcw className={`w-4 h-4 ml-2 text-cyan-400 ${refreshingAppId === contextMenu.app.id ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+                
+                <button
+                   onClick={() => {
+                     setEditingApp(contextMenu.app!);
+                     setEditForm({
+                       name: contextMenu.app!.name,
+                       path: (contextMenu.app as any).path || '',
+                       iconPath: (contextMenu.app as any).iconPath || '',
+                       category: contextMenu.app!.category,
+                       isAdmin: !!(contextMenu.app as any).isAdmin,
+                       shortcut: (contextMenu.app as any).shortcut || '',
+                       pinToFavorites: favoriteIds.includes(contextMenu.app!.id),
+                       pinToTaskbar: taskbarAppIds.includes(contextMenu.app!.id)
+                     });
+                     setContextMenu(null);
+                   }}
+                   className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                >
+                  Editar <PenBox className="w-4 h-4 ml-2 text-slate-400" />
+                </button>
+                
+                <button
+                   onClick={() => {
+                     setApps(prev => prev.filter(app => app.id !== contextMenu.app!.id));
+                     setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                     setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                     setContextMenu(null);
+                   }}
+                   className="w-full text-left px-4 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400"
+                >
+                  Eliminar <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+                </button>
+
+                {contextMenu.source === 'most-used' && (
+                  <>
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <button 
+                      onClick={() => {
+                        handleResetMostUsed();
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                    >
+                      {t('ctx_reset_most_used')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                    </button>
+                  </>
+                )}
+
+                {contextMenu.source === 'recent' && (
+                  <>
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <button 
+                      onClick={() => {
+                        if (contextMenu.recentItem) handleRemoveSingleRecent(contextMenu.recentItem);
+                        else if (contextMenu.app) handleRemoveSingleRecent(contextMenu.app);
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+                    >
+                      {t('ctx_remove_recent')} <X className="w-4 h-4 ml-2 text-slate-400" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleResetRecents();
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                    >
+                      {t('ctx_reset_recents')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                    </button>
+                  </>
+                )}
+              </>
             ) : (
-              <button 
-                onClick={() => {
-                  setTaskbarAppIds([...taskbarAppIds, contextMenu.app!.id]);
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-              >
-                Anclar a la barra <Plus className="w-4 h-4 ml-2 text-blue-400" />
-              </button>
+              <>
+                {contextMenu.recentItem && (
+                  <button 
+                    onClick={() => {
+                      handleRemoveSingleRecent(contextMenu.recentItem!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+                  >
+                    {t('ctx_remove_recent')} <X className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                )}
+                {contextMenu.source === 'most-used' && (
+                  <button 
+                    onClick={() => {
+                      handleResetMostUsed();
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                  >
+                    {t('ctx_reset_most_used')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                  </button>
+                )}
+                {contextMenu.source === 'recent' && (
+                  <button 
+                    onClick={() => {
+                      handleResetRecents();
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                  >
+                    {t('ctx_reset_recents')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                  </button>
+                )}
+              </>
             )}
-
-            {favoriteIds.includes(contextMenu.app!.id) ? (
-              <button 
-                onClick={() => {
-                  setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-              >
-                Quitar de favoritos <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
-              </button>
-            ) : (
-              <button 
-                onClick={() => {
-                  setFavoriteIds([...favoriteIds, contextMenu.app!.id]);
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-              >
-                Agregar a favoritos <Star className="w-4 h-4 ml-2 fill-blue-500 text-blue-400" />
-              </button>
-            )}
-
-            <div className="h-px bg-white/10 my-1 mx-2" />
-
-            {(contextMenu.app as any).path && (
-              <button
-                onClick={() => {
-                  window.electronAPI!.openFileLocation((contextMenu.app as any).path);
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-              >
-                Abrir ubicación <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
-              </button>
-            )}
-
-            {(contextMenu.app as any).path && isElectron && (
-              <button
-                onClick={() => {
-                  const targetApp = contextMenu.app!;
-                  setContextMenu(null);
-                  handleRefreshSingleAppIcon(targetApp);
-                }}
-                disabled={refreshingAppId === contextMenu.app!.id}
-                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 disabled:opacity-50"
-              >
-                {refreshingAppId === contextMenu.app!.id ? t('ctx_refreshing_icon') : t('ctx_refresh_icon')}
-                <RotateCcw className={`w-4 h-4 ml-2 text-cyan-400 ${refreshingAppId === contextMenu.app!.id ? 'animate-spin' : ''}`} />
-              </button>
-            )}
-            
-            <button
-               onClick={() => {
-                 setEditingApp(contextMenu.app!);
-                 setEditForm({
-                   name: contextMenu.app!.name,
-                   // @ts-ignore (Assuming path/iconPath might exist dynamically, or just empty)
-                   path: (contextMenu.app as any).path || '',
-                   // @ts-ignore
-                   iconPath: (contextMenu.app as any).iconPath || '',
-                   category: contextMenu.app!.category,
-                   isAdmin: !!(contextMenu.app as any).isAdmin,
-                   shortcut: (contextMenu.app as any).shortcut || '',
-                   pinToFavorites: favoriteIds.includes(contextMenu.app!.id),
-                   pinToTaskbar: taskbarAppIds.includes(contextMenu.app!.id)
-                 });
-                 setContextMenu(null);
-               }}
-               className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
-            >
-              Editar <PenBox className="w-4 h-4 ml-2 text-slate-400" />
-            </button>
-            
-            <button
-               onClick={() => {
-                 setApps(prev => prev.filter(app => app.id !== contextMenu.app!.id));
-                 setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
-                 setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
-                 setContextMenu(null);
-               }}
-               className="w-full text-left px-4 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400"
-            >
-              Eliminar <Trash2 className="w-4 h-4 ml-2 text-red-400" />
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
