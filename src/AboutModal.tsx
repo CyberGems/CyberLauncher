@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   X, Github, Folder, RefreshCw, Download, CheckCircle2,
-  CircleDot, Tag, ClipboardCopy, Check
+  Tag, ClipboardCopy, Check, Globe, BookOpen, Bug, Heart
 } from 'lucide-react';
 import Tooltip from './Tooltip';
 import { TranslationKey } from './locales';
@@ -65,9 +65,6 @@ export default function AboutModal({
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
     window.electronAPI.getAppVersions?.().then((v) => setVersions(v as AppVersions)).catch(() => {});
-    window.electronAPI.getUpdateStatus?.().then((s) => {
-      if (s) setStatus(s as UpdateStatus);
-    }).catch(() => {});
     const off = window.electronAPI.onUpdateStatus?.((s) => setStatus(s as UpdateStatus));
     return () => {
       off?.();
@@ -102,7 +99,10 @@ export default function AboutModal({
   useEffect(() => {
     if (autoCheck) {
       onAutoCheckHandled?.();
-      void handleCheck();
+      const timer = setTimeout(() => {
+        void handleCheck();
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [autoCheck, handleCheck, onAutoCheckHandled]);
 
@@ -153,7 +153,7 @@ export default function AboutModal({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.94, opacity: 0, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[440px] bg-gradient-to-b from-[#0d1520] to-[#0a0f18] border border-cyan-500/25 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.12)] flex flex-col max-h-[90vh] overflow-hidden"
+        className="relative w-full max-w-[460px] bg-gradient-to-b from-[#0d1520] to-[#0a0f18] border border-cyan-500/25 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.12)] flex flex-col max-h-[90vh] overflow-hidden"
       >
         <div className="flex justify-end px-4 pt-4 shrink-0">
           <Tooltip label={t('tooltip_close')} placement="left">
@@ -272,39 +272,75 @@ export default function AboutModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-6 py-3 border-t border-white/5 bg-black/20 shrink-0">
-          <div className="text-[10px] font-cyber font-semibold tracking-wider text-slate-600">
-            {t('about_footer')}
-          </div>
-          <div className="flex items-center gap-0.5">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-white/5 bg-black/30 shrink-0">
+          <Tooltip label={t('about_website_tooltip')} placement="top">
+            <button
+              type="button"
+              onClick={() => openUrl('https://cybergems.org')}
+              className="text-[11px] font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer select-none"
+            >
+              {t('about_footer')}
+            </button>
+          </Tooltip>
+          <div className="flex items-center gap-1">
+            <Tooltip label={t('about_website_tooltip')} placement="top">
+              <button
+                type="button"
+                onClick={() => openUrl('https://cybergems.org')}
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                aria-label={t('about_website_tooltip')}
+              >
+                <Globe className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('about_docs_tooltip')} placement="top">
+              <button
+                type="button"
+                onClick={() => openUrl(`${REPO_URL}/wiki`)}
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                aria-label={t('about_docs_tooltip')}
+              >
+                <BookOpen className="w-4 h-4" />
+              </button>
+            </Tooltip>
             <Tooltip label={t('about_github_tooltip')} placement="top">
               <button
                 type="button"
                 onClick={() => openUrl(REPO_URL)}
-                className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-white/5 transition-colors"
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
                 aria-label={t('about_github_tooltip')}
               >
-                <Github className="w-3.5 h-3.5" />
+                <Github className="w-4 h-4" />
               </button>
             </Tooltip>
             <Tooltip label={t('about_issues_tooltip')} placement="top">
               <button
                 type="button"
                 onClick={() => openUrl(`${REPO_URL}/issues`)}
-                className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-white/5 transition-colors"
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
                 aria-label={t('about_issues_tooltip')}
               >
-                <CircleDot className="w-3.5 h-3.5" />
+                <Bug className="w-4 h-4" />
               </button>
             </Tooltip>
             <Tooltip label={t('about_releases_tooltip')} placement="top">
               <button
                 type="button"
                 onClick={() => openUrl(`${REPO_URL}/releases`)}
-                className="p-1.5 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-white/5 transition-colors"
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
                 aria-label={t('about_releases_tooltip')}
               >
-                <Tag className="w-3.5 h-3.5" />
+                <Tag className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip label={t('about_donate_tooltip')} placement="top">
+              <button
+                type="button"
+                onClick={() => openUrl(`${REPO_URL}#%EF%B8%8F-donate`)}
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label={t('about_donate_tooltip')}
+              >
+                <Heart className="w-4 h-4 fill-[#F43F5E] text-[#F43F5E] transition-transform group-hover:scale-110" />
               </button>
             </Tooltip>
           </div>

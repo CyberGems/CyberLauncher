@@ -773,6 +773,18 @@ function isTrayMenuGuardActive() {
   return Date.now() < trayMenuGuardUntil;
 }
 
+function triggerOpenAbout(checkUpdates = false) {
+  showMainWindow();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('open-about', { checkUpdates });
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('open-about', { checkUpdates });
+      }
+    }, 120);
+  }
+}
+
 function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const lang = getTrayLanguage();
   const t = TRAY_I18N[lang];
@@ -796,7 +808,10 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
     {
       label: `CyberLauncher v${version}`,
       ...(iconBrand ? { icon: iconBrand } : {}),
-      click: () => { pendingTrayAction = 'about'; },
+      click: () => {
+        pendingTrayAction = 'about';
+        triggerOpenAbout(false);
+      },
     },
     { type: 'separator' },
     {
@@ -843,12 +858,18 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
         {
           label: t.about,
           ...(iconAbout ? { icon: iconAbout } : {}),
-          click: () => { pendingTrayAction = 'about'; },
+          click: () => {
+            pendingTrayAction = 'about';
+            triggerOpenAbout(false);
+          },
         },
         {
           label: t.checkUpdates,
           ...(iconUpdate ? { icon: iconUpdate } : {}),
-          click: () => { pendingTrayAction = 'check-updates'; },
+          click: () => {
+            pendingTrayAction = 'check-updates';
+            triggerOpenAbout(true);
+          },
         },
       ],
     },
@@ -918,14 +939,14 @@ function executePendingTrayAction() {
     return;
   }
   if (action === 'show' || action === 'settings' || action === 'about' || action === 'check-updates') {
-    showMainWindow();
-    if (action !== 'show' && mainWindow && !mainWindow.isDestroyed()) {
-      if (action === 'settings') {
+    if (action === 'about') {
+      triggerOpenAbout(false);
+    } else if (action === 'check-updates') {
+      triggerOpenAbout(true);
+    } else {
+      showMainWindow();
+      if (action === 'settings' && mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('open-settings');
-      } else if (action === 'check-updates') {
-        mainWindow.webContents.send('open-about', { checkUpdates: true });
-      } else {
-        mainWindow.webContents.send('open-about', { checkUpdates: false });
       }
     }
     applyRendererThrottling();
