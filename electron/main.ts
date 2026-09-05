@@ -214,13 +214,20 @@ function applyRendererThrottling() {
   }, 80);
 }
 
-/** True when the cursor is over the Windows taskbar / tray (outside the display work area). */
-function isCursorInShellChrome() {
+/** True when the cursor is over or immediately adjacent to the Windows tray icon. */
+function isCursorNearTrayIcon(): boolean {
   try {
+    if (!tray || tray.isDestroyed()) return false;
+    const trayBounds = tray.getBounds();
+    if (!trayBounds || (trayBounds.width === 0 && trayBounds.height === 0)) return false;
     const pt = screen.getCursorScreenPoint();
-    const display = screen.getDisplayNearestPoint(pt);
-    const wa = display.workArea;
-    return pt.x < wa.x || pt.y < wa.y || pt.x >= wa.x + wa.width || pt.y >= wa.y + wa.height;
+    const pad = 24;
+    return (
+      pt.x >= trayBounds.x - pad &&
+      pt.x <= trayBounds.x + trayBounds.width + pad &&
+      pt.y >= trayBounds.y - pad &&
+      pt.y <= trayBounds.y + trayBounds.height + pad
+    );
   } catch {
     return false;
   }
@@ -601,16 +608,17 @@ function createWindow() {
     }
 
     if (!hideOnBlurEnabled) return;
-    if (Date.now() < bootBlurGuardUntil) {
-      console.log('[WM] Ignoring blur during boot guard');
-      return;
-    }
     if (isTrayMenuGuardActive()) {
       console.log('[WM] Ignoring blur during tray menu');
       return;
     }
+
+    // Si estamos dentro de bootBlurGuard (ej. guarda inicial o apertura por hotspot),
+    // postergamos la comprobación hasta que expire la guarda en lugar de descartar el blur.
+    // Si al expirar la ventana sigue sin foco, el usuario realmente cambió a otra aplicación.
+    const delay = Math.max(200, (bootBlurGuardUntil - Date.now()) + 50);
+
     setTimeout(() => {
-      if (Date.now() < bootBlurGuardUntil) return;
       if (isTrayMenuGuardActive()) {
         console.log('[WM] Ignoring blur during tray menu (delayed)');
         return;
@@ -619,10 +627,9 @@ function createWindow() {
         console.log('[WM] Ignoring blur — tray menu open');
         return;
       }
-      // Right-click on the tray blurs the window ~200ms before Electron's right-click
-      // event. Hiding (and throttling Chromium) in that gap crashes the native menu.
-      if (isCursorInShellChrome()) {
-        console.log('[WM] Ignoring blur — cursor in taskbar/tray');
+      // Solo ignorar si el cursor está sobre el icono de la bandeja del sistema (prevenir crash de menú nativo)
+      if (isCursorNearTrayIcon()) {
+        console.log('[WM] Ignoring blur — cursor on tray icon');
         armTrayMenuGuard(4000);
         return;
       }
@@ -631,7 +638,7 @@ function createWindow() {
         windowVisibilityState = 'hidden-blur';
         hideMainWindow();
       }
-    }, 200);
+    }, delay);
   });
 
   mainWindow.on('restore', () => {
@@ -2093,8 +2100,9 @@ foreach (\$app in \$startApps) {
   });
 
   ipcMain.handle('set-hide-on-blur', (_event, enabled: boolean) => {
-    hideOnBlurEnabled = enabled;
-    return { success: true, enabled };
+    hideOnBlurEnabled = !!enabled;
+    console.log('[MAIN] set-hide-on-blur:', hideOnBlurEnabled);
+    return { success: true, enabled: hideOnBlurEnabled };
   });
 
   ipcMain.handle('set-ui-modal-open', (_event, open: boolean) => {
@@ -2467,6 +2475,10 @@ app.whenReady().then(() => {
       if (config.showTaskbarIcon === true) {
         showTaskbarIcon = true;
         console.log('Taskbar icon habilitado desde configuración central');
+      }
+      if (config.hideOnBlur !== undefined && config.hideOnBlur !== null) {
+        hideOnBlurEnabled = typeof config.hideOnBlur === 'boolean' ? config.hideOnBlur : config.hideOnBlur !== 'false';
+        console.log('Hide-on-blur cargado desde configuración central:', hideOnBlurEnabled);
       }
       // (CyberTray config load removed)
     }

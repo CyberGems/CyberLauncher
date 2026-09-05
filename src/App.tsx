@@ -2215,7 +2215,11 @@ export default function App() {
           if (source.startWithWindows !== undefined) setStartWithWindows(source.startWithWindows);
           if (source.startMinimized !== undefined) setStartMinimized(source.startMinimized);
           if (source.hideOnClickDeadSpot !== undefined) setHideOnClickDeadSpot(source.hideOnClickDeadSpot);
-          if (source.hideOnBlur !== undefined) { setHideOnBlur(source.hideOnBlur); if (isElectron) window.electronAPI!.setHideOnBlur(source.hideOnBlur); }
+          if (source.hideOnBlur !== undefined && source.hideOnBlur !== null) {
+            const val = typeof source.hideOnBlur === 'boolean' ? source.hideOnBlur : source.hideOnBlur !== 'false';
+            setHideOnBlur(val);
+            if (isElectron) window.electronAPI!.setHideOnBlur(val);
+          }
           if (source.activationShortcut) setActivationShortcut(source.activationShortcut);
           if (source.hotspotCorners) setHotspotCorners(source.hotspotCorners);
           if (source.hotspotDelay !== undefined) setHotspotDelay(source.hotspotDelay);
@@ -2315,15 +2319,15 @@ export default function App() {
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
 
-  // While Add/Edit App or Settings is open, block hide-on-blur (separate from native dialogs).
+  // While Add/Edit App modal is open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp || isSettingsOpen);
+    const open = !!(isAddingApp || editingApp);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp, isSettingsOpen]);
+  }, [isAddingApp, editingApp]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -2538,10 +2542,11 @@ export default function App() {
         setHideOnClickDeadSpot(config.hideOnClickDeadSpot);
         localStorage.setItem('hideOnClickDeadSpot', config.hideOnClickDeadSpot.toString());
       }
-      if (config.hideOnBlur !== undefined) {
-        setHideOnBlur(config.hideOnBlur);
-        localStorage.setItem('hideOnBlur', config.hideOnBlur.toString());
-        if (isElectron) window.electronAPI!.setHideOnBlur(config.hideOnBlur);
+      if (config.hideOnBlur !== undefined && config.hideOnBlur !== null) {
+        const val = typeof config.hideOnBlur === 'boolean' ? config.hideOnBlur : config.hideOnBlur !== 'false';
+        setHideOnBlur(val);
+        localStorage.setItem('hideOnBlur', val.toString());
+        if (isElectron) window.electronAPI!.setHideOnBlur(val);
       }
       if (config.activationShortcut) {
         setActivationShortcut(config.activationShortcut);
