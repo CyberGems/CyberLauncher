@@ -149,6 +149,20 @@ export const translations = {
     app_scale: "ESCALA DE LA INTERFAZ",
     app_scale_desc: "Ajusta la escala general de renderizado de CyberLauncher.",
     
+    // Icon Maintenance
+    ctx_refresh_icon: "Refrescar icono",
+    ctx_refreshing_icon: "Refrescando...",
+    ctx_icon_refreshed: "Icono actualizado con éxito",
+    settings_icons_title: "MANTENIMIENTO DE ICONOS",
+    settings_icons_desc: "Re-extrae los iconos de aplicaciones modificadas o actualizadas y elimina archivos huérfanos de la caché en disco.",
+    settings_icons_refresh_all: "Refrescar todos los iconos",
+    settings_icons_refreshing: "Actualizando iconos...",
+    settings_icons_success: "¡Iconos actualizados! ({count} renovados, {cleaned} huérfanos eliminados)",
+    settings_icons_auto_check: "VERIFICAR ICONOS AUTOMÁTICAMENTE AL INICIAR",
+    settings_icons_auto_check_desc: "Comprueba en segundo plano si los ejecutables en disco cambiaron de fecha y renueva sus iconos en silencio.",
+    app_edit_refresh_icon: "Restaurar icono original",
+    app_edit_refreshing_icon: "Restaurando...",
+    
     // System Settings Tab
     sys_startup: "INICIO AUTOMÁTICO CON WINDOWS",
     sys_startup_desc: "Lanza Cyber Launcher automáticamente al iniciar sesión.",
@@ -516,6 +530,20 @@ export const translations = {
     app_opacity_desc: "Control the background transparency of the launcher window.",
     app_scale: "INTERFACE SCALE",
     app_scale_desc: "Adjust the global rendering scale of CyberLauncher UI.",
+    
+    // Icon Maintenance
+    ctx_refresh_icon: "Refresh icon",
+    ctx_refreshing_icon: "Refreshing...",
+    ctx_icon_refreshed: "Icon successfully updated",
+    settings_icons_title: "ICON MAINTENANCE",
+    settings_icons_desc: "Re-extracts icons from modified or updated applications and removes orphaned files from disk cache.",
+    settings_icons_refresh_all: "Refresh all icons",
+    settings_icons_refreshing: "Refreshing icons...",
+    settings_icons_success: "Icons updated! ({count} renewed, {cleaned} orphans removed)",
+    settings_icons_auto_check: "AUTO-CHECK ICONS ON STARTUP",
+    settings_icons_auto_check_desc: "Checks in the background if executables on disk were modified and quietly renews their icons.",
+    app_edit_refresh_icon: "Restore original icon",
+    app_edit_refreshing_icon: "Restoring...",
     
     // System Settings Tab
     sys_startup: "LAUNCH AUTO WITH WINDOWS",

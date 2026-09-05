@@ -1398,112 +1398,119 @@ async function persistIconPng(sourcePath: string, pngBuffer: Buffer): Promise<st
   const hash = crypto.createHash('sha1').update(sourcePath.toLowerCase()).digest('hex').slice(0, 24);
   const outPath = path.join(getIconCacheDir(), `${hash}.png`);
   await fs.promises.writeFile(outPath, pngBuffer);
-  return toLocalResourceUrl(outPath);
+  return `${toLocalResourceUrl(outPath)}?t=${Date.now()}`;
+}
+
+function resolvePathAndTarget(filePath: string): { normalized: string; resolvedPath: string; resolvedName: string; ext: string } {
+  const normalized = path.resolve(filePath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1'));
+  let ext = path.extname(normalized).toLowerCase();
+  let resolvedPath = normalized;
+  let resolvedName = path.basename(normalized, ext);
+
+  if (ext === '.lnk') {
+    try {
+      const shortcut = shell.readShortcutLink(normalized);
+      if (shortcut.target && fs.existsSync(shortcut.target)) {
+        resolvedPath = path.resolve(shortcut.target);
+      } else {
+        try {
+          const escapedPath = normalized.replace(/'/g, "''");
+          const winCommand = `powershell -NoProfile -Command "$s = New-Object -ComObject WScript.Shell; $s.CreateShortcut('${escapedPath}').TargetPath"`;
+          const output = execSync(winCommand, { encoding: 'utf-8', timeout: 5000 }).trim();
+          if (output && fs.existsSync(output)) {
+            resolvedPath = path.resolve(output);
+          }
+        } catch { /* ignore fallback error */ }
+      }
+      ext = path.extname(resolvedPath).toLowerCase();
+      resolvedName = path.basename(resolvedPath, ext);
+    } catch { /* ignore error */ }
+  }
+
+  return { normalized, resolvedPath, resolvedName, ext };
+}
+
+async function extractAndCacheIcon(resolvedPath: string, force: boolean = false): Promise<{ iconPath: string; reextracted: boolean }> {
+  if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+    return { iconPath: '', reextracted: false };
+  }
+
+  const hash = crypto.createHash('sha1').update(resolvedPath.toLowerCase()).digest('hex').slice(0, 24);
+  const cachedIconPath = path.join(getIconCacheDir(), `${hash}.png`);
+
+  if (!force && fs.existsSync(cachedIconPath)) {
+    try {
+      const cacheStat = fs.statSync(cachedIconPath);
+      if (cacheStat.size > 100) {
+        const targetStat = fs.statSync(resolvedPath);
+        if (targetStat.mtimeMs <= cacheStat.mtimeMs) {
+          return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
+        }
+      }
+    } catch {
+      // Ignorar error y proceder a re-extraer
+    }
+  }
+
+  let pngBuffer: Buffer | null = null;
+
+  // 1. Intentar getFileIcon nativo de Electron
+  try {
+    let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
+    if (!icon || icon.isEmpty()) {
+      icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
+    }
+    if (icon && !icon.isEmpty()) {
+      const buf = icon.toPNG();
+      if (buf.length >= 400) {
+        pngBuffer = buf;
+      }
+    }
+  } catch (e) {
+    console.warn('[ICON] getFileIcon failed:', e);
+  }
+
+  // 2. Fallback con PowerShell System.Drawing.Icon ExtractAssociatedIcon
+  if (!pngBuffer) {
+    try {
+      const escapedPath = resolvedPath.replace(/'/g, "''");
+      const psScript = `Add-Type -AssemblyName System.Drawing; $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('${escapedPath}'); if ($icon) { $bmp=$icon.ToBitmap(); $tmp=[System.IO.Path]::GetTempFileName()+'.png'; $bmp.Save($tmp,[System.Drawing.Imaging.ImageFormat]::Png); Write-Output $tmp; $icon.Dispose(); $bmp.Dispose() }`;
+      const tmpPs = path.join(os.tmpdir(), `cl-icon-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`);
+      await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+      const psOutput = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+        encoding: 'utf-8',
+        timeout: 8000,
+        windowsHide: true,
+      }).trim();
+      await fs.promises.unlink(tmpPs).catch(() => {});
+      if (psOutput && fs.existsSync(psOutput)) {
+        const buf = await fs.promises.readFile(psOutput);
+        await fs.promises.unlink(psOutput).catch(() => {});
+        if (buf.length > 100) {
+          pngBuffer = buf;
+        }
+      }
+    } catch (psErr: any) {
+      console.warn('[ICON] PowerShell fallback failed:', psErr?.message || psErr);
+    }
+  }
+
+  if (pngBuffer && pngBuffer.length > 100) {
+    const iconPath = await persistIconPng(resolvedPath, pngBuffer);
+    return { iconPath, reextracted: true };
+  }
+
+  if (fs.existsSync(cachedIconPath) && fs.statSync(cachedIconPath).size > 100) {
+    return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
+  }
+
+  return { iconPath: '', reextracted: false };
 }
 
 async function resolveFullFileInfo(filePath: string) {
   try {
-    console.log('--- Iniciando resolución de archivo ---');
-    console.log('Ruta original:', filePath);
-    
-    // Normalizar y limpiar ruta
-    let normalized = path.resolve(filePath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1'));
-    console.log('Ruta normalizada:', normalized);
-    
-    let ext = path.extname(normalized).toLowerCase();
-    let resolvedPath = normalized;
-    let resolvedName = path.basename(normalized, ext);
-
-    // RESOLVER .LNK DE FORMA MÁS AGRESIVA
-    if (ext === '.lnk') {
-      try {
-        const shortcut = shell.readShortcutLink(normalized);
-        if (shortcut.target && fs.existsSync(shortcut.target)) {
-          resolvedPath = path.resolve(shortcut.target);
-        } else {
-          // FALLBACK 1: PowerShell (Muy fiable en Windows)
-          try {
-            // Escapar comillas simples para PowerShell
-            const escapedPath = normalized.replace(/'/g, "''");
-            const winCommand = `powershell -NoProfile -Command "$s = New-Object -ComObject WScript.Shell; $s.CreateShortcut('${escapedPath}').TargetPath"`;
-            const output = execSync(winCommand, { encoding: 'utf-8' }).trim();
-            if (output && fs.existsSync(output)) {
-              resolvedPath = path.resolve(output);
-            }
-          } catch (psErr) {
-            console.error('Shortcut resolution fallbacks failed:', psErr);
-          }
-        }
-        
-        ext = path.extname(resolvedPath).toLowerCase();
-        resolvedName = path.basename(resolvedPath, ext);
-        console.log('Ruta resuelta tras .lnk:', resolvedPath);
-      } catch (e) {
-        console.error('Error resolving .lnk:', e);
-      }
-    }
-
-    // EXTRACCIÓN DE ÍCONO → cache en disco (local-resource://) en vez de base64 en config
-    let iconPath = '';
-    const cachedIconPath = path.join(
-      getIconCacheDir(),
-      `${crypto.createHash('sha1').update(resolvedPath.toLowerCase()).digest('hex').slice(0, 24)}.png`
-    );
-    if (fs.existsSync(cachedIconPath) && fs.statSync(cachedIconPath).size > 100) {
-      iconPath = toLocalResourceUrl(cachedIconPath);
-      console.log('[ICON] Cache hit:', cachedIconPath);
-    } else {
-      try {
-        console.log('Intentando extraer icono para:', resolvedPath);
-        if (fs.existsSync(resolvedPath)) {
-          let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
-          if (!icon || icon.isEmpty()) {
-            console.log('Icono grande falló, intentando normal...');
-            icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
-          }
-
-          if (icon && !icon.isEmpty()) {
-            const png = icon.toPNG();
-            // Heurística previa: iconos genéricos suelen ser muy pequeños en dataURL (~<1500 chars ≈ <~1KB)
-            if (png.length >= 400) {
-              iconPath = await persistIconPng(resolvedPath, png);
-              console.log('[ICON] Guardado en cache. Bytes:', png.length);
-            }
-          } else {
-            console.log('No se pudo extraer icono (archivo protegido o sin recursos)');
-          }
-        }
-      } catch (e) {
-        console.warn('Error getFileIcon:', e);
-      }
-
-      // Fallback con PowerShell si el icono nativo falló o parece genérico
-      if (!iconPath) {
-        try {
-          console.log('[ICON] Fallback PowerShell para:', resolvedPath);
-          const escapedPath = resolvedPath.replace(/'/g, "''");
-          const psScript = `Add-Type -AssemblyName System.Drawing; $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('${escapedPath}'); if ($icon) { $bmp=$icon.ToBitmap(); $tmp=[System.IO.Path]::GetTempFileName()+'.png'; $bmp.Save($tmp,[System.Drawing.Imaging.ImageFormat]::Png); Write-Output $tmp; $icon.Dispose(); $bmp.Dispose() }`;
-          const tmpPs = path.join(os.tmpdir(), `cl-icon-${Date.now()}.ps1`);
-          await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
-          const psOutput = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, { encoding: 'utf-8', timeout: 8000 }).trim();
-          await fs.promises.unlink(tmpPs).catch(() => {});
-          if (psOutput && fs.existsSync(psOutput)) {
-            const pngBuffer = await fs.promises.readFile(psOutput);
-            await fs.promises.unlink(psOutput).catch(() => {});
-            if (pngBuffer.length > 100) {
-              iconPath = await persistIconPng(resolvedPath, pngBuffer);
-              console.log('[ICON] PowerShell → cache. Bytes:', pngBuffer.length);
-            } else {
-              console.log('[ICON] PowerShell PNG muy pequeño, ignorando');
-            }
-          } else {
-            console.log('[ICON] PowerShell no devolvio ruta de PNG');
-          }
-        } catch (psErr: any) {
-          console.warn('[ICON] PowerShell fallback falló:', psErr?.message || psErr);
-        }
-      }
-    }
+    const { normalized, resolvedPath, resolvedName, ext } = resolvePathAndTarget(filePath);
+    const { iconPath } = await extractAndCacheIcon(resolvedPath, false);
 
     return {
       name: resolvedName,
@@ -2395,6 +2402,84 @@ foreach (\$app in \$startApps) {
   // --- Obtener ruta de archivo arrastrado (drag & drop nativo) ---
   ipcMain.handle('resolve-file-path', async (_event, filePath: string) => {
     return await resolveFullFileInfo(filePath);
+  });
+
+  // --- Refresco individual de icono ---
+  ipcMain.handle('refresh-app-icon', async (_event, appPath: string) => {
+    try {
+      if (!appPath) return { success: false, error: 'Path is required' };
+      const { resolvedPath } = resolvePathAndTarget(appPath);
+      const { iconPath } = await extractAndCacheIcon(resolvedPath, true);
+      if (iconPath) {
+        return { success: true, iconPath, resolvedPath };
+      }
+      return { success: false, error: 'Could not extract icon' };
+    } catch (e: any) {
+      console.error('[ICON] Error refreshing app icon:', e);
+      return { success: false, error: e?.message || String(e) };
+    }
+  });
+
+  // --- Refresco masivo de iconos y limpieza de huérfanos ---
+  ipcMain.handle('refresh-all-app-icons', async (_event, appList: Array<{ id: number; path?: string }>, force: boolean = true) => {
+    try {
+      const updatedIcons: Record<number, string> = {};
+      const activeHashes = new Set<string>();
+
+      if (Array.isArray(appList)) {
+        const concurrency = 3;
+        const queue = [...appList];
+
+        const worker = async () => {
+          while (queue.length > 0) {
+            const item = queue.shift();
+            if (!item || !item.path) continue;
+            try {
+              const { resolvedPath } = resolvePathAndTarget(item.path);
+              const hash = crypto.createHash('sha1').update(resolvedPath.toLowerCase()).digest('hex').slice(0, 24);
+              activeHashes.add(hash);
+
+              const result = await extractAndCacheIcon(resolvedPath, force);
+              if (result.iconPath && (force || result.reextracted)) {
+                updatedIcons[item.id] = result.iconPath;
+              }
+            } catch (err) {
+              console.warn(`[ICON] Failed to refresh app ${item.id} (${item.path}):`, err);
+            }
+          }
+        };
+
+        const workers = Array.from({ length: Math.min(concurrency, queue.length) }, () => worker());
+        await Promise.all(workers);
+      }
+
+      // Limpieza de iconos huérfanos en icon-cache (solo en refresco manual forzado)
+      let cleanedCount = 0;
+      if (force) {
+        try {
+          const cacheDir = getIconCacheDir();
+          if (fs.existsSync(cacheDir)) {
+            const files = await fs.promises.readdir(cacheDir);
+            for (const file of files) {
+              if (file.endsWith('.png')) {
+                const fileHash = file.replace('.png', '');
+                if (!activeHashes.has(fileHash)) {
+                  await fs.promises.unlink(path.join(cacheDir, file)).catch(() => {});
+                  cleanedCount++;
+                }
+              }
+            }
+          }
+        } catch (cleanErr) {
+          console.warn('[ICON] Error cleaning orphaned icon cache:', cleanErr);
+        }
+      }
+
+      return { success: true, updatedIcons, cleanedCount };
+    } catch (e: any) {
+      console.error('[ICON] Error refreshing all app icons:', e);
+      return { success: false, updatedIcons: {}, cleanedCount: 0, error: e?.message || String(e) };
+    }
   });
 
   ipcMain.handle('open-file-location', async (_event, filePath: string) => {

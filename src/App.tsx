@@ -11,7 +11,8 @@ import {
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
-  Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw
+  Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
+  RefreshCw
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -192,6 +193,8 @@ declare global {
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
       resolveFilePath: (filePath: string) => Promise<{ name: string; path: string; ext: string; exists: boolean; iconPath: string; debug?: any } | null>;
+      refreshAppIcon: (appPath: string) => Promise<{ success: boolean; iconPath?: string; resolvedPath?: string; error?: string }>;
+      refreshAllAppIcons: (apps: Array<{ id: number; path?: string; iconPath?: string }>, force?: boolean) => Promise<{ success: boolean; updatedIcons: Record<number, string>; cleanedCount: number; error?: string }>;
       openFileLocation: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       searchSystemFiles: (query: string) => Promise<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>;
       getIndexerSettings: () => Promise<{ enabled: boolean; maxDepth: number; paths: string[] }>;
@@ -1567,6 +1570,13 @@ export default function App() {
     /** Optional click action (e.g. update toast → About). */
     action?: 'open-about';
   } | null>(null);
+
+  const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
+    return localStorage.getItem('cyber_auto_check_icons') !== 'false';
+  });
+  const [isRefreshingIcons, setIsRefreshingIcons] = useState(false);
+  const [iconRefreshFeedback, setIconRefreshFeedback] = useState<string | null>(null);
+  const [refreshingAppId, setRefreshingAppId] = useState<number | null>(null);
   const [indexerSettings, setIndexerSettings] = useState<{ enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders: boolean; indexHiddenContent: boolean }>({
     enabled: true,
     maxDepth: 2,
@@ -2271,6 +2281,35 @@ export default function App() {
     initConfig();
   }, []);
 
+  // Verificación en segundo plano de iconos modificados al iniciar
+  const initialIconCheckDone = useRef(false);
+  useEffect(() => {
+    if (!isConfigLoaded || !isElectron || !autoCheckIconsOnStartup || initialIconCheckDone.current) return;
+    if (!apps || apps.length === 0) return;
+    initialIconCheckDone.current = true;
+
+    const timer = setTimeout(async () => {
+      try {
+        const payload = apps
+          .filter((a: any) => a.path)
+          .map((a: any) => ({ id: a.id, path: a.path, iconPath: a.iconPath }));
+        if (payload.length === 0) return;
+        const res = await window.electronAPI!.refreshAllAppIcons(payload, false);
+        if (res && res.success && res.updatedIcons && Object.keys(res.updatedIcons).length > 0) {
+          console.log('[ICONS] Auto-check refreshed icons for', Object.keys(res.updatedIcons).length, 'apps');
+          setApps(prev => prev.map(app => {
+            const freshIcon = res.updatedIcons[app.id];
+            return freshIcon ? { ...app, iconPath: freshIcon } : app;
+          }));
+        }
+      } catch (err) {
+        console.warn('[ICONS] Startup auto-check error:', err);
+      }
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
+
   // Guardar automáticamente cada vez que algo cambie
   const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language });
   configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language };
@@ -2749,6 +2788,74 @@ export default function App() {
       addToHistory(item.name, item.path, item.type, item.icon);
     }
   };
+
+  const handleRefreshSingleAppIcon = useCallback(async (app: LauncherApp) => {
+    const targetPath = (app as any).path;
+    if (!targetPath || !isElectron) return;
+    setRefreshingAppId(app.id);
+    try {
+      const res = await window.electronAPI!.refreshAppIcon(targetPath);
+      if (res && res.success && res.iconPath) {
+        setApps(prev => prev.map(a => a.id === app.id ? { ...a, iconPath: res.iconPath } : a));
+        setNotification({
+          message: `${t('ctx_icon_refreshed')}: ${app.name}`,
+          type: 'success'
+        });
+      } else {
+        setNotification({
+          message: res?.error || (language === 'es' ? 'No se pudo actualizar el icono' : 'Failed to update icon'),
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      console.error('[ICONS] Single refresh error:', err);
+    } finally {
+      setRefreshingAppId(null);
+    }
+  }, [language, t]);
+
+  const handleRefreshAllIcons = useCallback(async () => {
+    if (!isElectron || isRefreshingIcons) return;
+    setIsRefreshingIcons(true);
+    setIconRefreshFeedback(null);
+    try {
+      const payload = apps
+        .filter((a: any) => a.path)
+        .map((a: any) => ({ id: a.id, path: a.path, iconPath: a.iconPath }));
+      const res = await window.electronAPI!.refreshAllAppIcons(payload, true);
+      if (res && res.success) {
+        const updatedCount = res.updatedIcons ? Object.keys(res.updatedIcons).length : 0;
+        if (updatedCount > 0) {
+          setApps(prev => prev.map(app => {
+            const freshIcon = res.updatedIcons[app.id];
+            return freshIcon ? { ...app, iconPath: freshIcon } : app;
+          }));
+        }
+        const feedbackMsg = t('settings_icons_success', {
+          count: String(updatedCount),
+          cleaned: String(res.cleanedCount || 0)
+        });
+        setIconRefreshFeedback(feedbackMsg);
+        setNotification({
+          message: feedbackMsg,
+          type: 'success'
+        });
+      } else {
+        setNotification({
+          message: res?.error || (language === 'es' ? 'Error al actualizar iconos' : 'Error updating icons'),
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      console.error('[ICONS] Bulk refresh error:', err);
+      setNotification({
+        message: String(err?.message || err),
+        type: 'error'
+      });
+    } finally {
+      setIsRefreshingIcons(false);
+    }
+  }, [apps, isRefreshingIcons, language, t]);
 
   const handleContextMenu = (e: React.MouseEvent, app: LauncherApp) => {
     e.preventDefault();
@@ -5543,28 +5650,64 @@ export default function App() {
                           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
                         />
                         {isElectron ? (
-                          <Tooltip label={t('tooltip_browse_icon')} placement="top">
-                            <button
-                              onClick={async () => {
-                                const filePath = await window.electronAPI!.selectImage();
-                                if (!filePath) return;
-                                setIsResolvingIcon(true);
-                                try {
-                                  const dataUrl = await window.electronAPI!.getImageData(filePath);
-                                  if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
-                                } finally {
-                                  setIsResolvingIcon(false);
-                                }
-                              }}
-                              disabled={isResolvingIcon}
-                              className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
-                            >
-                              {isResolvingIcon
-                                ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
-                                : <Upload className="w-4 h-4 mr-2" />}
-                              PC
-                            </button>
-                          </Tooltip>
+                          <>
+                            {editForm.path && (
+                              <Tooltip label={t('app_edit_refresh_icon')} placement="top">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!editForm.path) return;
+                                    setIsResolvingIcon(true);
+                                    try {
+                                      const res = await window.electronAPI!.refreshAppIcon(editForm.path);
+                                      if (res && res.success && res.iconPath) {
+                                        setEditForm(prev => ({ ...prev, iconPath: res.iconPath! }));
+                                        setNotification({
+                                          message: t('ctx_icon_refreshed'),
+                                          type: 'success'
+                                        });
+                                      } else {
+                                        setNotification({
+                                          message: res?.error || (language === 'es' ? 'No se pudo obtener el icono' : 'Failed to get icon'),
+                                          type: 'error'
+                                        });
+                                      }
+                                    } catch (err) {
+                                      console.error('[ICONS] Edit modal refresh icon error:', err);
+                                    } finally {
+                                      setIsResolvingIcon(false);
+                                    }
+                                  }}
+                                  disabled={isResolvingIcon}
+                                  className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
+                                >
+                                  <RefreshCw className={`w-4 h-4 ${isResolvingIcon ? 'animate-spin text-cyan-400' : 'text-slate-300'}`} />
+                                </button>
+                              </Tooltip>
+                            )}
+                            <Tooltip label={t('tooltip_browse_icon')} placement="top">
+                              <button
+                                onClick={async () => {
+                                  const filePath = await window.electronAPI!.selectImage();
+                                  if (!filePath) return;
+                                  setIsResolvingIcon(true);
+                                  try {
+                                    const dataUrl = await window.electronAPI!.getImageData(filePath);
+                                    if (dataUrl) setEditForm(prev => ({ ...prev, iconPath: dataUrl }));
+                                  } finally {
+                                    setIsResolvingIcon(false);
+                                  }
+                                }}
+                                disabled={isResolvingIcon}
+                                className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
+                              >
+                                {isResolvingIcon
+                                  ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
+                                  : <Upload className="w-4 h-4 mr-2" />}
+                                PC
+                              </button>
+                            </Tooltip>
+                          </>
                         ) : (
                           <Tooltip label={t('tooltip_browse_icon')} placement="top">
                             <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
@@ -6167,6 +6310,64 @@ export default function App() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Icon Maintenance Section */}
+                <div className="space-y-4 pt-6 border-t border-white/5">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-cyan-500" />
+                    {t('settings_icons_title')}
+                  </label>
+                  <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {t('settings_icons_desc')}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        disabled={isRefreshingIcons || !isElectron}
+                        onClick={handleRefreshAllIcons}
+                        className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all disabled:opacity-50 disabled:cursor-wait shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
+                        <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('settings_icons_refresh_all')}</span>
+                      </button>
+
+                      {iconRefreshFeedback && (
+                        <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
+                          {iconRefreshFeedback}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Auto check toggle */}
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
+                        <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoCheckIconsOnStartup}
+                        onClick={() => {
+                          const next = !autoCheckIconsOnStartup;
+                          setAutoCheckIconsOnStartup(next);
+                          localStorage.setItem('cyber_auto_check_icons', String(next));
+                        }}
+                        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
+                          autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-white/10'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                            autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 </>)}
@@ -7063,6 +7264,21 @@ export default function App() {
                 className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
               >
                 Abrir ubicación <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
+              </button>
+            )}
+
+            {(contextMenu.app as any).path && isElectron && (
+              <button
+                onClick={() => {
+                  const targetApp = contextMenu.app!;
+                  setContextMenu(null);
+                  handleRefreshSingleAppIcon(targetApp);
+                }}
+                disabled={refreshingAppId === contextMenu.app!.id}
+                className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 disabled:opacity-50"
+              >
+                {refreshingAppId === contextMenu.app!.id ? t('ctx_refreshing_icon') : t('ctx_refresh_icon')}
+                <RotateCcw className={`w-4 h-4 ml-2 text-cyan-400 ${refreshingAppId === contextMenu.app!.id ? 'animate-spin' : ''}`} />
               </button>
             )}
             

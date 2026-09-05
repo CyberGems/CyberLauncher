@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // --- Drag & Drop: resolver ruta de archivo ---
   resolveFilePath: (filePath: string) => ipcRenderer.invoke('resolve-file-path', filePath),
+  refreshAppIcon: (appPath: string) => ipcRenderer.invoke('refresh-app-icon', appPath),
+  refreshAllAppIcons: (apps: Array<{ id: number; path?: string }>, force?: boolean) =>
+    ipcRenderer.invoke('refresh-all-app-icons', apps, force),
   openFileLocation: (filePath: string) => ipcRenderer.invoke('open-file-location', filePath),
   searchSystemFiles: (query: string) => ipcRenderer.invoke('search-system-files', query),
   getIndexerSettings: () => ipcRenderer.invoke('get-indexer-settings'),
