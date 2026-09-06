@@ -12,7 +12,8 @@ import {
   HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw, Calculator, Activity, FileText, CornerDownLeft
+  RefreshCw, Calculator, Activity, FileText, CornerDownLeft,
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -653,7 +654,7 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
     <Tooltip label={title} placement="bottom">
       <button
         onClick={onClick}
-        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-1 group"
+        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[135px] shrink-0 justify-start pl-1 group"
       >
         <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
@@ -1972,6 +1973,36 @@ export default function App() {
   const [newCategoryForm, setNewCategoryForm] = useState({ name: '', color: '#38bdf8' });
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [isAppActive, setIsAppActive] = useState(true);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  const openExternalUrl = useCallback((url: string) => {
+    if (isElectron && window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }, [isElectron]);
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | PointerEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMoreMenuOpen]);
 
   // Windows Store UWP states
   const [uwpAppsList, setUwpAppsList] = useState<Array<{ name: string; aumid: string; icon: string }>>([]);
@@ -3626,7 +3657,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -4055,9 +4086,9 @@ export default function App() {
         }
       }
 
-      // Hotkey para nueva categoría: Ctrl + +
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && !isAnyModalOpen) {
-        if (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey) || e.key === '=') {
+      // Hotkey para nueva categoría: Ctrl + Shift + N
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && !isAnyModalOpen) {
+        if (e.key === 'n' || e.key === 'N') {
           e.preventDefault();
           setNewCategoryForm({ name: '', color: '#38bdf8' });
           setIsAddingCategory(true);
@@ -4097,6 +4128,12 @@ export default function App() {
           submitAppForm();
           return;
         }
+      }
+
+      if (isMoreMenuOpen && e.key === 'Escape') {
+        e.preventDefault();
+        setIsMoreMenuOpen(false);
+        return;
       }
 
       if (contextMenu && e.key === 'Escape') {
@@ -4515,7 +4552,7 @@ export default function App() {
             label={
               <span className="flex items-center gap-1.5">
                 <span>{t('tooltip_add_category')}</span>
-                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl++</kbd>
+                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+Shift+N</kbd>
               </span>
             } 
             placement="bottom"
@@ -4525,8 +4562,8 @@ export default function App() {
                 setNewCategoryForm({ name: '', color: '#38bdf8' });
                 setIsAddingCategory(true);
               }}
-              aria-label={`${t('tooltip_add_category')} (Ctrl++)`}
-              aria-keyshortcuts="Control++"
+              aria-label={`${t('tooltip_add_category')} (Ctrl+Shift+N)`}
+              aria-keyshortcuts="Control+Shift+N"
               className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -4777,8 +4814,8 @@ export default function App() {
                   return;
                 }
 
-                // Hotkey para nueva categoría: Ctrl + +
-                if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey) || e.key === '=')) {
+                // Hotkey para nueva categoría: Ctrl + Shift + N
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 'n' || e.key === 'N')) {
                   e.preventDefault();
                   e.stopPropagation();
                   setNewCategoryForm({ name: '', color: '#38bdf8' });
@@ -5810,17 +5847,6 @@ export default function App() {
                 }`} />
               </button>
             </Tooltip>
-            <Tooltip label={t('tooltip_about')} placement="bottom">
-              <button 
-                onClick={() => setIsAboutOpen(true)}
-                className="relative flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
-              >
-                <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                  <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-                )}
-              </button>
-            </Tooltip>
             <Tooltip label={t('tooltip_settings')} placement="bottom">
               <button 
                 onClick={() => setIsSettingsOpen(true)}
@@ -5829,6 +5855,176 @@ export default function App() {
                 <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
               </button>
             </Tooltip>
+
+            {/* More options menu dropdown (CyberFeeds style) */}
+            <div className="relative" ref={moreMenuRef}>
+              <Tooltip label={t('tooltip_more')} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => setIsMoreMenuOpen(prev => !prev)}
+                  aria-haspopup="true"
+                  aria-expanded={isMoreMenuOpen}
+                  className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-colors group ${
+                    isMoreMenuOpen ? 'bg-white/15 text-white' : 'hover:bg-white/10 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                  )}
+                </button>
+              </Tooltip>
+
+              <AnimatePresence>
+                {isMoreMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 top-full mt-1.5 w-[224px] p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] z-50 flex flex-col gap-0.5 select-none"
+                    role="menu"
+                  >
+                    {/* Donate */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        openExternalUrl('https://github.com/CyberGems/CyberLauncher#%EF%B8%8F-donate');
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white hover:bg-cyan-500/10 transition-colors text-left"
+                    >
+                      <Heart className="w-3.5 h-3.5 text-[#00D8F1] fill-[#00D8F1]/20 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(0,216,241,0.8)] transition-transform shrink-0" />
+                      <span className="font-semibold text-[#00D8F1]">{t('more_menu_donate')}</span>
+                    </button>
+
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
+
+                    {/* Quick Tools */}
+                    <button
+                      type="button"
+                      disabled={isRefreshingIcons || !isElectron}
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        handleRefreshAllIcons();
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-colors text-left"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
+                      <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('more_menu_refresh_icons')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsSystemHUDOpen(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Cpu className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_hud_system')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsStorageHUDOpen(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <HardDrive className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_hud_storage')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsClockHUDOpen(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_hud_clock')}</span>
+                    </button>
+
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
+
+                    {/* Wiki & Docs */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        openExternalUrl('https://github.com/CyberGems/CyberLauncher/wiki');
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_docs')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        openExternalUrl('https://github.com/CyberGems/CyberLauncher/issues');
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_faq')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        openExternalUrl('https://github.com/CyberGems/CyberLauncher/releases');
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Tag className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_changelog')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        openExternalUrl('https://cybergems.org');
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_website')}</span>
+                    </button>
+
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
+
+                    {/* About CyberLauncher */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsAboutOpen(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span className="flex-1">{t('more_menu_about')}</span>
+                      {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Titlebar Divider before Window Controls */}
+            <div className="w-[1px] h-3.5 bg-white/10 mx-0.5" />
             <Tooltip label={t('tooltip_minimize')} placement="bottom">
               <button 
                 onClick={() => {
