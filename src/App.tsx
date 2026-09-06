@@ -7890,14 +7890,14 @@ export default function App() {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
                           <Power className="w-4 h-4 text-blue-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup')}</h4>
-                          <p className="text-xs text-slate-500">{t('sys_startup_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_desc')}</p>
                         </div>
                       </div>
                       <button 
@@ -7908,7 +7908,7 @@ export default function App() {
                             window.electronAPI!.setAutoLaunch(newVal, newVal && startMinimized);
                           }
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${startWithWindows ? 'bg-blue-500' : 'bg-slate-700'}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${startWithWindows ? 'bg-blue-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startWithWindows ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${startWithWindows ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -7917,14 +7917,14 @@ export default function App() {
                     </div>
 
                     {startWithWindows && (
-                      <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
                             <Shrink className="w-4 h-4 text-indigo-400" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup_minimized')}</h4>
-                            <p className="text-xs text-slate-500">{t('sys_startup_minimized_desc')}</p>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_minimized_desc')}</p>
                           </div>
                         </div>
                         <button 
@@ -7935,7 +7935,7 @@ export default function App() {
                               window.electronAPI!.setAutoLaunch(true, newVal);
                             }
                           }}
-                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${startMinimized ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${startMinimized ? 'bg-indigo-500' : 'bg-slate-700'}`}
                         >
                           <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startMinimized ? 'translate-x-5' : 'translate-x-0'}`}>
                             <div className={`w-2 h-2 rounded-full ${startMinimized ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -7944,19 +7944,19 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
                           <MousePointer2 className="w-4 h-4 text-amber-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_click')}</h4>
-                          <p className="text-xs text-slate-500">{t('general_hide_on_click_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_click_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setHideOnClickDeadSpot(!hideOnClickDeadSpot)}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${hideOnClickDeadSpot ? 'bg-amber-500' : 'bg-slate-700'}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${hideOnClickDeadSpot ? 'bg-amber-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnClickDeadSpot ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${hideOnClickDeadSpot ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -7964,19 +7964,19 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
                           <Eye className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_blur')}</h4>
-                          <p className="text-xs text-slate-500">{t('general_hide_on_blur_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_blur_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setHideOnBlur(!hideOnBlur)}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${hideOnBlur ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${hideOnBlur ? 'bg-cyan-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnBlur ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${hideOnBlur ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -7984,19 +7984,19 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
                           <Monitor className="w-4 h-4 text-slate-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_show_taskbar')}</h4>
-                          <p className="text-xs text-slate-500">{t('general_show_taskbar_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_show_taskbar_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setShowTaskbarIcon(!showTaskbarIcon)}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${showTaskbarIcon ? 'bg-slate-500' : 'bg-slate-700'}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${showTaskbarIcon ? 'bg-slate-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTaskbarIcon ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${showTaskbarIcon ? 'bg-slate-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -8004,19 +8004,19 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
                           <History className="w-4 h-4 text-indigo-400" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_reset_on_launch')}</h4>
-                          <p className="text-xs text-slate-500">{t('general_reset_on_launch_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_reset_on_launch_desc')}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setResetOnLaunch(!resetOnLaunch)}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${resetOnLaunch ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${resetOnLaunch ? 'bg-indigo-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${resetOnLaunch ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${resetOnLaunch ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
@@ -8055,44 +8055,44 @@ export default function App() {
 
                       <div className="flex flex-col gap-2">
                         {/* Exportar */}
-                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
                               <FileJson className="w-4 h-4 text-emerald-400" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
-                              <p className="text-xs text-slate-500">{t('sys_export_desc')}</p>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_export_desc')}</p>
                             </div>
                           </div>
                           <button 
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 flex-shrink-0 cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 shrink-0 cursor-pointer"
                           >
                             <Download className="w-4 h-4" /> {t('sys_export_btn')}
                           </button>
                         </div>
 
                         {/* Importar */}
-                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
                               <Upload className="w-4 h-4 text-purple-400" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
-                              <p className="text-xs text-slate-500">{t('sys_import_desc')}</p>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_import_desc')}</p>
                             </div>
                           </div>
                           {isElectron ? (
                             <button 
                               onClick={handleImportNative}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0"
+                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer"
                             >
                               <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                             </button>
                           ) : (
-                            <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0">
+                            <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer">
                               <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                             </label>
@@ -8133,7 +8133,7 @@ export default function App() {
 
                         {/* Auto check toggle */}
                         <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-4">
                             <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
                             <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
                           </div>
@@ -8169,57 +8169,57 @@ export default function App() {
 
                       <div className="flex flex-col gap-2">
                         {/* Carpeta de Datos */}
-                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
                               <FolderOpen className="w-4 h-4 text-cyan-400" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
-                              <p className="text-xs text-slate-500">{t('sys_data_dir_desc')}</p>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_data_dir_desc')}</p>
                             </div>
                           </div>
                           <button 
                             onClick={() => window.electronAPI!.openDataFolder()}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700/50 flex-shrink-0 cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700/50 shrink-0 cursor-pointer"
                           >
                             <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
                           </button>
                         </div>
 
                         {/* Diagnóstico del Sistema */}
-                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
                               <Terminal className="w-4 h-4 text-slate-400" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
-                              <p className="text-xs text-slate-500">{t('sys_diag_desc')}</p>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_diag_desc')}</p>
                             </div>
                           </div>
                           <button 
                             onClick={() => window.electronAPI!.openDevTools()}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 flex-shrink-0 cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 shrink-0 cursor-pointer"
                           >
                             <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
                           </button>
                         </div>
 
                         {/* Restablecer accesos predeterminados */}
-                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                        <div className="flex items-start sm:items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0 mt-0.5">
                               <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
-                              <p className="text-xs text-slate-500">{t('settings_default_shortcuts_desc')}</p>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('settings_default_shortcuts_desc')}</p>
                             </div>
                           </div>
                           <button 
                             onClick={handleRestoreDefaultApps}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-sm font-medium border border-indigo-700/60 flex-shrink-0 cursor-pointer"
+                            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-xs font-cyber font-bold tracking-wider border border-indigo-700/60 shrink-0 cursor-pointer whitespace-nowrap"
                           >
                             <RotateCcw className="w-4 h-4" /> {t('settings_default_shortcuts_btn')}
                           </button>

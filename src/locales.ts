@@ -112,7 +112,7 @@ export const translations = {
     tab_system: "SISTEMA",
     tab_backup: "RESPALDO Y DATOS",
     tab_indexer: "BUSCADOR",
-    tab_uwp: "Win Store Apps",
+    tab_uwp: "ESCÁNER WS",
     
     // Settings Title
     settings_title: "CONFIGURACIÓN DE CYBERLAUNCHER",
@@ -252,7 +252,7 @@ export const translations = {
     edit_cat_btn_save: "Guardar",
     settings_default_shortcuts_title: "Accesos predeterminados de Windows",
     settings_default_shortcuts_desc: "Añade a la barra de tareas y favoritos los accesos a utilidades esenciales de Windows (Calculadora, Paint, Configuración, Explorador, PowerShell Admin, etc.).",
-    settings_default_shortcuts_btn: "Restablecer accesos predeterminados",
+    settings_default_shortcuts_btn: "Restablecer accesos",
     notif_default_apps_restored: "Accesos predeterminados de Windows restablecidos con éxito",
     apps_restore_defaults_btn: "Cargar accesos predeterminados",
     
@@ -401,8 +401,8 @@ export const translations = {
     sys_data_dir_btn: "Abrir Carpeta de Datos",
 
     // Windows Store Tab config Additional
-    uwp_header_title: "ESCÁNER DE WINDOWS STORE",
-    uwp_header_desc: "Detecta e integra aplicaciones de la Windows Store (UWP/MSIX) de forma nativa. La ruta virtual se resuelve dinámicamente mediante AUMID, asegurando un lanzamiento indestructible inmune a actualizaciones del sistema.",
+    uwp_header_title: "ESCÁNER DE APPS DE WINDOWS STORE",
+    uwp_header_desc: "Detecta e integra tus aplicaciones de Windows Store para abrirlas directamente desde CyberLauncher.",
     uwp_req_title: "Escaneo de Sistema Requerido",
     uwp_req_desc: "Para catalogar y extraer los accesos directos, iniciaremos un escaneo en los manifiestos de WindowsApps.",
     uwp_req_btn: "INICIAR ESCANEO DE APLICACIONES ⚡",
@@ -567,7 +567,7 @@ export const translations = {
     tab_system: "SYSTEM",
     tab_backup: "BACKUP & DATA",
     tab_indexer: "SEARCH ENGINE",
-    tab_uwp: "Win Store Apps",
+    tab_uwp: "WS SCANNER",
     
     // Settings Title
     settings_title: "CYBERLAUNCHER CONFIGURATION",
@@ -707,7 +707,7 @@ export const translations = {
     edit_cat_btn_save: "Save",
     settings_default_shortcuts_title: "Default Windows Shortcuts",
     settings_default_shortcuts_desc: "Adds shortcuts to essential Windows utilities (Calculator, Paint, Settings, File Explorer, PowerShell Admin, etc.) to the taskbar and favorites.",
-    settings_default_shortcuts_btn: "Restore default shortcuts",
+    settings_default_shortcuts_btn: "Restore shortcuts",
     notif_default_apps_restored: "Default Windows shortcuts restored successfully",
     apps_restore_defaults_btn: "Load default shortcuts",
     
@@ -856,8 +856,8 @@ export const translations = {
     sys_data_dir_btn: "Open Data Folder",
 
     // Windows Store Tab config Additional
-    uwp_header_title: "WINDOWS STORE SCANNER",
-    uwp_header_desc: "Detect and integrate Windows Store (UWP/MSIX) applications natively. Virtual paths resolve dynamically using AUMID, ensuring indestructible launches immune to system updates.",
+    uwp_header_title: "WINDOWS STORE APPS SCANNER",
+    uwp_header_desc: "Detect and integrate your Windows Store applications to launch them directly from CyberLauncher.",
     uwp_req_title: "System Scan Required",
     uwp_req_desc: "To catalog and extract application shortcuts, we will perform a scan of WindowsApps manifests.",
     uwp_req_btn: "START APPLICATION SCAN ⚡",
