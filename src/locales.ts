@@ -110,6 +110,7 @@ export const translations = {
     tab_general: "GENERAL",
     tab_appearance: "APARIENCIA",
     tab_system: "SISTEMA",
+    tab_backup: "RESPALDO Y DATOS",
     tab_indexer: "BUSCADOR",
     tab_uwp: "Win Store Apps",
     
@@ -379,7 +380,13 @@ export const translations = {
     hud_history_remove_item: "Eliminar registro del historial",
 
     // System Tab Config Additional
-    sys_title: "SISTEMA & RESPALDO",
+    sys_title: "SISTEMA",
+
+    // Backup & Data Tab Config
+    backup_title: "RESPALDO Y DATOS",
+    backup_section_backup: "COPIAS DE SEGURIDAD",
+    backup_section_maintenance: "MANTENIMIENTO DE CACHÉ",
+    backup_section_storage: "ALMACENAMIENTO Y DIAGNÓSTICO",
     sys_export_title: "Exportar Configuración",
     sys_export_desc: "Guarda tus apps y configuraciones en un archivo JSON.",
     sys_export_btn: "Exportar",
@@ -558,6 +565,7 @@ export const translations = {
     tab_general: "GENERAL",
     tab_appearance: "APPEARANCE",
     tab_system: "SYSTEM",
+    tab_backup: "BACKUP & DATA",
     tab_indexer: "SEARCH ENGINE",
     tab_uwp: "Win Store Apps",
     
@@ -827,7 +835,13 @@ export const translations = {
     hud_history_remove_item: "Remove execution record from history",
 
     // System Tab Config Additional
-    sys_title: "SYSTEM & BACKUP",
+    sys_title: "SYSTEM",
+
+    // Backup & Data Tab Config
+    backup_title: "BACKUP & DATA",
+    backup_section_backup: "BACKUP COPIES",
+    backup_section_maintenance: "CACHE MAINTENANCE",
+    backup_section_storage: "STORAGE & DIAGNOSTICS",
     sys_export_title: "Export Configuration",
     sys_export_desc: "Save your apps and settings to a JSON file.",
     sys_export_btn: "Export",

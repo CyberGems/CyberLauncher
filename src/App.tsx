@@ -1747,7 +1747,7 @@ export default function App() {
     return text;
   }, [language]);
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cybertray' | 'uwp' | 'indexer'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'backup' | 'cybertray' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
@@ -7308,6 +7308,7 @@ export default function App() {
                       ['general', t('tab_general'), '⌨'],
                       ['appearance', t('tab_appearance'), '🎨'],
                       ['system', t('tab_system'), '⚙'],
+                      ['backup', t('tab_backup'), '💾'],
                       ['indexer', t('tab_indexer'), '🔍'],
                       ['uwp', t('tab_uwp'), '🛍']
                     ] as const).map(([id,label,icon]) => (
@@ -7676,7 +7677,7 @@ export default function App() {
                                  triggerPeek(1500);
                                }
                              }}
-                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                             className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
                            >
                              {t('app_bg_apply')}
                            </button>
@@ -7806,64 +7807,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Icon Maintenance Section */}
-                <div className="space-y-4 pt-6 border-t border-white/5">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 text-cyan-500" />
-                    {t('settings_icons_title')}
-                  </label>
-                  <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {t('settings_icons_desc')}
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pt-1">
-                      <button
-                        type="button"
-                        disabled={isRefreshingIcons || !isElectron}
-                        onClick={handleRefreshAllIcons}
-                        className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all disabled:opacity-50 disabled:cursor-wait shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
-                        <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('settings_icons_refresh_all')}</span>
-                      </button>
-
-                      {iconRefreshFeedback && (
-                        <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
-                          {iconRefreshFeedback}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Auto check toggle */}
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
-                        <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={autoCheckIconsOnStartup}
-                        onClick={() => {
-                          const next = !autoCheckIconsOnStartup;
-                          setAutoCheckIconsOnStartup(next);
-                          localStorage.setItem('cyber_auto_check_icons', String(next));
-                        }}
-                        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
-                          autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-white/10'
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                            autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
                 </>)}
@@ -8081,104 +8024,209 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                          <FileJson className="w-4 h-4 text-emerald-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
-                          <p className="text-xs text-slate-500">{t('sys_export_desc')}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={handleExport}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 flex-shrink-0"
-                      >
-                        <Download className="w-4 h-4" /> {t('sys_export_btn')}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                          <Upload className="w-4 h-4 text-purple-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
-                          <p className="text-xs text-slate-500">{t('sys_import_desc')}</p>
-                        </div>
-                      </div>
-                      {isElectron ? (
-                        <button 
-                          onClick={handleImportNative}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0"
-                        >
-                          <Upload className="w-4 h-4" /> {t('sys_import_btn')}
-                        </button>
-                      ) : (
-                        <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0">
-                          <Upload className="w-4 h-4" /> {t('sys_import_btn')}
-                          <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                        </label>
-                      )}
-                    </div>
-
-                    {/* Nueva sección de Diagnóstico */}
-                    <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors mt-2">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
-                          <Terminal className="w-4 h-4 text-slate-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
-                          <p className="text-xs text-slate-500">{t('sys_diag_desc')}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => window.electronAPI!.openDevTools()}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 flex-shrink-0"
-                      >
-                        <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                          <FolderOpen className="w-4 h-4 text-cyan-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
-                          <p className="text-xs text-slate-500">{t('sys_data_dir_desc')}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => window.electronAPI!.openDataFolder()}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-cyan-800 hover:bg-cyan-700 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700 flex-shrink-0"
-                      >
-                        <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-                          <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
-                          <p className="text-xs text-slate-500">{t('settings_default_shortcuts_desc')}</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={handleRestoreDefaultApps}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-sm font-medium border border-indigo-700/60 flex-shrink-0"
-                      >
-                        <RotateCcw className="w-4 h-4" /> {t('settings_default_shortcuts_btn')}
-                      </button>
                     </div>
                   </div>
-                </div>
 
+                </>)}
+
+                {settingsTab === 'backup' && (<>
+                  <div className="space-y-6">
+                    {/* Backup & Data Header */}
+                    <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                        <HardDrive className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('backup_title')}</h3>
+                        <p className="text-[10px] text-slate-500">
+                          {language === 'es'
+                            ? 'Administración de copias de seguridad, almacenamiento y optimización de caché.'
+                            : 'Manage configuration backups, data storage, and cache optimization.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Sección 1: Copias de Seguridad */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <FileJson className="w-4 h-4 text-emerald-400" />
+                        {t('backup_section_backup')}
+                      </label>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Exportar */}
+                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                              <FileJson className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
+                              <p className="text-xs text-slate-500">{t('sys_export_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={handleExport}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 flex-shrink-0 cursor-pointer"
+                          >
+                            <Download className="w-4 h-4" /> {t('sys_export_btn')}
+                          </button>
+                        </div>
+
+                        {/* Importar */}
+                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                              <Upload className="w-4 h-4 text-purple-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
+                              <p className="text-xs text-slate-500">{t('sys_import_desc')}</p>
+                            </div>
+                          </div>
+                          {isElectron ? (
+                            <button 
+                              onClick={handleImportNative}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0"
+                            >
+                              <Upload className="w-4 h-4" /> {t('sys_import_btn')}
+                            </button>
+                          ) : (
+                            <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 cursor-pointer flex-shrink-0">
+                              <Upload className="w-4 h-4" /> {t('sys_import_btn')}
+                              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sección 2: Mantenimiento de Caché de Iconos */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-cyan-400" />
+                        {t('backup_section_maintenance')}
+                      </label>
+
+                      <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {t('settings_icons_desc')}
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pt-1">
+                          <button
+                            type="button"
+                            disabled={isRefreshingIcons || !isElectron}
+                            onClick={handleRefreshAllIcons}
+                            className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all disabled:opacity-50 disabled:cursor-wait shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
+                            <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('settings_icons_refresh_all')}</span>
+                          </button>
+
+                          {iconRefreshFeedback && (
+                            <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
+                              {iconRefreshFeedback}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Auto check toggle */}
+                        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
+                          <div className="space-y-0.5">
+                            <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={autoCheckIconsOnStartup}
+                            onClick={() => {
+                              const next = !autoCheckIconsOnStartup;
+                              setAutoCheckIconsOnStartup(next);
+                              localStorage.setItem('cyber_auto_check_icons', String(next));
+                            }}
+                            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
+                              autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-white/10'
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sección 3: Almacenamiento y Diagnóstico */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-cyan-400" />
+                        {t('backup_section_storage')}
+                      </label>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Carpeta de Datos */}
+                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                              <FolderOpen className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
+                              <p className="text-xs text-slate-500">{t('sys_data_dir_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => window.electronAPI!.openDataFolder()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700/50 flex-shrink-0 cursor-pointer"
+                          >
+                            <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
+                          </button>
+                        </div>
+
+                        {/* Diagnóstico del Sistema */}
+                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
+                              <Terminal className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
+                              <p className="text-xs text-slate-500">{t('sys_diag_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => window.electronAPI!.openDevTools()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 flex-shrink-0 cursor-pointer"
+                          >
+                            <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
+                          </button>
+                        </div>
+
+                        {/* Restablecer accesos predeterminados */}
+                        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                              <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
+                              <p className="text-xs text-slate-500">{t('settings_default_shortcuts_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={handleRestoreDefaultApps}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-sm font-medium border border-indigo-700/60 flex-shrink-0 cursor-pointer"
+                          >
+                            <RotateCcw className="w-4 h-4" /> {t('settings_default_shortcuts_btn')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </>)}
 
                 {settingsTab === 'uwp' && (
