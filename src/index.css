@@ -94,3 +94,19 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
     transform: translateY(0);
   }
 }
+
+/* Slower, calmer breathing animation for the terminal caret icon */
+@keyframes caret-breathe {
+  0%, 100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.35));
+  }
+  50% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 1px rgba(16, 185, 129, 0.15));
+  }
+}
+
+.animate-caret-breathe {
+  animation: caret-breathe 3.5s ease-in-out infinite;
+}

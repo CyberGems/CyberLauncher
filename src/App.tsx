@@ -715,7 +715,7 @@ const RotatingSearchPlaceholder = React.memo(({
     if (!visible) return;
     const interval = setInterval(() => {
       setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
-    }, 3000);
+    }, 4500);
     return () => clearInterval(interval);
   }, [visible]);
 
@@ -727,14 +727,14 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
 
   return (
-    <div className={`absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
+    <div className={`absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500/90 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
-          initial={{ opacity: 0, y: 3 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -3 }}
-          transition={{ duration: 0.25 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
           className="truncate"
         >
           {text}
@@ -5241,10 +5241,10 @@ export default function App() {
               }}
               className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
                 isTerminalOpen
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono' 
+                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono caret-emerald-400/80' 
                   : searchScope === 'system'
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] caret-emerald-400/80'
+                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] caret-cyan-400/80'
               } placeholder:text-slate-500`}
             />
             {searchQuery === '' && (
@@ -5255,9 +5255,9 @@ export default function App() {
             )}
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               {isTerminalOpen ? (
-                <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] transition-colors shrink-0" />
+                <Terminal className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
               ) : searchScope === 'system' ? (
-                <Search className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] transition-colors shrink-0" />
+                <Search className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
               ) : (
                 <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm shrink-0" />
               )}
@@ -5367,7 +5367,7 @@ export default function App() {
                 {/* Left: Terminal badge + Shell selector + CWD Pill */}
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                    <Terminal className="w-4 h-4 text-emerald-400/85 animate-caret-breathe" />
                     <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">
                       {t('terminal_title')}
                     </span>
