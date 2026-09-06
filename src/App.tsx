@@ -2573,6 +2573,57 @@ export default function App() {
   });
   // (CyberTray state removed)
 
+  // Peeking: Temporarily hide blur when adjusting background sliders or changing background image/colors (CyberFeeds pattern)
+  const [isPeeking, setIsPeeking] = useState(false);
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startPeeking = useCallback(() => {
+    setIsPeeking(true);
+    if (peekTimer.current) clearTimeout(peekTimer.current);
+
+    // Safety timeout in case pointer events are interrupted
+    peekTimer.current = setTimeout(() => {
+      setIsPeeking(false);
+    }, 2500);
+
+    const stopPeeking = (): void => {
+      if (peekTimer.current) clearTimeout(peekTimer.current);
+      peekTimer.current = setTimeout(() => {
+        setIsPeeking(false);
+      }, 250);
+      window.removeEventListener('pointerup', stopPeeking);
+      window.removeEventListener('mouseup', stopPeeking);
+      window.removeEventListener('touchend', stopPeeking);
+      window.removeEventListener('pointercancel', stopPeeking);
+    };
+
+    window.addEventListener('pointerup', stopPeeking);
+    window.addEventListener('mouseup', stopPeeking);
+    window.addEventListener('touchend', stopPeeking);
+    window.addEventListener('pointercancel', stopPeeking);
+  }, []);
+
+  const triggerPeek = useCallback((duration = 1200) => {
+    setIsPeeking(true);
+    if (peekTimer.current) clearTimeout(peekTimer.current);
+    peekTimer.current = setTimeout(() => {
+      setIsPeeking(false);
+    }, duration);
+  }, []);
+
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      if (peekTimer.current) clearTimeout(peekTimer.current);
+      setIsPeeking(false);
+    }
+  }, [isSettingsOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (peekTimer.current) clearTimeout(peekTimer.current);
+    };
+  }, []);
+
   useEffect(() => { localStorage.setItem('bgType', bgType); }, [bgType]);
   useEffect(() => { localStorage.setItem('bgImage', bgImage); }, [bgImage]);
   useEffect(() => { localStorage.setItem('customImageUrl', customImageUrl); }, [customImageUrl]);
@@ -4295,13 +4346,16 @@ export default function App() {
   const getGlassStyle = (baseAlpha: number, isBlurry: boolean = false) => {
     // Adjust opacity based on 'glassIntensity' slider when an image is used, 
     // or keep it more solid if solid/gradient is used to maintain contrast.
-    const alpha = bgType === 'image' 
+    const alpha = isPeeking
+      ? Math.max(0.04, baseAlpha * 0.15)
+      : bgType === 'image' 
       ? Math.max(0.1, baseAlpha * (glassIntensity / 100)) 
       : baseAlpha * 1.5; // Make more solid if no image
     
     return {
       backgroundColor: `rgba(10, 15, 24, ${alpha})`,
-      ...(isBlurry && bgType === 'image' ? { backdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity)/100)}px)` } : {})
+      transition: 'background-color 0.25s ease, backdrop-filter 0.25s ease',
+      ...(isBlurry && bgType === 'image' && !isPeeking ? { backdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity)/100)}px)` } : {})
     };
   };
 
@@ -4518,8 +4572,8 @@ export default function App() {
           className="absolute inset-0 pointer-events-none transition-all duration-300 z-0" 
           style={{ 
             backgroundColor: `rgba(0, 0, 0, ${bgOpacity / 100})`,
-            backdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`,
-            WebkitBackdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`
+            backdropFilter: isPeeking ? 'none' : `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`,
+            WebkitBackdropFilter: isPeeking ? 'none' : `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`
           }}
         />
       )}
@@ -7176,7 +7230,10 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             data-no-hide
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            className={`fixed inset-0 z-50 transition-all duration-200 ${
+              isPeeking ? 'bg-transparent backdrop-blur-none' : 'bg-black/60 backdrop-blur-sm'
+            }`}
+            style={isPeeking ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
             onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
           />
             <motion.div 
@@ -7186,7 +7243,9 @@ export default function App() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               data-no-hide
               onClick={(e) => e.stopPropagation()}
-              className="fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col select-none"
+              className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
+                isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
+              }`}
             >
               <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
@@ -7413,7 +7472,10 @@ export default function App() {
                     ].map(type => (
                       <button
                         key={type.id}
-                        onClick={() => setBgType(type.id as any)}
+                        onClick={() => {
+                          setBgType(type.id as any);
+                          triggerPeek(1200);
+                        }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
                           bgType === type.id 
                             ? 'bg-blue-500/20 text-blue-300 shadow-sm border border-blue-500/30' 
@@ -7441,8 +7503,11 @@ export default function App() {
                             <button
                               key={i}
                               type="button"
-                              onClick={() => setBgImage(img)}
-                              className={`h-24 rounded-xl bg-cover bg-center border-2 transition-all overflow-hidden relative ${
+                              onClick={() => {
+                                setBgImage(img);
+                                triggerPeek(1200);
+                              }}
+                              className={`h-24 rounded-xl bg-cover bg-center border-2 transition-all overflow-hidden relative cursor-pointer ${
                                 bgImage === img ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20'
                               }`}
                               style={{ backgroundImage: `url(${toThumbnailUrl(img)})` }}
@@ -7465,7 +7530,10 @@ export default function App() {
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => setBgImage(customSlotImage)}
+                                  onClick={() => {
+                                    setBgImage(customSlotImage);
+                                    triggerPeek(1200);
+                                  }}
                                   className="absolute inset-0 bg-cover bg-center cursor-pointer"
                                   style={{ backgroundImage: `url(${toThumbnailUrl(customSlotImage)})` }}
                                   aria-label={t('app_bg_image')}
@@ -7483,6 +7551,7 @@ export default function App() {
                                       if (path) {
                                         setCustomSlotImage(path);
                                         setBgImage(path);
+                                        triggerPeek(1500);
                                       }
                                     }}
                                     className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
@@ -7497,7 +7566,10 @@ export default function App() {
                                       e.stopPropagation();
                                       const wasActive = bgImage === customSlotImage;
                                       setCustomSlotImage('');
-                                      if (wasActive) setBgImage(DEFAULT_BG_IMAGE);
+                                      if (wasActive) {
+                                        setBgImage(DEFAULT_BG_IMAGE);
+                                        triggerPeek(1200);
+                                      }
                                     }}
                                     className="flex items-center justify-center bg-red-500/90 hover:bg-red-500 text-white p-1.5 rounded-lg transition-colors cursor-pointer"
                                   >
@@ -7514,6 +7586,7 @@ export default function App() {
                                   if (path) {
                                     setCustomSlotImage(path);
                                     setBgImage(path);
+                                    triggerPeek(1500);
                                   }
                                 }}
                                 className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
@@ -7543,6 +7616,7 @@ export default function App() {
                                  setCustomSlotImage(customImageUrl);
                                  setBgImage(customImageUrl);
                                  setCustomImageUrl('');
+                                 triggerPeek(1500);
                                }
                              }}
                              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
@@ -7563,6 +7637,15 @@ export default function App() {
                           type="range" 
                           min="0" max="100" 
                           value={glassIntensity}
+                          onPointerDown={startPeeking}
+                          onMouseDown={startPeeking}
+                          onTouchStart={startPeeking}
+                          onInput={startPeeking}
+                          onKeyDown={(e) => {
+                            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
+                              startPeeking();
+                            }
+                          }}
                           onChange={(e) => setGlassIntensity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
@@ -7582,6 +7665,15 @@ export default function App() {
                           type="range" 
                           min="0" max="100" 
                           value={bgOpacity}
+                          onPointerDown={startPeeking}
+                          onMouseDown={startPeeking}
+                          onTouchStart={startPeeking}
+                          onInput={startPeeking}
+                          onKeyDown={(e) => {
+                            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
+                              startPeeking();
+                            }
+                          }}
                           onChange={(e) => setBgOpacity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
                         />
@@ -7603,7 +7695,10 @@ export default function App() {
                         {PRESET_GRADIENTS.map((grad, i) => (
                           <button
                             key={i}
-                            onClick={() => setBgGradient(grad)}
+                            onClick={() => {
+                              setBgGradient(grad);
+                              triggerPeek(1200);
+                            }}
                             className={`h-20 rounded-xl border-2 transition-all cursor-pointer ${
                               bgGradient === grad ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-white/20'
                             }`}
@@ -7623,7 +7718,10 @@ export default function App() {
                         {PRESET_SOLIDS.map((color, i) => (
                           <button
                             key={i}
-                            onClick={() => setBgColor(color)}
+                            onClick={() => {
+                              setBgColor(color);
+                              triggerPeek(1200);
+                            }}
                             className={`w-14 h-14 rounded-xl border-2 transition-all cursor-pointer ${
                               bgColor === color ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20 shadow-inner'
                             }`}
@@ -7634,7 +7732,16 @@ export default function App() {
                           <input 
                             type="color" 
                             value={bgColor}
-                            onChange={(e) => setBgColor(e.target.value)}
+                            onPointerDown={startPeeking}
+                            onMouseDown={startPeeking}
+                            onInput={(e) => {
+                              setBgColor(e.currentTarget.value);
+                              startPeeking();
+                            }}
+                            onChange={(e) => {
+                              setBgColor(e.target.value);
+                              triggerPeek(1000);
+                            }}
                             className="absolute inset-[-10px] w-20 h-20 opacity-0 cursor-pointer"
                           />
                           <Palette className="w-5 h-5 text-slate-400 pointer-events-none" />
