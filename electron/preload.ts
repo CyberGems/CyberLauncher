@@ -100,15 +100,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener('app-launched-via-hotkey', handler); };
   },
 
-  // --- Shell runner ---
-  runShellCommand: (command: string) => ipcRenderer.invoke('run-shell-command', command),
+  // --- Shell runner & Cyber Terminal ---
+  runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) =>
+    ipcRenderer.invoke('run-shell-command', typeof command === 'string' && opts ? { command, ...opts } : command),
+  getConsoleCwd: () => ipcRenderer.invoke('get-console-cwd'),
+  setConsoleCwd: (targetPath: string) => ipcRenderer.invoke('set-console-cwd', targetPath),
+  openPath: (targetPath: string) => ipcRenderer.invoke('open-path', targetPath),
+  openExternalTerminal: (targetPath?: string) => ipcRenderer.invoke('open-external-terminal', targetPath),
+  killShellCommand: (cmdId?: string) => ipcRenderer.invoke('kill-shell-command', cmdId),
   onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => {
     const handler = (_event: any, data: { id: string; type: 'stdout' | 'stderr'; text: string }) => callback(data);
     ipcRenderer.on('shell-command-output', handler);
     return () => { ipcRenderer.removeListener('shell-command-output', handler); };
   },
-  onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => {
-    const handler = (_event: any, data: { id: string; exitCode: number }) => callback(data);
+  onShellExit: (callback: (data: { id: string; exitCode: number; cwd?: string }) => void) => {
+    const handler = (_event: any, data: { id: string; exitCode: number; cwd?: string }) => callback(data);
     ipcRenderer.on('shell-command-exit', handler);
     return () => { ipcRenderer.removeListener('shell-command-exit', handler); };
   },

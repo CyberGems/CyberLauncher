@@ -2882,23 +2882,205 @@ foreach (\$app in \$startApps) {
     return { success: true };
   });
 
-  // --- Shell runner ---
+  // --- Shell runner & Cyber Terminal engine ---
   const activeProcesses = new Map<string, any>();
+  let consoleCwd = os.homedir();
 
-  ipcMain.handle('run-shell-command', (_event, fullCommand: string) => {
-    const cmdId = Math.random().toString(36).substring(7);
+  function handleCdCommand(fullCommand: string): { handled: boolean; success: boolean; newCwd?: string; output?: string; error?: string } {
+    const trimmed = fullCommand.trim();
+
+    // Switch drive letter (e.g. "D:", "d:", "c:")
+    const driveMatch = /^[a-zA-Z]:$/.exec(trimmed);
+    if (driveMatch) {
+      const driveRoot = `${driveMatch[0].toUpperCase()}\\`;
+      if (fs.existsSync(driveRoot)) {
+        consoleCwd = driveRoot;
+        return { handled: true, success: true, newCwd: consoleCwd, output: `${consoleCwd}\n` };
+      } else {
+        return { handled: true, success: false, error: `Unidad no disponible: ${driveMatch[0].toUpperCase()}` };
+      }
+    }
+
+    // CD or CHDIR command
+    const cdMatch = /^(?:cd|chdir)(?:[\s/](.*))?$/i.exec(trimmed);
+    if (!cdMatch) return { handled: false, success: false };
+
+    // 'cd' without arguments: print current working directory
+    const rawArg = cdMatch[1] ? cdMatch[1].trim() : '';
+    if (!rawArg) {
+      return { handled: true, success: true, newCwd: consoleCwd, output: `${consoleCwd}\n` };
+    }
+
+    let target = rawArg;
+    // Strip cmd's /d switch if present (e.g. "cd /d D:\Games")
+    if (/^\/d\s+/i.test(target)) {
+      target = target.replace(/^\/d\s+/i, '').trim();
+    } else if (/^d\s+/i.test(target)) {
+      target = target.replace(/^d\s+/i, '').trim();
+    }
+
+    // Strip surrounding quotes
+    target = target.replace(/^["'](.*)["']$/, '$1').trim();
+
+    // Handle ~ (user home)
+    if (target === '~') {
+      target = os.homedir();
+    } else if (target.startsWith('~/') || target.startsWith('~\\')) {
+      target = path.join(os.homedir(), target.substring(2));
+    }
+
+    // Resolve path relative to current consoleCwd
+    const resolved = path.resolve(consoleCwd, target);
+
     try {
-      console.log(`[SHELL RUNNER] Starting command: ${fullCommand} with ID: ${cmdId}`);
+      if (fs.existsSync(resolved)) {
+        const stat = fs.statSync(resolved);
+        if (stat.isDirectory()) {
+          consoleCwd = resolved;
+          return { handled: true, success: true, newCwd: consoleCwd };
+        } else {
+          return { handled: true, success: false, error: `El elemento no es un directorio: ${target}` };
+        }
+      } else {
+        return { handled: true, success: false, error: `El sistema no puede encontrar la ruta especificada: ${target}` };
+      }
+    } catch (err: any) {
+      return { handled: true, success: false, error: err?.message || `Error al acceder a: ${target}` };
+    }
+  }
+
+  ipcMain.handle('open-path', async (_event, targetPath: string) => {
+    try {
+      return await shell.openPath(targetPath);
+    } catch (e: any) {
+      return e?.message || 'Error opening path';
+    }
+  });
+
+  ipcMain.handle('get-console-cwd', () => {
+    return consoleCwd;
+  });
+
+  ipcMain.handle('set-console-cwd', (_event, targetPath: string) => {
+    if (targetPath && fs.existsSync(targetPath)) {
+      try {
+        const stat = fs.statSync(targetPath);
+        if (stat.isDirectory()) {
+          consoleCwd = path.resolve(targetPath);
+          return { success: true, cwd: consoleCwd };
+        }
+      } catch {}
+    }
+    return { success: false, error: 'Invalid directory', cwd: consoleCwd };
+  });
+
+  ipcMain.handle('open-external-terminal', async (_event, targetPath?: string) => {
+    const dir = (targetPath && fs.existsSync(targetPath)) ? targetPath : consoleCwd;
+    try {
+      // Attempt Windows Terminal first, fallback to PowerShell
+      exec(`start wt.exe -d "${dir}"`, (err) => {
+        if (err) {
+          exec(`start powershell.exe -NoExit -Command "Set-Location -LiteralPath '${dir.replace(/'/g, "''")}'"`);
+        }
+      });
+      return true;
+    } catch (err) {
+      console.error('[TERMINAL] Error launching external terminal:', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('kill-shell-command', (_event, cmdId?: string) => {
+    if (cmdId && activeProcesses.has(cmdId)) {
+      const p = activeProcesses.get(cmdId);
+      try {
+        if (process.platform === 'win32' && p.pid) {
+          exec(`taskkill /pid ${p.pid} /T /F`);
+        } else {
+          p.kill();
+        }
+      } catch {}
+      activeProcesses.delete(cmdId);
+      return true;
+    } else if (!cmdId) {
+      for (const [, p] of activeProcesses.entries()) {
+        try {
+          if (process.platform === 'win32' && p.pid) {
+            exec(`taskkill /pid ${p.pid} /T /F`);
+          } else {
+            p.kill();
+          }
+        } catch {}
+      }
+      activeProcesses.clear();
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle('run-shell-command', (_event, payload: string | { command: string; shellType?: 'powershell' | 'cmd'; cwd?: string }) => {
+    const cmdId = Math.random().toString(36).substring(7);
+    const commandStr = typeof payload === 'object' ? payload.command : payload;
+    const shellType = typeof payload === 'object' && payload.shellType ? payload.shellType : 'powershell';
+    
+    if (typeof payload === 'object' && payload.cwd && fs.existsSync(payload.cwd)) {
+      try {
+        if (fs.statSync(payload.cwd).isDirectory()) {
+          consoleCwd = path.resolve(payload.cwd);
+        }
+      } catch {}
+    }
+
+    try {
+      console.log(`[SHELL RUNNER] [${shellType}] in [${consoleCwd}]: ${commandStr} with ID: ${cmdId}`);
       
+      // Check for navigation / cd commands
+      const cdResult = handleCdCommand(commandStr);
+      if (cdResult.handled) {
+        if (cdResult.output) {
+          mainWindow?.webContents.send('shell-command-output', {
+            id: cmdId,
+            type: 'stdout',
+            text: cdResult.output,
+          });
+        }
+        if (!cdResult.success && cdResult.error) {
+          mainWindow?.webContents.send('shell-command-output', {
+            id: cmdId,
+            type: 'stderr',
+            text: `${cdResult.error}\n`,
+          });
+        }
+        mainWindow?.webContents.send('shell-command-exit', {
+          id: cmdId,
+          exitCode: cdResult.success ? 0 : 1,
+          cwd: consoleCwd,
+        });
+        return { success: cdResult.success, cmdId, cwd: consoleCwd, error: cdResult.error };
+      }
+
       let child;
       if (process.platform === 'win32') {
-        child = spawn('cmd.exe', ['/c', fullCommand], {
-          shell: true,
-          windowsHide: true,
-        });
+        if (shellType === 'cmd') {
+          child = spawn('cmd.exe', ['/c', commandStr], {
+            cwd: consoleCwd,
+            windowsHide: true,
+          });
+        } else {
+          // PowerShell with forced UTF-8 console output encoding
+          child = spawn('powershell.exe', [
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command',
+            `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; ${commandStr}`
+          ], {
+            cwd: consoleCwd,
+            windowsHide: true,
+          });
+        }
       } else {
-        child = spawn('sh', ['-c', fullCommand], {
-          shell: true,
+        child = spawn('sh', ['-c', commandStr], {
+          cwd: consoleCwd,
         });
       }
 
@@ -2926,6 +3108,7 @@ foreach (\$app in \$startApps) {
         mainWindow?.webContents.send('shell-command-exit', {
           id: cmdId,
           exitCode: code ?? 0,
+          cwd: consoleCwd,
         });
         activeProcesses.delete(cmdId);
       });
@@ -2939,14 +3122,15 @@ foreach (\$app in \$startApps) {
         mainWindow?.webContents.send('shell-command-exit', {
           id: cmdId,
           exitCode: -1,
+          cwd: consoleCwd,
         });
         activeProcesses.delete(cmdId);
       });
 
-      return { success: true, cmdId };
+      return { success: true, cmdId, cwd: consoleCwd };
     } catch (err: any) {
       console.error('[SHELL RUNNER] Spawn error:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message, cwd: consoleCwd };
     }
   });
 
