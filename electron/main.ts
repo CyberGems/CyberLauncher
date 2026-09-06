@@ -1430,7 +1430,17 @@ async function persistIconPng(sourcePath: string, pngBuffer: Buffer): Promise<st
 }
 
 function resolvePathAndTarget(filePath: string): { normalized: string; resolvedPath: string; resolvedName: string; ext: string; shortcutIcon?: string } {
-  const normalized = path.resolve(filePath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1'));
+  const trimmed = filePath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+  let normalized = path.resolve(trimmed);
+  if (!fs.existsSync(normalized)) {
+    const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+    const sys32 = path.join(sysRoot, 'System32', trimmed);
+    const win = path.join(sysRoot, trimmed);
+    const ps = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', trimmed);
+    if (fs.existsSync(sys32)) normalized = sys32;
+    else if (fs.existsSync(win)) normalized = win;
+    else if (fs.existsSync(ps)) normalized = ps;
+  }
   let ext = path.extname(normalized).toLowerCase();
   let resolvedPath = normalized;
   let resolvedName = path.basename(normalized, ext);
@@ -2170,17 +2180,25 @@ function setupIpcHandlers() {
     if (!appPath) return { success: false, error: 'No path provided' };
 
     try {
-      // Si parece una URL, abrirla en el navegador predeterminado
-      if (appPath.startsWith('http://') || appPath.startsWith('https://')) {
-        await shell.openExternal(appPath);
+      const trimmedPath = appPath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+
+      // Si parece una URL o esquema URI (http://, https://, ms-settings:, etc.), abrirlo externamente
+      const isUriProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath) && 
+        !path.isAbsolute(trimmedPath) && 
+        !trimmedPath.match(/^[a-zA-Z]:[\\/]/);
+      if (isUriProtocol) {
+        console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
+        await shell.openExternal(trimmedPath);
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
         return { success: true };
       }
 
       // Si es una aplicación UWP/Windows Store (AUMID conteniendo '!' y '_'), lanzarla virtualmente
-      const isUwp = appPath.includes('!') && appPath.includes('_');
+      const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
       if (isUwp) {
-        console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${appPath}`);
-        const command = `explorer.exe shell:AppsFolder\\${appPath}`;
+        console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${trimmedPath}`);
+        const command = `explorer.exe shell:AppsFolder\\${trimmedPath}`;
         exec(command, (err) => {
           if (err) {
             console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
@@ -2193,19 +2211,31 @@ function setupIpcHandlers() {
 
       // Si es una ruta del sistema, intentar abrirla con shell.openPath o PowerShell RunAs
       // Esto maneja .exe, .lnk (accesos directos), .bat, carpetas, etc.
-      const normalizedPath = path.normalize(appPath);
+      let targetPath = path.normalize(trimmedPath);
 
-      // Verificar si el archivo/ruta existe
-      if (!fs.existsSync(normalizedPath)) {
-        return { success: false, error: `Ruta no encontrada: ${normalizedPath}` };
+      // Verificar si el archivo/ruta existe o resolver en carpetas del sistema Windows
+      if (!fs.existsSync(targetPath)) {
+        const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+        const sys32Candidate = path.join(sysRoot, 'System32', targetPath);
+        const winCandidate = path.join(sysRoot, targetPath);
+        const psCandidate = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', targetPath);
+        if (fs.existsSync(sys32Candidate)) {
+          targetPath = sys32Candidate;
+        } else if (fs.existsSync(winCandidate)) {
+          targetPath = winCandidate;
+        } else if (fs.existsSync(psCandidate)) {
+          targetPath = psCandidate;
+        } else {
+          return { success: false, error: `Ruta no encontrada: ${targetPath}` };
+        }
       }
 
       if (isAdmin && process.platform === 'win32') {
-        console.log(`[LAUNCH] Intentando lanzar como administrador: ${normalizedPath}`);
+        console.log(`[LAUNCH] Intentando lanzar como administrador: ${targetPath}`);
         pauseHotspots();
         watchUACUntilExit();
         // Escapar comillas simples para PowerShell
-        const escapedPath = normalizedPath.replace(/'/g, "''");
+        const escapedPath = targetPath.replace(/'/g, "''");
         const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
         
         exec(command, (err) => {
@@ -2219,9 +2249,13 @@ function setupIpcHandlers() {
         hideMainWindow();
         return { success: true };
       } else {
-        const errorMessage = await shell.openPath(normalizedPath);
+        const errorMessage = await shell.openPath(targetPath);
         if (errorMessage) {
-          return { success: false, error: errorMessage };
+          exec(`"${targetPath}"`, (err) => {
+            if (err) {
+              console.error(`[LAUNCH] Error en fallback de ejecución para ${targetPath}:`, err);
+            }
+          });
         }
         // Ocultar al tray al lanzar una app
         windowVisibilityState = 'hidden-intentional';

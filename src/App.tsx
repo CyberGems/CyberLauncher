@@ -12,7 +12,7 @@ import {
   HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw
+  RefreshCw, Calculator, Activity, FileText
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -86,8 +86,126 @@ type LauncherApp = {
   shortcut?: string;
 };
 
-/** Fresh install starts empty — user adds their own apps. */
-const INITIAL_APPS: LauncherApp[] = [];
+export const getDefaultWindowsApps = (lang: 'es' | 'en' = 'es'): LauncherApp[] => [
+  {
+    id: 1001,
+    name: lang === 'es' ? 'Calculadora' : 'Calculator',
+    path: 'calc.exe',
+    category: 'Utilities',
+    icon: 'Calculator',
+    color: 'text-amber-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1002,
+    name: 'Paint',
+    path: 'mspaint.exe',
+    category: 'Design',
+    icon: 'Palette',
+    color: 'text-pink-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1003,
+    name: lang === 'es' ? 'Configuración de Windows' : 'Windows Settings',
+    path: 'ms-settings:',
+    category: 'Utilities',
+    icon: 'Settings',
+    color: 'text-indigo-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1004,
+    name: lang === 'es' ? 'Explorador de archivos' : 'File Explorer',
+    path: 'explorer.exe',
+    category: 'Utilities',
+    icon: 'Folder',
+    color: 'text-yellow-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1005,
+    name: lang === 'es' ? 'Información del Sistema' : 'System Info',
+    path: 'ms-settings:about',
+    category: 'Utilities',
+    icon: 'Cpu',
+    color: 'text-teal-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1006,
+    name: lang === 'es' ? 'Administrador de tareas' : 'Task Manager',
+    path: 'taskmgr.exe',
+    category: 'Utilities',
+    icon: 'Activity',
+    color: 'text-emerald-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1007,
+    name: lang === 'es' ? 'Aplicaciones instaladas' : 'Installed Apps',
+    path: 'ms-settings:appsfeatures',
+    category: 'Utilities',
+    icon: 'Package',
+    color: 'text-purple-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1008,
+    name: 'PowerShell (Admin)',
+    path: 'powershell.exe',
+    isAdmin: true,
+    category: 'Development',
+    icon: 'Terminal',
+    color: 'text-cyan-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1009,
+    name: lang === 'es' ? 'Símbolo del sistema (Admin)' : 'Command Prompt (Admin)',
+    path: 'cmd.exe',
+    isAdmin: true,
+    category: 'Development',
+    icon: 'TerminalSquare',
+    color: 'text-sky-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1010,
+    name: lang === 'es' ? 'Configuración de Red' : 'Network Settings',
+    path: 'ms-settings:network',
+    category: 'Utilities',
+    icon: 'Wifi',
+    color: 'text-teal-400',
+    usage: 0,
+    isFav: true,
+  },
+  {
+    id: 1011,
+    name: lang === 'es' ? 'Bloc de notas' : 'Notepad',
+    path: 'notepad.exe',
+    category: 'Office',
+    icon: 'FileText',
+    color: 'text-blue-400',
+    usage: 0,
+    isFav: true,
+  },
+];
+
+export const DEFAULT_TASKBAR_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
+export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
+
+/** Default Windows apps populated for clean installs (user removable). */
+const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
 
 const DEFAULT_BG_IMAGE = 'bg_default.jpg';
 
@@ -155,6 +273,20 @@ const CyberIcon = ({ className, style }: { className?: string, style?: React.CSS
   </div>
 );
 
+const LUCIDE_ICONS: Record<string, React.FC<any>> = {
+  Calculator,
+  Palette,
+  Settings,
+  Folder,
+  Cpu,
+  Activity,
+  Package,
+  Terminal,
+  TerminalSquare,
+  Wifi,
+  FileText,
+};
+
 const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -176,9 +308,13 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
     );
   }
 
-  // 2. Usar componente de Lucide si es válido (solo para apps iniciales en la misma sesión)
-  if (typeof app.icon === 'function' || typeof app.icon === 'string') {
+  // 2. Usar componente de Lucide si es válido o mapear por nombre de icono
+  if (typeof app.icon === 'function') {
     const IconComponent = app.icon;
+    return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
+  }
+  if (typeof app.icon === 'string' && LUCIDE_ICONS[app.icon]) {
+    const IconComponent = LUCIDE_ICONS[app.icon];
     return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
   }
   
@@ -1344,13 +1480,26 @@ export default function App() {
     const saved = localStorage.getItem('categories');
     return ensureUncategorizedCategory(saved ? JSON.parse(saved) : INITIAL_CATEGORIES);
   });
-  const [apps, setApps] = useState(() => {
+  const [apps, setApps] = useState<LauncherApp[]>(() => {
     const saved = localStorage.getItem('apps');
-    return saved ? JSON.parse(saved) : INITIAL_APPS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    const initialLang = (localStorage.getItem('cyber_lang') as 'es' | 'en') || (typeof navigator !== 'undefined' && navigator.language.startsWith('es') ? 'es' : 'en');
+    return getDefaultWindowsApps(initialLang);
   });
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('favoriteIds');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return [...DEFAULT_FAVORITE_APP_IDS];
   });
   const [draggedFavId, setDraggedFavId] = useState<number | null>(null);
   const [favDropTarget, setFavDropTarget] = useState<number | null>(null);
@@ -1358,7 +1507,13 @@ export default function App() {
   // Taskbar State
   const [taskbarAppIds, setTaskbarAppIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('taskbarAppIds');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return [...DEFAULT_TASKBAR_APP_IDS];
   });
   const [draggedTaskbarId, setDraggedTaskbarId] = useState<number | null>(null);
   const [taskbarDropTarget, setTaskbarDropTarget] = useState<number | null>(null);
@@ -3015,6 +3170,29 @@ export default function App() {
     });
   }, [t]);
 
+  const handleRestoreDefaultApps = useCallback(() => {
+    const curLang = language || 'es';
+    const defaults = getDefaultWindowsApps(curLang);
+    setApps(prev => {
+      const existingPaths = new Set(prev.map(a => a.path?.toLowerCase()).filter(Boolean));
+      const existingIds = new Set(prev.map(a => a.id));
+      const toAdd = defaults.filter(d => !existingPaths.has(d.path?.toLowerCase()) && !existingIds.has(d.id));
+      return [...prev, ...toAdd];
+    });
+    setFavoriteIds(prev => {
+      const merged = new Set([...prev, ...DEFAULT_FAVORITE_APP_IDS]);
+      return Array.from(merged);
+    });
+    setTaskbarAppIds(prev => {
+      const merged = new Set([...prev, ...DEFAULT_TASKBAR_APP_IDS]);
+      return Array.from(merged);
+    });
+    setNotification({
+      message: t('notif_default_apps_restored'),
+      type: 'success'
+    });
+  }, [language, t]);
+
   const handleRemoveSingleRecent = useCallback((target: HistoryItem | LauncherApp) => {
     setLaunchHistory(prev => {
       const filtered = prev.filter(item => {
@@ -3730,6 +3908,19 @@ export default function App() {
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
         return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && !isAnyModalOpen) {
+        if (e.code === 'Digit1' || e.code === 'Numpad1' || e.code === 'KeyG') {
+          e.preventDefault();
+          setViewMode('grid');
+          return;
+        }
+        if (e.code === 'Digit2' || e.code === 'Numpad2' || e.code === 'KeyL') {
+          e.preventDefault();
+          setViewMode('list');
+          return;
+        }
       }
 
       if (contextMenu && e.key === 'Escape') {
@@ -5071,17 +5262,37 @@ export default function App() {
               </h3>
               
               <div className="flex items-center bg-black/30 backdrop-blur-md rounded-lg p-1 border border-white/5">
-                <Tooltip label={t('tooltip_view_grid')} placement="bottom">
+                <Tooltip 
+                  label={
+                    <span className="flex items-center gap-1.5">
+                      <span>{t('tooltip_view_grid')}</span>
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+1</kbd>
+                    </span>
+                  } 
+                  placement="bottom"
+                >
                   <button 
                     onClick={() => setViewMode('grid')}
+                    aria-label={`${t('tooltip_view_grid')} (Ctrl+1)`}
+                    aria-keyshortcuts="Control+1"
                     className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     <Grid className="w-4 h-4" />
                   </button>
                 </Tooltip>
-                <Tooltip label={t('tooltip_view_list')} placement="bottom">
+                <Tooltip 
+                  label={
+                    <span className="flex items-center gap-1.5">
+                      <span>{t('tooltip_view_list')}</span>
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+2</kbd>
+                    </span>
+                  } 
+                  placement="bottom"
+                >
                   <button 
                     onClick={() => setViewMode('list')}
+                    aria-label={`${t('tooltip_view_list')} (Ctrl+2)`}
+                    aria-keyshortcuts="Control+2"
                     className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     <ListIcon className="w-4 h-4" />
@@ -5275,18 +5486,28 @@ export default function App() {
                   <p className="text-sm font-medium text-slate-300">{t('apps_empty_title')}</p>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">{t('apps_empty_hint')}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditForm(emptyEditForm());
-                    setIsResolvingIcon(false);
-                    setIsAddingApp(true);
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t('tooltip_add_app')}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditForm(emptyEditForm());
+                      setIsResolvingIcon(false);
+                      setIsAddingApp(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('tooltip_add_app')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultApps}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4 text-cyan-400" />
+                    {t('apps_restore_defaults_btn')}
+                  </button>
+                </div>
               </div>
             )}
           </section>
@@ -6991,6 +7212,23 @@ export default function App() {
                         className="flex items-center gap-2 px-3 py-1.5 bg-cyan-800 hover:bg-cyan-700 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700 flex-shrink-0"
                       >
                         <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                          <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
+                          <p className="text-xs text-slate-500">{t('settings_default_shortcuts_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleRestoreDefaultApps}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-sm font-medium border border-indigo-700/60 flex-shrink-0"
+                      >
+                        <RotateCcw className="w-4 h-4" /> {t('settings_default_shortcuts_btn')}
                       </button>
                     </div>
                   </div>

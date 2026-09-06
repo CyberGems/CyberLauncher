@@ -229,6 +229,11 @@ export const translations = {
     confirm_reset_btn_cancel: "Cancelar",
     hud_most_used_empty: "No hay registros de aplicaciones más usadas",
     category_deleted_notif: "Categoría \"{name}\" eliminada",
+    settings_default_shortcuts_title: "Accesos predeterminados de Windows",
+    settings_default_shortcuts_desc: "Añade a la barra de tareas y favoritos los accesos a utilidades esenciales de Windows (Calculadora, Paint, Configuración, Explorador, PowerShell Admin, etc.).",
+    settings_default_shortcuts_btn: "Restablecer accesos predeterminados",
+    notif_default_apps_restored: "Accesos predeterminados de Windows restablecidos con éxito",
+    apps_restore_defaults_btn: "Cargar accesos predeterminados",
     
     // Placeholder Info Text below input
     hint_console_enter: "Presiona [Enter] para ejecutar",
@@ -631,6 +636,11 @@ export const translations = {
     confirm_reset_btn_cancel: "Cancel",
     hud_most_used_empty: "No records found in most used",
     category_deleted_notif: "Category \"{name}\" deleted",
+    settings_default_shortcuts_title: "Default Windows Shortcuts",
+    settings_default_shortcuts_desc: "Adds shortcuts to essential Windows utilities (Calculator, Paint, Settings, File Explorer, PowerShell Admin, etc.) to the taskbar and favorites.",
+    settings_default_shortcuts_btn: "Restore default shortcuts",
+    notif_default_apps_restored: "Default Windows shortcuts restored successfully",
+    apps_restore_defaults_btn: "Load default shortcuts",
     
     // Placeholder Info Text below input
     hint_console_enter: "Press [Enter] to execute command",
