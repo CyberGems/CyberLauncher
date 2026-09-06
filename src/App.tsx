@@ -769,6 +769,8 @@ const TrayPinTip = React.memo(({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 16, scale: 0.96 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
+      onClick={(e) => e.stopPropagation()}
+      data-no-hide="true"
       className="fixed bottom-14 right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] bg-[#090d19]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.85),0_0_24px_rgba(34,211,238,0.2)] select-none"
       role="dialog"
       aria-labelledby="tray-pin-title"
@@ -796,14 +798,20 @@ const TrayPinTip = React.memo(({
         {t('tray_pin_tip_body')}
       </p>
 
-      <label className="mt-3 flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 cursor-pointer select-none">
+      <label 
+        onClick={(e) => e.stopPropagation()}
+        data-no-hide="true"
+        className="mt-3 flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 cursor-pointer select-none"
+      >
         <input
           type="checkbox"
           checked={dontShowAgain}
           onChange={(e) => setDontShowAgain(e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
+          data-no-hide="true"
           className="w-3.5 h-3.5 rounded border-white/20 bg-black/40 accent-cyan-500 cursor-pointer"
         />
-        <span>{t('tray_pin_tip_dont_show')}</span>
+        <span data-no-hide="true">{t('tray_pin_tip_dont_show')}</span>
       </label>
 
       <div className="mt-3.5 flex items-center justify-end gap-2">
@@ -3055,15 +3063,15 @@ export default function App() {
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
 
-  // While Add/Edit App modal is open, block hide-on-blur (separate from native dialogs).
+  // While Add/Edit App modal or TrayPinTip is open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp);
+    const open = !!(isAddingApp || editingApp || showTrayPinTip);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp]);
+  }, [isAddingApp, editingApp, showTrayPinTip]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -3921,7 +3929,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || showTrayPinTip;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -4738,7 +4746,7 @@ export default function App() {
         if (suppressDeadSpotHideRef.current) return;
         if (isAnyModalOpen || isAnyContextMenuOpen || (Date.now() - lastContextMenuDismissedRef.current < 300)) return;
         const target = e.target as HTMLElement;
-        if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
+        if (target.closest('button, a, input, select, textarea, label, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
         if (isAlwaysOnTop) {
           triggerPinFlash();
           return;
