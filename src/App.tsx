@@ -12,7 +12,7 @@ import {
   HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw, Calculator, Activity, FileText, CornerDownLeft,
+  RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check
 } from 'lucide-react';
 
@@ -2033,25 +2033,25 @@ export default function App() {
   }, [uwpAppsList, uwpSearchQuery, uwpSortOrder]);
 
   const CYBER_LOGS_PRESETS = [
-    `> ${t('uwp_log_init')}`,
-    `> ${t('uwp_log_connect')}`,
-    `> ${t('uwp_log_decrypt')}`,
-    `> ${t('uwp_log_load_aumid')}`,
-    `> ${t('uwp_log_ntfs')}`,
-    `> ${t('uwp_log_icons')}`,
-    `> ${t('uwp_log_hashes')}`,
-    `> ${t('uwp_log_success')}`
+    t('uwp_log_init'),
+    t('uwp_log_connect'),
+    t('uwp_log_decrypt'),
+    t('uwp_log_load_aumid'),
+    t('uwp_log_ntfs'),
+    t('uwp_log_icons'),
+    t('uwp_log_hashes'),
+    t('uwp_log_success')
   ];
 
   const handleScanUwpApps = async () => {
     if (isScanningUwp) return;
     setIsScanningUwp(true);
-    setUwpScanLogs([]);
+    setUwpScanLogs([CYBER_LOGS_PRESETS[0]]);
     setUwpAppsList([]);
     setUwpSearchQuery('');
 
     // Simulate cyber log scrolling
-    let logIndex = 0;
+    let logIndex = 1;
     const logsInterval = setInterval(() => {
       if (logIndex < CYBER_LOGS_PRESETS.length) {
         setUwpScanLogs(prev => [...prev, CYBER_LOGS_PRESETS[logIndex]]);
@@ -2059,7 +2059,7 @@ export default function App() {
       } else {
         clearInterval(logsInterval);
       }
-    }, 350);
+    }, 320);
 
     try {
       if (isElectron) {
@@ -2067,8 +2067,8 @@ export default function App() {
         clearInterval(logsInterval);
         setUwpScanLogs([
           ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          `> ${t('uwp_log_connected_count', { count: apps.length.toString() })}`,
-          `> ${t('uwp_log_import_panel')}`
+          t('uwp_log_connected_count', { count: apps.length.toString() }),
+          t('uwp_log_import_panel')
         ]);
         setUwpAppsList(apps);
       } else {
@@ -2077,14 +2077,20 @@ export default function App() {
         clearInterval(logsInterval);
         setUwpScanLogs([
           ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          `> ${t('uwp_log_connected_mock', { count: '4' })}`,
-          `> ${t('uwp_log_mock_active')}`
+          t('uwp_log_connected_mock', { count: '10' }),
+          t('uwp_log_mock_active')
         ]);
         setUwpAppsList([
           { name: 'Windows Terminal', aumid: 'Microsoft.WindowsTerminal_8wekyb3d8bbwe!App', icon: '' },
           { name: 'Xbox App', aumid: 'Microsoft.XboxApp_8wekyb3d8bbwe!App', icon: '' },
           { name: 'Calculadora UWP', aumid: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'WhatsApp Store', aumid: '5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App', icon: '' }
+          { name: 'WhatsApp Store', aumid: '5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App', icon: '' },
+          { name: 'Microsoft To Do', aumid: 'Microsoft.Todos_8wekyb3d8bbwe!App', icon: '' },
+          { name: 'Spotify Music', aumid: 'SpotifyAB.SpotifyMusic_zpdnekdrzrea0!App', icon: '' },
+          { name: 'Paint 3D', aumid: 'Microsoft.MSPaint_8wekyb3d8bbwe!App', icon: '' },
+          { name: 'Notas Rápidas', aumid: 'Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe!App', icon: '' },
+          { name: 'Microsoft Clipchamp', aumid: 'Clipchamp.Clipchamp_yxz26nhyzhsrt!App', icon: '' },
+          { name: 'Cámara Windows', aumid: 'Microsoft.WindowsCamera_8wekyb3d8bbwe!App', icon: '' }
         ]);
       }
     } catch (e) {
@@ -2092,8 +2098,8 @@ export default function App() {
       clearInterval(logsInterval);
       setUwpScanLogs(prev => [
         ...prev, 
-        `> ${t('uwp_log_critical_error')}`, 
-        `> ${t('uwp_log_aborted')}`
+        t('uwp_log_critical_error'), 
+        t('uwp_log_aborted')
       ]);
     } finally {
       setIsScanningUwp(false);
@@ -7305,23 +7311,23 @@ export default function App() {
                 <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
                   <div className="flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     {([
-                      ['general', t('tab_general'), '⌨'],
-                      ['appearance', t('tab_appearance'), '🎨'],
-                      ['system', t('tab_system'), '⚙'],
-                      ['backup', t('tab_backup'), '💾'],
-                      ['indexer', t('tab_indexer'), '🔍'],
-                      ['uwp', t('tab_uwp'), '🛍']
-                    ] as const).map(([id,label,icon]) => (
+                      ['general', t('tab_general'), Keyboard],
+                      ['appearance', t('tab_appearance'), Palette],
+                      ['system', t('tab_system'), Settings],
+                      ['backup', t('tab_backup'), HardDrive],
+                      ['indexer', t('tab_indexer'), Search],
+                      ['uwp', t('tab_uwp'), ScanSearch]
+                    ] as const).map(([id,label,IconComponent]) => (
                       <button 
                         key={id} 
                         onClick={() => setSettingsTab(id as any)}
-                        className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 ${
+                        className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 group ${
                           settingsTab === id 
                             ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
                             : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <span className="text-sm">{icon}</span>
+                        <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${settingsTab === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
                         <span>{label.toUpperCase()}</span>
                       </button>
                     ))}
@@ -7338,7 +7344,7 @@ export default function App() {
                 </div>
 
                 {/* Right Scrollable Panel Content */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8 text-slate-300">
+                <div className={`p-6 custom-scrollbar flex-1 text-slate-300 ${settingsTab === 'uwp' ? 'flex flex-col min-h-0 overflow-hidden' : 'overflow-y-auto space-y-8'}`}>
 
                 {settingsTab === 'general' && (<>
                 {/* Language Selection Config */}
@@ -8230,10 +8236,10 @@ export default function App() {
                 </>)}
 
                 {settingsTab === 'uwp' && (
-                  <div className="space-y-6 relative min-h-[300px]">
-                    <div className="flex flex-col gap-1 border-b border-white/5 pb-4">
+                  <div className="flex flex-col flex-1 min-h-0 relative">
+                    <div className="flex flex-col gap-1 border-b border-white/5 pb-4 shrink-0">
                       <h3 className="text-lg font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
-                        <Package className="w-5 h-5" /> {t('uwp_header_title')}
+                        <ScanSearch className="w-5 h-5 text-cyan-400" /> {t('uwp_header_title')}
                       </h3>
                       <p className="text-xs text-slate-400 leading-relaxed font-sans">
                         {t('uwp_header_desc')}
@@ -8242,15 +8248,15 @@ export default function App() {
 
                     {/* Botón de Escaneo / Estado Inicial */}
                     {uwpAppsList.length === 0 && !isScanningUwp && (
-                      <div className="flex flex-col items-center justify-center p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
-                        <Hexagon className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
+                      <div className="flex flex-col items-center justify-center flex-1 my-auto p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
+                        <ScanSearch className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
                         <h4 className="text-sm font-medium text-slate-200 mb-2">{t('uwp_req_title')}</h4>
                         <p className="text-xs text-slate-500 max-w-sm mb-6 leading-normal font-sans">
                           {t('uwp_req_desc')}
                         </p>
                         <button
                           onClick={handleScanUwpApps}
-                          className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98]"
+                          className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98] cursor-pointer"
                         >
                           {t('uwp_req_btn')}
                         </button>
@@ -8259,15 +8265,15 @@ export default function App() {
 
                     {/* Consola Terminal Shimmer durante Escaneo */}
                     {isScanningUwp && (
-                      <div className="flex flex-col bg-black/40 border border-cyan-500/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,211,238,0.15)] relative overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                      <div className="flex flex-col h-80 my-auto bg-black/40 border border-cyan-500/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,211,238,0.15)] relative overflow-hidden">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4 shrink-0">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
                             <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">{t('uwp_terminal_title')}</span>
                           </div>
                           <span className="text-[10px] font-mono text-cyan-500 animate-pulse">{t('uwp_terminal_status')}</span>
                         </div>
-                        <div className="h-40 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
                           {uwpScanLogs.map((log, i) => (
                             <div key={i} className="flex items-start gap-1">
                               <span className="text-cyan-500 shrink-0">&gt;</span>
@@ -8278,12 +8284,12 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Resultados de Búsqueda y Lista */}
+                    {/* Resultados de Búsqueda y Lista que aprovecha TODO el alto */}
                     {uwpAppsList.length > 0 && !isScanningUwp && (
-                      <div className="space-y-4">
+                      <div className="flex flex-col flex-1 min-h-0 pt-4 space-y-3">
                         {/* Buscador Superior */}
-                        <div className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl px-3.5 py-2.5 focus-within:border-cyan-500/30 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all">
-                          <Search className="w-4 h-4 text-slate-500" />
+                        <div className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl px-3.5 py-2.5 focus-within:border-cyan-500/30 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all shrink-0">
+                          <Search className="w-4 h-4 text-slate-500 shrink-0" />
                           <input
                             type="text"
                             placeholder={t('uwp_search_placeholder')}
@@ -8305,58 +8311,60 @@ export default function App() {
 
                           <button
                             onClick={handleScanUwpApps}
-                            className="text-[10px] font-cyber font-bold text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 px-2 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0"
+                            className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
                           >
+                            <RefreshCw className="w-3 h-3" />
                             {t('uwp_rescan_btn')}
                           </button>
                         </div>
 
-                        {/* Grid de Aplicaciones */}
-                        <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                        {/* Grid / Lista de Aplicaciones a TODO el alto disponible */}
+                        <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar space-y-2.5">
                           {displayedUwpApps.map((app, index) => {
-                              const alreadyAdded = apps.some(existing => existing.path === app.aumid);
-                              
-                              return (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="w-9 h-9 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 shrink-0 group-hover:border-cyan-400/30 transition-colors relative">
-                                      {app.icon ? (
-                                        <img src={app.icon} alt={app.name} className="w-full h-full object-contain" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-cyan-500/10 rounded text-cyan-400 font-bold text-[10px]">UWP</div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
-                                      <Tooltip label={app.aumid} placement="top">
-                                        <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
-                                      </Tooltip>
-                                    </div>
-                                  </div>
-
-                                  <div className="shrink-0 ml-2">
-                                    {alreadyAdded ? (
-                                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
-                                        {t('uwp_added_label')}
-                                      </span>
+                            const alreadyAdded = apps.some(existing => existing.path === app.aumid);
+                            
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="w-9 h-9 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 shrink-0 group-hover:border-cyan-400/30 transition-colors relative">
+                                    {app.icon ? (
+                                      <img src={app.icon} alt={app.name} className="w-full h-full object-contain" />
                                     ) : (
-                                      <button
-                                        onClick={() => {
-                                          setImportingUwpApp(app);
-                                          setUwpImportCategory(categories.find(c => c.id === UNCATEGORIZED_ID)?.name || UNCATEGORIZED_NAME);
-                                        }}
-                                        className="text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)]"
-                                      >
-                                        {t('uwp_import_btn')}
-                                      </button>
+                                      <div className="w-full h-full flex items-center justify-center bg-cyan-500/10 rounded text-cyan-400 font-bold text-[10px]">UWP</div>
                                     )}
                                   </div>
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
+                                    <Tooltip label={app.aumid} placement="top">
+                                      <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
+                                    </Tooltip>
+                                  </div>
                                 </div>
-                              );
-                            })}
+
+                                <div className="shrink-0 ml-2">
+                                  {alreadyAdded ? (
+                                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
+                                      {t('uwp_added_label')}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setImportingUwpApp(app);
+                                        setUwpImportCategory(categories.find(c => c.id === UNCATEGORIZED_ID)?.name || UNCATEGORIZED_NAME);
+                                      }}
+                                      className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>{t('uwp_import_btn')}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
