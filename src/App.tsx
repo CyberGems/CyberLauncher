@@ -4385,16 +4385,17 @@ export default function App() {
   const getGlassStyle = (baseAlpha: number, isBlurry: boolean = false) => {
     // Adjust opacity based on 'glassIntensity' slider when an image is used, 
     // or keep it more solid if solid/gradient is used to maintain contrast.
-    const alpha = isPeeking
-      ? Math.max(0.04, baseAlpha * 0.15)
-      : bgType === 'image' 
+    const alpha = bgType === 'image' 
       ? Math.max(0.1, baseAlpha * (glassIntensity / 100)) 
       : baseAlpha * 1.5; // Make more solid if no image
     
     return {
       backgroundColor: `rgba(10, 15, 24, ${alpha})`,
-      transition: 'background-color 0.25s ease, backdrop-filter 0.25s ease',
-      ...(isBlurry && bgType === 'image' && !isPeeking ? { backdropFilter: `blur(${Math.max(4, 20 * (100 - glassIntensity)/100)}px)` } : {})
+      transition: isPeeking ? 'none' : 'background-color 0.25s ease, backdrop-filter 0.25s ease',
+      ...(isBlurry && bgType === 'image' ? { 
+        backdropFilter: glassIntensity === 0 ? 'none' : `blur(${((glassIntensity / 100) * 24).toFixed(1)}px)`,
+        WebkitBackdropFilter: glassIntensity === 0 ? 'none' : `blur(${((glassIntensity / 100) * 24).toFixed(1)}px)`
+      } : {})
     };
   };
 
@@ -4608,11 +4609,11 @@ export default function App() {
       {/* --- OVERLAYS FOR IMAGE BACKGROUND --- */}
       {bgType === 'image' && (
         <div 
-          className="absolute inset-0 pointer-events-none transition-all duration-300 z-0" 
+          className={`absolute inset-0 pointer-events-none z-0 ${isPeeking ? 'transition-none' : 'transition-all duration-300'}`} 
           style={{ 
             backgroundColor: `rgba(0, 0, 0, ${bgOpacity / 100})`,
-            backdropFilter: isPeeking ? 'none' : `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`,
-            WebkitBackdropFilter: isPeeking ? 'none' : `blur(${Math.max(4, 20 * (100 - glassIntensity) / 100)}px)`
+            backdropFilter: glassIntensity === 0 ? 'none' : `blur(${((glassIntensity / 100) * 24).toFixed(1)}px)`,
+            WebkitBackdropFilter: glassIntensity === 0 ? 'none' : `blur(${((glassIntensity / 100) * 24).toFixed(1)}px)`
           }}
         />
       )}
@@ -7270,9 +7271,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             data-no-hide
             className={`fixed inset-0 z-50 transition-all duration-200 ${
-              isPeeking ? 'bg-transparent backdrop-blur-none' : 'bg-black/60 backdrop-blur-sm'
+              isPeeking || settingsTab === 'appearance' ? 'bg-transparent backdrop-blur-none pointer-events-auto' : 'bg-black/60 backdrop-blur-sm'
             }`}
-            style={isPeeking ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
+            style={isPeeking || settingsTab === 'appearance' ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
             onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
           />
             <motion.div 
@@ -7283,7 +7284,7 @@ export default function App() {
               data-no-hide
               onClick={(e) => e.stopPropagation()}
               className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
-                isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
+                isPeeking || settingsTab === 'appearance' ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
               }`}
             >
               <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
@@ -7703,12 +7704,12 @@ export default function App() {
                             }
                           }}
                           onChange={(e) => setGlassIntensity(Number(e.target.value))}
-                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
                         />
                         <p className="text-xs text-slate-500">
                           {language === 'es' 
-                            ? 'Mueve a la izquierda para un efecto más transparente, a la derecha para oscurecer la interfaz.' 
-                            : 'Drag left for maximum clarity/transparency, drag right to darken the backdrop overlay.'}
+                            ? 'Mueve a la izquierda para una imagen nítida (0% = sin desenfoque), a la derecha para intensificar el efecto de cristal.' 
+                            : 'Drag left for a sharp image (0% = no blur), drag right to intensify the frosted glass effect.'}
                         </p>
                       </div>
 
@@ -7731,7 +7732,7 @@ export default function App() {
                             }
                           }}
                           onChange={(e) => setBgOpacity(Number(e.target.value))}
-                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
                         />
                         <p className="text-xs text-slate-500">
                           {language === 'es'

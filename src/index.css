@@ -43,7 +43,7 @@ body {
 }
 
 /* Keep real text fields and explicitly selectable paths selectable */
-input,
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="color"]):not([type="file"]),
 textarea,
 [contenteditable="true"],
 .select-text,
@@ -51,6 +51,29 @@ textarea,
   user-select: text;
   -webkit-user-select: text;
   cursor: text;
+}
+
+/* Range sliders should always display pointer cursor on track and thumb */
+input[type="range"] {
+  cursor: pointer !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  cursor: pointer !important;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  cursor: pointer !important;
+}
+
+input[type="range"]::-moz-range-thumb {
+  cursor: pointer !important;
+}
+
+input[type="range"]::-moz-range-track {
+  cursor: pointer !important;
 }
 
 .select-all {
