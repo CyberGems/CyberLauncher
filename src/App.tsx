@@ -252,11 +252,13 @@ const toPackagedAssetUrl = (relativeName: string) =>
   relativeName.startsWith('./') ? relativeName : `./${relativeName}`;
 
 const toThumbnailUrl = (path: string) => {
+  if (!path) return '';
   if (path.startsWith('http') || path.startsWith('data:')) return path;
   if (!path.includes(':') && !path.includes('\\')) {
     return toPackagedAssetUrl(path.replace(/^\.\//, ''));
   }
-  return `local-resource:///${path.replace(/\\/g, '/')}`;
+  const normalized = path.replace(/\\/g, '/');
+  return `local-resource:///${encodeURI(normalized)}`;
 };
 const PRESET_GRADIENTS = [
   'linear-gradient(to bottom right, #0f2027, #203a43, #2c5364)',
@@ -2689,6 +2691,43 @@ export default function App() {
     };
     loadBg();
   }, [bgImage, bgType]);
+
+  // Carga de miniatura del 4to slot personalizado desde el disco
+  const [customSlotDataUrl, setCustomSlotDataUrl] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const loadSlotThumb = async () => {
+      if (!customSlotImage) {
+        setCustomSlotDataUrl('');
+        return;
+      }
+      if (customSlotImage.startsWith('http') || customSlotImage.startsWith('data:')) {
+        setCustomSlotDataUrl(customSlotImage);
+        return;
+      }
+      if (!customSlotImage.includes(':') && !customSlotImage.includes('\\')) {
+        setCustomSlotDataUrl(toPackagedAssetUrl(customSlotImage));
+        return;
+      }
+      if (isElectron && window.electronAPI?.getImageData) {
+        try {
+          const dataUrl = await window.electronAPI.getImageData(customSlotImage);
+          if (active && dataUrl) {
+            setCustomSlotDataUrl(dataUrl);
+            return;
+          }
+        } catch (e) {
+          console.error('Error cargando miniatura personalizada:', e);
+        }
+      }
+      if (active) {
+        setCustomSlotDataUrl(toThumbnailUrl(customSlotImage));
+      }
+    };
+    loadSlotThumb();
+    return () => { active = false; };
+  }, [customSlotImage]);
 
   // Persistencia de Apps y Categorías
   useEffect(() => {
@@ -7510,7 +7549,7 @@ export default function App() {
                               className={`h-24 rounded-xl bg-cover bg-center border-2 transition-all overflow-hidden relative cursor-pointer ${
                                 bgImage === img ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20'
                               }`}
-                              style={{ backgroundImage: `url(${toThumbnailUrl(img)})` }}
+                              style={{ backgroundImage: `url("${toThumbnailUrl(img)}")` }}
                             >
                                {bgImage === img && <div className="absolute inset-0 bg-blue-500/20" />}
                             </button>
@@ -7518,7 +7557,7 @@ export default function App() {
 
                           {/* Custom browse slot (4th) */}
                           <div
-                            className={`h-24 rounded-xl border-2 transition-all overflow-hidden relative group ${
+                            className={`h-24 rounded-xl border-2 transition-all overflow-hidden relative group/customslot ${
                               customSlotImage && bgImage === customSlotImage
                                 ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
                                 : customSlotImage
@@ -7528,20 +7567,53 @@ export default function App() {
                           >
                             {customSlotImage ? (
                               <>
+                                {/* Representative Fallback placeholder (visible if image is loading or unavailable) */}
+                                <div className="absolute inset-0 bg-[#0c121e] flex flex-col items-center justify-center text-slate-500 pointer-events-none p-2 text-center select-none">
+                                  <ImageIcon className="w-6 h-6 text-slate-500/70 mb-1" />
+                                  <span className="text-[10px] font-cyber text-slate-400 truncate max-w-full px-1">
+                                    {customSlotImage.replace(/^.*[\\/]/, '')}
+                                  </span>
+                                </div>
+
+                                {/* Custom image thumbnail button */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setBgImage(customSlotImage);
                                     triggerPeek(1200);
                                   }}
-                                  className="absolute inset-0 bg-cover bg-center cursor-pointer"
-                                  style={{ backgroundImage: `url(${toThumbnailUrl(customSlotImage)})` }}
+                                  className="absolute inset-0 bg-cover bg-center cursor-pointer z-0"
+                                  style={{ backgroundImage: `url("${customSlotDataUrl || toThumbnailUrl(customSlotImage)}")` }}
                                   aria-label={t('app_bg_image')}
                                 />
+
+                                {/* Active selection blue tint overlay */}
                                 {bgImage === customSlotImage && (
-                                  <div className="absolute inset-0 bg-blue-500/20 pointer-events-none" />
+                                  <div className="absolute inset-0 bg-blue-500/20 pointer-events-none z-[1]" />
                                 )}
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 flex items-center justify-center gap-2 px-2">
+
+                                {/* Permanent small X button in corner (top-right) */}
+                                <Tooltip label={t('app_bg_clear_custom')} placement="top">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const wasActive = bgImage === customSlotImage;
+                                      setCustomSlotImage('');
+                                      if (wasActive) {
+                                        setBgImage(DEFAULT_BG_IMAGE);
+                                        triggerPeek(1200);
+                                      }
+                                    }}
+                                    className="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-black/75 hover:bg-red-500 text-slate-300 hover:text-white border border-white/20 hover:border-red-400 shadow-md flex items-center justify-center transition-all cursor-pointer group/clear"
+                                    aria-label={t('app_bg_clear_custom')}
+                                  >
+                                    <X className="w-3 h-3 group-hover/clear:scale-110 transition-transform" />
+                                  </button>
+                                </Tooltip>
+
+                                {/* Hover overlay with centered Examinar button */}
+                                <div className="absolute inset-0 opacity-0 group-hover/customslot:opacity-100 transition-opacity bg-black/60 backdrop-blur-[2px] flex items-center justify-center px-2 pointer-events-none group-hover/customslot:pointer-events-auto z-10">
                                   <button
                                     type="button"
                                     onClick={async (e) => {
@@ -7554,26 +7626,10 @@ export default function App() {
                                         triggerPeek(1500);
                                       }
                                     }}
-                                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                                    className="flex items-center gap-1.5 bg-blue-600/90 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-blue-500/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
                                   >
                                     <Upload className="w-3.5 h-3.5" />
-                                    {t('app_bg_browse')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title={t('app_bg_clear_custom')}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const wasActive = bgImage === customSlotImage;
-                                      setCustomSlotImage('');
-                                      if (wasActive) {
-                                        setBgImage(DEFAULT_BG_IMAGE);
-                                        triggerPeek(1200);
-                                      }
-                                    }}
-                                    className="flex items-center justify-center bg-red-500/90 hover:bg-red-500 text-white p-1.5 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
+                                    <span>{t('app_bg_browse')}</span>
                                   </button>
                                 </div>
                               </>
