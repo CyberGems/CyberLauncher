@@ -238,6 +238,7 @@ declare global {
       onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
       onShellExit: (callback: (data: { id: string; exitCode: number }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
+      onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
       getAppVersions: () => Promise<{
@@ -1533,6 +1534,7 @@ export default function App() {
   } | null>(null);
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; category: typeof INITIAL_CATEGORIES[0] } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
+  const [confirmResetType, setConfirmResetType] = useState<'most-used' | 'recent' | null>(null);
   const lastContextMenuDismissedRef = useRef(0);
 
   // Launcher Activity State
@@ -2077,10 +2079,28 @@ export default function App() {
     }
   }, [triggerPinFlash]);
 
-  // Listen to tray Configuración / Acerca de
+  // Listen to tray Nuevo acceso / Configuración / Acerca de
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
     const unsubs: Array<() => void> = [];
+    if (window.electronAPI.onOpenAddApp) {
+      unsubs.push(window.electronAPI.onOpenAddApp(() => {
+        setIsSettingsOpen(false);
+        setIsAboutOpen(false);
+        setIsSystemHUDOpen(false);
+        setIsStorageHUDOpen(false);
+        setEditingCategory(null);
+        setCategoryToDelete(null);
+        setConfirmResetType(null);
+        setContextMenu(null);
+        setSystemContextMenu(null);
+        setCategoryContextMenu(null);
+        setEditingApp(null);
+        setEditForm(emptyEditForm());
+        setIsResolvingIcon(false);
+        setIsAddingApp(true);
+      }));
+    }
     if (window.electronAPI.onOpenSettings) {
       unsubs.push(window.electronAPI.onOpenSettings(() => {
         setIsSettingsOpen(true);
@@ -3307,7 +3327,7 @@ export default function App() {
     [favoriteIds, apps]
   );
   const mostUsed = useMemo(
-    () => [...apps].sort((a, b) => b.usage - a.usage).slice(0, 10),
+    () => apps.filter(a => (a.usage || 0) > 0).sort((a, b) => (b.usage || 0) - (a.usage || 0)).slice(0, 10),
     [apps]
   );
   const recentLaunches = useMemo(
@@ -3317,7 +3337,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || !!categoryToDelete;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || !!categoryToDelete || !!confirmResetType;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -3731,7 +3751,9 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        if (categoryToDelete) {
+        if (confirmResetType) {
+          setConfirmResetType(null);
+        } else if (categoryToDelete) {
           setCategoryToDelete(null);
         } else if (editingCategory) {
           setEditingCategory(null);
@@ -3795,7 +3817,7 @@ export default function App() {
     };
   }, [
     isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
-    editingCategory, categoryToDelete,
+    editingCategory, categoryToDelete, confirmResetType,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
   ]);
@@ -5391,50 +5413,58 @@ export default function App() {
               <h3 className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
                 {t('title_most_used')}
               </h3>
-              <Tooltip label={t('ctx_reset_most_used')} placement="left">
-                <button
-                  type="button"
-                  onClick={handleResetMostUsed}
-                  className="opacity-0 group-hover/mostused:opacity-100 hover:opacity-100 text-slate-500 hover:text-cyan-400 transition-all p-0.5 rounded cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              </Tooltip>
+              {mostUsed.length > 0 && (
+                <Tooltip label={t('ctx_reset_most_used')} placement="left">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResetType('most-used')}
+                    className="opacity-0 group-hover/mostused:opacity-100 hover:opacity-100 text-slate-500 hover:text-cyan-400 transition-all p-0.5 rounded cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                </Tooltip>
+              )}
             </div>
             <div className="flex-1 min-h-0 flex flex-col">
-              {Array.from({ length: 10 }, (_, index) => {
-                const app = mostUsed[index];
-                if (!app) {
-                  return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
-                }
-                const isMostUsedContextActive = !!(contextMenu?.app?.id === app.id && contextMenu?.source === 'most-used');
-                return (
-                  <button
-                    key={`most-used-${app.id}`}
-                    type="button"
-                    onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
-                    onClick={() => handleLaunchApp(app)}
-                    className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
-                      isMostUsedContextActive
-                        ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
-                        : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
-                      <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
-                        {index + 1}.
+              {mostUsed.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center px-2">
+                  <p className="text-[10px] font-mono text-slate-600 text-center leading-tight">{t('hud_most_used_empty')}</p>
+                </div>
+              ) : (
+                Array.from({ length: 10 }, (_, index) => {
+                  const app = mostUsed[index];
+                  if (!app) {
+                    return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
+                  }
+                  const isMostUsedContextActive = !!(contextMenu?.app?.id === app.id && contextMenu?.source === 'most-used');
+                  return (
+                    <button
+                      key={`most-used-${app.id}`}
+                      type="button"
+                      onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
+                      onClick={() => handleLaunchApp(app)}
+                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                        isMostUsedContextActive
+                          ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
+                          : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 lg:gap-2 overflow-hidden min-w-0">
+                        <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
+                          {index + 1}.
+                        </span>
+                        <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                        <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                          {app.name}
+                        </span>
+                      </div>
+                      <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
+                        {app.usage > 0 ? app.usage : '-'}
                       </span>
-                      <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
-                      <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
-                        {app.name}
-                      </span>
-                    </div>
-                    <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
-                      {app.usage > 0 ? app.usage : '-'}
-                    </span>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -5463,7 +5493,7 @@ export default function App() {
                 <Tooltip label={t('ctx_reset_recents')} placement="left">
                   <button
                     type="button"
-                    onClick={handleResetRecents}
+                    onClick={() => setConfirmResetType('recent')}
                     className="opacity-0 group-hover/recents:opacity-100 hover:opacity-100 text-slate-500 hover:text-cyan-400 transition-all p-0.5 rounded cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" />
@@ -7621,7 +7651,7 @@ export default function App() {
                     <div className="h-px bg-white/10 my-1 mx-2" />
                     <button 
                       onClick={() => {
-                        handleResetMostUsed();
+                        setConfirmResetType('most-used');
                         setContextMenu(null);
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
@@ -7646,7 +7676,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => {
-                        handleResetRecents();
+                        setConfirmResetType('recent');
                         setContextMenu(null);
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
@@ -7672,7 +7702,7 @@ export default function App() {
                 {contextMenu.source === 'most-used' && (
                   <button 
                     onClick={() => {
-                      handleResetMostUsed();
+                      setConfirmResetType('most-used');
                       setContextMenu(null);
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
@@ -7683,7 +7713,7 @@ export default function App() {
                 {contextMenu.source === 'recent' && (
                   <button 
                     onClick={() => {
-                      handleResetRecents();
+                      setConfirmResetType('recent');
                       setContextMenu(null);
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
@@ -8002,6 +8032,72 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
                   >
                     {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- RESET MOST USED / RECENTS CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {confirmResetType && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setConfirmResetType(null); }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
+                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-cyan-400" />
+                  {confirmResetType === 'most-used' 
+                    ? t('confirm_reset_most_used_title') 
+                    : t('confirm_reset_recents_title')}
+                </h2>
+                <button 
+                  onClick={() => setConfirmResetType(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {confirmResetType === 'most-used'
+                    ? t('confirm_reset_most_used_desc')
+                    : t('confirm_reset_recents_desc')}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => {
+                      if (confirmResetType === 'most-used') {
+                        handleResetMostUsed();
+                      } else {
+                        handleResetRecents();
+                      }
+                      setConfirmResetType(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-medium text-sm border border-cyan-500/30 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_reset_btn_confirm')}
+                  </button>
+                  <button 
+                    onClick={() => setConfirmResetType(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_reset_btn_cancel')}
                   </button>
                 </div>
               </div>

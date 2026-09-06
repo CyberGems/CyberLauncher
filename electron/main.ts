@@ -760,6 +760,7 @@ function createWindow() {
 const TRAY_I18N = {
   es: {
     showHide: 'Mostrar / Ocultar',
+    newApp: 'Nuevo acceso...',
     settings: 'Configuración...',
     help: 'Ayuda',
     faq: 'Preguntas frecuentes',
@@ -772,6 +773,7 @@ const TRAY_I18N = {
   },
   en: {
     showHide: 'Show / Hide',
+    newApp: 'New shortcut...',
     settings: 'Settings...',
     help: 'Help',
     faq: 'Frequently Asked Questions',
@@ -823,7 +825,7 @@ let pendingHideAfterTray = false;
 let trayMenuCloseFallback: ReturnType<typeof setTimeout> | null = null;
 /** Bumped on every right-click / menu-will-show so a delayed left-click can cancel. */
 let trayRightClickSeq = 0;
-type TrayPendingAction = 'show' | 'hide' | 'settings' | 'about' | 'check-updates' | 'quit';
+type TrayPendingAction = 'show' | 'hide' | 'new-app' | 'settings' | 'about' | 'check-updates' | 'quit';
 let pendingTrayAction: TrayPendingAction | null = null;
 
 /** Brief post-menu blur ignore only — never used to block hideMainWindow. */
@@ -851,6 +853,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const dynamicLabel = isVisible ? (parts[1] || 'Hide') : (parts[0] || 'Show');
   const iconBrand = loadMenuIcon('brand.png');
   const iconShow = loadMenuIcon('show-hide.png');
+  const iconAdd = loadMenuIcon('add.png');
   const iconSettings = loadMenuIcon('settings.png');
   const iconHelp = loadMenuIcon('help.png');
   const iconFaq = loadMenuIcon('faq.png');
@@ -876,6 +879,11 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       ...(iconShow ? { icon: iconShow } : {}),
       accelerator: currentShortcut || undefined,
       click: () => { pendingTrayAction = isVisible ? 'hide' : 'show'; },
+    },
+    {
+      label: t.newApp,
+      ...(iconAdd ? { icon: iconAdd } : {}),
+      click: () => { pendingTrayAction = 'new-app'; },
     },
     {
       label: t.settings,
@@ -995,7 +1003,7 @@ function executePendingTrayAction() {
     applyRendererThrottling();
     return;
   }
-  if (action === 'show' || action === 'settings' || action === 'about' || action === 'check-updates') {
+  if (action === 'show' || action === 'new-app' || action === 'settings' || action === 'about' || action === 'check-updates') {
     if (action === 'about') {
       triggerOpenAbout(false);
     } else if (action === 'check-updates') {
@@ -1004,6 +1012,8 @@ function executePendingTrayAction() {
       showMainWindow();
       if (action === 'settings' && mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('open-settings');
+      } else if (action === 'new-app' && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('open-add-app');
       }
     }
     applyRendererThrottling();

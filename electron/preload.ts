@@ -117,6 +117,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('always-on-top-blur-attempt', handler);
     return () => { ipcRenderer.removeListener('always-on-top-blur-attempt', handler); };
   },
+  onOpenAddApp: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('open-add-app', handler);
+    return () => { ipcRenderer.removeListener('open-add-app', handler); };
+  },
   onOpenSettings: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('open-settings', handler);
