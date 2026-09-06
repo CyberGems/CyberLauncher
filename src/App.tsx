@@ -9,10 +9,10 @@ import {
   Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
-  HardDrive, Minimize2, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
+  HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
+  FolderOpen, FolderPlus, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw, Calculator, Activity, FileText
+  RefreshCw, Calculator, Activity, FileText, CornerDownLeft
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -1966,6 +1966,8 @@ export default function App() {
   });
   const [editingCategory, setEditingCategory] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const [editCategoryForm, setEditCategoryForm] = useState({ name: '', color: '' });
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryForm, setNewCategoryForm] = useState({ name: '', color: '#38bdf8' });
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [isAppActive, setIsAppActive] = useState(true);
 
@@ -2055,6 +2057,84 @@ export default function App() {
     } finally {
       setIsScanningUwp(false);
     }
+  };
+
+  const submitAppForm = () => {
+    if (isAddingApp) {
+      const newId = Date.now();
+      const newApp = {
+        id: newId,
+        name: editForm.name || 'Nueva App',
+        path: editForm.path,
+        iconPath: editForm.iconPath,
+        icon: Package,
+        category: editForm.category || UNCATEGORIZED_NAME,
+        color: 'text-cyan-400',
+        isFav: false,
+        usage: 0,
+        isAdmin: editForm.isAdmin,
+        shortcut: editForm.shortcut
+      };
+      // @ts-ignore
+      setApps(prev => [...prev, newApp]);
+      if (editForm.pinToFavorites) {
+        setFavoriteIds(prev => [...prev, newId]);
+      }
+      if (editForm.pinToTaskbar) {
+        setTaskbarAppIds(prev => [...prev, newId]);
+      }
+      setIsAddingApp(false);
+    } else if (editingApp) {
+      setApps(prev => prev.map(a => {
+        if (a.id === editingApp.id) {
+          return {
+            ...a,
+            name: editForm.name,
+            // @ts-ignore
+            path: editForm.path,
+            // @ts-ignore
+            iconPath: editForm.iconPath,
+            category: editForm.category || UNCATEGORIZED_NAME,
+            isAdmin: editForm.isAdmin,
+            shortcut: editForm.shortcut
+          };
+        }
+        return a;
+      }));
+      setFavoriteIds(prev => {
+        const has = prev.includes(editingApp.id);
+        if (editForm.pinToFavorites && !has) return [...prev, editingApp.id];
+        if (!editForm.pinToFavorites && has) return prev.filter(id => id !== editingApp.id);
+        return prev;
+      });
+      setTaskbarAppIds(prev => {
+        const has = prev.includes(editingApp.id);
+        if (editForm.pinToTaskbar && !has) return [...prev, editingApp.id];
+        if (!editForm.pinToTaskbar && has) return prev.filter(id => id !== editingApp.id);
+        return prev;
+      });
+      setEditingApp(null);
+    }
+  };
+
+  const handleCreateCategory = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newCategoryForm.name.trim();
+    if (!trimmedName) return;
+    const newId = 'cat-' + Date.now();
+    const newCat = {
+      id: newId,
+      name: trimmedName,
+      color: newCategoryForm.color || '#38bdf8'
+    };
+    setCategories(prev => [...prev, newCat]);
+    setActiveCategory(newId);
+    setIsAddingCategory(false);
+    setNewCategoryForm({ name: '', color: '#38bdf8' });
+    setNotification({
+      message: t('category_created_notif', { name: trimmedName }),
+      type: 'success'
+    });
   };
 
   const handleSaveCategory = () => {
@@ -3515,7 +3595,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || !!categoryToDelete || !!confirmResetType;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -3923,6 +4003,50 @@ export default function App() {
         }
       }
 
+      // Hotkey para nueva categoría: Ctrl + +
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !isAnyModalOpen) {
+        if (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey) || e.key === '=') {
+          e.preventDefault();
+          setNewCategoryForm({ name: '', color: '#38bdf8' });
+          setIsAddingCategory(true);
+          return;
+        }
+      }
+
+      // Confirmar modales activos con Enter
+      if (e.key === 'Enter') {
+        if (confirmResetType) {
+          e.preventDefault();
+          if (confirmResetType === 'most-used') {
+            handleResetMostUsed();
+          } else {
+            handleResetRecents();
+          }
+          setConfirmResetType(null);
+          return;
+        }
+        if (categoryToDelete) {
+          e.preventDefault();
+          handleConfirmDeleteCategory(categoryToDelete);
+          return;
+        }
+        if (editingCategory) {
+          e.preventDefault();
+          handleSaveCategory();
+          return;
+        }
+        if (isAddingCategory) {
+          e.preventDefault();
+          handleCreateCategory();
+          return;
+        }
+        if (isAddingApp || editingApp) {
+          e.preventDefault();
+          submitAppForm();
+          return;
+        }
+      }
+
       if (contextMenu && e.key === 'Escape') {
         e.preventDefault();
         setContextMenu(null);
@@ -3946,6 +4070,8 @@ export default function App() {
           setConfirmResetType(null);
         } else if (categoryToDelete) {
           setCategoryToDelete(null);
+        } else if (isAddingCategory) {
+          setIsAddingCategory(false);
         } else if (editingCategory) {
           setEditingCategory(null);
         } else if (isRecordingAppShortcut) {
@@ -3983,6 +4109,15 @@ export default function App() {
           return;
         }
 
+        // Hotkey para agregar nuevo acceso: +
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey))) {
+          e.preventDefault();
+          setEditForm(emptyEditForm());
+          setIsResolvingIcon(false);
+          setIsAddingApp(true);
+          return;
+        }
+
         if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace')) {
           searchInputRef.current?.focus();
         }
@@ -3999,18 +4134,29 @@ export default function App() {
       }
     };
 
+    const resetAltState = () => {
+      isAltHeldRef.current = false;
+      altNumpadBlockedRef.current = false;
+    };
+
     window.addEventListener('keydown', handleGlobalKeyDown);
     window.addEventListener('keyup', handleGlobalKeyUp);
+    window.addEventListener('focus', resetAltState);
+    window.addEventListener('blur', resetAltState);
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       window.removeEventListener('keyup', handleGlobalKeyUp);
+      window.removeEventListener('focus', resetAltState);
+      window.removeEventListener('blur', resetAltState);
       if (altNumpadTimerRef.current) clearTimeout(altNumpadTimerRef.current);
     };
   }, [
     isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
-    editingCategory, categoryToDelete, confirmResetType,
+    editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, confirmResetType,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
-    contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav
+    contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav,
+    handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
+    submitAppForm
   ]);
 
   const getBackgroundStyle = () => {
@@ -4318,12 +4464,22 @@ export default function App() {
           <span className="text-[11px] font-cyber font-semibold text-slate-400/80 tracking-wider">
             {t('title_categories')}
           </span>
-          <Tooltip label="Agregar categoría" placement="bottom">
+          <Tooltip 
+            label={
+              <span className="flex items-center gap-1.5">
+                <span>{t('tooltip_add_category')}</span>
+                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl++</kbd>
+              </span>
+            } 
+            placement="bottom"
+          >
             <button 
               onClick={() => {
-                const newId = 'cat-' + Date.now();
-                setCategories([...categories, { id: newId, name: 'Nueva', color: '#60a5fa' }]);
+                setNewCategoryForm({ name: '', color: '#38bdf8' });
+                setIsAddingCategory(true);
               }}
+              aria-label={`${t('tooltip_add_category')} (Ctrl++)`}
+              aria-keyshortcuts="Control++"
               className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -4546,15 +4702,7 @@ export default function App() {
                 if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
                 if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
               }}
-              onBeforeInput={(e: any) => {
-                if (altNumpadBlockedRef.current || (isAltHeldRef.current && !e.nativeEvent?.getModifierState?.('AltGraph'))) {
-                  e.preventDefault();
-                }
-              }}
               onChange={(e) => {
-                if (altNumpadBlockedRef.current || (isAltHeldRef.current && !('getModifierState' in e && (e as any).getModifierState?.('AltGraph')))) {
-                  return;
-                }
                 const val = e.target.value;
                 setSearchQuery(val);
                 setKeyboardNav(null);
@@ -5299,13 +5447,23 @@ export default function App() {
                   </button>
                 </Tooltip>
                 <div className="w-px h-4 bg-white/10 mx-2" />
-                <Tooltip label={t('tooltip_add_app')} placement="bottom">
+                <Tooltip 
+                  label={
+                    <span className="flex items-center gap-1.5">
+                      <span>{t('tooltip_add_app')}</span>
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">+</kbd>
+                    </span>
+                  } 
+                  placement="bottom"
+                >
                   <button 
                     onClick={() => {
                       setEditForm(emptyEditForm());
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
                     }}
+                    aria-label={`${t('tooltip_add_app')} (+)`}
+                    aria-keyshortcuts="+"
                     className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
                   >
                     <Plus className="w-4 h-4" />
@@ -5612,7 +5770,7 @@ export default function App() {
                 }}
                 className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group"
               >
-                <Minimize2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                <Shrink className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
               </button>
             </Tooltip>
           </div>
@@ -6318,66 +6476,11 @@ export default function App() {
                   {t('app_cancel')}
                 </button>
                 <button
-                  onClick={() => {
-                    if (isAddingApp) {
-                      const newId = Date.now();
-                      const newApp = {
-                        id: newId,
-                        name: editForm.name || 'Nueva App',
-                        path: editForm.path,
-                        iconPath: editForm.iconPath,
-                        icon: Package,
-                        category: editForm.category || UNCATEGORIZED_NAME,
-                        color: 'text-cyan-400',
-                        isFav: false,
-                        usage: 0,
-                        isAdmin: editForm.isAdmin,
-                        shortcut: editForm.shortcut
-                      };
-                      // @ts-ignore
-                      setApps(prev => [...prev, newApp]);
-                      if (editForm.pinToFavorites) {
-                        setFavoriteIds(prev => [...prev, newId]);
-                      }
-                      if (editForm.pinToTaskbar) {
-                        setTaskbarAppIds(prev => [...prev, newId]);
-                      }
-                      setIsAddingApp(false);
-                    } else if (editingApp) {
-                      setApps(prev => prev.map(a => {
-                        if (a.id === editingApp.id) {
-                          return {
-                            ...a,
-                            name: editForm.name,
-                            // @ts-ignore
-                            path: editForm.path,
-                            // @ts-ignore
-                            iconPath: editForm.iconPath,
-                            category: editForm.category || UNCATEGORIZED_NAME,
-                            isAdmin: editForm.isAdmin,
-                            shortcut: editForm.shortcut
-                          };
-                        }
-                        return a;
-                      }));
-                      setFavoriteIds(prev => {
-                        const has = prev.includes(editingApp.id);
-                        if (editForm.pinToFavorites && !has) return [...prev, editingApp.id];
-                        if (!editForm.pinToFavorites && has) return prev.filter(id => id !== editingApp.id);
-                        return prev;
-                      });
-                      setTaskbarAppIds(prev => {
-                        const has = prev.includes(editingApp.id);
-                        if (editForm.pinToTaskbar && !has) return [...prev, editingApp.id];
-                        if (!editForm.pinToTaskbar && has) return prev.filter(id => id !== editingApp.id);
-                        return prev;
-                      });
-                      setEditingApp(null);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20"
+                  onClick={submitAppForm}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20 inline-flex items-center gap-1.5"
                 >
-                  {isAddingApp ? t('app_add_submit') : t('app_edit_submit')}
+                  <span>{isAddingApp ? t('app_add_submit') : t('app_edit_submit')}</span>
+                  <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                 </button>
               </div>
             </div>
@@ -7032,7 +7135,7 @@ export default function App() {
                       <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-                            <Minimize2 className="w-4 h-4 text-indigo-400" />
+                            <Shrink className="w-4 h-4 text-indigo-400" />
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup_minimized')}</h4>
@@ -7679,6 +7782,86 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* --- ADD CATEGORY MODAL --- */}
+      <AnimatePresence>
+        {isAddingCategory && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setIsAddingCategory(false); }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(34,211,238,0.1)] overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
+                <h2 className="text-lg font-cyber font-bold text-white flex items-center gap-2">
+                  <FolderPlus className="w-5 h-5 text-cyan-400" />
+                  {t('modal_add_category_title')}
+                </h2>
+                <button 
+                  onClick={() => setIsAddingCategory(false)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateCategory} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('app_field_name') || 'NOMBRE'}</label>
+                  <input 
+                    type="text" 
+                    autoFocus
+                    placeholder={t('modal_add_category_name_placeholder')}
+                    value={newCategoryForm.name}
+                    onChange={(e) => setNewCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('edit_cat_color') || 'COLOR'}</label>
+                  <div className="flex items-center gap-3">
+                    <label className="relative w-10 h-10 rounded-full overflow-hidden cursor-pointer shadow-sm ring-1 ring-white/10">
+                      <input 
+                        type="color" 
+                        value={newCategoryForm.color}
+                        onChange={(e) => setNewCategoryForm(prev => ({ ...prev, color: e.target.value }))}
+                        className="absolute inset-[-10px] w-14 h-14 cursor-pointer"
+                      />
+                    </label>
+                    <span className="text-xs font-mono text-slate-500">{newCategoryForm.color}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-xl font-cyber font-bold text-sm border border-cyan-500/30 transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('modal_add_category_btn_create')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors"
+                  >
+                    {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* --- EDIT CATEGORY MODAL --- */}
       <AnimatePresence>
         {editingCategory && (
@@ -7699,7 +7882,7 @@ export default function App() {
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <PenBox className="w-5 h-5 text-blue-400" />
-                  Editar Categoría
+                  {t('edit_cat_title')}
                 </h2>
                 <button 
                   onClick={() => setEditingCategory(null)}
@@ -7711,7 +7894,7 @@ export default function App() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">NOMBRE</label>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('app_field_name') || 'NOMBRE'}</label>
                   <input 
                     type="text" 
                     value={editCategoryForm.name}
@@ -7721,7 +7904,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">COLOR</label>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('edit_cat_color') || 'COLOR'}</label>
                   <div className="flex items-center gap-3">
                     <label className="relative w-10 h-10 rounded-full overflow-hidden cursor-pointer shadow-sm ring-1 ring-white/10">
                       <input 
@@ -7738,17 +7921,18 @@ export default function App() {
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={handleSaveCategory}
-                    className="flex-1 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-medium text-sm border border-blue-500/30 transition-colors"
+                    className="flex-1 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-medium text-sm border border-blue-500/30 transition-colors inline-flex items-center justify-center gap-1.5"
                   >
-                    Guardar
+                    <span>{t('edit_cat_btn_save')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                   <button 
                     onClick={() => setEditingCategory(null)}
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors"
                   >
-                    Cancelar
+                    {t('confirm_delete_category_btn_cancel')}
                   </button>
-                  <Tooltip label="Eliminar categoría" placement="top">
+                  <Tooltip label={t('ctx_delete_category')} placement="top">
                     <button 
                       onClick={handleDeleteCategory}
                       className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors"
@@ -8261,9 +8445,10 @@ export default function App() {
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-medium text-sm border border-red-500/30 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-medium text-sm border border-red-500/30 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_delete_category_btn_confirm')}
+                    <span>{t('confirm_delete_category_btn_confirm')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                   <button 
                     onClick={() => setCategoryToDelete(null)}
@@ -8327,9 +8512,10 @@ export default function App() {
                       }
                       setConfirmResetType(null);
                     }}
-                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-medium text-sm border border-cyan-500/30 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-medium text-sm border border-cyan-500/30 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_reset_btn_confirm')}
+                    <span>{t('confirm_reset_btn_confirm')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                   <button 
                     onClick={() => setConfirmResetType(null)}
