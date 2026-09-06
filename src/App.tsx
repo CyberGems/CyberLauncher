@@ -661,7 +661,7 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
     <Tooltip label={title} placement="bottom">
       <button
         onClick={onClick}
-        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[135px] shrink-0 justify-start pl-1 group"
+        className="focus:outline-none hidden xl:flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[135px] shrink-0 justify-start pl-1 group"
       >
         <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
@@ -4872,7 +4872,7 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="h-20 flex items-center px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-8">
+        <header className="h-20 flex items-center px-4 sm:px-6 xl:px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-4 sm:gap-6 xl:gap-8 min-w-0 overflow-hidden">
           <div 
             className="relative w-full max-w-[500px] group shrink"
             onMouseEnter={() => {
@@ -6061,9 +6061,21 @@ export default function App() {
                     }}
                     aria-label={`${t('tooltip_add_app')} (Ctrl+N)`}
                     aria-keyshortcuts="Control+N"
-                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
+                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors cursor-pointer" 
                   >
                     <Plus className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip label={t('tooltip_ws_scanner')} placement="bottom">
+                  <button
+                    onClick={() => {
+                      setSettingsTab('uwp');
+                      setIsSettingsOpen(true);
+                    }}
+                    aria-label={t('tooltip_ws_scanner')}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
+                  >
+                    <ScanSearch className="w-4 h-4" />
                   </button>
                 </Tooltip>
               </div>
@@ -6401,6 +6413,19 @@ export default function App() {
                     >
                       <RefreshCw className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
                       <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('more_menu_refresh_icons')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setSettingsTab('uwp');
+                        setIsSettingsOpen(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <ScanSearch className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_uwp_scanner')}</span>
                     </button>
 
                     <button
@@ -7028,6 +7053,38 @@ export default function App() {
               </div>
 
               <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app) */}
+                {isAddingApp && (
+                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)]">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
+                        <ScanSearch className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-cyber font-bold text-cyan-300 leading-tight">
+                          {t('app_add_uwp_banner_title')}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
+                          {t('app_add_uwp_banner_desc')}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingApp(false);
+                        setEditingApp(null);
+                        setSettingsTab('uwp');
+                        setIsSettingsOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-cyber font-bold tracking-wide transition-all shrink-0 cursor-pointer hover:shadow-[0_0_12px_rgba(34,211,238,0.3)] active:scale-95"
+                    >
+                      <span>{t('app_add_uwp_banner_btn')}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   {/* Name field */}
                   <div>

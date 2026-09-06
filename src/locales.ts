@@ -17,6 +17,7 @@ export const translations = {
     tooltip_more: "Más opciones",
     more_menu_donate: "Donar",
     more_menu_refresh_icons: "Refrescar íconos de accesos",
+    more_menu_uwp_scanner: "Escáner de Apps WS",
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "Diagnóstico de Sistema (HUD)",
     more_menu_hud_storage: "Diagnóstico de Almacenamiento",
@@ -31,6 +32,7 @@ export const translations = {
     tooltip_launches_today: "Lanzamientos de hoy",
     tooltip_date: "Fecha actual",
     tooltip_add_app: "Agregar nuevo acceso",
+    tooltip_ws_scanner: "Escanear aplicaciones de Windows Store",
     tooltip_add_taskbar_access: "Agregar nuevo acceso a la barra",
     tooltip_add_category: "Agregar categoría",
     tooltip_edit_category: "Editar categoría",
@@ -46,6 +48,9 @@ export const translations = {
 
     // Add/Edit App drawer
     app_add_title: "Agregar nuevo acceso",
+    app_add_uwp_banner_title: "¿Buscas aplicaciones de Windows Store?",
+    app_add_uwp_banner_desc: "Detecta e importa automáticamente apps como WhatsApp, Xbox, Terminal, etc.",
+    app_add_uwp_banner_btn: "Abrir Escáner WS",
     app_edit_title: "Editar acceso",
     app_advanced_title: "AVANZADAS",
     app_advanced_show: "Mostrar opciones avanzadas",
@@ -472,6 +477,7 @@ export const translations = {
     tooltip_more: "More options",
     more_menu_donate: "Donate",
     more_menu_refresh_icons: "Refresh shortcut icons",
+    more_menu_uwp_scanner: "WS Apps Scanner",
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "System Diagnostics (HUD)",
     more_menu_hud_storage: "Storage Diagnostics",
@@ -486,6 +492,7 @@ export const translations = {
     tooltip_launches_today: "Today's launches",
     tooltip_date: "Current date",
     tooltip_add_app: "Add new shortcut",
+    tooltip_ws_scanner: "Scan Windows Store applications",
     tooltip_add_taskbar_access: "Add new shortcut to the bar",
     tooltip_add_category: "Add category",
     tooltip_edit_category: "Edit category",
@@ -501,6 +508,9 @@ export const translations = {
 
     // Add/Edit App drawer
     app_add_title: "Add new shortcut",
+    app_add_uwp_banner_title: "Looking for Windows Store apps?",
+    app_add_uwp_banner_desc: "Auto-detect and import apps like WhatsApp, Xbox, Terminal, etc.",
+    app_add_uwp_banner_btn: "Open WS Scanner",
     app_edit_title: "Edit shortcut",
     app_advanced_title: "ADVANCED",
     app_advanced_show: "Show advanced options",
