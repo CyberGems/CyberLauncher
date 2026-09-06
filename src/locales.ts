@@ -4,7 +4,7 @@ export const translations = {
     top_time: "Reloj",
     search_placeholder_normal: "Buscar en CyberLauncher...",
     search_placeholder_system: "Buscar en todo el sistema...",
-    search_placeholder_console: "Escribe un comando de consola...",
+    search_placeholder_console: "Escribe un comando... (ej. dir, sys, help)",
     clear_search: "Limpiar búsqueda",
     hud_system: "Abrir recursos del sistema",
     hud_storage: "Abrir almacenamiento",
@@ -17,6 +17,7 @@ export const translations = {
     tooltip_more: "Más opciones",
     more_menu_donate: "Donar",
     more_menu_refresh_icons: "Refrescar íconos de accesos",
+    more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "Diagnóstico de Sistema (HUD)",
     more_menu_hud_storage: "Diagnóstico de Almacenamiento",
     more_menu_hud_clock: "Reloj y Temporizadores",
@@ -255,7 +256,7 @@ export const translations = {
     apps_restore_defaults_btn: "Cargar accesos predeterminados",
     
     // Placeholder Info Text below input
-    hint_console_enter: "Presiona [Enter] para ejecutar",
+    hint_console_enter: "Presiona [Enter] ejecutar • [Esc] salir",
     hint_system_tab: "Presiona [Tab] para volver al Launcher",
     hint_normal_console: "Navega con [↑/↓/←/→] • '>' consola • [Tab] sistema",
     
@@ -451,7 +452,7 @@ export const translations = {
     top_time: "Clock",
     search_placeholder_normal: "Search in CyberLauncher...",
     search_placeholder_system: "Search system-wide...",
-    search_placeholder_console: "Type a console command...",
+    search_placeholder_console: "Type a command... (e.g. dir, sys, help)",
     clear_search: "Clear search",
     hud_system: "Open system resources",
     hud_storage: "Open storage",
@@ -464,6 +465,7 @@ export const translations = {
     tooltip_more: "More options",
     more_menu_donate: "Donate",
     more_menu_refresh_icons: "Refresh shortcut icons",
+    more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "System Diagnostics (HUD)",
     more_menu_hud_storage: "Storage Diagnostics",
     more_menu_hud_clock: "Clock & Timers",
@@ -702,7 +704,7 @@ export const translations = {
     apps_restore_defaults_btn: "Load default shortcuts",
     
     // Placeholder Info Text below input
-    hint_console_enter: "Press [Enter] to execute command",
+    hint_console_enter: "Press [Enter] execute • [Esc] exit",
     hint_system_tab: "Press [Tab] to go back to Launcher",
     hint_normal_console: "Navigate with [↑/↓/←/→] • '>' console • [Tab] system",
     

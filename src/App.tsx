@@ -727,7 +727,7 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
 
   return (
-    <div className="absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm font-sans select-none overflow-hidden">
+    <div className={`absolute inset-y-0 ${mode === 'console' ? 'left-14 font-mono' : 'left-11 font-sans'} right-36 flex items-center pointer-events-none text-slate-500 text-sm select-none overflow-hidden`}>
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -1542,6 +1542,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchScope, setSearchScope] = useState<'cyber' | 'system'>('cyber');
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [systemSearchResults, setSystemSearchResults] = useState<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>([]);
   const [isSearchingSystem, setIsSearchingSystem] = useState(false);
 
@@ -1633,7 +1634,7 @@ export default function App() {
   }, [systemSearchSelectedIndex, displayedResults.length, searchScope]);
 
   useEffect(() => {
-    if (searchScope !== 'system' || !searchQuery.trim() || searchQuery.trim().startsWith('>')) {
+    if (searchScope !== 'system' || !searchQuery.trim() || isTerminalOpen) {
       setSystemSearchResults([]);
       return;
     }
@@ -3725,7 +3726,7 @@ export default function App() {
 
   const handleCyberKeyboardNav = useCallback((e: React.KeyboardEvent | KeyboardEvent): boolean => {
     if (isAnyModalOpen || contextMenu || systemContextMenu || categoryContextMenu) return false;
-    if (searchScope !== 'cyber' || searchQuery.startsWith('>')) return false;
+    if (searchScope !== 'cyber' || isTerminalOpen) return false;
 
     const totalApps = filteredApps.length;
     const totalFavs = isFavoritesVisible ? favorites.length : 0;
@@ -4032,7 +4033,7 @@ export default function App() {
 
     return false;
   }, [
-    isAnyModalOpen, contextMenu, systemContextMenu, searchScope, searchQuery,
+    isAnyModalOpen, contextMenu, systemContextMenu, searchScope, searchQuery, isTerminalOpen,
     filteredApps, favorites, isFavoritesVisible, getGridColumnCount, keyboardNav,
     handleLaunchApp
   ]);
@@ -4212,6 +4213,9 @@ export default function App() {
           setEditingApp(null);
         } else if (isAddingApp) {
           setIsAddingApp(false);
+        } else if (isTerminalOpen) {
+          setIsTerminalOpen(false);
+          setSearchQuery('');
         } else if (searchQuery) {
           setSearchQuery('');
         } else if (isElectron) {
@@ -4792,7 +4796,7 @@ export default function App() {
               <div className="relative z-10">
                 <div className="text-[11px] font-cyber font-bold text-cyan-400 mb-1 tracking-wider uppercase">{t('search_guide_tooltip_title')}</div>
                 <div className="text-[13px] font-mono text-slate-300 leading-normal">
-                  {searchQuery.startsWith('>') 
+                  {isTerminalOpen 
                     ? `${t('search_placeholder_console')} — ${t('hint_console_enter')}`
                     : searchScope === 'system'
                     ? `${t('search_placeholder_system')} — ${t('hint_system_tab')}`
@@ -4819,6 +4823,19 @@ export default function App() {
               }}
               onChange={(e) => {
                 const val = e.target.value;
+                if (!isTerminalOpen && (val === '>' || val.startsWith('>'))) {
+                  setIsTerminalOpen(true);
+                  setSearchQuery(val.replace(/^>+\s*/, ''));
+                  setKeyboardNav(null);
+                  setShowSearchGuide(false);
+                  if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+                  if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+                  return;
+                }
+                if (isTerminalOpen && val.startsWith('>')) {
+                  setSearchQuery(val.replace(/^>+\s*/, ''));
+                  return;
+                }
                 setSearchQuery(val);
                 setKeyboardNav(null);
                 if (val.length > 0) {
@@ -4893,7 +4910,7 @@ export default function App() {
 
                 if (e.key === 'Tab') {
                   e.preventDefault();
-                  if (!searchQuery.startsWith('>')) {
+                  if (!isTerminalOpen) {
                     setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
                   }
                   return;
@@ -4955,7 +4972,7 @@ export default function App() {
                 const inSystemResults =
                   searchScope === 'system' &&
                   searchQuery.trim() !== '' &&
-                  !searchQuery.trim().startsWith('>') &&
+                  !isTerminalOpen &&
                   displayedResults.length > 0;
 
                 if (inSystemResults) {
@@ -4994,7 +5011,7 @@ export default function App() {
                     }
                     return;
                   }
-                  if (e.key === 'Enter' && !searchQuery.trim().startsWith('>')) {
+                  if (e.key === 'Enter' && !isTerminalOpen) {
                     e.preventDefault();
                     const item = displayedResults[systemSearchSelectedIndex];
                     if (item) {
@@ -5015,16 +5032,17 @@ export default function App() {
                 }
 
                 // Terminal Mode Navigation & Execution
-                if (searchQuery.startsWith('>')) {
+                if (isTerminalOpen) {
                   if (e.key === 'Escape') {
                     e.preventDefault();
+                    setIsTerminalOpen(false);
                     setSearchQuery('');
                     setHistoryIndex(-1);
                     return;
                   }
-                  if (e.key === 'Backspace' && (searchQuery === '>' || searchQuery === '')) {
+                  if (e.key === 'Backspace' && searchQuery === '') {
                     e.preventDefault();
-                    setSearchQuery('');
+                    setIsTerminalOpen(false);
                     setHistoryIndex(-1);
                     return;
                   }
@@ -5033,13 +5051,13 @@ export default function App() {
                     if (consoleHistory.length === 0) return;
                     let nextIdx = historyIndex;
                     if (historyIndex === -1) {
-                      tempCommandRef.current = searchQuery.substring(1);
+                      tempCommandRef.current = searchQuery;
                       nextIdx = consoleHistory.length - 1;
                     } else if (historyIndex > 0) {
                       nextIdx = historyIndex - 1;
                     }
                     setHistoryIndex(nextIdx);
-                    setSearchQuery(`>${consoleHistory[nextIdx]}`);
+                    setSearchQuery(consoleHistory[nextIdx]);
                     return;
                   }
                   if (e.key === 'ArrowDown') {
@@ -5048,18 +5066,17 @@ export default function App() {
                     if (historyIndex < consoleHistory.length - 1) {
                       const nextIdx = historyIndex + 1;
                       setHistoryIndex(nextIdx);
-                      setSearchQuery(`>${consoleHistory[nextIdx]}`);
+                      setSearchQuery(consoleHistory[nextIdx]);
                     } else {
                       setHistoryIndex(-1);
-                      setSearchQuery(`>${tempCommandRef.current}`);
+                      setSearchQuery(tempCommandRef.current);
                     }
                     return;
                   }
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    const rawCmd = searchQuery.substring(1).trim();
+                    const rawCmd = searchQuery.trim().replace(/^>+\s*/, '');
                     if (!rawCmd) {
-                      setSearchQuery('>');
                       return;
                     }
 
@@ -5072,7 +5089,7 @@ export default function App() {
                     });
                     setHistoryIndex(-1);
                     tempCommandRef.current = '';
-                    setSearchQuery('>');
+                    setSearchQuery('');
 
                     // Add input trace to console logs
                     const promptPrefix = consoleShell === 'powershell' ? 'PS' : 'CMD';
@@ -5221,34 +5238,37 @@ export default function App() {
                   }
                 }
               }}
-              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
-                searchQuery.startsWith('>') 
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
+                isTerminalOpen
+                  ? 'pl-14 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono' 
                   : searchScope === 'system'
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                  ? 'pl-11 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                  : 'pl-11 border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
               } placeholder:text-slate-500`}
             />
             {searchQuery === '' && (
               <RotatingSearchPlaceholder
-                mode={searchQuery.startsWith('>') ? 'console' : searchScope === 'system' ? 'system' : 'normal'}
+                mode={isTerminalOpen ? 'console' : searchScope === 'system' ? 'system' : 'normal'}
                 t={t}
               />
             )}
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              {searchQuery.startsWith('>') ? (
-                <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-colors" />
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none gap-2">
+              {isTerminalOpen ? (
+                <>
+                  <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-colors shrink-0" />
+                  <span className="text-emerald-400 font-mono font-bold text-sm select-none drop-shadow-[0_0_6px_rgba(16,185,129,0.7)]">&gt;</span>
+                </>
               ) : searchScope === 'system' ? (
-                <Search className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] transition-colors" />
+                <Search className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] transition-colors shrink-0" />
               ) : (
-                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm" />
+                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm shrink-0" />
               )}
             </div>
 
             {/* Unified Inline Right Actions Container */}
-            <div className="absolute inset-y-0 right-3 flex items-center gap-3 z-20 select-none">
+            <div className="absolute inset-y-0 right-3 flex items-center gap-2 z-20 select-none">
               {searchQuery && (
-                <Tooltip label="Limpiar búsqueda" placement="bottom">
+                <Tooltip label={t('clear_search')} placement="bottom">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -5263,10 +5283,26 @@ export default function App() {
                 </Tooltip>
               )}
 
-              {searchQuery.startsWith('>') ? (
-                <span className="text-[9px] font-cyber font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  TERMINAL
-                </span>
+              {isTerminalOpen ? (
+                <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
+                  <span className="text-[9px] font-cyber font-bold text-emerald-400">
+                    TERMINAL
+                  </span>
+                  <Tooltip label="Cerrar Terminal [Esc]" placement="bottom">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTerminalOpen(false);
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="flex items-center justify-center text-emerald-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+                </div>
               ) : (
                 <Tooltip label="Alternar alcance de búsqueda (Cyber / Sistema) [TAB]" placement="bottom">
                   <button
@@ -5317,13 +5353,13 @@ export default function App() {
 
         <div 
           ref={scrollContainerRef} 
-          className={`flex-1 ${searchQuery.trim().startsWith('>') ? 'px-4 pb-4' : 'px-8 pb-8'} custom-scrollbar relative z-10 flex flex-col min-h-0 ${
-            (searchScope === 'system' && searchQuery.trim() !== '') || searchQuery.trim().startsWith('>')
+          className={`flex-1 ${isTerminalOpen ? 'px-4 pb-4' : 'px-8 pb-8'} custom-scrollbar relative z-10 flex flex-col min-h-0 ${
+            (searchScope === 'system' && searchQuery.trim() !== '') || isTerminalOpen
               ? 'overflow-hidden' 
               : 'overflow-y-auto'
           }`}
         >
-          {searchQuery.trim().startsWith('>') ? (
+          {isTerminalOpen ? (
             <div className="flex-1 flex flex-col font-mono text-left bg-black/45 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-4 shadow-2xl overflow-hidden relative min-h-[400px]">
               {/* Terminal Scanline overlay */}
               <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,18,18,0)_98%,rgba(16,185,129,0.04)_98%)] bg-[size:100%_4px] rounded-2xl" />
@@ -5462,6 +5498,20 @@ export default function App() {
                       </button>
                     </Tooltip>
                   )}
+
+                  {/* Close Terminal Button */}
+                  <Tooltip label="Cerrar Terminal [Esc]" placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTerminalOpen(false);
+                        setSearchQuery('');
+                      }}
+                      className="flex items-center gap-1 p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -5483,7 +5533,8 @@ export default function App() {
                     </div>
                     <div className="text-slate-400">
                       Escribe <span className="text-emerald-300 underline cursor-pointer hover:text-emerald-200" onClick={() => {
-                        setSearchQuery('>help');
+                        setSearchQuery('help');
+                        searchInputRef.current?.focus();
                       }}>'help'</span> para ver comandos integrados (cd, cls, sys, explorer, wt).
                     </div>
                     <div className="text-slate-600">
@@ -6252,6 +6303,23 @@ export default function App() {
                     >
                       <RefreshCw className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
                       <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('more_menu_refresh_icons')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsTerminalOpen(prev => !prev);
+                        setSearchQuery('');
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Terminal className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                      <div className="flex items-center justify-between flex-1">
+                        <span>{t('more_menu_terminal')}</span>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">&gt;</span>
+                      </div>
                     </button>
 
                     <button

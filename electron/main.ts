@@ -1497,7 +1497,13 @@ function isGenericIcon(buf: Buffer): boolean {
   // c8c32689cde5c561: Windows generic executable window
   // 9afcae3fbafc7fc5: Windows generic shortcut document sheet
   // 20fd95c1eac7c058: Windows generic document
-  if (sha256 === 'c8c32689cde5c561' || sha256 === '9afcae3fbafc7fc5' || sha256 === '20fd95c1eac7c058') {
+  // aef5af4525e103c0: Electron / VS Code win32 default.ico (generic document page with blue badge)
+  if (
+    sha256 === 'c8c32689cde5c561' ||
+    sha256 === '9afcae3fbafc7fc5' ||
+    sha256 === '20fd95c1eac7c058' ||
+    sha256 === 'aef5af4525e103c0'
+  ) {
     return true;
   }
   return false;
@@ -1575,19 +1581,21 @@ function tryCompanionIcons(exePath: string): Buffer | null {
   try {
     const dir = path.dirname(exePath);
     const base = path.basename(exePath, path.extname(exePath));
-    const candidates = [
+    const candidates: string[] = [
       path.join(dir, `${base}.ico`),
       path.join(dir, `${base}.png`),
       path.join(dir, 'app.ico'),
       path.join(dir, 'icon.ico'),
-      path.join(dir, 'resources', 'app', 'resources', 'win32', 'default.ico'),
-      path.join(dir, 'resources', 'app', 'resources', 'win32', 'code.ico'),
       path.join(dir, 'resources', 'app.ico'),
       path.join(dir, 'resources', 'icon.ico'),
       path.join(dir, 'resources', 'app', 'icon.ico')
     ];
 
-    // Detectar carpetas de versión como en VS Code: dir/<hash>/resources/app/resources/win32/*.ico
+    if (base.toLowerCase().includes('code')) {
+      candidates.push(path.join(dir, 'resources', 'app', 'resources', 'win32', 'code.ico'));
+    }
+
+    // Detectar carpetas de versión como en VS Code: dir/<hash>/resources/app/resources/win32/code.ico
     try {
       const entries = fs.readdirSync(dir);
       for (const entry of entries) {
@@ -1595,16 +1603,17 @@ function tryCompanionIcons(exePath: string): Buffer | null {
           const subDir = path.join(dir, entry);
           const c1 = path.join(subDir, 'resources', 'app', 'resources', 'win32', 'code.ico');
           if (fs.existsSync(c1)) candidates.push(c1);
-          const c2 = path.join(subDir, 'resources', 'app', 'resources', 'win32', 'default.ico');
-          if (fs.existsSync(c2)) candidates.push(c2);
         }
       }
     } catch {}
 
     for (const cand of candidates) {
+      // NUNCA usar default.ico (es el documento genérico de Electron)
+      if (path.basename(cand).toLowerCase() === 'default.ico') continue;
       if (fs.existsSync(cand) && fs.statSync(cand).size > 100) {
         if (cand.endsWith('.png')) {
-          return fs.readFileSync(cand);
+          const buf = fs.readFileSync(cand);
+          if (!isGenericIcon(buf)) return buf;
         }
         const img = nativeImage.createFromPath(cand);
         if (img && !img.isEmpty()) {
@@ -1705,13 +1714,7 @@ async function extractAndCacheIcon(
     }
   }
 
-  // 3. Iconos compañeros en la carpeta (.ico / .png / resources) (VS Code, Trae, Ollama, CyberManager, etc.)
-  // IMPORTANTE: Se priorizan los .ico compañeros antes del manifest de tiles para evitar iconos reducidos
-  if (!pngBuffer && fs.existsSync(resolvedPath) && path.extname(resolvedPath).toLowerCase() === '.exe') {
-    pngBuffer = tryCompanionIcons(resolvedPath);
-  }
-
-  // 4. Extracción nativa con getFileIcon de Electron (si no es genérico)
+  // 3. Extracción nativa con getFileIcon de Electron (extrae el icono real embebido en el .exe)
   if (!pngBuffer && fs.existsSync(resolvedPath)) {
     try {
       let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
@@ -1727,6 +1730,11 @@ async function extractAndCacheIcon(
     } catch (e) {
       console.warn('[ICON] getFileIcon failed:', e);
     }
+  }
+
+  // 4. Iconos compañeros en la carpeta (.ico / .png / resources) (VS Code, Trae, Ollama, CyberManager, etc.)
+  if (!pngBuffer && fs.existsSync(resolvedPath) && path.extname(resolvedPath).toLowerCase() === '.exe') {
+    pngBuffer = tryCompanionIcons(resolvedPath);
   }
 
   // 5. Fallback con VisualElementsManifest.xml (Apps que solo tengan manifest y no icono embebido)
@@ -3018,18 +3026,33 @@ foreach (\$app in \$startApps) {
     return false;
   });
 
-  ipcMain.handle('run-shell-command', (_event, payload: string | { command: string; shellType?: 'powershell' | 'cmd'; cwd?: string }) => {
+  ipcMain.handle('run-shell-command', (_event, payload: any, maybeOpts?: any) => {
     const cmdId = Math.random().toString(36).substring(7);
-    const commandStr = typeof payload === 'object' ? payload.command : payload;
-    const shellType = typeof payload === 'object' && payload.shellType ? payload.shellType : 'powershell';
-    
-    if (typeof payload === 'object' && payload.cwd && fs.existsSync(payload.cwd)) {
-      try {
-        if (fs.statSync(payload.cwd).isDirectory()) {
-          consoleCwd = path.resolve(payload.cwd);
+    let commandStr = '';
+    let shellType: 'powershell' | 'cmd' = 'powershell';
+
+    if (typeof payload === 'string') {
+      commandStr = payload;
+      if (maybeOpts && typeof maybeOpts === 'object') {
+        if (maybeOpts.shellType) shellType = maybeOpts.shellType;
+        if (maybeOpts.cwd && fs.existsSync(maybeOpts.cwd)) {
+          try {
+            if (fs.statSync(maybeOpts.cwd).isDirectory()) consoleCwd = path.resolve(maybeOpts.cwd);
+          } catch {}
         }
-      } catch {}
+      }
+    } else if (typeof payload === 'object' && payload !== null) {
+      commandStr = payload.command || '';
+      if (payload.shellType) shellType = payload.shellType;
+      if (payload.cwd && fs.existsSync(payload.cwd)) {
+        try {
+          if (fs.statSync(payload.cwd).isDirectory()) consoleCwd = path.resolve(payload.cwd);
+        } catch {}
+      }
     }
+
+    // Limpiar cualquier prefijo '>' accidental antes de ejecutar
+    commandStr = commandStr.replace(/^>+\s*/, '').trim();
 
     try {
       console.log(`[SHELL RUNNER] [${shellType}] in [${consoleCwd}]: ${commandStr} with ID: ${cmdId}`);
