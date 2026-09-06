@@ -5905,7 +5905,6 @@ export default function App() {
                       type="button"
                       disabled={isRefreshingIcons || !isElectron}
                       onClick={() => {
-                        setIsMoreMenuOpen(false);
                         handleRefreshAllIcons();
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-colors text-left"
@@ -6740,14 +6739,16 @@ export default function App() {
 
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
                 <button
+                  type="button"
                   onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
                 >
                   {t('app_cancel')}
                 </button>
                 <button
+                  type="button"
                   onClick={submitAppForm}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 shadow-blue-500/20 inline-flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl font-cyber font-bold text-sm shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>{isAddingApp ? t('app_add_submit') : t('app_edit_submit')}</span>
                   <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
@@ -8112,18 +8113,18 @@ export default function App() {
 
                 <div className="flex gap-3 pt-2">
                   <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                  <button 
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-xl font-cyber font-bold text-sm border border-cyan-500/30 transition-colors inline-flex items-center justify-center gap-1.5"
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>{t('modal_add_category_btn_create')}</span>
                     <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setIsAddingCategory(false)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors"
-                  >
-                    {t('confirm_delete_category_btn_cancel')}
                   </button>
                 </div>
               </form>
@@ -8189,27 +8190,30 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={handleSaveCategory}
-                    className="flex-1 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-medium text-sm border border-blue-500/30 transition-colors inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('edit_cat_btn_save')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
-                  </button>
-                  <button 
-                    onClick={() => setEditingCategory(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors"
-                  >
-                    {t('confirm_delete_category_btn_cancel')}
-                  </button>
                   <Tooltip label={t('ctx_delete_category')} placement="top">
                     <button 
+                      type="button"
                       onClick={handleDeleteCategory}
-                      className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors"
+                      className="px-3.5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </Tooltip>
+                  <button 
+                    type="button"
+                    onClick={() => setEditingCategory(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{t('edit_cat_btn_save')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -8714,17 +8718,19 @@ export default function App() {
 
                 <div className="flex gap-3 pt-2">
                   <button 
-                    onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-medium text-sm border border-red-500/30 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_delete_category_btn_confirm')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
-                  </button>
-                  <button 
+                    type="button"
                     onClick={() => setCategoryToDelete(null)}
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
                   >
                     {t('confirm_delete_category_btn_cancel')}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_delete_category_btn_confirm')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                 </div>
               </div>
@@ -8774,6 +8780,14 @@ export default function App() {
 
                 <div className="flex gap-3 pt-2">
                   <button 
+                    type="button"
+                    onClick={() => setConfirmResetType(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_reset_btn_cancel')}
+                  </button>
+                  <button 
+                    type="button"
                     onClick={() => {
                       if (confirmResetType === 'most-used') {
                         handleResetMostUsed();
@@ -8782,16 +8796,10 @@ export default function App() {
                       }
                       setConfirmResetType(null);
                     }}
-                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-medium text-sm border border-cyan-500/30 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_reset_btn_confirm')}</span>
                     <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
-                  </button>
-                  <button 
-                    onClick={() => setConfirmResetType(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
-                  >
-                    {t('confirm_reset_btn_cancel')}
                   </button>
                 </div>
               </div>
