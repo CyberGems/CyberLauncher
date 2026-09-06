@@ -360,6 +360,7 @@ declare global {
       getImageData: (filePath: string) => Promise<string | null>;
       setHotspots: (corners: string[], delay: number) => Promise<{ success: boolean }>;
       openDevTools: () => Promise<{ success: boolean }>;
+      openTaskbarSettings: () => Promise<{ success: boolean; error?: string }>;
       exportConfig: (jsonData: string) => Promise<string | null>;
       importConfig: () => Promise<string | null>;
       saveConfig: (config: any) => Promise<boolean>;
@@ -480,7 +481,7 @@ const SystemMonitor = React.memo(() => {
 
   return (
     <div 
-      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group ${
         isAlert
           ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
           : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
@@ -523,7 +524,7 @@ const DiskMonitor = React.memo(() => {
 
   return (
     <div 
-      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group ${
         isAlert
           ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
           : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
@@ -747,6 +748,82 @@ const RotatingSearchPlaceholder = React.memo(({
         </motion.span>
       </AnimatePresence>
     </div>
+  );
+});
+
+/** Recommendation prompt to pin CyberLauncher to the Windows taskbar notification area */
+const TrayPinTip = React.memo(({
+  onClose,
+  onOpenSettings,
+  t
+}: {
+  onClose: (dontShowAgain: boolean) => void;
+  onOpenSettings: (dontShowAgain: boolean) => void;
+  t: (key: TranslationKey, variables?: Record<string, string>) => string;
+}) => {
+  const [dontShowAgain, setDontShowAgain] = useState(true);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 16, scale: 0.96 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="fixed bottom-14 right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] bg-[#090d19]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.85),0_0_24px_rgba(34,211,238,0.2)] select-none"
+      role="dialog"
+      aria-labelledby="tray-pin-title"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+            <Pin className="w-4 h-4 text-cyan-400" />
+          </div>
+          <h3 id="tray-pin-title" className="text-sm font-cyber font-bold text-slate-100 tracking-wide leading-snug">
+            {t('tray_pin_tip_title')}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={() => onClose(dontShowAgain)}
+          className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+          title={t('tray_pin_tip_dismiss')}
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <p className="mt-2.5 text-xs leading-relaxed text-slate-300 font-sans">
+        {t('tray_pin_tip_body')}
+      </p>
+
+      <label className="mt-3 flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={dontShowAgain}
+          onChange={(e) => setDontShowAgain(e.target.checked)}
+          className="w-3.5 h-3.5 rounded border-white/20 bg-black/40 accent-cyan-500 cursor-pointer"
+        />
+        <span>{t('tray_pin_tip_dont_show')}</span>
+      </label>
+
+      <div className="mt-3.5 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => onClose(dontShowAgain)}
+          className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+        >
+          {t('tray_pin_tip_got_it')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenSettings(dontShowAgain)}
+          className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-cyber font-bold tracking-wide shadow-[0_0_15px_rgba(34,211,238,0.35)] hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span>{t('tray_pin_tip_open_settings')}</span>
+        </button>
+      </div>
+    </motion.div>
   );
 });
 
@@ -2575,6 +2652,7 @@ export default function App() {
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
   const [showHeaderClock, setShowHeaderClock] = useState(() => localStorage.getItem('showHeaderClock') === 'true');
   const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
+  const [showTrayPinTip, setShowTrayPinTip] = useState(false);
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
@@ -2745,6 +2823,36 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('apps', JSON.stringify(apps));
   }, [apps]);
+
+  // Tray Pin Tip startup prompt and handlers
+  useEffect(() => {
+    const hasSeen = localStorage.getItem('cyber_has_seen_tray_pin_tip') === 'true';
+    if (!hasSeen) {
+      const timer = setTimeout(() => {
+        setShowTrayPinTip(true);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleDismissTrayPinTip = useCallback((dontShowAgain: boolean) => {
+    if (dontShowAgain) {
+      localStorage.setItem('cyber_has_seen_tray_pin_tip', 'true');
+    }
+    setShowTrayPinTip(false);
+  }, []);
+
+  const handleOpenTaskbarSettings = useCallback((dontShowAgain?: boolean) => {
+    if (dontShowAgain) {
+      localStorage.setItem('cyber_has_seen_tray_pin_tip', 'true');
+    }
+    setShowTrayPinTip(false);
+    if (isElectron && window.electronAPI?.openTaskbarSettings) {
+      window.electronAPI.openTaskbarSettings();
+    } else {
+      setNotification({ message: 'Abriendo configuración de Windows...', type: 'info' });
+    }
+  }, [isElectron]);
 
   useEffect(() => {
     localStorage.setItem('categories', JSON.stringify(categories));
@@ -5454,7 +5562,7 @@ export default function App() {
             <Tooltip label="Abrir Diagnóstico de Recursos de Sistema" placement="bottom">
               <button 
                 onClick={() => setIsSystemHUDOpen(true)}
-                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
               >
                 <SystemMonitor />
               </button>
@@ -5462,7 +5570,7 @@ export default function App() {
             <Tooltip label="Abrir Diagnóstico de Almacenamiento Físico" placement="bottom">
               <button 
                 onClick={() => setIsStorageHUDOpen(true)}
-                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all"
+                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
               >
                 <DiskMonitor />
               </button>
@@ -6454,6 +6562,18 @@ export default function App() {
                     >
                       <ScanSearch className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_uwp_scanner')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setShowTrayPinTip(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Pin className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
+                      <span>{t('more_menu_pin_tray')}</span>
                     </button>
 
                     <button
@@ -8102,6 +8222,36 @@ export default function App() {
                       </button>
                     </div>
 
+                    {/* Tray Pin Recommendation Card */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Pin className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_pin_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_pin_desc')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowTrayPinTip(true)}
+                          className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-cyber font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                        >
+                          {t('sys_tray_pin_tip_btn')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenTaskbarSettings(false)}
+                          className="px-3.5 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-xs font-cyber font-bold text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/50 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>{t('sys_tray_pin_btn')}</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                         <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
@@ -9635,6 +9785,17 @@ export default function App() {
               <X className="w-3.5 h-3.5" />
             </button>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- TRAY PIN TIP PROMPT --- */}
+      <AnimatePresence>
+        {showTrayPinTip && (
+          <TrayPinTip
+            onClose={handleDismissTrayPinTip}
+            onOpenSettings={handleOpenTaskbarSettings}
+            t={t}
+          />
         )}
       </AnimatePresence>
 

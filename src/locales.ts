@@ -18,6 +18,7 @@ export const translations = {
     more_menu_donate: "Donar",
     more_menu_refresh_icons: "Refrescar íconos de accesos",
     more_menu_uwp_scanner: "Escáner de Apps WS",
+    more_menu_pin_tray: "Fijar icono en la bandeja",
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "Diagnóstico de Sistema (HUD)",
     more_menu_hud_storage: "Diagnóstico de Almacenamiento",
@@ -391,6 +392,19 @@ export const translations = {
     sys_show_footer_datetime: "Mostrar fecha y hora en el pie de página",
     sys_show_footer_datetime_desc: "Muestra la hora y la fecha del sistema en la barra inferior del launcher.",
     tooltip_datetime: "Hora y fecha del sistema — Clic para HUD de Reloj",
+    // Tray Pin Tip
+    tray_pin_tip_title: "Mantén CyberLauncher visible en la bandeja",
+    tray_pin_tip_body: "Windows oculta los iconos nuevos detrás de la flecha (^). Arrastra CyberLauncher a la barra de tareas, o fíjalo en Configuración de Windows.",
+    tray_pin_tip_dont_show: "No mostrar más",
+    tray_pin_tip_got_it: "Entendido",
+    tray_pin_tip_open_settings: "Abrir Configuración de Windows",
+    tray_pin_tip_dismiss: "Cerrar",
+
+    // System Settings - Tray Pin Section
+    sys_tray_pin_title: "Fijar icono en la bandeja de Windows",
+    sys_tray_pin_desc: "Recomienda y abre la configuración de Windows para mantener el icono siempre visible junto al reloj del sistema.",
+    sys_tray_pin_btn: "Abrir Configuración",
+    sys_tray_pin_tip_btn: "Ver recomendación",
 
     // Backup & Data Tab Config
     backup_title: "RESPALDO Y DATOS",
@@ -483,6 +497,7 @@ export const translations = {
     more_menu_donate: "Donate",
     more_menu_refresh_icons: "Refresh shortcut icons",
     more_menu_uwp_scanner: "WS Apps Scanner",
+    more_menu_pin_tray: "Pin icon to system tray",
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "System Diagnostics (HUD)",
     more_menu_hud_storage: "Storage Diagnostics",
@@ -856,6 +871,19 @@ export const translations = {
     sys_show_footer_datetime: "Show date and time in footer",
     sys_show_footer_datetime_desc: "Displays system time and date in the bottom launcher bar.",
     tooltip_datetime: "System time & date — Click for Clock HUD",
+    // Tray Pin Tip
+    tray_pin_tip_title: "Keep CyberLauncher visible in the tray",
+    tray_pin_tip_body: "Windows hides new tray icons behind the overflow (^). Drag CyberLauncher onto the taskbar, or pin it in Windows Settings.",
+    tray_pin_tip_dont_show: "Don't show again",
+    tray_pin_tip_got_it: "Got it",
+    tray_pin_tip_open_settings: "Open Windows Settings",
+    tray_pin_tip_dismiss: "Dismiss",
+
+    // System Settings - Tray Pin Section
+    sys_tray_pin_title: "Pin icon in Windows system tray",
+    sys_tray_pin_desc: "Recommends and opens Windows settings to keep the tray icon always visible next to the system clock.",
+    sys_tray_pin_btn: "Open Settings",
+    sys_tray_pin_tip_btn: "Show tip",
 
     // Backup & Data Tab Config
     backup_title: "BACKUP & DATA",

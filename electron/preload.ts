@@ -58,8 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Hotspots ---
   setHotspots: (corners: string[], delay: number) => ipcRenderer.invoke('set-hotspots', corners, delay),
 
-  // --- Diagnóstico ---
+  // --- Diagnóstico y Sistema ---
   openDevTools: () => ipcRenderer.invoke('open-dev-tools'),
+  openTaskbarSettings: () => ipcRenderer.invoke('open-taskbar-settings'),
 
   // --- Menú contextual nativo ---
   showTextContextMenu: (x: number, y: number) => ipcRenderer.invoke('show-text-context-menu', { x, y }),

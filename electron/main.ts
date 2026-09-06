@@ -762,6 +762,7 @@ const TRAY_I18N = {
     showHide: 'Mostrar / Ocultar',
     newApp: 'Nuevo acceso...',
     settings: 'Configuración...',
+    pinTrayIcon: 'Fijar icono en la barra...',
     help: 'Ayuda',
     faq: 'Preguntas frecuentes',
     changelog: 'Changelog',
@@ -775,6 +776,7 @@ const TRAY_I18N = {
     showHide: 'Show / Hide',
     newApp: 'New shortcut...',
     settings: 'Settings...',
+    pinTrayIcon: 'Pin icon to taskbar...',
     help: 'Help',
     faq: 'Frequently Asked Questions',
     changelog: 'Changelog',
@@ -889,6 +891,11 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       label: t.settings,
       ...(iconSettings ? { icon: iconSettings } : {}),
       click: () => { pendingTrayAction = 'settings'; },
+    },
+    {
+      label: t.pinTrayIcon,
+      ...(loadMenuIcon('settings.png') ? { icon: loadMenuIcon('settings.png') } : {}),
+      click: () => { void shell.openExternal('ms-settings:taskbar'); },
     },
     {
       label: t.help,
@@ -2866,6 +2873,17 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('open-data-folder', () => {
     const dir = path.dirname(CONFIG_FILE);
     shell.openPath(dir);
+  });
+
+  // --- Abrir configuración de barra de tareas de Windows (para pinear iconos) ---
+  ipcMain.handle('open-taskbar-settings', async () => {
+    try {
+      await shell.openExternal('ms-settings:taskbar');
+      return { success: true };
+    } catch (err: any) {
+      console.error('[SETTINGS] Failed to open ms-settings:taskbar:', err);
+      return { success: false, error: err?.message || String(err) };
+    }
   });
 
   // --- Keep renderer awake while hidden (scheduled-task countdowns) ---
