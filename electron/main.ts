@@ -2189,8 +2189,10 @@ function setupIpcHandlers() {
       if (isUriProtocol) {
         console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
         await shell.openExternal(trimmedPath);
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+        if (!mainWindow?.isAlwaysOnTop()) {
+          windowVisibilityState = 'hidden-intentional';
+          hideMainWindow();
+        }
         return { success: true };
       }
 
@@ -2204,8 +2206,10 @@ function setupIpcHandlers() {
             console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
           }
         });
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+        if (!mainWindow?.isAlwaysOnTop()) {
+          windowVisibilityState = 'hidden-intentional';
+          hideMainWindow();
+        }
         return { success: true };
       }
 
@@ -2244,9 +2248,11 @@ function setupIpcHandlers() {
           }
         });
 
-        // Ocultar al tray al lanzar una app
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+        // Ocultar al tray al lanzar una app solo si no está fijada (pinned)
+        if (!mainWindow?.isAlwaysOnTop()) {
+          windowVisibilityState = 'hidden-intentional';
+          hideMainWindow();
+        }
         return { success: true };
       } else {
         const errorMessage = await shell.openPath(targetPath);
@@ -2257,9 +2263,11 @@ function setupIpcHandlers() {
             }
           });
         }
-        // Ocultar al tray al lanzar una app
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+        // Ocultar al tray al lanzar una app solo si no está fijada (pinned)
+        if (!mainWindow?.isAlwaysOnTop()) {
+          windowVisibilityState = 'hidden-intentional';
+          hideMainWindow();
+        }
         return { success: true };
       }
     } catch (err: any) {

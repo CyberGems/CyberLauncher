@@ -653,7 +653,7 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
     <Tooltip label={title} placement="bottom">
       <button
         onClick={onClick}
-        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[150px] shrink-0 justify-start pl-6 border-l border-white/10 group"
+        className="focus:outline-none flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-1 group"
       >
         <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
@@ -1474,6 +1474,8 @@ const formatRelativeTime = (timestamp: number, t: any) => {
   return t('hud_history_days_ago', { days: diffDays.toString() });
 };
 
+let globalAudioCtx: AudioContext | null = null;
+
 export default function App() {
 
   const [categories, setCategories] = useState(() => {
@@ -2292,10 +2294,37 @@ export default function App() {
     };
   }, [scheduledTasks.length > 0]);
 
+  const playPinBlockSound = useCallback(() => {
+    try {
+      if (!globalAudioCtx) {
+        globalAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (globalAudioCtx.state === 'suspended') {
+        globalAudioCtx.resume();
+      }
+      const osc = globalAudioCtx.createOscillator();
+      const gain = globalAudioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, globalAudioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(140, globalAudioCtx.currentTime + 0.12);
+
+      gain.gain.setValueAtTime(0.12, globalAudioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, globalAudioCtx.currentTime + 0.15);
+
+      osc.connect(gain);
+      gain.connect(globalAudioCtx.destination);
+
+      osc.start();
+      osc.stop(globalAudioCtx.currentTime + 0.15);
+    } catch {}
+  }, []);
+
   const triggerPinFlash = useCallback(() => {
+    playPinBlockSound();
     setIsPinFlashing(true);
     setTimeout(() => setIsPinFlashing(false), 1200);
-  }, []);
+  }, [playPinBlockSound]);
 
   useEffect(() => {
     localStorage.setItem('isAlwaysOnTop', isAlwaysOnTop.toString());
@@ -3145,8 +3174,10 @@ export default function App() {
     if ((app as any).path && isElectron) {
       const result = await window.electronAPI!.launchApp((app as any).path, !!(app as any).isAdmin);
       if (result.success) {
-        // Esconder a la bandeja tras lanzar con éxito
-        window.electronAPI!.windowHideToTray();
+        // Esconder a la bandeja tras lanzar con éxito solo si no está fijada (pinned)
+        if (!isAlwaysOnTop) {
+          window.electronAPI!.windowHideToTray();
+        }
       } else {
         console.warn(`Error al lanzar ${app.name}:`, result.error);
       }
@@ -3638,10 +3669,18 @@ export default function App() {
     const totalFavs = isFavoritesVisible ? favorites.length : 0;
     const cols = getGridColumnCount();
 
+    const stopNavEvent = () => {
+      e.preventDefault();
+      e.stopPropagation();
+      if ('nativeEvent' in e && (e as any).nativeEvent?.stopImmediatePropagation) {
+        (e as any).nativeEvent.stopImmediatePropagation();
+      }
+    };
+
     // Context Menu (tecla ContextMenu o Shift+F10)
     if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
       if (keyboardNav) {
-        e.preventDefault();
+        stopNavEvent();
         const app = keyboardNav.section === 'favorites'
           ? favorites[keyboardNav.index]
           : filteredApps[keyboardNav.index];
@@ -3665,7 +3704,7 @@ export default function App() {
     // Escape con elemento seleccionado: deselecciona y regresa el foco al buscador
     if (e.key === 'Escape') {
       if (keyboardNav) {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav(null);
         searchInputRef.current?.focus();
         return true;
@@ -3676,7 +3715,7 @@ export default function App() {
     // Enter
     if (e.key === 'Enter') {
       if (keyboardNav) {
-        e.preventDefault();
+        stopNavEvent();
         const app = keyboardNav.section === 'favorites'
           ? favorites[keyboardNav.index]
           : filteredApps[keyboardNav.index];
@@ -3686,7 +3725,7 @@ export default function App() {
         }
         return true;
       } else if (searchQuery.trim() !== '' && totalApps > 0) {
-        e.preventDefault();
+        stopNavEvent();
         handleLaunchApp(filteredApps[0]);
         return true;
       }
@@ -3696,7 +3735,7 @@ export default function App() {
     // Sin elemento seleccionado aún
     if (!keyboardNav) {
       if (e.key === 'ArrowDown') {
-        e.preventDefault();
+        stopNavEvent();
         searchInputRef.current?.blur();
         if (totalFavs > 0) {
           setKeyboardNav({ section: 'favorites', index: 0 });
@@ -3713,7 +3752,7 @@ export default function App() {
 
       if (e.key === 'ArrowRight') {
         if (searchQuery === '') {
-          e.preventDefault();
+          stopNavEvent();
           searchInputRef.current?.blur();
           if (totalFavs > 0) {
             setKeyboardNav({ section: 'favorites', index: 0 });
@@ -3732,7 +3771,7 @@ export default function App() {
 
       if (e.key === 'Home') {
         if (searchQuery === '') {
-          e.preventDefault();
+          stopNavEvent();
           searchInputRef.current?.blur();
           if (totalFavs > 0) {
             setKeyboardNav({ section: 'favorites', index: 0 });
@@ -3746,7 +3785,7 @@ export default function App() {
 
       if (e.key === 'End') {
         if (searchQuery === '') {
-          e.preventDefault();
+          stopNavEvent();
           searchInputRef.current?.blur();
           if (totalApps > 0) {
             setKeyboardNav({ section: 'apps', index: totalApps - 1 });
@@ -3759,7 +3798,7 @@ export default function App() {
       }
 
       if (e.key === 'PageDown') {
-        e.preventDefault();
+        stopNavEvent();
         searchInputRef.current?.blur();
         if (totalApps > 0) {
           setKeyboardNav({ section: 'apps', index: 0 });
@@ -3781,7 +3820,7 @@ export default function App() {
       const idx = keyboardNav.index;
 
       if (e.key === 'ArrowRight') {
-        e.preventDefault();
+        stopNavEvent();
         if (idx < totalFavs - 1) {
           setKeyboardNav({ section: 'favorites', index: idx + 1 });
         }
@@ -3789,7 +3828,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowLeft') {
-        e.preventDefault();
+        stopNavEvent();
         if (idx > 0) {
           setKeyboardNav({ section: 'favorites', index: idx - 1 });
         }
@@ -3797,7 +3836,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowDown') {
-        e.preventDefault();
+        stopNavEvent();
         if (totalApps > 0) {
           setKeyboardNav({ section: 'apps', index: Math.min(idx, totalApps - 1, cols - 1) });
         }
@@ -3805,7 +3844,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowUp') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav(null);
         searchInputRef.current?.focus();
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -3813,19 +3852,19 @@ export default function App() {
       }
 
       if (e.key === 'Home') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav({ section: 'favorites', index: 0 });
         return true;
       }
 
       if (e.key === 'End') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav({ section: 'favorites', index: totalFavs - 1 });
         return true;
       }
 
       if (e.key === 'PageDown') {
-        e.preventDefault();
+        stopNavEvent();
         if (totalApps > 0) {
           setKeyboardNav({ section: 'apps', index: 0 });
         }
@@ -3833,7 +3872,7 @@ export default function App() {
       }
 
       if (e.key === 'PageUp') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav(null);
         searchInputRef.current?.focus();
         if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
@@ -3848,7 +3887,7 @@ export default function App() {
       const idx = keyboardNav.index;
 
       if (e.key === 'ArrowRight') {
-        e.preventDefault();
+        stopNavEvent();
         if (idx < totalApps - 1) {
           setKeyboardNav({ section: 'apps', index: idx + 1 });
         }
@@ -3856,7 +3895,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowLeft') {
-        e.preventDefault();
+        stopNavEvent();
         if (idx > 0) {
           setKeyboardNav({ section: 'apps', index: idx - 1 });
         }
@@ -3864,7 +3903,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowDown') {
-        e.preventDefault();
+        stopNavEvent();
         const currentRow = Math.floor(idx / cols);
         const totalRows = Math.ceil(totalApps / cols);
         // Si no estamos en la última fila, avanzar a la siguiente fila
@@ -3877,7 +3916,7 @@ export default function App() {
       }
 
       if (e.key === 'ArrowUp') {
-        e.preventDefault();
+        stopNavEvent();
         const prev = idx - cols;
         if (prev >= 0) {
           setKeyboardNav({ section: 'apps', index: prev });
@@ -3894,26 +3933,26 @@ export default function App() {
       }
 
       if (e.key === 'Home') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav({ section: 'apps', index: 0 });
         return true;
       }
 
       if (e.key === 'End') {
-        e.preventDefault();
+        stopNavEvent();
         setKeyboardNav({ section: 'apps', index: totalApps - 1 });
         return true;
       }
 
       if (e.key === 'PageDown') {
-        e.preventDefault();
+        stopNavEvent();
         const pageSize = Math.max(cols * 4, 8);
         setKeyboardNav({ section: 'apps', index: Math.min(totalApps - 1, idx + pageSize) });
         return true;
       }
 
       if (e.key === 'PageUp') {
-        e.preventDefault();
+        stopNavEvent();
         const pageSize = Math.max(cols * 4, 8);
         const target = idx - pageSize;
         if (target >= 0) {
@@ -3939,6 +3978,7 @@ export default function App() {
   // Keyboard Shortcuts globales
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (isRecordingShortcut) return;
 
       if (e.key === 'Alt') {
@@ -3999,6 +4039,18 @@ export default function App() {
         if (e.code === 'Digit2' || e.code === 'Numpad2' || e.code === 'KeyL') {
           e.preventDefault();
           setViewMode('list');
+          return;
+        }
+      }
+
+      // Hotkey para nuevo acceso: Ctrl + N (o Alt + +)
+      if (((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.altKey && !e.shiftKey) ||
+          (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
+        if (!isAnyModalOpen) {
+          e.preventDefault();
+          setEditForm(emptyEditForm());
+          setIsResolvingIcon(false);
+          setIsAddingApp(true);
           return;
         }
       }
@@ -4095,7 +4147,11 @@ export default function App() {
         } else if (searchQuery) {
           setSearchQuery('');
         } else if (isElectron) {
-          window.electronAPI!.windowHideToTray();
+          if (isAlwaysOnTop) {
+            triggerPinFlash();
+          } else {
+            window.electronAPI!.windowHideToTray();
+          }
         }
         return;
       }
@@ -4106,15 +4162,6 @@ export default function App() {
 
       if (!isInputFocused && !isAnyModalOpen) {
         if (handleCyberKeyboardNav(e)) {
-          return;
-        }
-
-        // Hotkey para agregar nuevo acceso: +
-        if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey))) {
-          e.preventDefault();
-          setEditForm(emptyEditForm());
-          setIsResolvingIcon(false);
-          setIsAddingApp(true);
           return;
         }
 
@@ -4719,6 +4766,26 @@ export default function App() {
                 }
               }}
               onKeyDown={async (e) => {
+                // Hotkey para nuevo acceso: Ctrl + N (o Alt + +)
+                if (((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.altKey && !e.shiftKey) ||
+                    (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setEditForm(emptyEditForm());
+                  setIsResolvingIcon(false);
+                  setIsAddingApp(true);
+                  return;
+                }
+
+                // Hotkey para nueva categoría: Ctrl + +
+                if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey) || e.key === '=')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setNewCategoryForm({ name: '', color: '#38bdf8' });
+                  setIsAddingCategory(true);
+                  return;
+                }
+
                 if (e.altKey) {
                   let num: number | null = null;
                   if (e.code.startsWith('Digit') && e.code.length === 6 && e.code[5] >= '0' && e.code[5] <= '9') {
@@ -4873,6 +4940,9 @@ export default function App() {
                 }
 
                 if (handleCyberKeyboardNav(e)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  (e as any).nativeEvent?.stopImmediatePropagation?.();
                   return;
                 }
 
@@ -5451,7 +5521,7 @@ export default function App() {
                   label={
                     <span className="flex items-center gap-1.5">
                       <span>{t('tooltip_add_app')}</span>
-                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">+</kbd>
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+N</kbd>
                     </span>
                   } 
                   placement="bottom"
@@ -5462,8 +5532,8 @@ export default function App() {
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
                     }}
-                    aria-label={`${t('tooltip_add_app')} (+)`}
-                    aria-keyshortcuts="+"
+                    aria-label={`${t('tooltip_add_app')} (Ctrl+N)`}
+                    aria-keyshortcuts="Control+N"
                     className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors" 
                   >
                     <Plus className="w-4 h-4" />
@@ -5762,6 +5832,10 @@ export default function App() {
             <Tooltip label={t('tooltip_minimize')} placement="bottom">
               <button 
                 onClick={() => {
+                  if (isAlwaysOnTop) {
+                    triggerPinFlash();
+                    return;
+                  }
                   if (isElectron) {
                     window.electronAPI!.windowHideToTray();
                   } else {
