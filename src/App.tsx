@@ -1935,9 +1935,6 @@ export default function App() {
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
-  const MAX_HISTORY_DAYS = 7;
-  const MAX_HISTORY_MS = MAX_HISTORY_DAYS * 24 * 60 * 60 * 1000;
-
   const normalizeHistoryKey = (str?: string) => (str || '').trim().toLowerCase().replace(/\\/g, '/');
 
   const [launchHistory, setLaunchHistory] = useState<HistoryItem[]>(() => {
@@ -1945,11 +1942,9 @@ export default function App() {
     if (!saved) return [];
     try {
       const parsed: HistoryItem[] = JSON.parse(saved);
-      const now = Date.now();
       const seen = new Set<string>();
       const valid = parsed.filter(item => {
         if (!item || !item.name) return false;
-        if (now - item.timestamp > MAX_HISTORY_MS) return false;
         const key = normalizeHistoryKey(item.path) || normalizeHistoryKey(item.name);
         if (seen.has(key)) return false;
         seen.add(key);
@@ -1975,7 +1970,7 @@ export default function App() {
       const finalNormPath = matchedApp?.path ? normalizeHistoryKey(matchedApp.path) : normPath;
       const finalNormName = matchedApp?.name ? normalizeHistoryKey(matchedApp.name) : normName;
 
-      // Filter out any previous occurrences of this app (by path or name) and prune old items (> 7 days)
+      // Filter out any previous occurrences of this app (by path or name)
       const filtered = prev.filter(item => {
         const itemNormPath = normalizeHistoryKey(item.path);
         const itemNormName = normalizeHistoryKey(item.name);
@@ -1990,7 +1985,6 @@ export default function App() {
         );
 
         if (isSamePath || isSameName) return false;
-        if (now - item.timestamp > MAX_HISTORY_MS) return false;
         return true;
       });
 
@@ -5295,6 +5289,36 @@ export default function App() {
       >
         <div className="px-3 pt-3 pb-1 flex items-center justify-end">
           <div className="flex items-center gap-1">
+            {/* Update Available Button (CyberWall style - only if autoUpdate is enabled) */}
+            {autoUpdate && (updateStatus.state === 'available' || updateStatus.state === 'downloaded' || updateStatus.state === 'downloading') && (
+              <Tooltip 
+                label={
+                  updateStatus.state === 'downloaded'
+                    ? t('about_status_downloaded', { version: (updateStatus as any).version || '' })
+                    : updateStatus.state === 'downloading'
+                    ? t('about_status_downloading', { percent: String((updateStatus as any).percent || 0) })
+                    : t('about_status_available', { version: (updateStatus as any).version || '' })
+                }
+                placement="bottom"
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsAboutOpen(true)}
+                  className="group relative flex items-center h-7 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_12px_rgba(108,155,255,0.2)] hover:shadow-[0_0_16px_rgba(108,155,255,0.45)] transition-all duration-200 overflow-hidden px-1.5 mr-0.5 focus:outline-none cursor-pointer"
+                >
+                  <div className="max-w-0 opacity-0 group-hover:max-w-[75px] group-hover:opacity-100 overflow-hidden transition-all duration-200 ease-out whitespace-nowrap">
+                    <span className="text-[11px] font-semibold tracking-wide text-[#6C9BFF] group-hover:text-white pl-1.5 pr-1 drop-shadow-sm select-none">
+                      {language === 'es' ? 'Actualizar' : 'Update'}
+                    </span>
+                  </div>
+                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                    <Download className={`w-3.5 h-3.5 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-pulse" />
+                  </div>
+                </button>
+              </Tooltip>
+            )}
+
             <Tooltip label={isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on')} placement="bottom">
               <button 
                 onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
