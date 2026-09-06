@@ -4,7 +4,7 @@ export const translations = {
     top_time: "Reloj",
     search_placeholder_normal: "Buscar en CyberLauncher...",
     search_placeholder_system: "Buscar en todo el sistema...",
-    search_placeholder_console: "Escribe un comando... (ej. dir, sys, help)",
+    search_placeholder_console: "Escribe un comando... (dir, sys, help)",
     clear_search: "Limpiar búsqueda",
     hud_system: "Abrir recursos del sistema",
     hud_storage: "Abrir almacenamiento",
@@ -256,9 +256,9 @@ export const translations = {
     apps_restore_defaults_btn: "Cargar accesos predeterminados",
     
     // Placeholder Info Text below input
-    hint_console_enter: "Presiona [Enter] ejecutar • [Esc] salir",
-    hint_system_tab: "Presiona [Tab] para volver al Launcher",
-    hint_normal_console: "Navega con [↑/↓/←/→] • '>' consola • [Tab] sistema",
+    hint_console_enter: "[Enter] Ejecutar  •  [Esc] Salir",
+    hint_system_tab: "[Tab] Volver a Launcher",
+    hint_normal_console: "'>' Terminal  •  [Tab] Sistema",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexando unidad entera {drive}...",
@@ -452,7 +452,7 @@ export const translations = {
     top_time: "Clock",
     search_placeholder_normal: "Search in CyberLauncher...",
     search_placeholder_system: "Search system-wide...",
-    search_placeholder_console: "Type a command... (e.g. dir, sys, help)",
+    search_placeholder_console: "Type a command... (dir, sys, help)",
     clear_search: "Clear search",
     hud_system: "Open system resources",
     hud_storage: "Open storage",
@@ -704,9 +704,9 @@ export const translations = {
     apps_restore_defaults_btn: "Load default shortcuts",
     
     // Placeholder Info Text below input
-    hint_console_enter: "Press [Enter] execute • [Esc] exit",
-    hint_system_tab: "Press [Tab] to go back to Launcher",
-    hint_normal_console: "Navigate with [↑/↓/←/→] • '>' console • [Tab] system",
+    hint_console_enter: "[Enter] Execute  •  [Esc] Exit",
+    hint_system_tab: "[Tab] Return to Launcher",
+    hint_normal_console: "'>' Terminal  •  [Tab] System",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexing full drive {drive}...",

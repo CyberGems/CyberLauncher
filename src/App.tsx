@@ -727,7 +727,7 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
 
   return (
-    <div className={`absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
+    <div className={`absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -4774,7 +4774,7 @@ export default function App() {
         {/* Top Bar */}
         <header className="h-20 flex items-center px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-8">
           <div 
-            className="relative w-full max-w-[440px] group shrink"
+            className="relative w-full max-w-[500px] group shrink"
             onMouseEnter={() => {
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
               searchHoverTimeoutRef.current = setTimeout(() => {
@@ -5239,7 +5239,7 @@ export default function App() {
                   }
                 }
               }}
-              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
+              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
                 isTerminalOpen
                   ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono' 
                   : searchScope === 'system'
