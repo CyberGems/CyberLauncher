@@ -2909,8 +2909,18 @@ foreach (\$app in \$startApps) {
       }
     }
 
-    // CD or CHDIR command
-    const cdMatch = /^(?:cd|chdir)(?:[\s/](.*))?$/i.exec(trimmed);
+    // Direct ".." navigation shortcut
+    if (/^\.\.([/\\]|$)/.test(trimmed)) {
+      const target = trimmed;
+      const resolved = path.resolve(consoleCwd, target);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        consoleCwd = resolved;
+        return { handled: true, success: true, newCwd: consoleCwd };
+      }
+    }
+
+    // CD or CHDIR command (matches: cd, cd.., cd .., cd/, cd\, cd C:\foo, chdir.., etc.)
+    const cdMatch = /^(?:cd|chdir)(?:$|(?=[\s/\\.])(.*)$)/i.exec(trimmed);
     if (!cdMatch) return { handled: false, success: false };
 
     // 'cd' without arguments: print current working directory
@@ -2929,6 +2939,11 @@ foreach (\$app in \$startApps) {
 
     // Strip surrounding quotes
     target = target.replace(/^["'](.*)["']$/, '$1').trim();
+
+    // Handle drive letter with cd (e.g. "cd D:" -> "D:\")
+    if (/^[a-zA-Z]:$/i.test(target)) {
+      target = `${target.toUpperCase()}\\`;
+    }
 
     // Handle ~ (user home)
     if (target === '~') {

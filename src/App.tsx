@@ -727,7 +727,7 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
 
   return (
-    <div className={`absolute inset-y-0 ${mode === 'console' ? 'left-14 font-mono' : 'left-11 font-sans'} right-36 flex items-center pointer-events-none text-slate-500 text-sm select-none overflow-hidden`}>
+    <div className={`absolute inset-y-0 left-11 right-36 flex items-center pointer-events-none text-slate-500 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -2507,14 +2507,16 @@ export default function App() {
       if (data.cwd) {
         setConsoleCwd(data.cwd);
       }
-      setConsoleLogs(prev => [
-        ...prev,
-        { 
-          type: 'system', 
-          text: `\n[SISTEMA] El proceso terminó con el código de salida ${data.exitCode}\n`, 
-          id: `${data.id}-exit-${Date.now()}` 
-        }
-      ]);
+      if (data.exitCode !== 0) {
+        setConsoleLogs(prev => [
+          ...prev,
+          { 
+            type: 'system', 
+            text: `\n[SISTEMA] El proceso terminó con el código de salida ${data.exitCode}\n`, 
+            id: `${data.id}-exit-${Date.now()}` 
+          }
+        ]);
+      }
       setIsCommandRunning(false);
       setActiveCmdId(null);
     });
@@ -5230,7 +5232,6 @@ export default function App() {
                         setConsoleLogs(prev => [
                           ...prev,
                           { type: 'stdout', text: `Host local... Respuesta exitosa.\n`, id: `sim-ping-${Date.now()}` },
-                          { type: 'system', text: `[SISTEMA] El proceso terminó con el código de salida 0`, id: `sim-exit-${Date.now()}` }
                         ]);
                         setIsCommandRunning(false);
                       }, 1200);
@@ -5238,12 +5239,12 @@ export default function App() {
                   }
                 }
               }}
-              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
+              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border pr-36 ${
                 isTerminalOpen
-                  ? 'pl-14 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono' 
+                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono' 
                   : searchScope === 'system'
-                  ? 'pl-11 border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                  : 'pl-11 border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
               } placeholder:text-slate-500`}
             />
             {searchQuery === '' && (
@@ -5252,12 +5253,9 @@ export default function App() {
                 t={t}
               />
             )}
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none gap-2">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               {isTerminalOpen ? (
-                <>
-                  <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-colors shrink-0" />
-                  <span className="text-emerald-400 font-mono font-bold text-sm select-none drop-shadow-[0_0_6px_rgba(16,185,129,0.7)]">&gt;</span>
-                </>
+                <Terminal className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] transition-colors shrink-0" />
               ) : searchScope === 'system' ? (
                 <Search className="w-4 h-4 text-emerald-400 animate-pulse drop-shadow-[0_0_5px_rgba(16,185,129,0.3)] transition-colors shrink-0" />
               ) : (
