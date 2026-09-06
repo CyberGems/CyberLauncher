@@ -386,6 +386,11 @@ export const translations = {
 
     // System Tab Config Additional
     sys_title: "SISTEMA",
+    sys_show_header_clock: "Mostrar reloj digital en barra superior",
+    sys_show_header_clock_desc: "Muestra la hora digital en la cabecera junto a los monitores de CPU y RAM.",
+    sys_show_footer_datetime: "Mostrar fecha y hora en el pie de página",
+    sys_show_footer_datetime_desc: "Muestra la hora y la fecha del sistema en la barra inferior del launcher.",
+    tooltip_datetime: "Hora y fecha del sistema — Clic para HUD de Reloj",
 
     // Backup & Data Tab Config
     backup_title: "RESPALDO Y DATOS",
@@ -846,6 +851,11 @@ export const translations = {
 
     // System Tab Config Additional
     sys_title: "SYSTEM",
+    sys_show_header_clock: "Show digital clock in top bar",
+    sys_show_header_clock_desc: "Displays digital time in the header next to CPU and RAM monitors.",
+    sys_show_footer_datetime: "Show date and time in footer",
+    sys_show_footer_datetime_desc: "Displays system time and date in the bottom launcher bar.",
+    tooltip_datetime: "System time & date — Click for Clock HUD",
 
     // Backup & Data Tab Config
     backup_title: "BACKUP & DATA",

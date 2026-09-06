@@ -13,7 +13,7 @@ import {
   FolderOpen, FolderPlus, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -480,14 +480,14 @@ const SystemMonitor = React.memo(() => {
 
   return (
     <div 
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
         isAlert
           ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
           : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
       }`}
     >
-      <Cpu className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-11 text-right tabular-nums">
+      <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider tabular-nums">
         {Math.round(memPercent)}%
       </span>
     </div>
@@ -523,14 +523,14 @@ const DiskMonitor = React.memo(() => {
 
   return (
     <div 
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
+      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-help transition-all duration-300 hover:scale-105 active:scale-95 group ${
         isAlert
           ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
           : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
       }`}
     >
-      <HardDrive className="w-4 h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider w-7 text-right tabular-nums">
+      <HardDrive className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider tabular-nums">
         {mainDisk ? `${mainDisk.percent}%` : '--'}
       </span>
     </div>
@@ -661,43 +661,47 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
     <Tooltip label={title} placement="bottom">
       <button
         onClick={onClick}
-        className="focus:outline-none hidden xl:flex items-center gap-2 text-cyan-400 font-digits font-bold text-[20px] tracking-widest drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums w-[135px] shrink-0 justify-start pl-1 group"
+        type="button"
+        className="focus:outline-none flex items-center gap-1.5 text-cyan-400 font-digits font-bold text-[13px] sm:text-[14px] xl:text-[16px] tracking-wider drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-0.5 pr-1 group"
       >
-        <Clock className="w-5 h-5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+        <Clock className="w-3.5 h-3.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
       </button>
     </Tooltip>
   );
 });
 
-/** Footer date — updates once per minute (enough for calendar day). */
-const FooterDate = React.memo(({ title }: { title: string }) => {
+/** Footer date & time — live digital time alongside formatted calendar date. */
+const FooterDateTime = React.memo(({ title, onClick }: { title: string; onClick?: () => void }) => {
   const [now, setNow] = useState(() => new Date());
   const visible = useDocumentVisible();
 
   useEffect(() => {
     if (!visible) return;
-    const tick = () => setNow(new Date());
-    tick();
-    const msToNextMinute = 60_000 - (Date.now() % 60_000);
-    let intervalId: number | undefined;
-    const alignId = window.setTimeout(() => {
-      tick();
-      intervalId = window.setInterval(tick, 60_000);
-    }, msToNextMinute);
-    return () => {
-      clearTimeout(alignId);
-      if (intervalId !== undefined) clearInterval(intervalId);
-    };
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
   }, [visible]);
+
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+  const dateStr = now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1');
 
   return (
     <Tooltip label={title} placement="top">
-      <div className="flex items-center gap-1.5 cursor-default text-slate-400">
-        <span className="text-sm font-mono tracking-wide">
-          {now.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase().replace(/ DE (\d{4})$/, ', $1')}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors focus:outline-none group select-none"
+      >
+        <Clock className="w-3.5 h-3.5 text-cyan-400/80 group-hover:text-cyan-300 transition-transform group-hover:scale-110 shrink-0" />
+        <span className="text-xs font-digits font-bold text-cyan-400 group-hover:text-cyan-300 tracking-wider tabular-nums drop-shadow-[0_0_6px_rgba(34,211,238,0.3)] shrink-0">
+          {timeStr}
         </span>
-      </div>
+        <span className="text-[10px] text-slate-600 font-bold shrink-0">·</span>
+        <span className="text-xs font-mono tracking-wide text-slate-400 group-hover:text-slate-300 shrink-0">
+          {dateStr}
+        </span>
+      </button>
     </Tooltip>
   );
 });
@@ -2569,6 +2573,8 @@ export default function App() {
   const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
+  const [showHeaderClock, setShowHeaderClock] = useState(() => localStorage.getItem('showHeaderClock') === 'true');
+  const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
@@ -2821,6 +2827,8 @@ export default function App() {
             setLanguage(source.language);
             localStorage.setItem('cyber_lang', source.language);
           }
+          if (source.showHeaderClock !== undefined) setShowHeaderClock(!!source.showHeaderClock);
+          if (source.showFooterDateTime !== undefined) setShowFooterDateTime(source.showFooterDateTime !== false);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -2873,8 +2881,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, selectedMonitor, autoUpdate, language };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, selectedMonitor, autoUpdate, language });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, selectedMonitor, autoUpdate, language };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -2901,6 +2909,7 @@ export default function App() {
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+          showHeaderClock, showFooterDateTime,
           selectedMonitor, autoUpdate, language
         }));
       } catch (e) {
@@ -2925,6 +2934,7 @@ export default function App() {
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+    showHeaderClock, showFooterDateTime,
     selectedMonitor, autoUpdate, language,
     isConfigLoaded
   ]);
@@ -2954,6 +2964,14 @@ export default function App() {
     }
     localStorage.setItem('showTaskbarIcon', showTaskbarIcon.toString());
   }, [showTaskbarIcon]);
+
+  useEffect(() => {
+    localStorage.setItem('showHeaderClock', showHeaderClock.toString());
+  }, [showHeaderClock]);
+
+  useEffect(() => {
+    localStorage.setItem('showFooterDateTime', showFooterDateTime.toString());
+  }, [showFooterDateTime]);
 
   // Guardar inmediatamente al cerrar la ventana (beforeunload)
   useEffect(() => {
@@ -3196,6 +3214,14 @@ export default function App() {
       if (config.resetOnLaunch !== undefined) {
         setResetOnLaunch(config.resetOnLaunch);
         localStorage.setItem('resetOnLaunch', config.resetOnLaunch.toString());
+      }
+      if (config.showHeaderClock !== undefined) {
+        setShowHeaderClock(!!config.showHeaderClock);
+        localStorage.setItem('showHeaderClock', config.showHeaderClock.toString());
+      }
+      if (config.showFooterDateTime !== undefined) {
+        setShowFooterDateTime(config.showFooterDateTime !== false);
+        localStorage.setItem('showFooterDateTime', config.showFooterDateTime.toString());
       }
       if (config.autoUpdate !== undefined) {
         setAutoUpdate(!!config.autoUpdate);
@@ -4872,9 +4898,9 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="h-20 flex items-center px-4 sm:px-6 xl:px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-4 sm:gap-6 xl:gap-8 min-w-0 overflow-hidden">
+        <header className="h-20 flex items-center px-3 sm:px-4 xl:px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-2 sm:gap-2.5 min-w-0 overflow-hidden">
           <div 
-            className="relative w-full max-w-[500px] group shrink"
+            className="relative flex-1 min-w-[100px] max-w-[480px] group shrink"
             onMouseEnter={() => {
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
               searchHoverTimeoutRef.current = setTimeout(() => {
@@ -5339,7 +5365,7 @@ export default function App() {
                   }
                 }
               }}
-              className={`w-full bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
+              className={`w-full min-w-0 bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
                 isTerminalOpen
                   ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono caret-emerald-400/80' 
                   : searchScope === 'system'
@@ -5424,7 +5450,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
             <Tooltip label="Abrir Diagnóstico de Recursos de Sistema" placement="bottom">
               <button 
                 onClick={() => setIsSystemHUDOpen(true)}
@@ -5442,10 +5468,12 @@ export default function App() {
               </button>
             </Tooltip>
             
-            <HeaderClock
-              onClick={() => setIsClockHUDOpen(true)}
-              title={t('hud_clock')}
-            />
+            {showHeaderClock && (
+              <HeaderClock
+                onClick={() => setIsClockHUDOpen(true)}
+                title={t('hud_clock')}
+              />
+            )}
           </div>
         </header>
 
@@ -6829,9 +6857,16 @@ export default function App() {
               <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
             </div>
           </Tooltip>
-          <div className="w-px h-4 bg-white/10" />
-          {/* Date */}
-          <FooterDate title={t('tooltip_date')} />
+          {showFooterDateTime && (
+            <>
+              <div className="w-px h-4 bg-white/10" />
+              {/* Date & Time */}
+              <FooterDateTime 
+                title={t('tooltip_datetime')} 
+                onClick={() => setIsClockHUDOpen(true)}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -8083,6 +8118,56 @@ export default function App() {
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${resetOnLaunch ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${resetOnLaunch ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Header Clock Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Clock className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_header_clock')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_header_clock_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showHeaderClock;
+                          setShowHeaderClock(newVal);
+                          localStorage.setItem('showHeaderClock', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showHeaderClock ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showHeaderClock ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showHeaderClock ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer Date & Time Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <Calendar className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_datetime')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_datetime_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterDateTime;
+                          setShowFooterDateTime(newVal);
+                          localStorage.setItem('showFooterDateTime', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterDateTime ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterDateTime ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterDateTime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
                     </div>
