@@ -139,6 +139,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-about', handler);
     return () => { ipcRenderer.removeListener('open-about', handler); };
   },
+  setTrayRecents: (items: Array<{ name: string; path: string; isAdmin?: boolean }>) =>
+    ipcRenderer.invoke('tray:set-recents', items),
 
   // --- App versions / updates (CyberFeeds model) ---
   getAppVersions: () => ipcRenderer.invoke('app:get-versions'),

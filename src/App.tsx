@@ -387,6 +387,7 @@ declare global {
       onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
+      setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean }>) => Promise<{ success: boolean }>;
       getAppVersions: () => Promise<{
         app: string; electron: string; chrome: string; node: string;
         platform: string; arch: string; osRelease: string; osType: string;
@@ -2699,6 +2700,19 @@ export default function App() {
     });
     return unsub;
   }, [apps, addToHistory, record24hLaunch]);
+
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.setTrayRecents) return;
+    const payload = launchHistory.slice(0, 10).map((item) => {
+      const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
+      return {
+        name: item.name,
+        path: item.path,
+        isAdmin: !!(appInfo as any)?.isAdmin,
+      };
+    });
+    void window.electronAPI.setTrayRecents(payload);
+  }, [launchHistory, apps]);
 
   // Cyber Terminal Command Runner States
   const [consoleLogs, setConsoleLogs] = useState<Array<{ type: 'input' | 'stdout' | 'stderr' | 'system'; text: string; id: string }>>([]);

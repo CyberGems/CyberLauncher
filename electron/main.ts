@@ -794,6 +794,8 @@ const TRAY_I18N = {
     donate: 'Donar',
     about: 'Acerca de...',
     checkUpdates: 'Buscar actualizaciones...',
+    mostRecent: 'Más recientes',
+    noRecents: 'Ningún acceso reciente',
     quit: 'Salir',
   },
   en: {
@@ -808,6 +810,8 @@ const TRAY_I18N = {
     donate: 'Donate',
     about: 'About...',
     checkUpdates: 'Check for Update...',
+    mostRecent: 'Most recent',
+    noRecents: 'No recent shortcuts',
     quit: 'Exit',
   },
 } as const;
@@ -851,8 +855,35 @@ let pendingHideAfterTray = false;
 let trayMenuCloseFallback: ReturnType<typeof setTimeout> | null = null;
 /** Bumped on every right-click / menu-will-show so a delayed left-click can cancel. */
 let trayRightClickSeq = 0;
-type TrayPendingAction = 'show' | 'hide' | 'new-app' | 'settings' | 'about' | 'check-updates' | 'quit';
+type TrayPendingAction = 'show' | 'hide' | 'new-app' | 'settings' | 'about' | 'check-updates' | 'quit' | 'launch-recent';
 let pendingTrayAction: TrayPendingAction | null = null;
+
+type TrayRecentItem = { name: string; path: string; isAdmin?: boolean };
+let trayRecents: TrayRecentItem[] = [];
+let pendingRecentLaunch: TrayRecentItem | null = null;
+let lastTrayRecentsKey = '';
+
+function setTrayRecents(items: unknown[]): void {
+  const next: TrayRecentItem[] = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as Record<string, unknown>;
+    const path = typeof item.path === 'string' ? item.path.trim() : '';
+    const name = typeof item.name === 'string' ? item.name.trim() : '';
+    if (!path || !name) continue;
+    next.push({
+      name: name.slice(0, 80),
+      path,
+      isAdmin: !!item.isAdmin,
+    });
+    if (next.length >= 10) break;
+  }
+  const key = JSON.stringify(next);
+  if (key === lastTrayRecentsKey) return;
+  lastTrayRecentsKey = key;
+  trayRecents = next;
+  rebuildTrayMenu();
+}
 
 /** Brief post-menu blur ignore only — never used to block hideMainWindow. */
 function armTrayMenuGuard(ms = 400) {
@@ -988,6 +1019,18 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       click: () => { pendingTrayAction = 'settings'; },
     },
     {
+      label: t.mostRecent,
+      submenu: trayRecents.length > 0
+        ? trayRecents.map((item, index) => ({
+            label: `${index + 1}. ${item.name}`,
+            click: () => {
+              pendingTrayAction = 'launch-recent';
+              pendingRecentLaunch = item;
+            },
+          }))
+        : [{ label: t.noRecents, enabled: false }],
+    },
+    {
       label: t.help,
       ...(iconHelp ? { icon: iconHelp } : {}),
       submenu: [
@@ -1088,6 +1131,7 @@ function rebuildTrayMenu(): void {
 function executePendingTrayAction() {
   const action = pendingTrayAction;
   pendingTrayAction = null;
+  if (action !== 'launch-recent') pendingRecentLaunch = null;
   const blurHide = pendingHideAfterTray;
   pendingHideAfterTray = false;
 
@@ -1096,6 +1140,26 @@ function executePendingTrayAction() {
   if (action === 'quit') {
     isQuitting = true;
     app.quit();
+    return;
+  }
+  if (action === 'launch-recent') {
+    const item = pendingRecentLaunch;
+    pendingRecentLaunch = null;
+    if (item?.path) {
+      void launchAppInternal(item.path, item.isAdmin).then((res) => {
+        if (!res?.success) {
+          console.warn('[TRAY] Recent launch failed:', res?.error || item.path);
+          return;
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('app-launched-via-hotkey', {
+            path: item.path,
+            name: item.name,
+          });
+        }
+      });
+    }
+    applyRendererThrottling();
     return;
   }
   if (action === 'hide') {
@@ -2174,6 +2238,97 @@ async function buildSystemIndex() {
 // =====================================
 // IPC HANDLERS
 // =====================================
+async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ success: boolean; error?: string }> {
+  if (!appPath) return { success: false, error: 'No path provided' };
+
+  try {
+    const trimmedPath = appPath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+
+    const isUriProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath) &&
+      !path.isAbsolute(trimmedPath) &&
+      !trimmedPath.match(/^[a-zA-Z]:[\\/]/);
+    if (isUriProtocol) {
+      console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
+      await shell.openExternal(trimmedPath);
+      if (!mainWindow?.isAlwaysOnTop()) {
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
+      }
+      return { success: true };
+    }
+
+    const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
+    if (isUwp) {
+      console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${trimmedPath}`);
+      const command = `explorer.exe shell:AppsFolder\\${trimmedPath}`;
+      exec(command, (err) => {
+        if (err) {
+          console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
+        }
+      });
+      if (!mainWindow?.isAlwaysOnTop()) {
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
+      }
+      return { success: true };
+    }
+
+    let targetPath = path.normalize(trimmedPath);
+
+    if (!fs.existsSync(targetPath)) {
+      const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+      const sys32Candidate = path.join(sysRoot, 'System32', targetPath);
+      const winCandidate = path.join(sysRoot, targetPath);
+      const psCandidate = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', targetPath);
+      if (fs.existsSync(sys32Candidate)) {
+        targetPath = sys32Candidate;
+      } else if (fs.existsSync(winCandidate)) {
+        targetPath = winCandidate;
+      } else if (fs.existsSync(psCandidate)) {
+        targetPath = psCandidate;
+      } else {
+        return { success: false, error: `Ruta no encontrada: ${targetPath}` };
+      }
+    }
+
+    if (isAdmin && process.platform === 'win32') {
+      console.log(`[LAUNCH] Intentando lanzar como administrador: ${targetPath}`);
+      pauseHotspots();
+      watchUACUntilExit();
+      const escapedPath = targetPath.replace(/'/g, "''");
+      const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
+
+      exec(command, (err) => {
+        if (err) {
+          console.error('[LAUNCH] Error al ejecutar como administrador:', err);
+        }
+      });
+
+      if (!mainWindow?.isAlwaysOnTop()) {
+        windowVisibilityState = 'hidden-intentional';
+        hideMainWindow();
+      }
+      return { success: true };
+    }
+
+    const errorMessage = await shell.openPath(targetPath);
+    if (errorMessage) {
+      exec(`"${targetPath}"`, (err) => {
+        if (err) {
+          console.error(`[LAUNCH] Error en fallback de ejecución para ${targetPath}:`, err);
+        }
+      });
+    }
+    if (!mainWindow?.isAlwaysOnTop()) {
+      windowVisibilityState = 'hidden-intentional';
+      hideMainWindow();
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
+  }
+}
+
 function setupIpcHandlers() {
   // --- Obtener configuraciones del indexador global ---
   ipcMain.handle('get-indexer-settings', async () => {
@@ -2466,103 +2621,13 @@ function setupIpcHandlers() {
     }
   });
   // --- Lanzar aplicación (ejecutar .exe, abrir URL, etc.) ---
-  ipcMain.handle('launch-app', async (_event, appPath: string, isAdmin?: boolean) => {
-    if (!appPath) return { success: false, error: 'No path provided' };
+  ipcMain.handle('launch-app', (_event, appPath: string, isAdmin?: boolean) =>
+    launchAppInternal(appPath, isAdmin)
+  );
 
-    try {
-      const trimmedPath = appPath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
-
-      // Si parece una URL o esquema URI (http://, https://, ms-settings:, etc.), abrirlo externamente
-      const isUriProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath) && 
-        !path.isAbsolute(trimmedPath) && 
-        !trimmedPath.match(/^[a-zA-Z]:[\\/]/);
-      if (isUriProtocol) {
-        console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
-        await shell.openExternal(trimmedPath);
-        if (!mainWindow?.isAlwaysOnTop()) {
-          windowVisibilityState = 'hidden-intentional';
-          hideMainWindow();
-        }
-        return { success: true };
-      }
-
-      // Si es una aplicación UWP/Windows Store (AUMID conteniendo '!' y '_'), lanzarla virtualmente
-      const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
-      if (isUwp) {
-        console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${trimmedPath}`);
-        const command = `explorer.exe shell:AppsFolder\\${trimmedPath}`;
-        exec(command, (err) => {
-          if (err) {
-            console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
-          }
-        });
-        if (!mainWindow?.isAlwaysOnTop()) {
-          windowVisibilityState = 'hidden-intentional';
-          hideMainWindow();
-        }
-        return { success: true };
-      }
-
-      // Si es una ruta del sistema, intentar abrirla con shell.openPath o PowerShell RunAs
-      // Esto maneja .exe, .lnk (accesos directos), .bat, carpetas, etc.
-      let targetPath = path.normalize(trimmedPath);
-
-      // Verificar si el archivo/ruta existe o resolver en carpetas del sistema Windows
-      if (!fs.existsSync(targetPath)) {
-        const sysRoot = process.env.SystemRoot || 'C:\\Windows';
-        const sys32Candidate = path.join(sysRoot, 'System32', targetPath);
-        const winCandidate = path.join(sysRoot, targetPath);
-        const psCandidate = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', targetPath);
-        if (fs.existsSync(sys32Candidate)) {
-          targetPath = sys32Candidate;
-        } else if (fs.existsSync(winCandidate)) {
-          targetPath = winCandidate;
-        } else if (fs.existsSync(psCandidate)) {
-          targetPath = psCandidate;
-        } else {
-          return { success: false, error: `Ruta no encontrada: ${targetPath}` };
-        }
-      }
-
-      if (isAdmin && process.platform === 'win32') {
-        console.log(`[LAUNCH] Intentando lanzar como administrador: ${targetPath}`);
-        pauseHotspots();
-        watchUACUntilExit();
-        // Escapar comillas simples para PowerShell
-        const escapedPath = targetPath.replace(/'/g, "''");
-        const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
-        
-        exec(command, (err) => {
-          if (err) {
-            console.error('[LAUNCH] Error al ejecutar como administrador:', err);
-          }
-        });
-
-        // Ocultar al tray al lanzar una app solo si no está fijada (pinned)
-        if (!mainWindow?.isAlwaysOnTop()) {
-          windowVisibilityState = 'hidden-intentional';
-          hideMainWindow();
-        }
-        return { success: true };
-      } else {
-        const errorMessage = await shell.openPath(targetPath);
-        if (errorMessage) {
-          exec(`"${targetPath}"`, (err) => {
-            if (err) {
-              console.error(`[LAUNCH] Error en fallback de ejecución para ${targetPath}:`, err);
-            }
-          });
-        }
-        // Ocultar al tray al lanzar una app solo si no está fijada (pinned)
-        if (!mainWindow?.isAlwaysOnTop()) {
-          windowVisibilityState = 'hidden-intentional';
-          hideMainWindow();
-        }
-        return { success: true };
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
-    }
+  ipcMain.handle('tray:set-recents', (_event, items: unknown) => {
+    setTrayRecents(Array.isArray(items) ? items : []);
+    return { success: true };
   });
 
   // --- Obtener aplicaciones de Windows Store (UWP/MSIX) ---
