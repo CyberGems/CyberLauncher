@@ -23,7 +23,7 @@ const DEFAULT_ACTIVATION_SHORTCUT = 'Alt+Shift+L';
 export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { className?: string, animated?: boolean }) => (
   <img 
     src="./icon.png"
-    srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-256.png 256w, ./icon.png 1024w"
+    srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-48.png 48w, ./icon-256.png 256w, ./icon.png 1024w"
     sizes="(max-width: 30px) 16px, (max-width: 42px) 24px, (max-width: 60px) 32px, 256px"
     className={className} 
     alt="CyberLauncher"
@@ -1778,6 +1778,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('app_launcher_view_mode', viewMode);
   }, [viewMode]);
+
+  const [appsSortOrder, setAppsSortOrder] = useState<'asc' | 'desc'>(() => {
+    const saved = localStorage.getItem('app_launcher_sort_order');
+    return (saved === 'desc' || saved === 'asc') ? saved : 'asc';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_launcher_sort_order', appsSortOrder);
+  }, [appsSortOrder]);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -3906,8 +3915,11 @@ export default function App() {
       const matchesCategory = activeCategory === 'all' || categories.find(c => c.id === activeCategory)?.name === app.category;
       const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
-    }).sort((a, b) => a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' }));
-  }, [apps, activeCategory, categories, searchQuery, language]);
+    }).sort((a, b) => {
+      const cmp = a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' });
+      return appsSortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [apps, activeCategory, categories, searchQuery, language, appsSortOrder]);
 
   const appNameLetter = (name: string) => {
     const ch = (name || '').normalize('NFD').replace(/\p{M}/gu, '').charAt(0).toUpperCase();
@@ -6185,6 +6197,22 @@ export default function App() {
                     className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white/10 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     <ListIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip 
+                  label={appsSortOrder === 'asc' ? t('tooltip_sort_order_asc') : t('tooltip_sort_order_desc')} 
+                  placement="bottom"
+                >
+                  <button 
+                    onClick={() => setAppsSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    aria-label={appsSortOrder === 'asc' ? t('tooltip_sort_order_asc') : t('tooltip_sort_order_desc')}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    {appsSortOrder === 'asc' ? (
+                      <ArrowDownAZ className="w-4 h-4" />
+                    ) : (
+                      <ArrowUpZA className="w-4 h-4" />
+                    )}
                   </button>
                 </Tooltip>
                 <div className="w-px h-4 bg-white/10 mx-2" />

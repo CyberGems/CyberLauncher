@@ -356,9 +356,8 @@ function getAppIcon() {
   return nativeImage.createEmpty();
 }
 
-// Tray: never use a lone 16×16 PNG — Windows HiDPI upscales it and it looks
-// softer than the taskbar icon (which loads the multi-size ICO). Build a
-// nativeImage with 16/20/24/32/40 representations from the generated PNGs; ICO fallback.
+// Tray: build a nativeImage with representations (16, 20, 24, 28, 32, 40, 48)
+// extracted directly from the authentic multi-size ICO without artificial color filters.
 // IMPORTANT: in addRepresentation(), width and height must be the logical DIP size (16),
 // NOT the physical pixel size. Otherwise Electron registers them under non-16 DIP slots
 // and Windows falls back to upscaling the 1.0x 16px bitmap, causing severe blurriness.
@@ -372,8 +371,10 @@ function getTrayIcon() {
     { scale: 1, file: 'icon-16.png' },
     { scale: 1.25, file: 'icon-20.png' },
     { scale: 1.5, file: 'icon-24.png' },
+    { scale: 1.75, file: 'icon-28.png' },
     { scale: 2, file: 'icon-32.png' },
     { scale: 2.5, file: 'icon-40.png' },
+    { scale: 3, file: 'icon-48.png' },
   ];
   for (const r of reps) {
     const p = path.join(dir, r.file);
@@ -1010,6 +1011,7 @@ function rebuildTrayMenu(): void {
 
   pendingTrayRebuild = false;
   const version = app.getVersion();
+  tray.setImage(getTrayIcon());
   tray.setToolTip(`CyberLauncher v${version}`);
 
   const menu = Menu.buildFromTemplate(getTrayMenuTemplate());

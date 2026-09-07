@@ -73,49 +73,6 @@ async function extractIcoLayers(icoBuf) {
   return layers;
 }
 
-async function enhanceSmallIcon(pngBuf, size) {
-  if (size > 48) return pngBuf;
-  const { data, info } = await sharp(pngBuf).raw().toBuffer({ resolveWithObject: true });
-  const w = info.width, h = info.height;
-  const margin = Math.max(1, Math.round(w * 0.12));
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = (y * w + x) * 4;
-      const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-      const isOuter = (x < margin || x >= w - margin || y < margin || y >= h - margin);
-
-      // Enhance outer rounded-square border to vibrant high-contrast cyan
-      if (a > 30 && isOuter) {
-        if (g > 40 && g < 190 && b > 60 && b < 215 && r < 70) {
-          const norm = Math.min(1.0, g / 120);
-          data[idx] = Math.round(8 * norm);
-          data[idx + 1] = Math.round(225 * norm);
-          data[idx + 2] = Math.round(248 * norm);
-          data[idx + 3] = 255;
-        }
-      }
-
-      // Enhance fourth element (spark / star / plus) to crisp bright white
-      if (x >= Math.floor(w * 0.5) && y >= Math.floor(h * 0.5)) {
-        if (r > 35 && g > 80 && b > 100) {
-          const br = (g + b) / 2;
-          if (br > 110) {
-            const t = Math.min(1.0, (br - 110) / 75);
-            data[idx] = Math.round(r + (245 - r) * t);
-            data[idx + 1] = Math.round(g + (252 - g) * t);
-            data[idx + 2] = Math.round(b + (255 - b) * t);
-          }
-        }
-      }
-    }
-  }
-
-  return await sharp(data, { raw: { width: w, height: h, channels: 4 } })
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-}
-
 async function main() {
   if (!fs.existsSync(srcPng)) {
     throw new Error(`Missing ${srcPng} — place the 1024×1024 master PNG in artifacts/`);
@@ -133,23 +90,26 @@ async function main() {
   fs.copyFileSync(srcIco, path.join(pub, 'icon.ico'));
   fs.copyFileSync(srcPng, path.join(pub, 'icon.png'));
 
-  // Generate or extract pixel-perfect representations for tray (16, 20, 24, 32, 40) and web/readme (256)
-  for (const size of [16, 20, 24, 32, 40, 256]) {
+  // Generate or extract pixel-perfect representations for tray (16, 20, 24, 28, 32, 40, 48) and web/readme (256)
+  // Directly preserves the authentic artwork layers from artifacts/icon.ico without artificial color distortion
+  for (const size of [16, 20, 24, 28, 32, 40, 48, 256]) {
     const dest = path.join(pub, `icon-${size}.png`);
     let rawBuf;
     if (icoLayers.has(size)) {
       rawBuf = icoLayers.get(size);
     } else {
-      rawBuf = await sharp(srcPng)
+      // For intermediate sizes not stored directly in the ICO (such as 28), downsample from 32px or master
+      const sourceImage = icoLayers.get(32) || srcPng;
+      rawBuf = await sharp(sourceImage)
         .resize(size, size, { kernel: 'lanczos3', fit: 'contain' })
         .png({ compressionLevel: 9 })
         .toBuffer();
     }
-    const finalBuf = await enhanceSmallIcon(rawBuf, size);
-    fs.writeFileSync(dest, finalBuf);
+    fs.writeFileSync(dest, rawBuf);
     console.log('wrote', `icon-${size}.png`);
   }
-  console.log('wrote icon.ico, icon.png');
+  fs.copyFileSync(path.join(pub, 'icon-32.png'), path.join(pub, 'tray-icon.png'));
+  console.log('wrote icon.ico, icon.png, tray-icon.png');
 
   const menuSvgs = {
     'show-hide.png': lucideSvg(
@@ -199,6 +159,23 @@ async function main() {
   fs.copyFileSync(path.join(pub, 'icon-16.png'), path.join(menuDir, 'brand.png'));
   fs.copyFileSync(path.join(pub, 'icon-32.png'), path.join(menuDir, 'brand@2x.png'));
   console.log('wrote menu-icons/brand.png and brand@2x.png');
+
+  // Synchronize generated icon files to dist/ if dist folder exists
+  const distDir = path.join(root, 'dist');
+  if (fs.existsSync(distDir)) {
+    const distMenuDir = path.join(distDir, 'menu-icons');
+    fs.mkdirSync(distMenuDir, { recursive: true });
+    for (const file of fs.readdirSync(pub)) {
+      const srcFile = path.join(pub, file);
+      if (fs.statSync(srcFile).isFile() && (file.startsWith('icon') || file === 'tray-icon.png')) {
+        fs.copyFileSync(srcFile, path.join(distDir, file));
+      }
+    }
+    for (const file of fs.readdirSync(menuDir)) {
+      fs.copyFileSync(path.join(menuDir, file), path.join(distMenuDir, file));
+    }
+    console.log('synchronized icons to dist/');
+  }
 }
 
 main().catch((err) => {

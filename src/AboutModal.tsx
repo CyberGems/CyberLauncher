@@ -168,7 +168,7 @@ export default function AboutModal({
           <div className="relative w-[72px] h-[72px] mx-auto mb-4 flex items-center justify-center">
             <img
               src="./icon.png"
-              srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-256.png 256w, ./icon.png 1024w"
+              srcSet="./icon-16.png 16w, ./icon-24.png 24w, ./icon-32.png 32w, ./icon-48.png 48w, ./icon-256.png 256w, ./icon.png 1024w"
               sizes="72px"
               className="w-[72px] h-[72px] drop-shadow-[0_0_8px_rgba(34,211,238,0.28)]"
               alt="CyberLauncher"
