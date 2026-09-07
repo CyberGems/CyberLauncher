@@ -22,7 +22,7 @@ export const translations = {
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "Diagnóstico de Sistema (HUD)",
     more_menu_hud_storage: "Diagnóstico de Almacenamiento",
-    more_menu_hud_clock: "Reloj y Temporizadores",
+    more_menu_hud_clock: "Programador de tareas",
     more_menu_docs: "Documentación y Wiki",
     more_menu_faq: "Preguntas Frecuentes",
     more_menu_changelog: "Registro de Cambios",
@@ -48,6 +48,8 @@ export const translations = {
     tooltip_sidebar_apps: "Total de aplicaciones registradas",
     tooltip_sidebar_categories: "Total de categorías",
     tooltip_sidebar_launches: "Total de lanzamientos",
+    tooltip_sidebar_stats_expand: "Mostrar estadísticas",
+    tooltip_sidebar_stats_collapse: "Ocultar estadísticas",
 
     // Add/Edit App drawer
     app_add_title: "Agregar nuevo acceso",
@@ -503,7 +505,7 @@ export const translations = {
     more_menu_terminal: "Cyber Terminal",
     more_menu_hud_system: "System Diagnostics (HUD)",
     more_menu_hud_storage: "Storage Diagnostics",
-    more_menu_hud_clock: "Clock & Timers",
+    more_menu_hud_clock: "Task Scheduler",
     more_menu_docs: "Documentation & Wiki",
     more_menu_faq: "Frequently Asked Questions",
     more_menu_changelog: "Changelog",
@@ -529,6 +531,8 @@ export const translations = {
     tooltip_sidebar_apps: "Total registered apps",
     tooltip_sidebar_categories: "Total categories",
     tooltip_sidebar_launches: "Total launches",
+    tooltip_sidebar_stats_expand: "Show statistics",
+    tooltip_sidebar_stats_collapse: "Hide statistics",
 
     // Add/Edit App drawer
     app_add_title: "Add new shortcut",

@@ -694,8 +694,8 @@ const FooterDateTime = React.memo(({ title, onClick }: { title: string; onClick?
         onClick={onClick}
         className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors focus:outline-none group select-none"
       >
-        <Clock className="w-3.5 h-3.5 text-cyan-400/80 group-hover:text-cyan-300 transition-transform group-hover:scale-110 shrink-0" />
-        <span className="text-xs font-digits font-bold text-cyan-400 group-hover:text-cyan-300 tracking-wider tabular-nums drop-shadow-[0_0_6px_rgba(34,211,238,0.3)] shrink-0">
+        <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-300 transition-transform group-hover:scale-110 shrink-0" />
+        <span className="text-xs font-mono tracking-wide text-slate-400 group-hover:text-slate-300 tabular-nums shrink-0">
           {timeStr}
         </span>
         <span className="text-[10px] text-slate-600 font-bold shrink-0">·</span>
@@ -2670,6 +2670,7 @@ export default function App() {
   const [showHeaderClock, setShowHeaderClock] = useState(() => localStorage.getItem('showHeaderClock') === 'true');
   const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
   const [showTrayPinTip, setShowTrayPinTip] = useState(false);
+  const [sidebarStatsCollapsed, setSidebarStatsCollapsed] = useState(() => localStorage.getItem('sidebarStatsCollapsed') === 'true');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
@@ -4962,48 +4963,70 @@ export default function App() {
           })}
         </div>
 
-        <div className="p-6 pt-4">
-          <div className="flex items-center justify-center gap-2 mb-6 opacity-30">
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex justify-between items-center text-xs">
-              <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
-                {t('title_apps')}
-              </div>
-              <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
-                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                  {apps.length}
-                </span>
-              </Tooltip>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-               <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
-                {t('title_categories')}
-              </div>
-              <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
-                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                  {categories.length - 1}
-                </span>
-              </Tooltip>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
-                {t('title_launches')}
-              </div>
-              <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
-                <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                  {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
-                </span>
-              </Tooltip>
-            </div>
-          </div>
+        <div className="px-6 pt-4 pb-6">
+          <Tooltip label={sidebarStatsCollapsed ? t('tooltip_sidebar_stats_expand') : t('tooltip_sidebar_stats_collapse')} placement="right">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !sidebarStatsCollapsed;
+                setSidebarStatsCollapsed(next);
+                localStorage.setItem('sidebarStatsCollapsed', next.toString());
+              }}
+              className="flex items-center justify-center gap-2 w-full opacity-30 hover:opacity-60 transition-opacity cursor-pointer focus:outline-none group"
+            >
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${sidebarStatsCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+            </button>
+          </Tooltip>
+
+          <AnimatePresence initial={false}>
+            {!sidebarStatsCollapsed && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-4 pt-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      {t('title_apps')}
+                    </div>
+                    <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
+                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                        {apps.length}
+                      </span>
+                    </Tooltip>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      {t('title_categories')}
+                    </div>
+                    <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
+                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                        {categories.length - 1}
+                      </span>
+                    </Tooltip>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      {t('title_launches')}
+                    </div>
+                    <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
+                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                        {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
+                      </span>
+                    </Tooltip>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </aside>
 
@@ -7001,7 +7024,7 @@ export default function App() {
           {/* Uptime */}
           <Tooltip label={t('tooltip_uptime')} placement="top">
             <div className="flex items-center gap-1.5 cursor-default">
-              <Power className="w-4 h-4 text-emerald-500" />
+              <Power className="w-4 h-4 text-slate-400" />
               <UptimeMonitor />
             </div>
           </Tooltip>
@@ -7009,7 +7032,7 @@ export default function App() {
           {/* Launches today */}
           <Tooltip label={t('tooltip_launches_today')} placement="top">
             <div className="flex items-center gap-1.5 cursor-default">
-              <ChevronRight className="w-4 h-4 text-cyan-400" />
+              <ChevronRight className="w-4 h-4 text-slate-400" />
               <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
             </div>
           </Tooltip>
