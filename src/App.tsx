@@ -387,7 +387,7 @@ declare global {
       onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
-      setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean }>) => Promise<{ success: boolean }>;
+      setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) => Promise<{ success: boolean }>;
       getAppVersions: () => Promise<{
         app: string; electron: string; chrome: string; node: string;
         platform: string; arch: string; osRelease: string; osType: string;
@@ -2709,6 +2709,9 @@ export default function App() {
         name: item.name,
         path: item.path,
         isAdmin: !!(appInfo as any)?.isAdmin,
+        iconPath: typeof (appInfo as any)?.iconPath === 'string'
+          ? (appInfo as any).iconPath
+          : (typeof item.icon === 'string' ? item.icon : undefined),
       };
     });
     void window.electronAPI.setTrayRecents(payload);

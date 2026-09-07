@@ -840,6 +840,50 @@ function loadMenuIcon(name: string): Electron.NativeImage | undefined {
   return img;
 }
 
+const recentIconCache = new Map<string, Electron.NativeImage>();
+
+function loadRecentIcon(iconPath?: string): Electron.NativeImage | undefined {
+  if (!iconPath) return undefined;
+
+  let sourceKey = iconPath;
+  let image: Electron.NativeImage;
+
+  if (/^data:image\//i.test(iconPath)) {
+    const cached = recentIconCache.get(sourceKey);
+    if (cached) return cached;
+    image = nativeImage.createFromDataURL(iconPath);
+  } else if (/^local-resource:\/\//i.test(iconPath)) {
+    let filePath = iconPath
+      .replace(/^local-resource:\/\//i, '')
+      .split(/[?#]/, 1)[0];
+    try {
+      filePath = decodeURIComponent(filePath);
+    } catch {
+      return undefined;
+    }
+    if (/^\/[A-Za-z]:[\\/]/.test(filePath)) filePath = filePath.slice(1);
+    filePath = filePath.replace(/\//g, path.sep);
+    const cacheVersion = iconPath.match(/[?#].*$/)?.[0] || '';
+    sourceKey = `${filePath}${cacheVersion}`;
+    const cached = recentIconCache.get(sourceKey);
+    if (cached) return cached;
+    if (!fs.existsSync(filePath)) return undefined;
+    image = nativeImage.createFromPath(filePath);
+  } else {
+    if (!path.isAbsolute(iconPath) || !fs.existsSync(iconPath)) return undefined;
+    sourceKey = iconPath;
+    const cached = recentIconCache.get(sourceKey);
+    if (cached) return cached;
+    image = nativeImage.createFromPath(iconPath);
+  }
+
+  if (image.isEmpty()) return undefined;
+  const sized = image.resize({ width: 16, height: 16 });
+  if (sized.isEmpty()) return undefined;
+  recentIconCache.set(sourceKey, sized);
+  return sized;
+}
+
 /**
  * While the tray context menu is open, hide-on-blur + tray.setContextMenu race on Windows
  * and can crash the process when hovering menu items. Guard both paths.
@@ -858,7 +902,7 @@ let trayRightClickSeq = 0;
 type TrayPendingAction = 'show' | 'hide' | 'new-app' | 'settings' | 'about' | 'check-updates' | 'quit' | 'launch-recent';
 let pendingTrayAction: TrayPendingAction | null = null;
 
-type TrayRecentItem = { name: string; path: string; isAdmin?: boolean };
+type TrayRecentItem = { name: string; path: string; isAdmin?: boolean; iconPath?: string };
 let trayRecents: TrayRecentItem[] = [];
 let pendingRecentLaunch: TrayRecentItem | null = null;
 let lastTrayRecentsKey = '';
@@ -870,11 +914,13 @@ function setTrayRecents(items: unknown[]): void {
     const item = raw as Record<string, unknown>;
     const path = typeof item.path === 'string' ? item.path.trim() : '';
     const name = typeof item.name === 'string' ? item.name.trim() : '';
+    const iconPath = typeof item.iconPath === 'string' ? item.iconPath.trim() : '';
     if (!path || !name) continue;
     next.push({
       name: name.slice(0, 80),
       path,
       isAdmin: !!item.isAdmin,
+      ...(iconPath ? { iconPath } : {}),
     });
     if (next.length >= 10) break;
   }
@@ -1023,13 +1069,17 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       label: t.mostRecent,
       ...(iconRecent ? { icon: iconRecent } : {}),
       submenu: trayRecents.length > 0
-        ? trayRecents.map((item, index) => ({
-            label: `${index + 1}. ${item.name}`,
-            click: () => {
-              pendingTrayAction = 'launch-recent';
-              pendingRecentLaunch = item;
-            },
-          }))
+        ? trayRecents.map((item, index) => {
+            const itemIcon = loadRecentIcon(item.iconPath) || iconRecent;
+            return {
+              label: `${index + 1}. ${item.name}`,
+              ...(itemIcon ? { icon: itemIcon } : {}),
+              click: () => {
+                pendingTrayAction = 'launch-recent';
+                pendingRecentLaunch = item;
+              },
+            };
+          })
         : [{ label: t.noRecents, enabled: false }],
     },
     {
