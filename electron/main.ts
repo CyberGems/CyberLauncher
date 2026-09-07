@@ -356,15 +356,25 @@ function getAppIcon() {
   return nativeImage.createEmpty();
 }
 
-// Tray: build a nativeImage with representations (16, 20, 24, 28, 32, 40, 48)
-// extracted directly from the authentic multi-size ICO without artificial color filters.
-// IMPORTANT: in addRepresentation(), width and height must be the logical DIP size (16),
-// NOT the physical pixel size. Otherwise Electron registers them under non-16 DIP slots
-// and Windows falls back to upscaling the 1.0x 16px bitmap, causing severe blurriness.
+// Tray: On Windows, using nativeImage.createFromPath(icoPath) preserves hicon_path_,
+// allowing Electron's native_image->GetHICON(GetSystemMetrics(SM_CXSMICON)) to invoke
+// ReadICOFromPath() and extract the exact DPI-matching layer natively via Win32 LoadImage
+// (20x20 at 125%, 24x24 at 150%, 16x16 at 100%, 32x32 at 200%).
+// An in-memory nativeImage (createEmpty + addRepresentation) lacks hicon_path_ and causes
+// GetHICON to fall back to CreateHICONFromSkBitmap on the 1.0x 16px bitmap, which Windows then
+// upscales, ruining sharpness and clipping the rounded corners.
 function getTrayIcon() {
   const dir = VITE_DEV_SERVER_URL
     ? path.join(__dirname, '../public')
     : path.join(__dirname, '../dist');
+
+  if (process.platform === 'win32') {
+    const icoPath = path.join(dir, 'icon.ico');
+    if (fs.existsSync(icoPath)) {
+      const ico = nativeImage.createFromPath(icoPath);
+      if (!ico.isEmpty()) return ico;
+    }
+  }
 
   const img = nativeImage.createEmpty();
   const reps: Array<{ scale: number; file: string }> = [
