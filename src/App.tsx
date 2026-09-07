@@ -6079,6 +6079,7 @@ export default function App() {
                     const isContextActive = systemContextMenu?.item?.path === item.path;
                     const isHighlighted = isSelected || isContextActive;
                     const displayName = item.name.replace(/\.lnk$/i, '');
+                    const isExecutable = item.type === 'app' || /\.(exe|bat|cmd|ps1|msi|lnk)$/i.test(item.name);
                     return (
                     <motion.div
                       initial={{ opacity: 0, y: 5 }}
@@ -6148,8 +6149,8 @@ export default function App() {
                       <div className={`flex items-center gap-2 shrink-0 transition-opacity duration-300 ${
                         isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                       }`}>
-                        {item.type !== 'folder' && (
-                          <Tooltip label="Ejecutar como Administrador" placement="top">
+                        {isExecutable && (
+                          <Tooltip label={t('app_admin_title')} placement="top">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -6164,12 +6165,16 @@ export default function App() {
                             </button>
                           </Tooltip>
                         )}
-                        <Tooltip label="Abrir ubicación de archivo" placement="top">
+                        <Tooltip label={item.type === 'folder' ? t('search_action_open_folder') : t('search_action_open_location')} placement="top">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isElectron) {
-                                window.electronAPI!.openFileLocation(item.path);
+                                if (item.type === 'folder' && window.electronAPI?.openPath) {
+                                  window.electronAPI.openPath(item.path);
+                                } else {
+                                  window.electronAPI!.openFileLocation(item.path);
+                                }
                               }
                             }}
                             className="p-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
@@ -6177,7 +6182,7 @@ export default function App() {
                             <ExternalLink className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip label="Agregar a CyberLauncher" placement="top">
+                        <Tooltip label={t('search_action_add_launcher')} placement="top">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
