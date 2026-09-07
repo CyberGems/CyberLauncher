@@ -1,13 +1,42 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   X, Github, Folder, RefreshCw, Download, CheckCircle2,
-  Tag, ClipboardCopy, Check, Globe, BookOpen, Bug, Heart
+  Tag, ClipboardCopy, Check, Globe, BookOpen, Bug, Heart, ExternalLink
 } from 'lucide-react';
 import Tooltip from './Tooltip';
 import { TranslationKey } from './locales';
 
 const REPO_URL = 'https://github.com/CyberGems/CyberLauncher';
+
+export function githubReleaseUrl(version: string): string {
+  const tag = version.startsWith('v') ? version : `v${version}`;
+  return `${REPO_URL}/releases/tag/${tag}`;
+}
+
+/** Plain-text teaser of GitHub release notes for toasts. */
+export function peekReleaseNotes(body: string, maxChars = 220): string {
+  const lines = body
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) =>
+      line
+        .replace(/^#{1,6}\s+/, '')
+        .replace(/^[-*]\s+/, '• ')
+        .replace(/\*\*/g, '')
+        .trim()
+    )
+    .filter((line) => {
+      if (!line || /^---+/.test(line)) return false;
+      if (/^Release Notes/i.test(line)) return false;
+      if (/^Full Changelog/i.test(line)) return false;
+      return true;
+    });
+  const text = lines.slice(0, 4).join('\n');
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars).trimEnd()}…`;
+}
 
 export type AppVersions = {
   app: string;
@@ -23,10 +52,10 @@ export type AppVersions = {
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
+  | { state: 'available'; version: string; releaseNotes?: string; releaseUrl?: string }
   | { state: 'not-available'; version: string }
   | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string }
+  | { state: 'downloaded'; version: string; releaseNotes?: string; releaseUrl?: string }
   | { state: 'error'; message: string };
 
 type Props = {
@@ -64,6 +93,7 @@ export default function AboutModal({
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
     window.electronAPI.getAppVersions?.().then((v) => setVersions(v as AppVersions)).catch(() => {});
+    window.electronAPI.getUpdateStatus?.().then((s) => { if (s) setStatus(s as UpdateStatus); }).catch(() => {});
     const off = window.electronAPI.onUpdateStatus?.((s) => setStatus(s as UpdateStatus));
     return () => {
       off?.();
@@ -194,6 +224,15 @@ export default function AboutModal({
             </div>
 
             <UpdateStatusLine status={status} t={t} />
+
+            {(status.state === 'available' || status.state === 'downloaded') && (
+              <ReleaseNotesPanel
+                status={status}
+                currentVersion={appVersion}
+                t={t}
+                openUrl={openUrl}
+              />
+            )}
 
             <div className="grid grid-cols-1 gap-2">
               {status.state === 'available' ? (
@@ -391,4 +430,127 @@ function UpdateStatusLine({
       )}
     </div>
   );
+}
+
+function ReleaseNotesPanel({
+  status,
+  currentVersion,
+  t,
+  openUrl,
+}: {
+  status: Extract<UpdateStatus, { state: 'available' } | { state: 'downloaded' }>;
+  currentVersion: string;
+  t: (key: TranslationKey, variables?: Record<string, string>) => string;
+  openUrl: (url: string) => void;
+}) {
+  const releaseUrl = status.releaseUrl || githubReleaseUrl(status.version);
+
+  return (
+    <div className="mb-3 space-y-2.5 text-left">
+      <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+        <div>
+          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-slate-500 mb-1">
+            {t('about_current_version')}
+          </div>
+          <span className="inline-block text-[11px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded">
+            v{currentVersion || '…'}
+          </span>
+        </div>
+        <div>
+          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-cyan-400/80 mb-1">
+            {t('about_latest_version')}
+          </div>
+          <span className="inline-block text-[11px] font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
+            v{status.version}
+          </span>
+        </div>
+      </div>
+
+      {status.releaseNotes && (
+        <div>
+          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            {t('about_release_notes')}
+          </div>
+          <div className="min-h-[6.5rem] max-h-[200px] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-black/25 px-3.5 py-3 text-left text-[12.5px] leading-relaxed text-slate-300">
+            <ReleaseNotes body={status.releaseNotes} />
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => openUrl(releaseUrl)}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-400 hover:text-cyan-200 hover:underline transition-colors cursor-pointer"
+      >
+        <ExternalLink className="w-3 h-3" />
+        {t('about_view_release')}
+      </button>
+    </div>
+  );
+}
+
+function renderInline(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold text-slate-100">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={i} className="rounded bg-white/10 px-1 py-px font-mono text-[11px] text-cyan-100/90">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
+function ReleaseNotes({ body }: { body: string }) {
+  const lines = body.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
+  const nodes: ReactNode[] = [];
+  let listItems: string[] = [];
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    const items = listItems;
+    listItems = [];
+    nodes.push(
+      <ul key={`list-${nodes.length}`} className="my-1.5 list-disc space-y-1 pl-4 marker:text-cyan-400/70">
+        {items.map((item, i) => (
+          <li key={i}>{renderInline(item)}</li>
+        ))}
+      </ul>
+    );
+  };
+
+  for (const line of lines) {
+    const heading = line.match(/^#{1,3}\s+(.*)$/);
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+    if (heading) {
+      flushList();
+      nodes.push(
+        <h4 key={`h-${nodes.length}`} className="mb-1 mt-2.5 first:mt-0 text-[13px] font-semibold text-slate-100">
+          {renderInline(heading[1])}
+        </h4>
+      );
+    } else if (bullet) {
+      listItems.push(bullet[1]);
+    } else if (!line.trim() || /^---+/.test(line.trim())) {
+      flushList();
+    } else {
+      flushList();
+      nodes.push(
+        <p key={`p-${nodes.length}`} className="text-[12.5px] leading-relaxed">
+          {renderInline(line)}
+        </p>
+      );
+    }
+  }
+  flushList();
+  return <div className="space-y-0.5">{nodes}</div>;
 }

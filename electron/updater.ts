@@ -5,6 +5,15 @@ import os from 'node:os';
 // electron-updater is CJS; named ESM import fails when the module is externalized.
 const { autoUpdater } = electronUpdater;
 
+const GITHUB_REPO = 'CyberGems/CyberLauncher';
+const NOTES_MAX_CHARS = 8000;
+
+type UpdateInfoLike = {
+  version?: string;
+  releaseNotes?: string | Array<{ version: string; note: string | null }> | null;
+  releaseName?: string | null;
+};
+
 /**
  * Update lifecycle (CyberFeeds model) via electron-updater + GitHub Releases.
  * Auto-download is gated on the autoUpdate setting.
@@ -13,15 +22,97 @@ const { autoUpdater } = electronUpdater;
 export type UpdateStatus =
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
+  | { state: 'available'; version: string; releaseNotes?: string; releaseUrl?: string }
   | { state: 'not-available'; version: string }
   | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string }
+  | { state: 'downloaded'; version: string; releaseNotes?: string; releaseUrl?: string }
   | { state: 'error'; message: string };
 
 let autoUpdateEnabled = false;
 let lastStatus: UpdateStatus = { state: 'idle' };
 let ipcRegistered = false;
+let cachedRelease: { version: string; notes?: string; url: string } | null = null;
+
+function githubReleaseUrl(version: string): string {
+  const tag = version.startsWith('v') ? version : `v${version}`;
+  return `https://github.com/${GITHUB_REPO}/releases/tag/${tag}`;
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<h[1-6][^>]*>/gi, '### ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function extractReleaseNotes(info: UpdateInfoLike): string | undefined {
+  const raw = info.releaseNotes;
+  let text = '';
+  if (typeof raw === 'string') {
+    text = raw;
+  } else if (Array.isArray(raw) && raw.length > 0) {
+    const match = raw.find((n) => n.version === info.version) || raw[0];
+    text = match?.note || '';
+  }
+  if (!text && info.releaseName && info.releaseName !== info.version) {
+    text = info.releaseName;
+  }
+  const cleaned = stripHtml(text);
+  if (!cleaned) return undefined;
+  return cleaned.length > NOTES_MAX_CHARS ? `${cleaned.slice(0, NOTES_MAX_CHARS).trimEnd()}…` : cleaned;
+}
+
+function rememberRelease(version: string, notes?: string, url?: string): { notes?: string; url: string } {
+  const resolvedUrl = url || cachedRelease?.url || githubReleaseUrl(version);
+  const resolvedNotes = notes || (cachedRelease?.version === version ? cachedRelease.notes : undefined);
+  cachedRelease = { version, notes: resolvedNotes, url: resolvedUrl };
+  return { notes: resolvedNotes, url: resolvedUrl };
+}
+
+async function fetchGithubReleaseMeta(version: string): Promise<{ notes?: string; url?: string } | null> {
+  const tag = version.startsWith('v') ? version : `v${version}`;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${encodeURIComponent(tag)}`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'CyberLauncher',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { body?: string | null; html_url?: string | null };
+    const notes = extractReleaseNotes({ version, releaseNotes: data.body || '' });
+    return {
+      notes,
+      url: data.html_url || githubReleaseUrl(version),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function enrichFromGithubIfNeeded(version: string, alreadyHasNotes: boolean): void {
+  if (alreadyHasNotes && cachedRelease?.url) return;
+  void fetchGithubReleaseMeta(version).then((meta) => {
+    if (!meta) return;
+    if (lastStatus.state !== 'available' && lastStatus.state !== 'downloaded') return;
+    if (lastStatus.version !== version) return;
+    const next = rememberRelease(version, lastStatus.releaseNotes || meta.notes, meta.url);
+    if (next.notes === lastStatus.releaseNotes && next.url === lastStatus.releaseUrl) return;
+    broadcast({ ...lastStatus, releaseNotes: next.notes, releaseUrl: next.url });
+  });
+}
 
 function broadcast(status: UpdateStatus): void {
   lastStatus = status;
@@ -48,7 +139,11 @@ export function initUpdater(opts: { autoUpdate: boolean }): void {
   autoUpdater.on('checking-for-update', () => broadcast({ state: 'checking' }));
 
   autoUpdater.on('update-available', (info) => {
-    broadcast({ state: 'available', version: info.version });
+    const version = info.version;
+    const notes = extractReleaseNotes(info);
+    const meta = rememberRelease(version, notes);
+    broadcast({ state: 'available', version, releaseNotes: meta.notes, releaseUrl: meta.url });
+    enrichFromGithubIfNeeded(version, !!meta.notes);
   });
 
   autoUpdater.on('update-not-available', (info) => {
@@ -60,7 +155,11 @@ export function initUpdater(opts: { autoUpdate: boolean }): void {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    broadcast({ state: 'downloaded', version: info.version });
+    const version = info.version;
+    const notes = extractReleaseNotes(info);
+    const meta = rememberRelease(version, notes);
+    broadcast({ state: 'downloaded', version, releaseNotes: meta.notes, releaseUrl: meta.url });
+    enrichFromGithubIfNeeded(version, !!meta.notes);
   });
 
   autoUpdater.on('error', (err) => {

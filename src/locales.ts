@@ -23,6 +23,7 @@ export const translations = {
     more_menu_hud_system: "Diagnóstico de Sistema (HUD)",
     more_menu_hud_storage: "Diagnóstico de Almacenamiento",
     more_menu_hud_clock: "Programador de tareas",
+    more_menu_help: "Ayuda",
     more_menu_docs: "Documentación y Wiki",
     more_menu_faq: "Preguntas Frecuentes",
     more_menu_changelog: "Registro de Cambios",
@@ -116,6 +117,10 @@ export const translations = {
     about_status_error: "No se pudo comprobar actualizaciones",
     about_notif_available: "Hay una actualización disponible ({version})",
     about_notif_downloaded: "Actualización {version} lista para instalar",
+    about_release_notes: "Novedades",
+    about_view_release: "Ver en GitHub",
+    about_current_version: "Actual",
+    about_latest_version: "Nueva",
     about_footer: "© CyberGems • 2026",
     
     // Sidebar Tabs
@@ -408,7 +413,7 @@ export const translations = {
     sys_show_footer_launches_desc: "Muestra el número de aplicaciones lanzadas en las últimas 24 horas.",
     sys_show_footer_datetime: "Mostrar fecha y hora en el pie de página",
     sys_show_footer_datetime_desc: "Muestra la hora y la fecha del sistema en la barra inferior del launcher.",
-    tooltip_datetime: "Hora y fecha del sistema — Clic para HUD de Reloj",
+    tooltip_datetime: "Hora y fecha del sistema — Clic para Programador de Tareas",
     // Tray Pin Tip
     tray_pin_tip_title: "Mantén CyberLauncher visible en la bandeja",
     tray_pin_tip_body: "Windows oculta los iconos nuevos detrás de la flecha (^). Arrastra CyberLauncher a la barra de tareas, o fíjalo en Configuración de Windows.",
@@ -519,6 +524,7 @@ export const translations = {
     more_menu_hud_system: "System Diagnostics (HUD)",
     more_menu_hud_storage: "Storage Diagnostics",
     more_menu_hud_clock: "Task Scheduler",
+    more_menu_help: "Help",
     more_menu_docs: "Documentation & Wiki",
     more_menu_faq: "Frequently Asked Questions",
     more_menu_changelog: "Changelog",
@@ -612,6 +618,10 @@ export const translations = {
     about_status_error: "Could not check for updates",
     about_notif_available: "An update is available ({version})",
     about_notif_downloaded: "Update {version} is ready to install",
+    about_release_notes: "What's new",
+    about_view_release: "View on GitHub",
+    about_current_version: "Current",
+    about_latest_version: "Latest",
     about_footer: "© CyberGems • 2026",
     
     // Sidebar Tabs
@@ -904,7 +914,7 @@ export const translations = {
     sys_show_footer_launches_desc: "Displays the number of applications launched in the last 24 hours.",
     sys_show_footer_datetime: "Show date and time in footer",
     sys_show_footer_datetime_desc: "Displays system time and date in the bottom launcher bar.",
-    tooltip_datetime: "System time & date — Click for Clock HUD",
+    tooltip_datetime: "System time & date — Click for Task Scheduler",
     // Tray Pin Tip
     tray_pin_tip_title: "Keep CyberLauncher visible in the tray",
     tray_pin_tip_body: "Windows hides new tray icons behind the overflow (^). Drag CyberLauncher onto the taskbar, or pin it in Windows Settings.",

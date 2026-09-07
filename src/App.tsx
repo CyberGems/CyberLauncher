@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
-import AboutModal, { UpdateStatus } from './AboutModal';
+import AboutModal, { UpdateStatus, peekReleaseNotes } from './AboutModal';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Terminal, Globe, Lock, MousePointer2, Star,
@@ -1953,7 +1954,10 @@ export default function App() {
     type: 'success' | 'info' | 'error';
     /** Optional click action (e.g. update toast → About). */
     action?: 'open-about';
+    detail?: string;
+    releaseUrl?: string;
   } | null>(null);
+  const [toastPaused, setToastPaused] = useState(false);
 
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
     return localStorage.getItem('cyber_auto_check_icons') !== 'false';
@@ -2006,12 +2010,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!notification) return;
+    if (!notification) {
+      setToastPaused(false);
+      return;
+    }
+    if (toastPaused) return;
+    const ms = notification.action === 'open-about' ? 8000 : 3000;
     const timer = setTimeout(() => {
       setNotification(null);
-    }, 3000);
+    }, ms);
     return () => clearTimeout(timer);
-  }, [notification]);
+  }, [notification, toastPaused]);
 
   useEffect(() => {
     const fetchIndexerData = async () => {
@@ -2163,7 +2172,21 @@ export default function App() {
   const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const [isAppActive, setIsAppActive] = useState(true);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isHelpSubmenuOpen, setIsHelpSubmenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const helpItemRef = useRef<HTMLDivElement>(null);
+  const helpSubmenuRef = useRef<HTMLDivElement>(null);
+  const helpLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [helpSubmenuPos, setHelpSubmenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const keepHelpSubmenuOpen = useCallback(() => {
+    if (helpLeaveTimerRef.current) clearTimeout(helpLeaveTimerRef.current);
+    setIsHelpSubmenuOpen(true);
+  }, []);
+
+  const scheduleHelpSubmenuClose = useCallback(() => {
+    helpLeaveTimerRef.current = setTimeout(() => setIsHelpSubmenuOpen(false), 180);
+  }, []);
 
   const openExternalUrl = useCallback((url: string) => {
     if (isElectron && window.electronAPI?.openExternal) {
@@ -2176,12 +2199,20 @@ export default function App() {
   useEffect(() => {
     if (!isMoreMenuOpen) return;
     const handleClickOutside = (e: MouseEvent | PointerEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inMore = moreMenuRef.current?.contains(target);
+      const inHelp = helpSubmenuRef.current?.contains(target);
+      if (!inMore && !inHelp) {
         setIsMoreMenuOpen(false);
+        setIsHelpSubmenuOpen(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isHelpSubmenuOpen) {
+          setIsHelpSubmenuOpen(false);
+          return;
+        }
         setIsMoreMenuOpen(false);
       }
     };
@@ -2191,7 +2222,34 @@ export default function App() {
       document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
+  }, [isMoreMenuOpen, isHelpSubmenuOpen]);
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) setIsHelpSubmenuOpen(false);
   }, [isMoreMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!isHelpSubmenuOpen) {
+      setHelpSubmenuPos(null);
+      return;
+    }
+    const place = () => {
+      const el = helpItemRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const width = 224;
+      const gap = 6;
+      let left = rect.left - width - gap;
+      if (left < 8) left = Math.min(rect.right + gap, window.innerWidth - width - 8);
+      let top = rect.top;
+      const maxTop = window.innerHeight - 8;
+      if (top + 280 > maxTop) top = Math.max(8, maxTop - 280);
+      setHelpSubmenuPos({ top, left });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [isHelpSubmenuOpen]);
 
   // Windows Store UWP states
   const [uwpAppsList, setUwpAppsList] = useState<Array<{ name: string; aumid: string; icon: string }>>([]);
@@ -3276,7 +3334,16 @@ export default function App() {
       if (status.state === 'available' || status.state === 'downloaded') {
         const key = `${status.state}:${status.version}`;
         const seen = updateNotifSeenRef.current || localStorage.getItem('update_notif_seen') || '';
-        if (seen === key) return;
+        const detail = status.releaseNotes ? peekReleaseNotes(status.releaseNotes) : undefined;
+        const releaseUrl = status.releaseUrl;
+        if (seen === key) {
+          setNotification((prev) => {
+            if (!prev || prev.action !== 'open-about') return prev;
+            if ((!detail || prev.detail) && (!releaseUrl || prev.releaseUrl)) return prev;
+            return { ...prev, detail: prev.detail || detail, releaseUrl: prev.releaseUrl || releaseUrl };
+          });
+          return;
+        }
         updateNotifSeenRef.current = key;
         localStorage.setItem('update_notif_seen', key);
         setNotification({
@@ -3285,6 +3352,8 @@ export default function App() {
             : t('about_notif_downloaded', { version: status.version }),
           type: 'info',
           action: 'open-about',
+          detail,
+          releaseUrl,
         });
       }
     };
@@ -6787,29 +6856,15 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
-                        setShowTrayPinTip(true);
-                      }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
-                    >
-                      <Pin className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
-                      <span>{t('more_menu_pin_tray')}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         setIsTerminalOpen(prev => !prev);
                         setSearchQuery('');
                         setTimeout(() => searchInputRef.current?.focus(), 50);
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
                     >
-                      <Terminal className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
-                      <div className="flex items-center justify-between flex-1">
-                        <span>{t('more_menu_terminal')}</span>
-                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">&gt;</span>
-                      </div>
+                      <Terminal className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_terminal')}</span>
                     </button>
 
                     <button
@@ -6850,11 +6905,69 @@ export default function App() {
 
                     <div className="h-px bg-white/10 my-1 mx-1.5" />
 
-                    {/* Wiki & Docs */}
+                    <div
+                      className="relative"
+                      ref={helpItemRef}
+                      onMouseEnter={keepHelpSubmenuOpen}
+                      onMouseLeave={scheduleHelpSubmenuClose}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setIsHelpSubmenuOpen(prev => !prev)}
+                        aria-haspopup="true"
+                        aria-expanded={isHelpSubmenuOpen}
+                        className={`group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left ${
+                          isHelpSubmenuOpen ? 'text-white bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                        <span className="flex-1">{t('more_menu_help')}</span>
+                        {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                        )}
+                        <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {createPortal(
+              <AnimatePresence>
+                {isHelpSubmenuOpen && helpSubmenuPos && (
+                  <motion.div
+                    ref={helpSubmenuRef}
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 6 }}
+                    transition={{ duration: 0.12 }}
+                    onMouseEnter={keepHelpSubmenuOpen}
+                    onMouseLeave={scheduleHelpSubmenuClose}
+                    className="fixed z-[80] w-[224px] p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none"
+                    style={{ top: helpSubmenuPos.top, left: helpSubmenuPos.left }}
+                    role="menu"
+                  >
                     <button
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
+                        setShowTrayPinTip(true);
+                      }}
+                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                    >
+                      <Pin className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('more_menu_pin_tray')}</span>
+                    </button>
+
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/wiki');
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
@@ -6867,6 +6980,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/issues');
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
@@ -6879,6 +6993,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/releases');
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
@@ -6891,6 +7006,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://cybergems.org');
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
@@ -6901,11 +7017,11 @@ export default function App() {
 
                     <div className="h-px bg-white/10 my-1 mx-1.5" />
 
-                    {/* About CyberLauncher */}
                     <button
                       type="button"
                       onClick={() => {
                         setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
                         setIsAboutOpen(true);
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
@@ -6918,8 +7034,9 @@ export default function App() {
                     </button>
                   </motion.div>
                 )}
-              </AnimatePresence>
-            </div>
+              </AnimatePresence>,
+              document.body
+            )}
 
             {/* Titlebar Divider before Window Controls */}
             <div className={rightSidebarCollapsed ? 'w-5 h-px bg-white/10 my-0.5' : 'w-[1px] h-3.5 bg-white/10 mx-0.5'} />
@@ -10161,6 +10278,8 @@ export default function App() {
             data-no-hide
             role={notification.action ? 'button' : undefined}
             tabIndex={notification.action ? 0 : undefined}
+            onMouseEnter={() => { if (notification.action === 'open-about') setToastPaused(true); }}
+            onMouseLeave={() => setToastPaused(false)}
             onClick={(e) => {
               e.stopPropagation();
               if (notification.action === 'open-about') {
@@ -10182,7 +10301,9 @@ export default function App() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
+            className={`fixed bottom-6 right-6 z-[200] flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
+              notification.detail || notification.releaseUrl ? 'max-w-sm' : 'items-center'
+            } ${
               notification.action ? 'cursor-pointer hover:brightness-110' : ''
             } ${
               notification.type === 'success'
@@ -10192,14 +10313,38 @@ export default function App() {
                 : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full animate-pulse ${
+            <div className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
+              notification.detail || notification.releaseUrl ? 'mt-1.5' : ''
+            } ${
               notification.type === 'success'
                 ? 'bg-emerald-400'
                 : notification.type === 'error'
                 ? 'bg-red-400'
                 : 'bg-cyan-400'
             }`} />
-            <span className="text-xs font-cyber font-bold tracking-wide uppercase">{notification.message}</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span className="text-xs font-cyber font-bold tracking-wide uppercase">{notification.message}</span>
+              {notification.detail && (
+                <p className="text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap line-clamp-3 normal-case tracking-normal">
+                  {notification.detail}
+                </p>
+              )}
+              {notification.releaseUrl && (
+                <button
+                  type="button"
+                  data-no-hide
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openExternalUrl(notification.releaseUrl!);
+                    setNotification(null);
+                  }}
+                  className="inline-flex items-center gap-1 self-start text-[11px] font-semibold text-cyan-300 hover:text-white hover:underline cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {t('about_view_release')}
+                </button>
+              )}
+            </div>
             <button
               type="button"
               data-no-hide
@@ -10207,7 +10352,7 @@ export default function App() {
                 e.stopPropagation();
                 setNotification(null);
               }}
-              className="ml-2 hover:opacity-80 transition-opacity"
+              className="ml-1 shrink-0 hover:opacity-80 transition-opacity"
             >
               <X className="w-3.5 h-3.5" />
             </button>
