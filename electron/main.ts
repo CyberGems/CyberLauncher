@@ -876,31 +876,55 @@ function triggerOpenAbout(checkUpdates = false) {
   }
 }
 
+function resolveOpenTaskbarSettingsExe(): string | null {
+  const candidates = [
+    // Packaged extraResources (outside asar — required to spawn)
+    path.join(process.resourcesPath || '', 'open-taskbar-settings.exe'),
+    // Dev: compiled helper next to the C# source
+    path.join(__dirname, '../electron/open-taskbar-settings.exe'),
+    path.join(app.getAppPath(), 'electron', 'open-taskbar-settings.exe'),
+    path.join(__dirname, 'open-taskbar-settings.exe'),
+  ];
+  return candidates.find(p => {
+    try {
+      return fs.existsSync(p);
+    } catch {
+      return false;
+    }
+  }) ?? null;
+}
+
+function tryCompileOpenTaskbarSettingsExe(): string | null {
+  const csCandidates = [
+    path.join(__dirname, '../electron/OpenTaskbarSettings.cs'),
+    path.join(app.getAppPath(), 'electron', 'OpenTaskbarSettings.cs'),
+  ];
+  const csPath = csCandidates.find(p => fs.existsSync(p));
+  const csc = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
+  if (!csPath || !fs.existsSync(csc)) return null;
+
+  const framework = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319';
+  const targetExe = path.join(os.tmpdir(), 'cyberlauncher-open-taskbar-settings.exe');
+  try {
+    execSync(
+      `"${csc}" /nologo /target:winexe /out:"${targetExe}" ` +
+      `/r:"${framework}\\WPF\\UIAutomationClient.dll" ` +
+      `/r:"${framework}\\WPF\\UIAutomationTypes.dll" ` +
+      `"${csPath}"`,
+      { windowsHide: true },
+    );
+    return fs.existsSync(targetExe) ? targetExe : null;
+  } catch (compileErr) {
+    console.warn('[SETTINGS] csc compile fallback error:', compileErr);
+    return null;
+  }
+}
+
 function openTaskbarIconSettings() {
   try {
     if (process.platform === 'win32') {
-      const candidates = [
-        path.join(__dirname, 'open-taskbar-settings.exe'),
-        path.join(app.getAppPath(), 'dist-electron', 'open-taskbar-settings.exe'),
-        path.join(app.getAppPath(), 'electron', 'open-taskbar-settings.exe'),
-        path.join(process.resourcesPath || '', 'open-taskbar-settings.exe'),
-      ];
-      let exePath = candidates.find(p => fs.existsSync(p));
-
-      // Si no existe pero existe el código C#, compilarlo en caliente con csc.exe
-      if (!exePath) {
-        const csPath = path.join(app.getAppPath(), 'electron', 'OpenTaskbarSettings.cs');
-        const csc = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
-        const targetExe = path.join(app.getAppPath(), 'electron', 'open-taskbar-settings.exe');
-        if (fs.existsSync(csPath) && fs.existsSync(csc)) {
-          try {
-            execSync(`"${csc}" /nologo /target:winexe /out:"${targetExe}" /r:"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\WPF\\UIAutomationClient.dll" /r:"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\WPF\\UIAutomationTypes.dll" "${csPath}"`, { windowsHide: true });
-            if (fs.existsSync(targetExe)) exePath = targetExe;
-          } catch (compileErr) {
-            console.warn('[SETTINGS] csc compile fallback error:', compileErr);
-          }
-        }
-      }
+      let exePath = resolveOpenTaskbarSettingsExe();
+      if (!exePath) exePath = tryCompileOpenTaskbarSettingsExe();
 
       if (exePath) {
         console.log('[SETTINGS] Launching native open-taskbar-settings.exe from:', exePath);
@@ -912,6 +936,8 @@ function openTaskbarIconSettings() {
         child.unref();
         return;
       }
+
+      console.warn('[SETTINGS] open-taskbar-settings.exe not found; falling back to ms-settings:taskbar');
     }
 
     void shell.openExternal('ms-settings:taskbar');
@@ -968,14 +994,15 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       click: () => { pendingTrayAction = 'settings'; },
     },
     {
-      label: t.pinTrayIcon,
-      ...(loadMenuIcon('settings.png') ? { icon: loadMenuIcon('settings.png') } : {}),
-      click: () => { openTaskbarIconSettings(); },
-    },
-    {
       label: t.help,
       ...(iconHelp ? { icon: iconHelp } : {}),
       submenu: [
+        {
+          label: t.pinTrayIcon,
+          ...(iconSettings ? { icon: iconSettings } : {}),
+          click: () => { openTaskbarIconSettings(); },
+        },
+        { type: 'separator' },
         {
           label: t.help,
           ...(iconHelp ? { icon: iconHelp } : {}),
@@ -1239,7 +1266,9 @@ function stopHotspotPolling() {
 
 const HOTSPOT_CORNER_THRESHOLD = 4; // px: margen de entrada en la esquina (amigable con HiDPI)
 const HOTSPOT_EXIT_THRESHOLD = 30; // px: distancia mínima para considerar que el cursor abandonó la esquina
-const HOTSPOT_TOGGLE_SAFETY_MS = 1500; // ms: tiempo de seguridad tras activar/ocultar antes de permitir nueva acción
+// Bounce guard only. The real anti-oscillation is hasCursorExitedSinceLastAction
+// (cursor must leave the 30px corner zone). 1500ms blocked launching a second app.
+const HOTSPOT_TOGGLE_SAFETY_MS = 400;
 
 function startHotspotPolling() {
   stopHotspotPolling();
@@ -1341,7 +1370,7 @@ function startHotspotPolling() {
       // Para poder actuar, se deben cumplir tres condiciones:
       // 1. No estar en cooldown activo.
       // 2. El cursor debió haber salido físicamente de la zona tras la última acción.
-      // 3. Haber transcurrido al menos HOTSPOT_TOGGLE_SAFETY_MS (1.5s) desde la última acción.
+      // 3. Haber transcurrido al menos HOTSPOT_TOGGLE_SAFETY_MS desde la última acción.
       const isSafetyMet = !hotspotCooldown &&
                           hasCursorExitedSinceLastAction &&
                           (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS);
