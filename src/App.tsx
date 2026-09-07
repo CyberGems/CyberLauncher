@@ -10,7 +10,7 @@ import {
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
-  FolderOpen, FolderPlus, Eye, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
+  FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar
@@ -1668,10 +1668,44 @@ export default function App() {
   const [cardScale, setCardScale] = useState(100);
 
   const [dailyLaunchCount, setDailyLaunchCount] = useState(() => {
+    const now = Date.now();
+    const raw = localStorage.getItem('cl_launch_timestamps_24h');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter((t: number) => typeof t === 'number' && now - t < 24 * 60 * 60 * 1000);
+          return valid.length;
+        }
+      } catch {}
+    }
     const saved = localStorage.getItem('dailyLaunchCount');
     const savedDate = localStorage.getItem('dailyLaunchDate');
-    return savedDate === new Date().toDateString() ? (saved ? parseInt(saved, 10) : 0) : 0;
+    const legacyCount = savedDate === new Date().toDateString() ? (saved ? parseInt(saved, 10) : 0) : 0;
+    if (legacyCount > 0) {
+      const seeded = Array(legacyCount).fill(now);
+      localStorage.setItem('cl_launch_timestamps_24h', JSON.stringify(seeded));
+      return legacyCount;
+    }
+    return 0;
   });
+
+  const record24hLaunch = useCallback(() => {
+    const now = Date.now();
+    let timestamps: number[] = [];
+    try {
+      const raw = localStorage.getItem('cl_launch_timestamps_24h');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          timestamps = parsed.filter((t: number) => typeof t === 'number' && now - t < 24 * 60 * 60 * 1000);
+        }
+      }
+    } catch {}
+    timestamps.push(now);
+    localStorage.setItem('cl_launch_timestamps_24h', JSON.stringify(timestamps));
+    setDailyLaunchCount(timestamps.length);
+  }, []);
   
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1840,6 +1874,7 @@ export default function App() {
     recentItem?: HistoryItem;
   } | null>(null);
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; category: typeof INITIAL_CATEGORIES[0] } | null>(null);
+  const [footerContextMenu, setFooterContextMenu] = useState<{ x: number; y: number; target: 'uptime' | 'launches' | 'datetime' } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const [confirmResetType, setConfirmResetType] = useState<'most-used' | 'recent' | null>(null);
   const lastContextMenuDismissedRef = useRef(0);
@@ -2591,15 +2626,15 @@ export default function App() {
       const targetApp = apps.find(a => (data.id && a.id === data.id) || (data.path && a.path === data.path) || (data.name && a.name === data.name));
       if (targetApp) {
         setApps(prevApps => prevApps.map(a => a.id === targetApp.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
-        setDailyLaunchCount(prev => prev + 1);
+        record24hLaunch();
         addToHistory(targetApp.name, targetApp.path || data.path, (targetApp as any).type || 'app', (targetApp as any).iconPath || (targetApp as any).icon || '');
       } else {
-        setDailyLaunchCount(prev => prev + 1);
+        record24hLaunch();
         addToHistory(data.name || 'App', data.path, 'app', data.icon || '');
       }
     });
     return unsub;
-  }, [apps, addToHistory]);
+  }, [apps, addToHistory, record24hLaunch]);
 
   // Cyber Terminal Command Runner States
   const [consoleLogs, setConsoleLogs] = useState<Array<{ type: 'input' | 'stdout' | 'stderr' | 'system'; text: string; id: string }>>([]);
@@ -2712,6 +2747,8 @@ export default function App() {
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
   const [showHeaderClock, setShowHeaderClock] = useState(() => localStorage.getItem('showHeaderClock') === 'true');
   const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
+  const [showFooterUptime, setShowFooterUptime] = useState(() => localStorage.getItem('showFooterUptime') !== 'false');
+  const [showFooterLaunches, setShowFooterLaunches] = useState(() => localStorage.getItem('showFooterLaunches') !== 'false');
   const [showTrayPinTip, setShowTrayPinTip] = useState(false);
   const [sidebarStatsCollapsed, setSidebarStatsCollapsed] = useState(() => localStorage.getItem('sidebarStatsCollapsed') === 'true');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
@@ -2933,7 +2970,24 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('dailyLaunchCount', dailyLaunchCount.toString());
-    localStorage.setItem('dailyLaunchDate', new Date().toDateString());
+    const refresh24hCount = () => {
+      const now = Date.now();
+      try {
+        const raw = localStorage.getItem('cl_launch_timestamps_24h');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter((t: number) => typeof t === 'number' && now - t < 24 * 60 * 60 * 1000);
+            if (valid.length !== parsed.length) {
+              localStorage.setItem('cl_launch_timestamps_24h', JSON.stringify(valid));
+            }
+            setDailyLaunchCount(valid.length);
+          }
+        }
+      } catch {}
+    };
+    const interval = setInterval(refresh24hCount, 60000);
+    return () => clearInterval(interval);
   }, [dailyLaunchCount]);
 
   // --- PERSISTENCIA CENTRALIZADA ---
@@ -2998,6 +3052,8 @@ export default function App() {
           }
           if (source.showHeaderClock !== undefined) setShowHeaderClock(!!source.showHeaderClock);
           if (source.showFooterDateTime !== undefined) setShowFooterDateTime(source.showFooterDateTime !== false);
+          if (source.showFooterUptime !== undefined) setShowFooterUptime(source.showFooterUptime !== false);
+          if (source.showFooterLaunches !== undefined) setShowFooterLaunches(source.showFooterLaunches !== false);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -3050,8 +3106,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, selectedMonitor, autoUpdate, language });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, selectedMonitor, autoUpdate, language };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, selectedMonitor, autoUpdate, language });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, selectedMonitor, autoUpdate, language };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3078,7 +3134,7 @@ export default function App() {
           hotspotCorners, hotspotDelay,
           leftSidebarWidth, rightSidebarWidth,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-          showHeaderClock, showFooterDateTime,
+          showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           selectedMonitor, autoUpdate, language
         }));
       } catch (e) {
@@ -3103,7 +3159,7 @@ export default function App() {
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
-    showHeaderClock, showFooterDateTime,
+    showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
     selectedMonitor, autoUpdate, language,
     isConfigLoaded
   ]);
@@ -3141,6 +3197,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('showFooterDateTime', showFooterDateTime.toString());
   }, [showFooterDateTime]);
+
+  useEffect(() => {
+    localStorage.setItem('showFooterUptime', showFooterUptime.toString());
+  }, [showFooterUptime]);
+
+  useEffect(() => {
+    localStorage.setItem('showFooterLaunches', showFooterLaunches.toString());
+  }, [showFooterLaunches]);
 
   // Guardar inmediatamente al cerrar la ventana (beforeunload)
   useEffect(() => {
@@ -3392,6 +3456,14 @@ export default function App() {
         setShowFooterDateTime(config.showFooterDateTime !== false);
         localStorage.setItem('showFooterDateTime', config.showFooterDateTime.toString());
       }
+      if (config.showFooterUptime !== undefined) {
+        setShowFooterUptime(config.showFooterUptime !== false);
+        localStorage.setItem('showFooterUptime', config.showFooterUptime.toString());
+      }
+      if (config.showFooterLaunches !== undefined) {
+        setShowFooterLaunches(config.showFooterLaunches !== false);
+        localStorage.setItem('showFooterLaunches', config.showFooterLaunches.toString());
+      }
       if (config.autoUpdate !== undefined) {
         setAutoUpdate(!!config.autoUpdate);
       }
@@ -3502,26 +3574,23 @@ export default function App() {
 
   useEffect(() => {
     const handleGlobalClick = () => {
-      if (contextMenu || systemContextMenu || categoryContextMenu) {
+      if (contextMenu || systemContextMenu || categoryContextMenu || footerContextMenu) {
         lastContextMenuDismissedRef.current = Date.now();
         if (contextMenu) setContextMenu(null);
         if (systemContextMenu) setSystemContextMenu(null);
         if (categoryContextMenu) setCategoryContextMenu(null);
+        if (footerContextMenu) setFooterContextMenu(null);
       }
       setKeyboardNav(null);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
-  }, [contextMenu, systemContextMenu, categoryContextMenu]);
+  }, [contextMenu, systemContextMenu, categoryContextMenu, footerContextMenu]);
 
   const handleLaunchApp = async (app: LauncherApp) => {
     // Incrementar contadores de uso
     setApps(prevApps => prevApps.map(a => a.id === app.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
-    setDailyLaunchCount(prev => {
-      const today = new Date().toDateString();
-      const savedDate = localStorage.getItem('dailyLaunchDate');
-      return savedDate === today ? prev + 1 : 1;
-    });
+    record24hLaunch();
 
     const appPath = (app as any).path || `mock://${app.name}`;
     addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '');
@@ -7093,29 +7162,70 @@ export default function App() {
         {/* Lado derecho: Info del sistema */}
         <div className="flex items-center gap-4 text-slate-400 flex-shrink-0 ml-4">
           {/* Uptime */}
-          <Tooltip label={t('tooltip_uptime')} placement="top">
-            <div className="flex items-center gap-1.5 cursor-default">
-              <Power className="w-3.5 h-3.5 text-slate-400" />
-              <UptimeMonitor />
-            </div>
-          </Tooltip>
-          <div className="w-px h-4 bg-white/10" />
-          {/* Launches today */}
-          <Tooltip label={t('tooltip_launches_today')} placement="top">
-            <div className="flex items-center gap-1.5 cursor-default">
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[13px] font-mono text-slate-400">{dailyLaunchCount}</span>
-            </div>
-          </Tooltip>
+          {showFooterUptime && (
+            <Tooltip label={t('tooltip_uptime')} placement="top">
+              <div 
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenu(null);
+                  setCategoryContextMenu(null);
+                  setSystemContextMenu(null);
+                  setFooterContextMenu({ x: e.clientX, y: e.clientY, target: 'uptime' });
+                }}
+                className="flex items-center gap-1.5 cursor-default hover:text-slate-200 transition-colors"
+              >
+                <Power className="w-3.5 h-3.5 text-slate-400" />
+                <UptimeMonitor />
+              </div>
+            </Tooltip>
+          )}
+
+          {showFooterUptime && (showFooterLaunches || showFooterDateTime) && (
+            <div className="w-px h-4 bg-white/10" />
+          )}
+
+          {/* Launches in the last 24 hours */}
+          {showFooterLaunches && (
+            <Tooltip label={t('tooltip_launches_today')} placement="top">
+              <div 
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenu(null);
+                  setCategoryContextMenu(null);
+                  setSystemContextMenu(null);
+                  setFooterContextMenu({ x: e.clientX, y: e.clientY, target: 'launches' });
+                }}
+                className="flex items-center gap-1.5 cursor-default hover:text-slate-200 transition-colors"
+              >
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[13px] font-mono text-slate-400">{dailyLaunchCount}</span>
+              </div>
+            </Tooltip>
+          )}
+
+          {showFooterLaunches && showFooterDateTime && (
+            <div className="w-px h-4 bg-white/10" />
+          )}
+
+          {/* Date & Time */}
           {showFooterDateTime && (
-            <>
-              <div className="w-px h-4 bg-white/10" />
-              {/* Date & Time */}
+            <div
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setContextMenu(null);
+                setCategoryContextMenu(null);
+                setSystemContextMenu(null);
+                setFooterContextMenu({ x: e.clientX, y: e.clientY, target: 'datetime' });
+              }}
+            >
               <FooterDateTime 
                 title={t('tooltip_datetime')} 
                 onClick={() => setIsClockHUDOpen(true)}
               />
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -8353,17 +8463,17 @@ export default function App() {
                     </div>
 
                     {/* Tray Pin Recommendation Card */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0 mt-0.5">
                           <Pin className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_pin_title')}</h4>
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_pin_desc')}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
                         <button
                           type="button"
                           onClick={() => setShowTrayPinTip(true)}
@@ -8423,6 +8533,56 @@ export default function App() {
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showHeaderClock ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${showHeaderClock ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer System Uptime Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <Power className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_uptime')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_uptime_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterUptime;
+                          setShowFooterUptime(newVal);
+                          localStorage.setItem('showFooterUptime', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterUptime ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterUptime ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterUptime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer Launch Counter Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <ChevronRight className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_launches')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_launches_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterLaunches;
+                          setShowFooterLaunches(newVal);
+                          localStorage.setItem('showFooterLaunches', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterLaunches ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterLaunches ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterLaunches ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
                     </div>
@@ -9706,6 +9866,58 @@ export default function App() {
               className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400 cursor-pointer"
             >
               {t('ctx_delete_category')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- FOOTER ITEMS CONTEXT MENU --- */}
+      <AnimatePresence>
+        {footerContextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[240px] text-sm select-none"
+            style={{ 
+              left: Math.max(10, Math.min(footerContextMenu.x - 120, window.innerWidth - 260)), 
+              top: Math.max(10, footerContextMenu.y - 95) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                if (footerContextMenu.target === 'uptime') {
+                  setShowFooterUptime(false);
+                } else if (footerContextMenu.target === 'launches') {
+                  setShowFooterLaunches(false);
+                } else {
+                  setShowFooterDateTime(false);
+                }
+                setFooterContextMenu(null);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-white/10 transition-colors flex items-center justify-between text-slate-200 cursor-pointer group"
+            >
+              <span className="text-xs font-medium">
+                {footerContextMenu.target === 'uptime' && t('ctx_hide_uptime')}
+                {footerContextMenu.target === 'launches' && t('ctx_hide_launches')}
+                {footerContextMenu.target === 'datetime' && t('ctx_hide_datetime')}
+              </span>
+              <EyeOff className="w-4 h-4 ml-2 text-slate-400 group-hover:text-red-400 transition-colors" />
+            </button>
+
+            <div className="my-1 border-t border-white/10" />
+
+            <button
+              onClick={() => {
+                setFooterContextMenu(null);
+                setSettingsTab('system');
+                setIsSettingsOpen(true);
+              }}
+              className="w-full text-left px-3.5 py-1.5 hover:bg-white/10 transition-colors flex items-center justify-between text-slate-400 hover:text-slate-200 cursor-pointer"
+            >
+              <span className="text-[11px] font-cyber">{t('ctx_configure_footer')}</span>
+              <Settings className="w-3.5 h-3.5 ml-2 text-cyan-400" />
             </button>
           </motion.div>
         )}
