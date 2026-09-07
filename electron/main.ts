@@ -21,6 +21,15 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 // Forzar mismo nombre en dev y produccion para compartir userData
 app.setName('CyberLauncher');
 
+// Prevenir pantallas negras causadas por el cálculo erróneo de oclusión de Chromium en Windows
+// (especialmente con ventanas sin marco 'frame: false', maximizadas o en configuraciones multimonitor).
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+}
+
+
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
@@ -617,6 +626,16 @@ function createWindow() {
       'html,body,#root{margin:0;width:100%;height:100%;background-color:#0a0f18!important;color-scheme:dark;overflow:hidden}'
     ).catch(() => {});
   });
+
+  // Supervisión del proceso de renderizado ante salidas o cuelgues inesperados
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[RENDERER] Proceso de renderizado terminado:', details.reason, 'código:', details.exitCode);
+    if (details.reason !== 'clean-exit' && !isQuitting) {
+      console.log('[RENDERER] Recuperando ventana tras caída inesperada del proceso de renderizado');
+      mainWindow?.reload();
+    }
+  });
+
 
   // Show as soon as Chromium is ready — no opacity dance, no waiting for ui-ready
   // (those caused black screen / invisible window for ~2s).
@@ -3326,9 +3345,17 @@ process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason);
 });
 
+// Supervisión de procesos secundarios (GPU, utilidades)
+app.on('child-process-gone', (_event, details) => {
+  if (details.type === 'GPU') {
+    console.warn('[GPU] Proceso secundario GPU terminado:', details.reason, 'código:', details.exitCode);
+  }
+});
+
 // =====================================
 // APP LIFECYCLE
 // =====================================
+
 app.whenReady().then(() => {
   setupIpcHandlers();
   buildSystemIndex().catch(err => console.error('[INDEXER] Error building index:', err));
