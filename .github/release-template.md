@@ -6,23 +6,11 @@ Welcome to the official **CyberLauncher {{VERSION}}** release! CyberLauncher is 
 
 ### ✨ Key Features & Highlights
 
-- 🖥️ **Cyber Terminal**:
-  - The integrated console is now Cyber Terminal: persistent working directory, PowerShell/cmd, command history, and cleaner prompt/navigation.
+- 📌 **Tray — Most recent**:
+  - The system tray menu now has a **Most recent** submenu with the same list as the main panel (names only, no timestamps), so you can relaunch without opening the launcher.
 
-- 🔔 **Updates**:
-  - New-version notices show a peek of the GitHub release notes, with a direct link to that release (toast + About).
-
-- ⌨️ **Keyboard & Search**:
-  - Keyboard navigation for shortcuts, category hotkeys (including Alt+0 for Uncategorized), view-mode hotkeys, and fewer search/hotkey conflicts.
-
-- 🖼️ **Icons & WS Apps**:
-  - Refresh icons individually or in bulk, cleaner UWP icons without shortcut overlays, and WS scanner shortcuts plus layout polish.
-
-- 📌 **Tray & Windows**:
-  - Prompt to pin CyberLauncher in the notification area, jump into Windows tray-icon settings, and a fix for random black screens (Chromium occlusion).
-
-- 🎨 **Launcher UI**:
-  - Optional header clock, footer date/time and 24h launch tracker, Backup & Data settings, title-bar Help menu, background peek while adjusting blur, and collapsible sidebar stats.
+- 🔐 **Release notes checksums**:
+  - CI now rewrites the GitHub release body after uploading the installer, so the SHA256 is no longer left as `pending`.
 
 ---
 
