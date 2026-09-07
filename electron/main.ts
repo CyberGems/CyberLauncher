@@ -209,7 +209,7 @@ function resumeHotspotsAfterUAC(delayMs = 600) {
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
     hotspotCooldown = false;
-    hasCursorExitedSinceLastAction = false;
+    hasCursorExitedSinceLastAction = true;
     console.log('[HOTSPOT] Resumed after UAC exit buffer');
   }, delayMs);
 }
@@ -228,9 +228,7 @@ function showMainWindow() {
       windowVisibilityState = 'shown-intentional';
       // Siempre mantener al menos 1500ms de guarda contra desenfoque tras mostrar
       bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + 1500);
-      lastHotspotActionTime = Date.now();
-      hasCursorExitedSinceLastAction = false;
-      hotspotCooldown = true;
+      syncHotspotLockAfterWindowChange();
       mainWindow.show();
       const pinned = mainWindow.isAlwaysOnTop();
       if (!pinned) {
@@ -680,11 +678,7 @@ function createWindow() {
 
   mainWindow.on('hide', () => {
     console.log('[WM EVENT] hide');
-    lastHotspotCorner = '';
-    hotspotEntryTime = 0;
-    lastHotspotActionTime = Date.now();
-    hasCursorExitedSinceLastAction = false;
-    hotspotCooldown = true;
+    syncHotspotLockAfterWindowChange();
     applyRendererThrottling();
     // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
     rebuildTrayMenu();
@@ -1266,9 +1260,85 @@ function stopHotspotPolling() {
 
 const HOTSPOT_CORNER_THRESHOLD = 4; // px: margen de entrada en la esquina (amigable con HiDPI)
 const HOTSPOT_EXIT_THRESHOLD = 30; // px: distancia mínima para considerar que el cursor abandonó la esquina
-// Bounce guard only. The real anti-oscillation is hasCursorExitedSinceLastAction
-// (cursor must leave the 30px corner zone). 1500ms blocked launching a second app.
-const HOTSPOT_TOGGLE_SAFETY_MS = 400;
+// Bounce guard after a hotspot toggle while the cursor is still in the corner.
+const HOTSPOT_TOGGLE_SAFETY_MS = 200;
+
+function getCursorHotspotState(): { currentCorner: string; isWithinExitZone: boolean } {
+  if (hotspotCorners.length === 0) {
+    return { currentCorner: '', isWithinExitZone: false };
+  }
+
+  const { x, y } = screen.getCursorScreenPoint();
+  const displays = cachedDisplays.length > 0 ? cachedDisplays : screen.getAllDisplays();
+  let activeDisplay = displays.find(
+    (d) =>
+      x >= d.bounds.x &&
+      x < d.bounds.x + d.bounds.width &&
+      y >= d.bounds.y &&
+      y < d.bounds.y + d.bounds.height
+  );
+  if (!activeDisplay) {
+    activeDisplay = screen.getDisplayNearestPoint({ x, y });
+  }
+  if (!activeDisplay) {
+    return { currentCorner: '', isWithinExitZone: false };
+  }
+
+  const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.bounds;
+  const isTop = y >= dy && y <= dy + HOTSPOT_CORNER_THRESHOLD;
+  const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD && y <= dy + dh - 1;
+  const isLeft = x >= dx && x <= dx + HOTSPOT_CORNER_THRESHOLD;
+  const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD && x <= dx + dw - 1;
+
+  let detected = '';
+  if (isTop && isLeft) detected = 'top-left';
+  else if (isTop && isRight) detected = 'top-right';
+  else if (isBottom && isLeft) detected = 'bottom-left';
+  else if (isBottom && isRight) detected = 'bottom-right';
+
+  if (detected && hotspotCorners.includes(detected)) {
+    return { currentCorner: detected, isWithinExitZone: true };
+  }
+
+  for (const corner of hotspotCorners) {
+    let inZone = false;
+    if (corner === 'top-left') {
+      inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
+    } else if (corner === 'top-right') {
+      inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
+    } else if (corner === 'bottom-left') {
+      inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
+    } else if (corner === 'bottom-right') {
+      inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
+    }
+    if (inZone) {
+      return { currentCorner: '', isWithinExitZone: true };
+    }
+  }
+
+  return { currentCorner: '', isWithinExitZone: false };
+}
+
+/** Arm the re-entry lock only if the cursor is still in a hotspot. Launching an app
+ *  already left the corner — requiring another leave+reenter made the next open fail. */
+function syncHotspotLockAfterWindowChange() {
+  lastHotspotCorner = '';
+  hotspotEntryTime = 0;
+  lastHotspotActionTime = Date.now();
+  try {
+    const { isWithinExitZone } = getCursorHotspotState();
+    if (isWithinExitZone) {
+      hasCursorExitedSinceLastAction = false;
+      hotspotCooldown = true;
+    } else {
+      hasCursorExitedSinceLastAction = true;
+      hotspotCooldown = false;
+    }
+  } catch {
+    hasCursorExitedSinceLastAction = true;
+    hotspotCooldown = false;
+  }
+}
 
 function startHotspotPolling() {
   stopHotspotPolling();
@@ -1300,176 +1370,71 @@ function startHotspotPolling() {
 
     if (hotspotCorners.length === 0) return;
 
-    const { x, y } = screen.getCursorScreenPoint();
-    const displays = cachedDisplays.length > 0 ? cachedDisplays : screen.getAllDisplays();
-    let currentCorner = '';
-    let isWithinExitZone = false;
+    const { currentCorner, isWithinExitZone } = getCursorHotspotState();
 
-    // Encontrar la pantalla sobre la que se encuentra el cursor
-    let activeDisplay = displays.find(
-      (d) =>
-        x >= d.bounds.x &&
-        x < d.bounds.x + d.bounds.width &&
-        y >= d.bounds.y &&
-        y < d.bounds.y + d.bounds.height
-    );
-    if (!activeDisplay) {
-      activeDisplay = screen.getDisplayNearestPoint({ x, y });
-    }
-
-    if (activeDisplay) {
-      const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.bounds;
-
-      // Detección estricta de esquina (delimitada en ambos ejes dentro de la pantalla activa)
-      const isTop = y >= dy && y <= dy + HOTSPOT_CORNER_THRESHOLD;
-      const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD && y <= dy + dh - 1;
-      const isLeft = x >= dx && x <= dx + HOTSPOT_CORNER_THRESHOLD;
-      const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD && x <= dx + dw - 1;
-
-      let detected = '';
-      if (isTop && isLeft) detected = 'top-left';
-      else if (isTop && isRight) detected = 'top-right';
-      else if (isBottom && isLeft) detected = 'bottom-left';
-      else if (isBottom && isRight) detected = 'bottom-right';
-
-      if (detected && hotspotCorners.includes(detected)) {
-        currentCorner = detected;
-        isWithinExitZone = true;
-      } else {
-        // Comprobar zona de histéresis/salida solo para las esquinas configuradas en esta pantalla
-        for (const corner of hotspotCorners) {
-          let inZone = false;
-          if (corner === 'top-left') {
-            inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
-          } else if (corner === 'top-right') {
-            inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
-          } else if (corner === 'bottom-left') {
-            inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
-          } else if (corner === 'bottom-right') {
-            inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
-          }
-          if (inZone) {
-            isWithinExitZone = true;
-            break;
-          }
-        }
-      }
-    }
-
-    // Gestionar salida de la zona de seguridad
     if (!isWithinExitZone) {
       hasCursorExitedSinceLastAction = true;
-      // Solo rearmar el cooldown si ya transcurrió el tiempo de seguridad
-      if (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS) {
-        lastHotspotCorner = '';
-        hotspotCooldown = false;
-      }
+      lastHotspotCorner = '';
+      hotspotEntryTime = 0;
+    }
+    if (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS) {
+      hotspotCooldown = false;
     }
 
-    if (currentCorner) {
-      // Para poder actuar, se deben cumplir tres condiciones:
-      // 1. No estar en cooldown activo.
-      // 2. El cursor debió haber salido físicamente de la zona tras la última acción.
-      // 3. Haber transcurrido al menos HOTSPOT_TOGGLE_SAFETY_MS desde la última acción.
-      const isSafetyMet = !hotspotCooldown &&
-                          hasCursorExitedSinceLastAction &&
-                          (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS);
+    if (!currentCorner) return;
 
-      if (!isSafetyMet) {
-        // En periodo de seguridad o cooldown: ignorar mientras el cursor permanezca en la esquina
-      } else if (currentCorner === lastHotspotCorner) {
-        const timeInCorner = now - hotspotEntryTime;
-        if (timeInCorner >= hotspotDelay) {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            hotspotCooldown = true;
-            hasCursorExitedSinceLastAction = false;
-            lastHotspotActionTime = now;
-            lastHotspotCorner = currentCorner;
+    if (currentCorner !== lastHotspotCorner) {
+      lastHotspotCorner = currentCorner;
+      hotspotEntryTime = now;
+    }
 
-            const executeHotspotAction = () => {
-              if (!mainWindow || mainWindow.isDestroyed()) return;
-              if (mainWindow.isVisible()) {
-                console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-                if (mainWindow.isAlwaysOnTop()) {
-                  mainWindow.webContents.send('always-on-top-blur-attempt');
-                } else {
-                  hideMainWindow();
-                }
-              } else {
-                console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-                showMainWindow();
-              }
-            };
+    // After a hotspot toggle, the cursor must leave the corner before the next
+    // action. After launching an app the cursor is already out, so this is armed.
+    if (hotspotCooldown || !hasCursorExitedSinceLastAction) return;
 
-            const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
-            if (isVulnerableToUAC) {
-              isCheckingUAC = true;
-              checkUACActive((isUAC) => {
-                isCheckingUAC = false;
-                if (isUAC) {
-                  console.log('[HOTSPOT] Ignored activation due to UAC detection (consent.exe)');
-                  pauseHotspots();
-                  watchUACUntilExit();
-                  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-                    windowVisibilityState = 'hidden-os';
-                    hideMainWindow();
-                  }
-                } else {
-                  executeHotspotAction();
-                }
-              });
-            } else {
-              executeHotspotAction();
-            }
-          }
+    const timeInCorner = now - hotspotEntryTime;
+    if (hotspotDelay > 0 && timeInCorner < hotspotDelay) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    hotspotCooldown = true;
+    hasCursorExitedSinceLastAction = false;
+    lastHotspotActionTime = now;
+
+    const executeHotspotAction = () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (mainWindow.isVisible()) {
+        console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+        if (mainWindow.isAlwaysOnTop()) {
+          mainWindow.webContents.send('always-on-top-blur-attempt');
+        } else {
+          hideMainWindow();
         }
       } else {
-        lastHotspotCorner = currentCorner;
-        hotspotEntryTime = now;
-        // Si delay es 0, activar/ocultar inmediatamente sin esperar otro ciclo
-        if (hotspotDelay === 0 && mainWindow && !mainWindow.isDestroyed()) {
-          hotspotCooldown = true;
-          hasCursorExitedSinceLastAction = false;
-          lastHotspotActionTime = now;
-          lastHotspotCorner = currentCorner;
-
-          const executeImmediateAction = () => {
-            if (!mainWindow || mainWindow.isDestroyed()) return;
-            if (mainWindow.isVisible()) {
-              console.log(`OCULTAMIENTO INMEDIATO POR HOTSPOT: ${currentCorner}`);
-              if (mainWindow.isAlwaysOnTop()) {
-                mainWindow.webContents.send('always-on-top-blur-attempt');
-              } else {
-                hideMainWindow();
-              }
-            } else {
-              console.log(`ACTIVACIÓN INMEDIATA POR HOTSPOT: ${currentCorner}`);
-              showMainWindow();
-            }
-          };
-
-          const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
-          if (isVulnerableToUAC) {
-            isCheckingUAC = true;
-            checkUACActive((isUAC) => {
-              isCheckingUAC = false;
-              if (isUAC) {
-                console.log('[HOTSPOT] Ignored immediate activation due to UAC detection (consent.exe)');
-                pauseHotspots();
-                watchUACUntilExit();
-                if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-                  windowVisibilityState = 'hidden-os';
-                  hideMainWindow();
-                }
-              } else {
-                executeImmediateAction();
-              }
-            });
-          } else {
-            executeImmediateAction();
-          }
-        }
+        console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
+        showMainWindow();
       }
+    };
+
+    const { x, y } = screen.getCursorScreenPoint();
+    const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
+    if (isVulnerableToUAC) {
+      isCheckingUAC = true;
+      checkUACActive((isUAC) => {
+        isCheckingUAC = false;
+        if (isUAC) {
+          console.log('[HOTSPOT] Ignored activation due to UAC detection (consent.exe)');
+          pauseHotspots();
+          watchUACUntilExit();
+          if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+            windowVisibilityState = 'hidden-os';
+            hideMainWindow();
+          }
+        } else {
+          executeHotspotAction();
+        }
+      });
+    } else {
+      executeHotspotAction();
     }
   }, 100);
 }

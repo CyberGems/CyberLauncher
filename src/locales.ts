@@ -50,6 +50,8 @@ export const translations = {
     tooltip_sidebar_launches: "Total de lanzamientos",
     tooltip_sidebar_stats_expand: "Mostrar estadísticas",
     tooltip_sidebar_stats_collapse: "Ocultar estadísticas",
+    tooltip_right_sidebar_collapse: "Ocultar panel derecho",
+    tooltip_right_sidebar_expand: "Mostrar panel derecho",
 
     // Add/Edit App drawer
     app_add_title: "Agregar nuevo acceso",
@@ -544,6 +546,8 @@ export const translations = {
     tooltip_sidebar_launches: "Total launches",
     tooltip_sidebar_stats_expand: "Show statistics",
     tooltip_sidebar_stats_collapse: "Hide statistics",
+    tooltip_right_sidebar_collapse: "Hide right panel",
+    tooltip_right_sidebar_expand: "Show right panel",
 
     // Add/Edit App drawer
     app_add_title: "Add new shortcut",
