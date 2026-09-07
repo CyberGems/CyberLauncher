@@ -133,3 +133,18 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
 .animate-caret-breathe {
   animation: caret-breathe 3.5s ease-in-out infinite;
 }
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fade mask on right edge for overflowed taskbar icons */
+.taskbar-fade-mask {
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+}

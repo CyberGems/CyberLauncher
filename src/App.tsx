@@ -559,7 +559,7 @@ const UptimeMonitor = React.memo(() => {
   const m = Math.floor((uptime % 3600) / 60);
 
   return (
-    <span className="text-sm font-mono text-slate-400 tracking-wide tabular-nums">
+    <span className="text-[13px] font-mono text-slate-400 tracking-wide tabular-nums">
       {h > 0 ? `${h}h ${m}m` : `${m}m`}
     </span>
   );
@@ -694,12 +694,12 @@ const FooterDateTime = React.memo(({ title, onClick }: { title: string; onClick?
         onClick={onClick}
         className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors focus:outline-none group select-none"
       >
-        <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-300 transition-transform group-hover:scale-110 shrink-0" />
-        <span className="text-xs font-mono tracking-wide text-slate-400 group-hover:text-slate-300 tabular-nums shrink-0">
+        <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-300 shrink-0" />
+        <span className="text-[13px] font-mono tracking-wide text-slate-400 group-hover:text-slate-300 tabular-nums shrink-0">
           {timeStr}
         </span>
         <span className="text-[10px] text-slate-600 font-bold shrink-0">·</span>
-        <span className="text-xs font-mono tracking-wide text-slate-400 group-hover:text-slate-300 shrink-0">
+        <span className="text-[13px] font-mono tracking-wide text-slate-400 group-hover:text-slate-300 shrink-0">
           {dateStr}
         </span>
       </button>
@@ -6961,7 +6961,7 @@ export default function App() {
       {/* --- TASKBAR DE ESCRITORIO --- */}
       <div className="flex-shrink-0 flex items-center justify-between w-full bg-black/60 backdrop-blur-3xl border-t border-white/10 px-6 py-2 z-40 relative">
         {/* Lado izquierdo: Agregar acceso y Favoritos */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
           <Tooltip label={t('tooltip_add_taskbar_access')} placement="top">
             <button 
               onClick={() => {
@@ -6976,7 +6976,7 @@ export default function App() {
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
           <div
-            className="flex gap-2 relative rounded-xl p-0.5 -m-0.5 transition-[box-shadow,background-color] duration-150"
+            className={`flex gap-2 relative rounded-xl p-0.5 -m-0.5 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
             data-cl-drop="taskbar"
             onDragOver={(e) => {
               if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
@@ -7020,11 +7020,11 @@ export default function App() {
         </div>
 
         {/* Lado derecho: Info del sistema */}
-        <div className="flex items-center gap-4 text-slate-400">
+        <div className="flex items-center gap-4 text-slate-400 flex-shrink-0 ml-4">
           {/* Uptime */}
           <Tooltip label={t('tooltip_uptime')} placement="top">
             <div className="flex items-center gap-1.5 cursor-default">
-              <Power className="w-4 h-4 text-slate-400" />
+              <Power className="w-3.5 h-3.5 text-slate-400" />
               <UptimeMonitor />
             </div>
           </Tooltip>
@@ -7032,8 +7032,8 @@ export default function App() {
           {/* Launches today */}
           <Tooltip label={t('tooltip_launches_today')} placement="top">
             <div className="flex items-center gap-1.5 cursor-default">
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-mono text-slate-400">{dailyLaunchCount}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[13px] font-mono text-slate-400">{dailyLaunchCount}</span>
             </div>
           </Tooltip>
           {showFooterDateTime && (
