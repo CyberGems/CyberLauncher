@@ -14,7 +14,7 @@ import {
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -5043,9 +5043,6 @@ export default function App() {
             >
               <span className="relative flex-shrink-0">
                 <CyberLogo className="w-8 h-8 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
-                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
-                )}
               </span>
               <span className="font-cyber font-bold text-[15px] tracking-wide text-white truncate leading-none">
                 Cyber<span className="text-cyan-400">Launcher</span>
@@ -6743,19 +6740,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsAboutOpen(true)}
-                  className="group relative flex items-center h-7 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_12px_rgba(108,155,255,0.2)] hover:shadow-[0_0_16px_rgba(108,155,255,0.45)] transition-all duration-200 overflow-hidden px-1.5 mr-0.5 focus:outline-none cursor-pointer"
+                  className="group relative flex items-center justify-center w-7 h-7 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_12px_rgba(108,155,255,0.2)] hover:shadow-[0_0_16px_rgba(108,155,255,0.45)] transition-all duration-200 mr-0.5 focus:outline-none cursor-pointer"
                 >
-                  {!rightSidebarCollapsed && (
-                    <div className="max-w-0 opacity-0 group-hover:max-w-[75px] group-hover:opacity-100 overflow-hidden transition-all duration-200 ease-out whitespace-nowrap">
-                      <span className="text-[11px] font-semibold tracking-wide text-[#6C9BFF] group-hover:text-white pl-1.5 pr-1 drop-shadow-sm select-none">
-                        {language === 'es' ? 'Actualizar' : 'Update'}
-                      </span>
-                    </div>
-                  )}
-                  <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
-                    <Download className={`w-3.5 h-3.5 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
-                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-pulse" />
-                  </div>
+                  <ArrowDown className={`w-4 h-4 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
                 </button>
               </Tooltip>
             )}
@@ -6803,7 +6790,7 @@ export default function App() {
                 >
                   <MoreHorizontal className="w-3.5 h-3.5" />
                   {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
                   )}
                 </button>
               </Tooltip>
@@ -10343,20 +10330,37 @@ export default function App() {
                   {notification.detail}
                 </p>
               )}
-              {notification.releaseUrl && (
-                <button
-                  type="button"
-                  data-no-hide
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openExternalUrl(notification.releaseUrl!);
-                    setNotification(null);
-                  }}
-                  className="inline-flex items-center gap-1 self-start text-[11px] font-semibold text-cyan-300 hover:text-white hover:underline cursor-pointer"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  {t('about_view_release')}
-                </button>
+              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available')) && (
+                <div className="flex items-center gap-2 pt-0.5">
+                  {notification.releaseUrl && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openExternalUrl(notification.releaseUrl!);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-400/20 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {t('about_view_release')}
+                    </button>
+                  )}
+                  {notification.action === 'open-about' && updateStatus.state === 'available' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void window.electronAPI?.downloadUpdate?.();
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3 h-3" />
+                      {t('about_download_btn')}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <button

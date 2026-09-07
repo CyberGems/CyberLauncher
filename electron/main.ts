@@ -989,6 +989,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   const iconHome = loadMenuIcon('homepage.png');
   const iconDonate = loadMenuIcon('donate.png');
   const iconAbout = loadMenuIcon('about.png');
+  const iconRecent = loadMenuIcon('recent.png');
   const iconUpdate = loadMenuIcon('update.png');
   const iconQuit = loadMenuIcon('quit.png');
 
@@ -1020,6 +1021,7 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
     },
     {
       label: t.mostRecent,
+      ...(iconRecent ? { icon: iconRecent } : {}),
       submenu: trayRecents.length > 0
         ? trayRecents.map((item, index) => ({
             label: `${index + 1}. ${item.name}`,
