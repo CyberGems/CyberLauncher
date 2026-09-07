@@ -6656,14 +6656,18 @@ export default function App() {
                     : t('about_status_available', { version: (updateStatus as any).version || '' })
                 }
                 placement={rightSidebarCollapsed ? 'left' : 'bottom'}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsAboutOpen(true)}
                   className="group relative flex items-center h-7 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_12px_rgba(108,155,255,0.2)] hover:shadow-[0_0_16px_rgba(108,155,255,0.45)] transition-all duration-200 overflow-hidden px-1.5 mr-0.5 focus:outline-none cursor-pointer"
                 >
                   {!rightSidebarCollapsed && (
-                  <div className="max-w-0 opacity-0 group-hover:max-w-[75px] group-hover:opacity-100 overflow-hidden transition-all duration-200 ease-out whitespace-nowrap">
-                    <span className="text-[11px] font-semibold tracking-wide text-[#6C9BFF] group-hover:text-white pl-1.5 pr-1 drop-shadow-sm select-none">
-                      {language === 'es' ? 'Actualizar' : 'Update'}
-                    </span>
-                  </div>
+                    <div className="max-w-0 opacity-0 group-hover:max-w-[75px] group-hover:opacity-100 overflow-hidden transition-all duration-200 ease-out whitespace-nowrap">
+                      <span className="text-[11px] font-semibold tracking-wide text-[#6C9BFF] group-hover:text-white pl-1.5 pr-1 drop-shadow-sm select-none">
+                        {language === 'es' ? 'Actualizar' : 'Update'}
+                      </span>
+                    </div>
                   )}
                   <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
                     <Download className={`w-3.5 h-3.5 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
