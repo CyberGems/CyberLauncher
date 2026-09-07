@@ -44,16 +44,41 @@ jobs:
             release/latest.yml
           if-no-files-found: error
 
+      - name: Fill release notes from template
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $versionNum = $tag.TrimStart("v")
+          $installer = Get-ChildItem -Path "release" -Filter "CyberLauncher-Setup-*.exe" |
+            Where-Object { $_.Name -notlike "*.blockmap*" } |
+            Select-Object -First 1
+          $installerHash = if ($installer) {
+            (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
+          } else {
+            "pending"
+          }
+
+          Write-Host "Installer: $($installer.FullName) [SHA256: $installerHash]"
+
+          $template = [System.IO.File]::ReadAllText(".github/release-template.md", [System.Text.Encoding]::UTF8)
+          $notes = $template.
+            Replace("{{VERSION_NUM}}", $versionNum).
+            Replace("{{VERSION}}", $tag).
+            Replace("{{INSTALLER_HASH}}", $installerHash)
+          $utf8 = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText("FINAL_RELEASE_NOTES.md", $notes, $utf8)
+
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          name: CyberLauncher ${{ github.ref_name }}
           files: |
             release/*.exe
             release/*.blockmap
             release/latest.yml
           draft: true
-          generate_release_notes: true
+          body_path: FINAL_RELEASE_NOTES.md
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
