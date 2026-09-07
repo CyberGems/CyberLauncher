@@ -1777,15 +1777,19 @@ export default function App() {
     };
 
     filtered.sort((a, b) => {
-      // Mixed (and apps): keep programs/shortcuts first; then alphabetical within group
-      if (searchTypeFilter === 'all' || searchTypeFilter === 'apps') {
-        const tr = typeRank(a) - typeRank(b);
-        if (tr !== 0) return tr;
-      }
       const aName = searchBaseName(a.name);
       const bName = searchBaseName(b.name);
       const cmp = aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' });
-      return searchSortOrder === 'asc' ? cmp : -cmp;
+      if (cmp !== 0) {
+        return searchSortOrder === 'asc' ? cmp : -cmp;
+      }
+      // Si el nombre base es idéntico, desempatar por tipo/extensión
+      const tr = typeRank(a) - typeRank(b);
+      if (tr !== 0) {
+        return searchSortOrder === 'asc' ? tr : -tr;
+      }
+      const pathCmp = a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: 'base' });
+      return searchSortOrder === 'asc' ? pathCmp : -pathCmp;
     });
 
     return filtered;
@@ -1793,7 +1797,7 @@ export default function App() {
 
   useEffect(() => {
     setSystemSearchSelectedIndex(0);
-  }, [searchQuery, searchScope, searchTypeFilter, systemSearchResults]);
+  }, [searchQuery, searchScope, searchTypeFilter, systemSearchResults, searchSortOrder]);
 
   useEffect(() => {
     if (searchScope !== 'system' || displayedResults.length === 0) return;
@@ -5104,7 +5108,7 @@ export default function App() {
                 <div className="space-y-4 pt-4">
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center gap-2 text-slate-400">
-                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
                       {t('title_apps')}
                     </div>
                     <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
@@ -5115,7 +5119,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center gap-2 text-slate-400">
-                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
                       {t('title_categories')}
                     </div>
                     <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
@@ -5126,7 +5130,7 @@ export default function App() {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center gap-2 text-slate-400">
-                      <span className="inline-block w-0.5 h-3 rounded-full bg-slate-600/80" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
                       {t('title_launches')}
                     </div>
                     <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
@@ -5161,7 +5165,7 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="h-20 flex items-center px-3 sm:px-4 xl:px-8 justify-between shrink-0 relative z-20 border-b border-transparent gap-2 sm:gap-2.5 min-w-0 overflow-hidden">
+        <header className="h-20 flex items-center px-3 sm:px-4 xl:px-8 justify-between shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
           <div 
             className="relative flex-1 min-w-[100px] max-w-[480px] group shrink"
             onMouseEnter={() => {
@@ -5177,7 +5181,7 @@ export default function App() {
             }}
           >
             {/* Sleek holographic tooltip showing full instruction guide */}
-            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#070b13]/95 border border-cyan-500/30 px-3.5 py-2 rounded-xl text-left z-30 w-max max-w-[360px] transition-all duration-300 ease-out shadow-[0_0_20px_rgba(34,211,238,0.2)] pointer-events-none ${
+            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#070b13]/95 border border-cyan-500/30 px-3.5 py-2 rounded-xl text-left z-50 w-max max-w-[360px] transition-all duration-300 ease-out shadow-[0_0_20px_rgba(34,211,238,0.2)] pointer-events-none ${
               showSearchGuide 
                 ? 'opacity-100 scale-100 translate-y-0' 
                 : 'opacity-0 scale-95 -translate-y-1'
@@ -5186,7 +5190,7 @@ export default function App() {
               <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%)] bg-[size:10px_10px] pointer-events-none rounded-xl" />
               <div className="relative z-10">
                 <div className="text-[11px] font-cyber font-bold text-cyan-400 mb-1 tracking-wider uppercase">{t('search_guide_tooltip_title')}</div>
-                <div className="text-[13px] font-mono text-slate-300 leading-normal">
+                <div className="text-[13px] font-sans text-slate-300 leading-normal">
                   {isTerminalOpen 
                     ? `${t('search_placeholder_console')} — ${t('hint_console_enter')}`
                     : searchScope === 'system'
@@ -5974,7 +5978,7 @@ export default function App() {
               </div>
 
               {/* Controles de Ordenamiento y Filtrado */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2 shrink-0">
+              <div className="flex items-center justify-between gap-2 mb-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2 shrink-0">
                 {/* Grupo de Filtro por Tipo */}
                 <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5 flex-wrap">
                   <button
@@ -6022,49 +6026,38 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Preloader: visible mientras la búsqueda sigue (aunque ya haya resultados previos) */}
-                <div className="flex-1 flex items-center justify-center min-w-[7rem] px-2">
-                  {isSearchingSystem ? (
-                    <div className="flex items-center gap-2 text-emerald-400/90" aria-live="polite">
+                {/* Preloader & Botón de Ordenamiento Unificado (igual al panel principal) */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {isSearchingSystem && (
+                    <div className="flex items-center gap-1.5 text-emerald-400/90 px-1" aria-live="polite">
                       <div className="w-3.5 h-3.5 border-2 border-emerald-500/25 border-t-emerald-400 rounded-full animate-spin shrink-0" />
-                      <span className="text-[9px] font-cyber tracking-wider whitespace-nowrap animate-pulse">
+                      <span className="text-[9px] font-cyber tracking-wider whitespace-nowrap animate-pulse hidden sm:inline">
                         {t('search_results_searching')}
                       </span>
                     </div>
-                  ) : null}
-                </div>
+                  )}
 
-                {/* Grupo de Ordenamiento */}
-                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5">
-                  <Tooltip label="Ordenar de A a Z" placement="bottom">
-                    <button
-                      onClick={() => setSearchSortOrder('asc')}
-                      className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
-                        searchSortOrder === 'asc'
-                          ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
-                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
-                      }`}
+                  <div className="flex items-center bg-black/40 p-1 rounded-lg border border-white/5">
+                    <Tooltip 
+                      label={searchSortOrder === 'asc' ? t('tooltip_sort_order_asc') : t('tooltip_sort_order_desc')} 
+                      placement="bottom"
                     >
-                      <ArrowDownAZ className="w-3.5 h-3.5" />
-                      A-Z
-                    </button>
-                  </Tooltip>
-                  <Tooltip label="Ordenar de Z a A" placement="bottom">
-                    <button
-                      onClick={() => setSearchSortOrder('desc')}
-                      className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-cyber font-bold tracking-wider rounded-md transition-all duration-300 cursor-pointer ${
-                        searchSortOrder === 'desc'
-                          ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)] border border-emerald-500/20'
-                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
-                      }`}
-                    >
-                      <ArrowUpZA className="w-3.5 h-3.5" />
-                      Z-A
-                    </button>
-                  </Tooltip>
+                      <button 
+                        onClick={() => setSearchSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                        aria-label={searchSortOrder === 'asc' ? t('tooltip_sort_order_asc') : t('tooltip_sort_order_desc')}
+                        className="p-1.5 rounded-md text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                      >
+                        {searchSortOrder === 'asc' ? (
+                          <ArrowDownAZ className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpZA className="w-4 h-4" />
+                        )}
+                      </button>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
-              <div className="text-[9px] font-mono text-slate-600 mb-3 px-1 shrink-0 tracking-wide">
+              <div className="text-[11px] font-sans text-slate-400 mb-3 px-1 shrink-0 tracking-normal">
                 {t('search_nav_hint')}
               </div>
 
@@ -6077,7 +6070,7 @@ export default function App() {
                 <div className="flex-1 flex flex-col items-center justify-center py-20 text-slate-500 space-y-2">
                   <Search className="w-8 h-8 text-slate-600 border border-dashed border-slate-700 p-1.5 rounded-lg" />
                   <span className="text-xs font-cyber">{t('search_results_empty')}</span>
-                  <span className="text-[10px] text-slate-600">{t('search_results_empty_hint')}</span>
+                  <span className="text-[11px] font-sans text-slate-500">{t('search_results_empty_hint')}</span>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
@@ -6927,7 +6920,7 @@ export default function App() {
             <div className="flex-1 min-h-0 flex flex-col">
               {mostUsed.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center px-2">
-                  <p className="text-[10px] font-mono text-slate-600 text-center leading-tight">{t('hud_most_used_empty')}</p>
+                  <p className="text-[11px] font-sans text-slate-500 text-center leading-tight">{t('hud_most_used_empty')}</p>
                 </div>
               ) : (
                 Array.from({ length: 10 }, (_, index) => {
@@ -7003,7 +6996,7 @@ export default function App() {
             <div className="flex-1 min-h-0 flex flex-col">
               {recentLaunches.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center px-2">
-                  <p className="text-[10px] font-mono text-slate-600 text-center leading-tight">{t('hud_history_empty')}</p>
+                  <p className="text-[11px] font-sans text-slate-500 text-center leading-tight">{t('hud_history_empty')}</p>
                 </div>
               ) : (
                 Array.from({ length: 10 }, (_, index) => {
