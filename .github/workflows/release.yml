@@ -82,3 +82,14 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # action-gh-release often keeps the existing body when the draft already exists.
+      # Force-write notes (with SHA256) the same way CyberPaste does.
+      - name: Publish checksums in release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --notes-file FINAL_RELEASE_NOTES.md
+          Write-Host "Updated release body with installer checksums."
