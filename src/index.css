@@ -148,3 +148,15 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
   mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
+
+/* Instantly suppress taskbar hover effects during wheel scroll until cursor moves */
+.taskbar-scrolling [data-taskbar-btn]:not([data-context-active="true"]) [data-taskbar-indicator] {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+.taskbar-scrolling [data-taskbar-btn]:not([data-context-active="true"]) [data-taskbar-icon] {
+  background-color: transparent !important;
+  transition: none !important;
+}
+

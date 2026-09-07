@@ -85,6 +85,13 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
     }
     if (label) setAnchor(e.currentTarget.getBoundingClientRect());
   };
+  const mouseMoveShow = (e: ReactMouseEvent<HTMLElement>) => {
+    child.props.onMouseMove?.(e);
+    if (document.body.getAttribute('data-context-menu-active') === 'true') {
+      return;
+    }
+    if (label && !anchor) setAnchor(e.currentTarget.getBoundingClientRect());
+  };
   const hide = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseLeave?.(e);
     setAnchor(null);
@@ -100,6 +107,7 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
 
   const cloned = cloneElement(child, {
     onMouseEnter: show,
+    onMouseMove: mouseMoveShow,
     onMouseLeave: hide,
     onClick: clickHide,
     onContextMenu: contextMenuHide,

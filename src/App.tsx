@@ -1616,6 +1616,49 @@ export default function App() {
   });
   const [draggedTaskbarId, setDraggedTaskbarId] = useState<number | null>(null);
   const [taskbarDropTarget, setTaskbarDropTarget] = useState<number | null>(null);
+  const taskbarContainerRef = useRef<HTMLDivElement>(null);
+  const taskbarLastWheelTime = useRef(0);
+  const taskbarMousePos = useRef<{ x: number; y: number } | null>(null);
+
+  // Restore taskbar hover effects only after wheel scrolling has stopped AND the mouse physically moves
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      const container = taskbarContainerRef.current;
+      if (!container) return;
+
+      if (!container.classList.contains('taskbar-scrolling')) {
+        taskbarMousePos.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
+      // Ignore mouse events if wheeling was active in the last 80ms (filters wheel jitter)
+      if (Date.now() - taskbarLastWheelTime.current < 80) {
+        taskbarMousePos.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
+      // Check for actual cursor repositioning (at least 2px movement)
+      const prev = taskbarMousePos.current;
+      const dx = prev ? Math.abs(e.clientX - prev.x) : 0;
+      const dy = prev ? Math.abs(e.clientY - prev.y) : 0;
+
+      if (dx >= 2 || dy >= 2) {
+        container.classList.remove('taskbar-scrolling');
+        taskbarMousePos.current = { x: e.clientX, y: e.clientY };
+      }
+    };
+
+    const handleWindowMouseDown = () => {
+      taskbarContainerRef.current?.classList.remove('taskbar-scrolling');
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove, { passive: true });
+    window.addEventListener('mousedown', handleWindowMouseDown, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mousedown', handleWindowMouseDown);
+    };
+  }, []);
 
   // Bandera para evitar guardar antes de que la carga inicial desde disco termine
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
@@ -6976,8 +7019,25 @@ export default function App() {
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
           <div
-            className={`flex gap-2 relative rounded-xl p-0.5 -m-0.5 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
+            ref={taskbarContainerRef}
+            className={`flex gap-2 relative rounded-xl p-0.5 pb-3 -m-0.5 -mb-3 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
             data-cl-drop="taskbar"
+            onWheel={(e) => {
+              const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+              if (delta !== 0) {
+                const container = e.currentTarget;
+                container.scrollLeft += delta;
+                e.preventDefault();
+
+                // Instantly suppress hover styles until user moves mouse
+                container.classList.add('taskbar-scrolling');
+                taskbarLastWheelTime.current = Date.now();
+                taskbarMousePos.current = { x: e.clientX, y: e.clientY };
+
+                // Instantly dismiss any open tooltips
+                window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+              }
+            }}
             onDragOver={(e) => {
               if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
               e.preventDefault();
@@ -6993,23 +7053,34 @@ export default function App() {
                 <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top">
                   <button 
                     draggable
-                    onDragStart={(e) => handleTaskbarDragStart(e, app.id)}
+                    data-taskbar-btn
+                    data-context-active={isTaskbarContextActive ? "true" : "false"}
+                    onDragStart={(e) => {
+                      taskbarContainerRef.current?.classList.remove('taskbar-scrolling');
+                      handleTaskbarDragStart(e, app.id);
+                    }}
                     onDragOver={(e) => handleTaskbarDragOver(e, app.id)}
                     onDrop={(e) => handleTaskbarDrop(e, app.id)}
                     onDragEnd={() => { setDraggedTaskbarId(null); setTaskbarDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
                     onDragLeave={() => setTaskbarDropTarget(prev => prev === app.id ? null : prev)}
                     onContextMenu={(e) => handleContextMenu(e, app)}
                     onClick={() => handleLaunchApp(app)}
-                    className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing ${
+                    className={`group relative focus:outline-none p-1 cursor-pointer ${
                       isTaskbarContextActive
                         ? 'bg-cyan-500/25 rounded-lg ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-105'
                         : draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
                     } ${taskbarDropTarget === app.id ? 'bg-cyan-500/20 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110' : ''}`} 
                   >
-                    <div className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}>
+                    <div
+                      data-taskbar-icon
+                      className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}
+                    >
                       <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
                     </div>
-                    <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center ${isTaskbarContextActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none`}>
+                    <div
+                      data-taskbar-indicator
+                      className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center ${isTaskbarContextActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none`}
+                    >
                       <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
                     </div>
                   </button>
