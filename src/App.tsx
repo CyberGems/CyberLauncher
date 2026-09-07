@@ -2149,6 +2149,7 @@ export default function App() {
   const updateNotifSeenRef = useRef<string>('');
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
+  const [openedViaDrop, setOpenedViaDrop] = useState(false);
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
@@ -2588,6 +2589,7 @@ export default function App() {
         setEditForm(emptyEditForm());
         setIsResolvingIcon(false);
         setIsAddingApp(true);
+        setOpenedViaDrop(false);
       }));
     }
     if (window.electronAPI.onOpenSettings) {
@@ -4480,6 +4482,7 @@ export default function App() {
           (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
         if (!isAnyModalOpen) {
           e.preventDefault();
+          setOpenedViaDrop(false);
           setEditForm(emptyEditForm());
           setIsResolvingIcon(false);
           setIsAddingApp(true);
@@ -4582,6 +4585,7 @@ export default function App() {
           setEditingApp(null);
         } else if (isAddingApp) {
           setIsAddingApp(false);
+          setOpenedViaDrop(false);
         } else if (isTerminalOpen) {
           setIsTerminalOpen(false);
           setSearchQuery('');
@@ -4822,6 +4826,7 @@ export default function App() {
           pinToFavorites: false,
           pinToTaskbar: false
         });
+        setOpenedViaDrop(true);
         setIsAddingApp(true);
         setIsResolvingIcon(true);
         try {
@@ -4857,6 +4862,7 @@ export default function App() {
           pinToFavorites: false,
           pinToTaskbar: false
         });
+        setOpenedViaDrop(true);
         setIsAddingApp(true);
       }
     }
@@ -5251,6 +5257,7 @@ export default function App() {
                     (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
                   e.preventDefault();
                   e.stopPropagation();
+                  setOpenedViaDrop(false);
                   setEditForm(emptyEditForm());
                   setIsResolvingIcon(false);
                   setIsAddingApp(true);
@@ -6360,6 +6367,7 @@ export default function App() {
                 >
                   <button 
                     onClick={() => {
+                      setOpenedViaDrop(false);
                       setEditForm(emptyEditForm());
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
@@ -6562,6 +6570,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => {
+                      setOpenedViaDrop(false);
                       setEditForm(emptyEditForm());
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
@@ -7075,6 +7084,7 @@ export default function App() {
           <Tooltip label={t('tooltip_add_taskbar_access')} placement="top">
             <button 
               onClick={() => {
+                setOpenedViaDrop(false);
                 setEditForm({ ...emptyEditForm(), pinToTaskbar: true });
                 setIsResolvingIcon(false);
                 setIsAddingApp(true);
@@ -7446,8 +7456,8 @@ export default function App() {
               </div>
 
               <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
-                {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app) */}
-                {isAddingApp && (
+                {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
+                {isAddingApp && !openedViaDrop && (
                   <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)]">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
@@ -7467,6 +7477,7 @@ export default function App() {
                       onClick={() => {
                         setIsAddingApp(false);
                         setEditingApp(null);
+                        setOpenedViaDrop(false);
                         setSettingsTab('uwp');
                         setIsSettingsOpen(true);
                       }}
@@ -7692,12 +7703,45 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Banner de acceso directo a Escáner WS (en la parte inferior si se abrió arrastrando) */}
+                {isAddingApp && openedViaDrop && (
+                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] mt-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
+                        <ScanSearch className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-cyber font-bold text-cyan-300 leading-tight">
+                          {t('app_add_uwp_banner_title')}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
+                          {t('app_add_uwp_banner_desc')}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingApp(false);
+                        setEditingApp(null);
+                        setOpenedViaDrop(false);
+                        setSettingsTab('uwp');
+                        setIsSettingsOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-cyber font-bold tracking-wide transition-all shrink-0 cursor-pointer hover:shadow-[0_0_12px_rgba(34,211,238,0.3)] active:scale-95"
+                    >
+                      <span>{t('app_add_uwp_banner_btn')}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
                 <button
                   type="button"
-                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
+                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setOpenedViaDrop(false); setIsResolvingIcon(false); }}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
                 >
                   {t('app_cancel')}

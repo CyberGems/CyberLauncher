@@ -1592,10 +1592,78 @@ function isGenericIcon(buf: Buffer): boolean {
   return false;
 }
 
+/** Extrae el icono original en alta resolución (256x256) mediante IShellItemImageFactory sin badges de flecha de acceso directo */
+async function extractShellItemIcon(itemPath: string): Promise<Buffer | null> {
+  if (!itemPath) return null;
+  const escaped = itemPath.replace(/'/g, "''");
+  const csharp = [
+    'using System;',
+    'using System.Runtime.InteropServices;',
+    'using System.Drawing;',
+    'public class ShellItemIconHelper {',
+    '  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
+    '  interface IShellItemImageFactory {',
+    '    [PreserveSig] int GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] int flags, [Out] out IntPtr phbm);',
+    '  }',
+    '  [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx; public int cy; public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; } }',
+    '  [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]',
+    '  static extern void SHCreateItemFromParsingName([In, MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellItemImageFactory ppv);',
+    '  public static string SaveIcon(string path, string outPath, int size) {',
+    '    try {',
+    '      Guid uuid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");',
+    '      IShellItemImageFactory factory;',
+    '      SHCreateItemFromParsingName(path, IntPtr.Zero, uuid, out factory);',
+    '      if (factory == null) return null;',
+    '      IntPtr hBitmap;',
+    '      int hr = factory.GetImage(new SIZE(size, size), 0x100, out hBitmap);',
+    '      if (hr != 0) return null;',
+    '      using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap)) {',
+    '        bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);',
+    '      }',
+    '      return outPath;',
+    '    } catch { return null; }',
+    '  }',
+    '}'
+  ].join('\n');
+
+  const psScript = `
+$ErrorActionPreference = 'SilentlyContinue'
+$code = @'
+${csharp}
+'@
+Add-Type -TypeDefinition $code -ReferencedAssemblies System.Drawing
+$tmp = [System.IO.Path]::GetTempFileName() + '.png'
+$res = [ShellItemIconHelper]::SaveIcon('${escaped}', $tmp, 256)
+if ($res -and (Test-Path $res)) { [Console]::WriteLine($res) }
+`;
+
+  const tmpPs = path.join(os.tmpdir(), `cl-shellitem-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`);
+  try {
+    await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+    const out = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+      encoding: 'utf-8',
+      timeout: 8000,
+      windowsHide: true,
+    }).trim();
+    if (out && fs.existsSync(out)) {
+      const buf = await fs.promises.readFile(out);
+      await fs.promises.unlink(out).catch(() => {});
+      return buf;
+    }
+  } catch (e: any) {
+    console.warn('[ICON] extractShellItemIcon error:', e?.message || e);
+  } finally {
+    await fs.promises.unlink(tmpPs).catch(() => {});
+  }
+  return null;
+}
+
 /** Extrae el icono original en alta resolución de paquetes UWP/MSIX sin badges de accesos directos */
 async function extractUwpIcon(aumid: string): Promise<Buffer | null> {
   const parts = aumid.split('!');
-  if (parts.length < 2) return null;
+  if (parts.length < 2) {
+    return await extractShellItemIcon(`shell:AppsFolder\\${aumid}`);
+  }
   const family = parts[0];
   const appId = parts[1];
 
@@ -1630,16 +1698,18 @@ $parent = Split-Path $full
 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($full)
 $ext = [System.IO.Path]::GetExtension($full)
 
-$best = (Get-ChildItem -Path $parent -Filter "$baseName*$ext" |
-    Sort-Object -Property @{ Expression = {
-        if ($_.Name -like '*targetsize-256*') { 1 }
-        elseif ($_.Name -like '*scale-200*') { 2 }
-        elseif ($_.Name -like '*targetsize-48*') { 3 }
-        elseif ($_.Name -like '*scale-100*') { 4 }
-        else { 5 }
-    }} | Select-Object -First 1)
+if (Test-Path $parent) {
+    $best = (Get-ChildItem -Path $parent -Filter "$baseName*$ext" |
+        Sort-Object -Property @{ Expression = {
+            if ($_.Name -like '*targetsize-256*') { 1 }
+            elseif ($_.Name -like '*scale-200*') { 2 }
+            elseif ($_.Name -like '*targetsize-48*') { 3 }
+            elseif ($_.Name -like '*scale-100*') { 4 }
+            else { 5 }
+        }} | Select-Object -First 1)
 
-if ($best) { [Console]::WriteLine($best.FullName) }
+    if ($best) { [Console]::WriteLine($best.FullName) }
+}
 `;
 
   try {
@@ -1655,8 +1725,19 @@ if ($best) { [Console]::WriteLine($best.FullName) }
       return await fs.promises.readFile(out);
     }
   } catch (e) {
-    console.warn('[ICON] extractUwpIcon error:', e);
+    console.warn('[ICON] extractUwpIcon manifest search error:', e);
   }
+
+  // Fallback para paquetes dispersos/externos (e.g. Copilot) o cuando no hay archivos en InstallLocation
+  try {
+    const shellBuf = await extractShellItemIcon(`shell:AppsFolder\\${aumid}`);
+    if (shellBuf && shellBuf.length > 100) {
+      return shellBuf;
+    }
+  } catch (e) {
+    console.warn('[ICON] extractUwpIcon shell fallback error:', e);
+  }
+
   return null;
 }
 
@@ -1797,17 +1878,23 @@ async function extractAndCacheIcon(
     }
   }
 
-  // 3. Extracción nativa con getFileIcon de Electron (extrae el icono real embebido en el .exe)
+  // 3. Extracción nativa: si es un acceso directo (.lnk), usar extractShellItemIcon para evitar badge de flecha;
+  // de lo contrario usar getFileIcon de Electron (extrae el icono real embebido en el .exe)
   if (!pngBuffer && fs.existsSync(resolvedPath)) {
     try {
-      let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
-      if (!icon || icon.isEmpty()) {
-        icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
+      if (path.extname(resolvedPath).toLowerCase() === '.lnk') {
+        pngBuffer = await extractShellItemIcon(resolvedPath);
       }
-      if (icon && !icon.isEmpty()) {
-        const buf = icon.toPNG();
-        if (!isGenericIcon(buf)) {
-          pngBuffer = buf;
+      if (!pngBuffer) {
+        let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
+        if (!icon || icon.isEmpty()) {
+          icon = await app.getFileIcon(resolvedPath, { size: 'normal' });
+        }
+        if (icon && !icon.isEmpty()) {
+          const buf = icon.toPNG();
+          if (!isGenericIcon(buf)) {
+            pngBuffer = buf;
+          }
         }
       }
     } catch (e) {
