@@ -153,7 +153,7 @@ npm run lint
 
 ### 🛡️ Windows SmartScreen
 
-Windows may show a SmartScreen warning the first time you run the CyberLauncher installer — this is expected until Windows builds enough reputation for the file.
+Windows may show a SmartScreen warning the first time you run the CyberLauncher installer — this is an unsigned hobby app, so Windows hasn't built reputation for the file yet. This is expected; the source is public so you can inspect exactly what it does.
 
 To continue:
 
