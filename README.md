@@ -5,7 +5,7 @@
 <h1 align="center">CyberLauncher — Desktop Application Launcher</h1>
 
 <p align="center">
-  <strong>A full-screen, cyberpunk-themed launcher for Windows</strong>
+  <strong>A full-screen launcher for Windows</strong>
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
   <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/%F0%9F%93%96_Wiki-Documentation-222222?style=flat-square&logo=github&logoColor=white" alt="Wiki" height="24" /></a>
 </p>
 
-A full-screen, glassmorphic application launcher built with **Electron + React + TypeScript**. Designed to replace the traditional Windows Start Menu, CyberLauncher provides a fast, keyboard-driven workflow to organize, search, and launch your apps — all wrapped in a sleek cyberpunk interface with neon accents.
+A full-screen, glassmorphic application launcher built with **Electron + React + TypeScript**. Designed to replace the traditional Windows Start Menu, CyberLauncher provides a fast, keyboard-driven workflow to organize, search, and launch your apps — all wrapped in a sleek modern interface with neon accents.
 
 *Free and open source (GPLv3) — no ads, no tracking, and no data collection. Just enjoy it.*
 
