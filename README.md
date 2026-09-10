@@ -172,40 +172,6 @@ To continue:
 
 ---
 
-## ❓ Frequently Asked Questions
-
-### What is CyberLauncher?
-
-CyberLauncher is a full-screen desktop application launcher for Windows. It replaces the traditional Start Menu with a fast, keyboard-driven interface featuring fuzzy search, system-wide file indexing, and a distinctive cyberpunk aesthetic.
-
-### Does it replace the Windows Start Menu?
-
-CyberLauncher runs alongside Windows — it doesn't modify system files. You can use it as your primary launcher while keeping the Start Menu accessible. Many users set CyberLauncher to auto-start and use the global hotkey to summon it instantly.
-
-### Where is configuration stored?
-
-All settings are stored in a single JSON file:
-
-```
-%APPDATA%/CyberLauncher/cyber-launcher-config.json
-```
-
-This includes apps, categories, favorites, taskbar pins, theme settings, shortcuts, indexer configuration, and scheduler tasks. You can export/import this file for backup.
-
-### How do per-app global shortcuts work?
-
-In the Add/Edit drawer for any app, you can assign a custom hotkey. CyberLauncher registers it system-wide via Electron's `globalShortcut` API, so you can launch that app from any application at any time.
-
-### Does it support UWP / Microsoft Store apps?
-
-Yes. CyberLauncher scans for UWP and MSIX packaged apps via their AUMID (Application User Model ID) and imports them into your library. They launch natively alongside traditional desktop apps.
-
-### Can I contribute?
-
-Absolutely! Fork the repository, create a feature branch, and submit a pull request. Please ensure your changes pass `npm run lint` before submitting.
-
----
-
 ## ❤️ Donate
 
 **CyberLauncher** is one of the projects in [CyberGems](https://github.com/CyberGems#-all-apps--repositories), a personal set of daily-use tools for Windows. I've spent countless hours building and refining it for my own use, and it will continue to be maintained by me. I recently decided to share the entire suite with the world, completely free and open-source.
@@ -250,6 +216,10 @@ If you're enjoying CyberLauncher, I'd be truly grateful for your support! You ca
 CyberLauncher is distributed under the terms of the GNU General Public License v3.0. See [LICENSE](./LICENSE) for the full license text.
 
 Copyright (C) 2026 CyberGems
+
+## ❓ FAQ
+
+For frequently asked questions, troubleshooting guides, and detailed configuration instructions, visit the [FAQ](https://github.com/CyberGems/CyberLauncher/wiki/FAQ) or the [online documentation](https://cybergems.org/docs/cyberlauncher/FAQ).
 
 ---
 
