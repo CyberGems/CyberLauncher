@@ -217,6 +217,8 @@ CyberLauncher is distributed under the terms of the GNU General Public License v
 
 Copyright (C) 2026 CyberGems
 
+---
+
 ## ❓ FAQ
 
 For frequently asked questions, troubleshooting guides, and detailed configuration instructions, visit the [FAQ](https://github.com/CyberGems/CyberLauncher/wiki/FAQ) or the [online documentation](https://cybergems.org/docs/cyberlauncher/FAQ).
