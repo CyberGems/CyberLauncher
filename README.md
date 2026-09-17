@@ -5,7 +5,7 @@
 <h1 align="center">CyberLauncher: Desktop Application Launcher</h1>
 
 <p align="center">
-  <strong>A full-screen launcher for Windows</strong>
+  <strong>A Windows application launcher with hot corners, scheduler, system monitor, glassmorphic UI, and integrated terminal</strong>
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
   <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/%F0%9F%93%96_Wiki-Documentation-222222?style=flat-square&logo=github&logoColor=white" alt="Wiki" height="24" /></a>
 </p>
 
-A full-screen, glassmorphic application launcher built with **Electron + React + TypeScript**. Designed to replace the traditional Windows Start Menu, CyberLauncher provides a fast, keyboard-driven workflow to organize, search, and launch your apps, all wrapped in a sleek modern interface with neon accents.
+A full-screen, glassmorphic application launcher built with **Electron + React + TypeScript**. CyberLauncher provides a fast, keyboard-driven workflow with hot corners, scheduler, system monitor, and integrated terminal to organize, search, and launch your apps, all wrapped in a sleek modern interface with neon accents.
 
 *Free and open source (GPLv3): no ads, no tracking, and no data collection. Just enjoy it.*
 
@@ -28,12 +28,12 @@ A full-screen, glassmorphic application launcher built with **Electron + React +
 
 ## 🚀 Why CyberLauncher?
 
-The Windows Start Menu works, but it's slow, cluttered, and mouse-driven. CyberLauncher reimagines app launching from the ground up: **type to search, hotkey to summon, click to launch**. No more digging through nested folders or scrolling through an alphabet soup of icons.
+CyberLauncher streamlines app launching from the ground up: **type to search, hotkey to summon, click to launch**. No more digging through nested folders or scrolling through cluttered menus.
 
 | Need | Solution |
 |---|---|
-| Replace the clunky Start Menu | Full-screen, keyboard-driven launcher with instant fuzzy search |
-| Find anything on your PC | Hybrid indexing engine — Everything-grade file search across all drives |
+| Rapid app launching | Full-screen, keyboard-driven launcher with instant fuzzy search |
+| Find anything on your PC | Hybrid indexing engine: Everything-grade file search across all drives |
 | Stay organized | Color-coded categories, favorites bar, drag-to-reorder, taskbar pins |
 | Launch from anywhere | Global hotkey, hot corners, per-app custom shortcuts |
 | Track your workflow | Execution history, scheduled launches, console command runner |
@@ -44,43 +44,43 @@ The Windows Start Menu works, but it's slow, cluttered, and mouse-driven. CyberL
 ## ✨ Key Features
 
 ### 🔍 Launch & Search
-- **Instant Launch** — Open any app, shortcut (.lnk), or URL with a single click or Enter
-- **Fuzzy Search** — Start typing to instantly filter your app library (no exact match needed)
-- **System-Wide File Search** — Hybrid indexing engine finds files, folders, and apps across all drives
-- **UWP / Windows Store Support** — Natively scan, import, and launch UWP & MSIX apps via AUMID
-- **Console Mode** — Type `>` in search to execute shell commands directly
+- **Instant Launch**: Open any app, shortcut (.lnk), or URL with a single click or Enter
+- **Fuzzy Search**: Start typing to instantly filter your app library (no exact match needed)
+- **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
+- **UWP / Windows Store Support**: Natively scan, import, and launch UWP & MSIX apps via AUMID
+- **Console Mode**: Type `>` in search to execute shell commands directly
 
 ### 📂 Organization
-- **Custom Categories** — Organize apps into color-coded categories with inline editing
-- **Favorites & Drag-to-Reorder** — Pin most-used apps with drag & drop reordering
-- **Taskbar** — Customizable bottom bar with pinned apps for quick access
-- **Resizable Panels** — Drag to resize the category sidebar and most-used panel
+- **Custom Categories**: Organize apps into color-coded categories with inline editing
+- **Favorites & Drag-to-Reorder**: Pin most-used apps with drag & drop reordering
+- **Taskbar**: Customizable bottom bar with pinned apps for quick access
+- **Resizable Panels**: Drag to resize the category sidebar and most-used panel
 
 ### 🎯 Activation
-- **Global Shortcut** — Show/hide with a customizable keyboard shortcut (default: `Alt+Shift+L`)
-- **Hot Corners** — Activate the launcher by moving your cursor to any screen corner
-- **Multi-Monitor Support** — Choose which display CyberLauncher appears on (including "Follow cursor")
-- **Auto-Hide on Blur** — Launcher hides automatically when switching to another window
+- **Global Shortcut**: Show/hide with a customizable keyboard shortcut (default: `Alt+Shift+L`)
+- **Hot Corners**: Activate the launcher by moving your cursor to any screen corner
+- **Multi-Monitor Support**: Choose which display CyberLauncher appears on (including "Follow cursor")
+- **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
 
 ### 📊 System & Monitoring
-- **System Monitor** — Real-time RAM, CPU, and disk usage in the top bar
-- **Storage HUD** — View free space and status of all system drives
-- **Execution Scheduler** — Schedule app launches or console commands with a countdown timer
-- **Execution History** — Track and reopen everything you've launched, with clear-history option
+- **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
+- **Storage HUD**: View free space and status of all system drives
+- **Execution Scheduler**: Schedule app launches or console commands with a countdown timer
+- **Execution History**: Track and reopen everything you've launched, with clear-history option
 
 ### 🎨 Customization
-- **Theming** — Background images, gradients, solid colors, glass intensity, and opacity controls
-- **UI Scale** — Adjust the interface size to your preference
-- **Bilingual UI** — Full English and Spanish interface with instant language switcher
+- **Theming**: Background images, gradients, solid colors, glass intensity, and opacity controls
+- **UI Scale**: Adjust the interface size to your preference
+- **Bilingual UI**: Full English and Spanish interface with instant language switcher
 
 ### ⚡ Power User
-- **Run as Administrator** — Per-app option to request elevated privileges on launch
-- **Per-App Global Shortcuts** — Assign custom hotkeys to launch any app from anywhere
-- **Drag & Drop from Explorer** — Drag `.exe` or `.lnk` files directly into the launcher to add them
-- **Auto-Updates** — Automatic update checks and downloads via GitHub releases
-- **Export / Import** — Backup and restore your entire configuration as JSON
-- **Single Instance** — Only one instance runs at a time; second launches focus the existing window
-- **Launch with Windows** — Optionally start minimized or visible at system boot
+- **Run as Administrator**: Per-app option to request elevated privileges on launch
+- **Per-App Global Shortcuts**: Assign custom hotkeys to launch any app from anywhere
+- **Drag & Drop from Explorer**: Drag `.exe` or `.lnk` files directly into the launcher to add them
+- **Auto-Updates**: Automatic update checks and downloads via GitHub releases
+- **Export / Import**: Backup and restore your entire configuration as JSON
+- **Single Instance**: Only one instance runs at a time; second launches focus the existing window
+- **Launch with Windows**: Optionally start minimized or visible at system boot
 
 ---
 
