@@ -23,9 +23,11 @@ Welcome to the official **CyberLauncher {{VERSION}}** release! CyberLauncher is 
 
 ### 📦 Downloads & Packages
 
+> ⬇️ **Direct download:** click the file name to download it now. Same file as in **Assets** at the bottom of this page.
+
 | File | Description | Platform |
 | :--- | :--- | :--- |
-| **`CyberLauncher-Setup-{{VERSION_NUM}}.exe`** | 🚀 **Recommended Installer** (NSIS Setup with Start Menu & Desktop shortcuts) | Windows 10 / 11 (x64) |
+| **[`CyberLauncher-Setup-{{VERSION_NUM}}.exe`](https://github.com/CyberGems/CyberLauncher/releases/download/{{VERSION}}/CyberLauncher-Setup-{{VERSION_NUM}}.exe)** | 🚀 **Recommended Installer** (NSIS Setup with Start Menu & Desktop shortcuts) | Windows 10 / 11 (x64) |
 
 ---
 
