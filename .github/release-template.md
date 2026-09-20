@@ -1,6 +1,13 @@
-## 📋 CyberLauncher {{VERSION}} — Release Notes
+## 📋 CyberLauncher {{VERSION}}: Release Notes
 
-Welcome to the official **CyberLauncher {{VERSION}}** release! CyberLauncher is a fast, full-screen, keyboard-driven desktop launcher for Windows — organize, search, and launch your apps from a unified cyberpunk panel.
+### 🚀 What's new in this release
+
+<!-- Maintainer: Rewrite the marked paragraph for every release. Use 25-45 words, lead with user-facing changes, and do not repeat the app name or version. -->
+<!-- changelog-summary:start -->
+Recent shortcuts are now available directly from the tray, update notices offer clearer actions, the About experience is leaner, and release checksums are kept accurate automatically after publishing.
+<!-- changelog-summary:end -->
+
+> **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
 
 ---
 
