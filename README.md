@@ -20,7 +20,11 @@
   <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-1F2428?style=flat-square&logo=gitbook&logoColor=white&color=4C51BF" alt="Wiki" /></a>
 </p>
 
-A full-screen, glassmorphic application launcher. CyberLauncher provides a fast, keyboard-driven workflow with hot corners, scheduler, system monitor, and integrated terminal to organize, search, and launch your apps, all wrapped in a sleek modern interface with neon accents. Built with **Electron + React + TypeScript**.
+---
+
+## What is CyberLauncher?
+
+CyberLauncher is a full-screen application launcher that turns finding and opening things on Windows into a fast, keyboard-driven workflow. Search applications and files, organize favorites and categories, summon the launcher with a global hotkey or hot corners, and automate recurring launches with the scheduler. Integrated system monitoring, command tools, extensive appearance controls, and a sleek glass interface make it both a practical Start Menu alternative and a customizable desktop command center. Built with **Electron + React + TypeScript**.
 
 *Free and open source (GPLv3): no ads, no tracking, and no data collection. Just enjoy it.*
 
