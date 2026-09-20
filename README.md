@@ -1,23 +1,19 @@
 <p align="center">
-  <img src="public/icon-256.png" alt="CyberLauncher" width="120" />
-</p>
-
-<h1 align="center">CyberLauncher: Desktop Application Launcher</h1>
-
-<p align="center">
-  <strong>A Windows application launcher with hot corners, scheduler, system monitor, glassmorphic UI, and integrated terminal</strong>
+  <a href="https://cybergems.org/apps/cyberlauncher/">
+    <img src="https://cybergems.org/banners/cyberlauncher.png" alt="CyberLauncher, a fast and customizable launcher for apps, files and commands" />
+  </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/CyberGems/CyberLauncher/releases/latest"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FCyberGems%2FCyberLauncher%2Fmain%2Fpackage.json&query=%24.version&prefix=%20Download%20CyberLauncher%20v&suffix=%20&style=for-the-badge&label=&labelColor=4C51BF&color=4C51BF" alt="Download Latest Release" /><img src="https://img.shields.io/badge/Windows_64--bit-0078D4?style=for-the-badge" alt="Windows 64-bit" /></a>
-  &nbsp;<a href="https://github.com/CyberGems/CyberLauncher/releases"><img src="https://img.shields.io/badge/All_releases-2B3137?style=for-the-badge&logo=github&logoColor=white" alt="All Releases" /><img src="https://img.shields.io/badge/Changelog-3B444B?style=for-the-badge" alt="Changelog" /></a>
+  <a href="https://github.com/CyberGems/CyberLauncher/releases/latest"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FCyberGems%2FCyberLauncher%2Fmain%2Fpackage.json&query=%24.version&prefix=%20Download%20CyberLauncher%20v&suffix=%20&style=for-the-badge&label=&labelColor=0891B2&color=0891B2" alt="Download Latest Release" /><img src="https://img.shields.io/badge/Windows_10%2F11_(64--bit)-2563EB?style=for-the-badge" alt="Windows 10/11 (64-bit)" /></a>
+  &nbsp;<a href="https://github.com/CyberGems/CyberLauncher/releases"><img src="https://img.shields.io/badge/All_releases-30363D?style=for-the-badge&logo=github&logoColor=white" alt="All Releases" /><img src="https://img.shields.io/badge/Changelog-475569?style=for-the-badge" alt="Changelog" /></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL--3.0-1F2428.svg?style=flat-square&color=4C51BF" alt="License" />&nbsp;
-  <img src="https://img.shields.io/badge/Platform-Windows-1F2428.svg?style=flat-square&color=0078D4" alt="Platform" />&nbsp;
-  <img src="https://img.shields.io/badge/Electron-42-1F2428.svg?style=flat-square&logo=electron&logoColor=white&color=47848F" alt="Electron" />&nbsp;
-  <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-1F2428?style=flat-square&logo=gitbook&logoColor=white&color=4C51BF" alt="Wiki" /></a>
+  <img src="https://img.shields.io/badge/License-GPL--3.0-1F2428.svg?style=flat-square&color=334155" alt="License" />&nbsp;
+  <img src="https://img.shields.io/badge/Platform-Windows_10%2F11-1F2428.svg?style=flat-square&color=334155" alt="Platform" />&nbsp;
+  <img src="https://img.shields.io/badge/Electron-42-1F2428.svg?style=flat-square&logo=electron&logoColor=white&color=334155" alt="Electron" />&nbsp;
+  <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/Wiki-Documentation-1F2428?style=flat-square&logo=gitbook&logoColor=white&color=334155" alt="Wiki" /></a>
 </p>
 
 ---
