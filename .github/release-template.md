@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/CyberGems/CyberLauncher/main/public/icon.png" width="120" alt="CyberLauncher">
+</p>
+
 ## 📋 CyberLauncher {{VERSION}}: Release Notes
 
 ### 🚀 What's new in this release
