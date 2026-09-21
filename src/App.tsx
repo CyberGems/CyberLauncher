@@ -14,7 +14,7 @@ import {
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp
 } from 'lucide-react';
 
 // (CyberTray import removed)
@@ -754,6 +754,33 @@ const RotatingSearchPlaceholder = React.memo(({
 });
 
 /** Recommendation prompt to pin CyberLauncher to the Windows taskbar notification area */
+const TrayOverflowText = ({ text }: { text: string }) => {
+  const markerIndex = text.indexOf('(^)');
+  if (markerIndex < 0) return <>{text}</>;
+
+  const beforeMarker = text.slice(0, markerIndex);
+  const afterMarker = text.slice(markerIndex + 3);
+  const overflowLeadMatch = beforeMarker.match(/^(.*\s)(\S+\s+\S+\s*)$/s);
+  const textPrefix = overflowLeadMatch?.[1] ?? beforeMarker;
+  const overflowLead = overflowLeadMatch?.[2]?.trimEnd() ?? '';
+
+  return (
+    <>
+      {textPrefix}
+      <span className="whitespace-nowrap">
+        {overflowLead}
+        <span
+          aria-hidden="true"
+          className="mx-0.5 inline-flex h-[1.2em] w-[1.2em] -translate-y-[0.04em] items-center justify-center rounded-[4px] border border-white/20 bg-white/[0.07] align-middle text-slate-200/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+        >
+          <ChevronUp size={11} strokeWidth={2.5} />
+        </span>
+      </span>
+      {afterMarker}
+    </>
+  );
+};
+
 const TrayPinTip = React.memo(({
   onClose,
   onOpenSettings,
@@ -786,18 +813,19 @@ const TrayPinTip = React.memo(({
             {t('tray_pin_tip_title')}
           </h3>
         </div>
-        <button
-          type="button"
-          onClick={() => onClose(dontShowAgain)}
-          className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
-          title={t('tray_pin_tip_dismiss')}
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+        <Tooltip label={t('tray_pin_tip_dismiss')} placement="bottom">
+          <button
+            type="button"
+            onClick={() => onClose(dontShowAgain)}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       <p className="mt-2.5 text-xs leading-relaxed text-slate-300 font-sans">
-        {t('tray_pin_tip_body')}
+        <TrayOverflowText text={t('tray_pin_tip_body')} />
       </p>
 
       <label 
@@ -8676,7 +8704,9 @@ export default function App() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_pin_title')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_pin_desc')}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            <TrayOverflowText text={t('sys_tray_pin_desc')} />
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">

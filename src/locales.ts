@@ -424,7 +424,7 @@ export const translations = {
 
     // System Settings - Tray Pin Section
     sys_tray_pin_title: "Fijar icono en la bandeja de Windows",
-    sys_tray_pin_desc: "Recomienda y abre la configuración de Windows para mantener el icono siempre visible junto al reloj del sistema.",
+    sys_tray_pin_desc: "Permite mantener el icono visible junto al reloj del sistema, fuera del menú de desbordamiento (^).",
     sys_tray_pin_btn: "Abrir Configuración",
     sys_tray_pin_tip_btn: "Ver recomendación",
 
@@ -925,7 +925,7 @@ export const translations = {
 
     // System Settings - Tray Pin Section
     sys_tray_pin_title: "Pin icon in Windows system tray",
-    sys_tray_pin_desc: "Recommends and opens Windows settings to keep the tray icon always visible next to the system clock.",
+    sys_tray_pin_desc: "Keeps the icon visible next to the system clock, outside the overflow menu (^).",
     sys_tray_pin_btn: "Open Settings",
     sys_tray_pin_tip_btn: "Show tip",
 
