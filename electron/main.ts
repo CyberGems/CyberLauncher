@@ -1419,14 +1419,49 @@ function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
   return { x: Math.round(cardX - pad), y: Math.round(cardY - pad), width: windowW, height: windowH };
 }
 
+function getTrayPreloadPath(): string {
+  const isDev = Boolean(VITE_DEV_SERVER_URL);
+  const candidates = [
+    isDev ? path.join(__dirname, '../public/tray/tray-preload.js') : '',
+    path.join(app.getAppPath(), 'dist/tray/tray-preload.js'),
+    path.join(__dirname, '../dist/tray/tray-preload.js'),
+    path.join(__dirname, '../public/tray/tray-preload.js'),
+    path.join(process.cwd(), 'public/tray/tray-preload.js'),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return path.join(__dirname, '../public/tray/tray-preload.js');
+}
+
+function getTrayHtmlPath(): string {
+  const isDev = Boolean(VITE_DEV_SERVER_URL);
+  const candidates = [
+    isDev ? path.join(__dirname, '../public/tray/tray-menu.html') : '',
+    path.join(app.getAppPath(), 'dist/tray/tray-menu.html'),
+    path.join(__dirname, '../dist/tray/tray-menu.html'),
+    path.join(__dirname, '../public/tray/tray-menu.html'),
+    path.join(process.cwd(), 'public/tray/tray-menu.html'),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return path.join(__dirname, '../public/tray/tray-menu.html');
+}
+
 function ensureTrayMenuWin(): BrowserWindow {
   if (trayMenuWin && !trayMenuWin.isDestroyed()) return trayMenuWin;
 
-  const isDev = Boolean(VITE_DEV_SERVER_URL);
-  const trayHtml = isDev
-    ? path.join(__dirname, '../public/tray/tray-menu.html')
-    : path.join(app.getAppPath(), 'dist/tray/tray-menu.html');
-  const preloadPath = path.join(__dirname, 'preload.mjs');
+  const trayHtml = getTrayHtmlPath();
+  const preloadPath = getTrayPreloadPath();
+
+  console.log('[TRAY] Initializing tray menu window:', { trayHtml, preloadPath });
 
   const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
   trayMenuWin = new BrowserWindow({
@@ -1450,6 +1485,10 @@ function ensureTrayMenuWin(): BrowserWindow {
       nodeIntegration: false,
       sandbox: false,
     },
+  });
+
+  trayMenuWin.webContents.on('console-message', (_e, level, msg, line, src) => {
+    console.log(`[TRAY-CONSOLE] [lvl=${level}] ${msg} (${src}:${line})`);
   });
 
   trayMenuWin.setAlwaysOnTop(true, 'pop-up-menu');

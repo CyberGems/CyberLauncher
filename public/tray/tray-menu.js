@@ -22,7 +22,9 @@ const ICONS = {
   appDefault: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
 };
 
-const api = window.trayMenu;
+function getApi() {
+  return window.trayMenu || (window.electronAPI && window.electronAPI.trayMenu) || null;
+}
 const cardEl = document.getElementById('card');
 const headEl = document.getElementById('head');
 const headDividerEl = document.getElementById('headDivider');
@@ -188,6 +190,7 @@ function makeItem(def) {
       currentView = def.localAction;
       renderView(true);
     } else if (def.action) {
+      const api = getApi();
       if (api && api.action) {
         api.action(def.action, def.payload);
       }
@@ -224,12 +227,14 @@ function renderHead() {
     headEl.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      const api = getApi();
       if (api && api.action) api.action('about-modal');
     };
     headEl.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         e.stopPropagation();
+        const api = getApi();
         if (api && api.action) api.action('about-modal');
       }
     };
@@ -256,6 +261,7 @@ function renderHead() {
       brandBtn.className = 'suite-brand-mark';
       brandBtn.innerHTML = `<img class="suite-brand-logo" src="../assets/cybergems-logo.svg" alt="" onerror="this.src='../assets/cybergems-logo.png'"><span class="suite-brand-name">CyberGems</span>`;
       brandBtn.onclick = () => {
+        const api = getApi();
         if (api && api.action) api.action('suite-home');
       };
       headEl.appendChild(brandBtn);
@@ -501,6 +507,7 @@ function reportSize() {
     const cardRect = cardEl.getBoundingClientRect();
     const h = Math.ceil(cardEl.scrollHeight + 40);
     const w = Math.ceil(cardRect.width + 40);
+    const api = getApi();
     if (api && api.ready && w > 0 && h > 0) {
       api.ready({ width: w, height: h });
     }
@@ -510,6 +517,7 @@ function reportSize() {
 function hideMenu() {
   currentView = 'main';
   renderView(false);
+  const api = getApi();
   if (api && api.hide) {
     api.hide();
   }
@@ -530,6 +538,7 @@ window.addEventListener('blur', () => {
   currentView = 'main';
   renderView(false);
   setTimeout(() => {
+    const api = getApi();
     if (api && api.hide) api.hide();
   }, 100);
 });
@@ -543,7 +552,12 @@ function resetToMain() {
 }
 
 // Subscribe to IPC
-if (api) {
+let ipcInitialized = false;
+function initIpc() {
+  if (ipcInitialized) return true;
+  const api = getApi();
+  if (!api) return false;
+
   if (api.onState) {
     api.onState((state) => {
       if (state) {
@@ -565,5 +579,17 @@ if (api) {
   if (api.requestState) {
     api.requestState();
   }
+
+  ipcInitialized = true;
+  return true;
+}
+
+if (!initIpc()) {
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!initIpc()) {
+      setTimeout(initIpc, 50);
+      setTimeout(initIpc, 200);
+    }
+  });
 }
 
