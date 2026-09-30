@@ -1422,11 +1422,11 @@ function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
 function getTrayPreloadPath(): string {
   const isDev = Boolean(VITE_DEV_SERVER_URL);
   const candidates = [
-    isDev ? path.join(__dirname, '../public/tray/tray-preload.js') : '',
-    path.join(app.getAppPath(), 'dist/tray/tray-preload.js'),
-    path.join(__dirname, '../dist/tray/tray-preload.js'),
-    path.join(__dirname, '../public/tray/tray-preload.js'),
-    path.join(process.cwd(), 'public/tray/tray-preload.js'),
+    isDev ? path.join(__dirname, '../public/tray/tray-preload.cjs') : '',
+    path.join(app.getAppPath(), 'dist/tray/tray-preload.cjs'),
+    path.join(__dirname, '../dist/tray/tray-preload.cjs'),
+    path.join(__dirname, '../public/tray/tray-preload.cjs'),
+    path.join(process.cwd(), 'public/tray/tray-preload.cjs'),
   ].filter(Boolean);
 
   for (const candidate of candidates) {
@@ -1434,7 +1434,7 @@ function getTrayPreloadPath(): string {
       return candidate;
     }
   }
-  return path.join(__dirname, '../public/tray/tray-preload.js');
+  return path.join(__dirname, '../public/tray/tray-preload.cjs');
 }
 
 function getTrayHtmlPath(): string {
@@ -1491,6 +1491,14 @@ function ensureTrayMenuWin(): BrowserWindow {
     console.log(`[TRAY-CONSOLE] [lvl=${level}] ${msg} (${src}:${line})`);
   });
 
+  trayMenuWin.webContents.on('preload-error', (_e, pPath, error) => {
+    console.error('[TRAY-PRELOAD-ERROR]', pPath, error);
+  });
+
+  trayMenuWin.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error('[TRAY-FAIL-LOAD]', code, desc, url);
+  });
+
   trayMenuWin.setAlwaysOnTop(true, 'pop-up-menu');
   void trayMenuWin.loadFile(trayHtml);
 
@@ -1522,7 +1530,7 @@ function showCustomTrayMenu(eventBounds?: any) {
     ? eventBounds : null;
   if (!b) { try { b = tray.getBounds(); } catch (_) { b = null; } }
   if (!b || (!b.width && !b.height)) {
-    let p: any = null; try { p = screen.getCursorScreenPoint(); } catch (_) { p = null; }
+    let p: any = null; try { p = screen.getCursorScreenPoint(); } catch (_) { p = { x: 0, y: 0 }; }
     b = p ? { x: p.x, y: p.y, width: 0, height: 0 } : { x: 0, y: 0, width: 0, height: 0 };
   }
 
@@ -1578,6 +1586,11 @@ function createTray() {
   if (tray) return;
   tray = new Tray(getTrayIcon());
   rebuildTrayMenu();
+  try {
+    ensureTrayMenuWin();
+  } catch (err: any) {
+    console.warn('[TRAY] Failed to prewarm tray window:', err?.message || err);
+  }
 
   if (process.platform === 'win32') {
     tray.on('mouse-enter', () => {

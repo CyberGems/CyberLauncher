@@ -191,8 +191,11 @@ function makeItem(def) {
       renderView(true);
     } else if (def.action) {
       const api = getApi();
+      console.log('[TRAY-CLICK] action:', def.action, 'api present:', Boolean(api));
       if (api && api.action) {
         api.action(def.action, def.payload);
+      } else {
+        console.warn('[TRAY-CLICK-WARN] action ignored, api is:', api);
       }
     }
   });
@@ -556,10 +559,12 @@ let ipcInitialized = false;
 function initIpc() {
   if (ipcInitialized) return true;
   const api = getApi();
+  console.log('[TRAY-INIT-IPC] api present:', Boolean(api), 'window.trayMenu:', Boolean(window.trayMenu));
   if (!api) return false;
 
   if (api.onState) {
     api.onState((state) => {
+      console.log('[TRAY-ON-STATE] received state. recents:', state?.recents?.length);
       if (state) {
         currentState = { ...currentState, ...state };
         if (state.resetView) currentView = 'main';
@@ -577,6 +582,7 @@ function initIpc() {
   }
 
   if (api.requestState) {
+    console.log('[TRAY-REQ-STATE] requesting state from main');
     api.requestState();
   }
 
