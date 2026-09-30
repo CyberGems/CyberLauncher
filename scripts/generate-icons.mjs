@@ -73,12 +73,49 @@ async function extractIcoLayers(icoBuf) {
   return layers;
 }
 
+async function generateIcoFromPng(srcPngPath, destIcoPath) {
+  const sizes = [16, 20, 24, 32, 40, 48, 64, 128, 256];
+  const pngBuffers = [];
+  for (const size of sizes) {
+    const buf = await sharp(srcPngPath)
+      .resize(size, size, { kernel: 'lanczos3', fit: 'contain' })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    pngBuffers.push({ width: size, height: size, buffer: buf });
+  }
+
+  const count = pngBuffers.length;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(count, 4);
+
+  let offset = 6 + count * 16;
+  const dirEntries = [];
+  for (const item of pngBuffers) {
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(item.width >= 256 ? 0 : item.width, 0);
+    entry.writeUInt8(item.height >= 256 ? 0 : item.height, 1);
+    entry.writeUInt8(0, 2);
+    entry.writeUInt8(0, 3);
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(item.buffer.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    dirEntries.push(entry);
+    offset += item.buffer.length;
+  }
+  const ico = Buffer.concat([header, ...dirEntries, ...pngBuffers.map(p => p.buffer)]);
+  fs.writeFileSync(destIcoPath, ico);
+  console.log('generated', path.basename(destIcoPath), 'with', count, 'sizes');
+}
+
 async function main() {
   if (!fs.existsSync(srcPng)) {
     throw new Error(`Missing ${srcPng} — place the 1024×1024 master PNG in artifacts/`);
   }
-  if (!fs.existsSync(srcIco)) {
-    throw new Error(`Missing ${srcIco} — place the multi-size Windows ICO in artifacts/`);
+  if (!fs.existsSync(srcIco) || fs.statSync(srcPng).mtimeMs > fs.statSync(srcIco).mtimeMs) {
+    await generateIcoFromPng(srcPng, srcIco);
   }
 
   fs.mkdirSync(pub, { recursive: true });
