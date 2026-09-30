@@ -33,7 +33,7 @@ const exitGroupEl = document.getElementById('exitGroup');
 let currentState = {
   version: '1.9.2',
   lang: 'es',
-  isVisible: true,
+  isVisible: false,
   shortcut: 'Alt+Shift+L',
   showTrayRecents: true,
   showSuiteRecommendations: true,
@@ -220,8 +220,18 @@ function renderHead() {
 
     headEl.appendChild(logo);
     headEl.appendChild(titleWrap);
-    headEl.onclick = () => {
+    headEl.title = t('about');
+    headEl.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       if (api && api.action) api.action('about-modal');
+    };
+    headEl.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (api && api.action) api.action('about-modal');
+      }
     };
   } else {
     headDividerEl.style.display = 'block';
@@ -478,6 +488,7 @@ function reportSize() {
 
 function hideMenu() {
   currentView = 'main';
+  renderView(false);
   if (api && api.hide) {
     api.hide();
   }
@@ -496,6 +507,7 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 // Blur dismiss
 window.addEventListener('blur', () => {
   currentView = 'main';
+  renderView(false);
   setTimeout(() => {
     if (api && api.hide) api.hide();
   }, 100);
@@ -503,6 +515,11 @@ window.addEventListener('blur', () => {
 
 // Initial immediate render so card is never empty
 renderView(false);
+
+function resetToMain() {
+  currentView = 'main';
+  renderView(false);
+}
 
 // Subscribe to IPC
 if (api) {
@@ -517,10 +534,11 @@ if (api) {
   }
 
   if (api.onShow) {
-    api.onShow(() => {
-      currentView = 'main';
-      renderView(false);
-    });
+    api.onShow(() => resetToMain());
+  }
+
+  if (api.onReset) {
+    api.onReset(() => resetToMain());
   }
 
   if (api.requestState) {

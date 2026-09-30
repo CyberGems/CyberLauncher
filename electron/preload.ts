@@ -195,6 +195,11 @@ contextBridge.exposeInMainWorld('trayMenu', {
     ipcRenderer.on('tray-menu-show', handler);
     return () => { ipcRenderer.removeListener('tray-menu-show', handler); };
   },
+  onReset: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('tray-menu-reset', handler);
+    return () => { ipcRenderer.removeListener('tray-menu-reset', handler); };
+  },
   action: (action: string, payload?: any) => ipcRenderer.send('tray-menu-action', action, payload),
   ready: (rect: any) => ipcRenderer.send('tray-menu-ready', rect),
   hide: () => ipcRenderer.send('tray-menu-hide'),

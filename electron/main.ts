@@ -1047,9 +1047,13 @@ function isTrayMenuGuardActive() {
 
 function triggerOpenAbout(checkUpdates = false) {
   showMainWindow();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('open-about', { checkUpdates });
-  }
+  const send = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('open-about', { checkUpdates });
+    }
+  };
+  send();
+  setTimeout(send, 80);
 }
 
 function resolveOpenTaskbarSettingsExe(): string | null {
@@ -1316,10 +1320,18 @@ function loadTrayConfig() {
   } catch { /* ignore */ }
 }
 
+function isLauncherWindowVisible(): boolean {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (!mainWindow.isVisible()) return false;
+  if (mainWindow.isMinimized()) return false;
+  if (windowVisibilityState.startsWith('hidden')) return false;
+  return true;
+}
+
 function buildTrayMenuState(resetView = false) {
   loadTrayConfig();
   const lang = getTrayLanguage();
-  const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  const isVisible = isLauncherWindowVisible();
   const suiteApps = getSuiteAppsList(lang);
 
   return {
@@ -1465,23 +1477,26 @@ function showCustomTrayMenu(eventBounds?: any) {
   w.focus();
   trayMenuLastShown = Date.now();
 
-  if (!w.webContents.isLoading()) {
-    w.webContents.send('tray-menu-state', buildTrayMenuState(true));
-    w.webContents.send('tray-menu-show');
-  }
+  const freshState = buildTrayMenuState(true);
+  w.webContents.send('tray-menu-state', freshState);
+  w.webContents.send('tray-menu-show');
+  w.webContents.send('tray-menu-reset');
 }
 
 function hideCustomTrayMenu() {
   if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
   trayMenuOpen = false;
   armTrayMenuGuard(400);
-  if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuWin.isVisible()) {
-    trayMenuWin.hide();
+  if (trayMenuWin && !trayMenuWin.isDestroyed()) {
+    if (trayMenuWin.isVisible()) {
+      trayMenuWin.hide();
+    }
+    trayMenuWin.webContents.send('tray-menu-reset');
   }
 }
 
 function updateCustomTrayMenuState() {
-  if (trayMenuWin && !trayMenuWin.isDestroyed() && !trayMenuWin.webContents.isLoading()) {
+  if (trayMenuWin && !trayMenuWin.isDestroyed()) {
     trayMenuWin.webContents.send('tray-menu-state', buildTrayMenuState(false));
   }
 }
@@ -1552,6 +1567,7 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
 
   if (action === 'show') {
     showMainWindow();
+    updateCustomTrayMenuState();
     applyRendererThrottling();
     return;
   }
@@ -1559,6 +1575,7 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   if (action === 'hide') {
     windowVisibilityState = 'hidden-intentional';
     mainWindow?.hide();
+    updateCustomTrayMenuState();
     applyRendererThrottling();
     return;
   }

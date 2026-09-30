@@ -101,11 +101,12 @@ html, body {
   outline: none;
   border: none;
   background: transparent;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease;
+  border-radius: 12px 12px 0 0;
 }
 
-.head:hover .head-title-accent {
-  text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.8);
+.head:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .head-logo {
@@ -113,26 +114,51 @@ html, body {
   height: 16px;
   object-fit: contain;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.4));
+  filter: grayscale(1) opacity(0.55);
+  transition: filter 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.head:hover .head-logo {
+  filter: none;
+  opacity: 1;
+  transform: scale(1.08);
 }
 
 .head-title {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.025em;
-  color: #e2e8f0;
+  color: #94a3b8;
+  transition: color 0.18s ease;
+  pointer-events: none;
 }
 
 .head-title-accent {
-  color: var(--accent);
-  transition: text-shadow 0.15s ease;
+  color: #38bdf8;
+  transition: color 0.18s ease;
 }
 
 .head-ver {
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-dim);
+  color: #475569;
   margin-left: 2px;
+  transition: color 0.18s ease;
+  pointer-events: none;
+}
+
+.head:hover .head-title {
+  color: #ffffff;
+}
+
+.head:hover .head-title-accent {
+  color: #a5f3fc;
+  text-shadow: none;
+}
+
+.head:hover .head-ver {
+  color: #94a3b8;
 }
 
 /* Sub-view header (Back button + title) */
@@ -201,6 +227,11 @@ html, body {
   width: 14px;
   height: 14px;
   object-fit: contain;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.suite-brand-mark:hover .suite-brand-logo {
+  transform: scale(1.22);
 }
 
 .suite-brand-name {
@@ -208,6 +239,7 @@ html, body {
   font-weight: 600;
   color: #38bdf8;
   letter-spacing: 0.02em;
+  transition: color 0.18s ease;
 }
 
 /* Status row */
@@ -301,31 +333,20 @@ html, body {
 }
 
 .item-danger {
-  color: #fca5a5;
+  color: var(--text-main);
+}
+.item-danger .item-ico {
+  color: #f87171;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 .item-danger:hover {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.28);
-  color: #fee2e2;
+  color: #ffffff;
 }
-
-.item-ico {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  transition: color 0.12s ease;
-}
-
-.item:hover .item-ico {
-  color: var(--accent);
-}
-
 .item-danger:hover .item-ico {
-  color: #f87171;
+  color: #ef4444;
+  transform: scale(1.08);
 }
 
 .item-ico svg {
