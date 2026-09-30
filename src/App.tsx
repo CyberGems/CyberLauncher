@@ -1192,7 +1192,7 @@ const ClockHUD = ({
                       <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_console_command')}</label>
                       <input
                         type="text"
-                        placeholder="Ej. shutdown /s /t 0"
+                        placeholder={t('hud_clock_command_placeholder')}
                         value={customCommand}
                         onChange={(e) => setCustomCommand(e.target.value)}
                         className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
@@ -2105,7 +2105,7 @@ export default function App() {
           };
           setIndexerSettings(updated);
           await window.electronAPI!.saveIndexerSettings(updated);
-          setNotification({ message: 'Carpeta agregada e indexando...', type: 'success' });
+          setNotification({ message: t('notif_folder_added'), type: 'success' });
         }
       }
     } catch (err) {
@@ -2123,7 +2123,7 @@ export default function App() {
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
       }
-      setNotification({ message: 'Carpeta eliminada', type: 'info' });
+      setNotification({ message: t('notif_folder_removed'), type: 'info' });
     } catch (err) {
       console.error('Error removing indexer folder:', err);
     }
@@ -2137,7 +2137,7 @@ export default function App() {
         await window.electronAPI!.saveIndexerSettings(updated);
       }
       setNotification({ 
-        message: enabled ? 'Buscador activado' : 'Buscador desactivado', 
+        message: enabled ? t('notif_indexer_enabled') : t('notif_indexer_disabled'), 
         type: enabled ? 'success' : 'info' 
       });
     } catch (err) {
@@ -2164,7 +2164,7 @@ export default function App() {
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
       }
-      setNotification({ message: includeHiddenFolders ? 'Carpetas ocultas incluidas' : 'Carpetas ocultas excluidas', type: 'success' });
+      setNotification({ message: includeHiddenFolders ? t('notif_hidden_folders_included') : t('notif_hidden_folders_excluded'), type: 'success' });
     } catch (err) {
       console.error('Error toggling hidden folders:', err);
     }
@@ -2177,7 +2177,7 @@ export default function App() {
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
       }
-      setNotification({ message: indexHiddenContent ? 'Contenido interno de ocultas indexado' : 'Contenido interno de ocultas omitido', type: 'success' });
+      setNotification({ message: indexHiddenContent ? t('notif_hidden_content_included') : t('notif_hidden_content_excluded'), type: 'success' });
     } catch (err) {
       console.error('Error toggling hidden content indexing:', err);
     }
@@ -3074,7 +3074,7 @@ export default function App() {
     if (isElectron && window.electronAPI?.openTaskbarSettings) {
       window.electronAPI.openTaskbarSettings();
     } else {
-      setNotification({ message: 'Abriendo configuración de Windows...', type: 'info' });
+      setNotification({ message: t('notif_opening_windows_settings'), type: 'info' });
     }
   }, [isElectron]);
 
@@ -5807,7 +5807,7 @@ export default function App() {
                       } else {
                         setConsoleLogs(prev => [
                           ...prev,
-                          { type: 'stderr', text: res.error || 'Error al ejecutar comando.', id: `error-${Date.now()}` }
+                          { type: 'stderr', text: res.error || (language === 'es' ? 'Error al ejecutar comando.' : 'Error executing command.'), id: `error-${Date.now()}` }
                         ]);
                         setIsCommandRunning(false);
                       }
@@ -5876,7 +5876,7 @@ export default function App() {
                   <span className="text-[9px] font-cyber font-bold text-emerald-400">
                     TERMINAL
                   </span>
-                  <Tooltip label="Cerrar Terminal [Esc]" placement="bottom">
+                  <Tooltip label={t('terminal_close')} placement="bottom">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -5892,7 +5892,7 @@ export default function App() {
                   </Tooltip>
                 </div>
               ) : (
-                <Tooltip label="Alternar alcance de búsqueda (Cyber / Sistema) [TAB]" placement="bottom">
+                <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -5906,7 +5906,7 @@ export default function App() {
                         ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
                         : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
                     }`}>
-                      {searchScope === 'system' ? 'SISTEMA' : 'LAUNCHER'}
+                      {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
                     </span>
                   </button>
                 </Tooltip>
@@ -5915,7 +5915,7 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            <Tooltip label="Abrir Diagnóstico de Recursos de Sistema" placement="bottom">
+            <Tooltip label={t('hud_system')} placement="bottom">
               <button 
                 onClick={() => setIsSystemHUDOpen(true)}
                 className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
@@ -5923,7 +5923,7 @@ export default function App() {
                 <SystemMonitor />
               </button>
             </Tooltip>
-            <Tooltip label="Abrir Diagnóstico de Almacenamiento Físico" placement="bottom">
+            <Tooltip label={t('hud_storage')} placement="bottom">
               <button 
                 onClick={() => setIsStorageHUDOpen(true)}
                 className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
@@ -6090,7 +6090,7 @@ export default function App() {
                   )}
 
                   {/* Close Terminal Button */}
-                  <Tooltip label="Cerrar Terminal [Esc]" placement="bottom">
+                  <Tooltip label={t('terminal_close')} placement="bottom">
                     <button
                       type="button"
                       onClick={() => {
@@ -9346,7 +9346,7 @@ export default function App() {
                           />
 
                           {/* A-Z / Z-A Sorting toggle button */}
-                          <Tooltip label={uwpSortOrder === 'asc' ? "Ordenar Z-A" : "Ordenar A-Z"} placement="bottom">
+                          <Tooltip label={uwpSortOrder === 'asc' ? t('tooltip_sort_order_desc') : t('tooltip_sort_order_asc')} placement="bottom">
                             <button
                               onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                               className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
@@ -9919,7 +9919,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    Desanclar de la barra <Minus className="w-4 h-4 ml-2 text-slate-400" />
+                    {t('ctx_unpin_taskbar')} <Minus className="w-4 h-4 ml-2 text-slate-400" />
                   </button>
                 ) : (
                   <button 
@@ -9929,7 +9929,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    Anclar a la barra <Plus className="w-4 h-4 ml-2 text-blue-400" />
+                    {t('ctx_pin_taskbar')} <Plus className="w-4 h-4 ml-2 text-blue-400" />
                   </button>
                 )}
 
@@ -9941,7 +9941,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    Quitar de favoritos <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
+                    {t('ctx_remove_fav')} <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
                   </button>
                 ) : (
                   <button 
@@ -9951,7 +9951,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    Agregar a favoritos <Star className="w-4 h-4 ml-2 fill-blue-500 text-blue-400" />
+                    {t('ctx_add_fav')} <Star className="w-4 h-4 ml-2 fill-blue-500 text-blue-400" />
                   </button>
                 )}
 
@@ -9965,7 +9965,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    Abrir ubicación <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
+                    {t('ctx_open_location')} <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
                   </button>
                 )}
 
@@ -10001,7 +10001,7 @@ export default function App() {
                    }}
                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                 >
-                  Editar <PenBox className="w-4 h-4 ml-2 text-slate-400" />
+                  {t('ctx_edit_app')} <PenBox className="w-4 h-4 ml-2 text-slate-400" />
                 </button>
                 
                 <button
@@ -10013,7 +10013,7 @@ export default function App() {
                    }}
                    className="w-full text-left px-4 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400"
                 >
-                  Eliminar <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+                  {t('ctx_delete_app')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
                 </button>
 
                 {contextMenu.source === 'most-used' && (
@@ -10137,7 +10137,7 @@ export default function App() {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
                   setNotification({
-                    message: language === 'es' ? `Copiado: ${systemContextMenu.item.name}` : `Copied: ${systemContextMenu.item.name}`,
+                    message: t('notif_copied_item', { name: systemContextMenu.item.name }),
                     type: 'success'
                   });
                 } catch (err) {
@@ -10158,7 +10158,7 @@ export default function App() {
               onMouseEnter={() => setSystemContextMenuIndex(2)}
               onClick={() => {
                 setNotification({
-                  message: language === 'es' ? `Cortado: ${systemContextMenu.item.name} (Ruta en portapapeles)` : `Cut: ${systemContextMenu.item.name} (Path copied to clipboard)`,
+                  message: t('notif_cut_item', { name: systemContextMenu.item.name }),
                   type: 'info'
                 });
                 navigator.clipboard.writeText(systemContextMenu.item.path).catch(console.error);
@@ -10179,7 +10179,7 @@ export default function App() {
                 try {
                   await navigator.clipboard.writeText(systemContextMenu.item.path);
                   setNotification({
-                    message: language === 'es' ? "Ruta absoluta copiada al portapapeles" : "Absolute path copied to clipboard",
+                    message: t('notif_path_copied'),
                     type: 'success'
                   });
                 } catch (err) {
@@ -10191,7 +10191,7 @@ export default function App() {
                 systemContextMenuIndex === 3 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
               }`}
             >
-              {language === 'es' ? "Copiar Ruta absoluta" : "Copy Absolute Path"} <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
+              {t('ctx_copy_absolute_path')} <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
 
             <div className="h-px bg-white/10 my-1 mx-2" />
@@ -10225,7 +10225,7 @@ export default function App() {
                   return [...prev, newApp];
                 });
                 setNotification({
-                  message: language === 'es' ? "Anclado a Favoritos" : "Pinned to Favorites",
+                  message: t('notif_pinned_favorites'),
                   type: 'success'
                 });
                 setSystemContextMenu(null);
@@ -10234,7 +10234,7 @@ export default function App() {
                 systemContextMenuIndex === 4 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
               }`}
             >
-              {language === 'es' ? "Anclar a Favoritos" : "Pin to Favorites"} <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
+              {t('ctx_pin_fav_short')} <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
             </button>
 
             {/* Anclar a Barra de Tareas de CyberLauncher */}
@@ -10266,7 +10266,7 @@ export default function App() {
                   return [...prev, newApp];
                 });
                 setNotification({
-                  message: language === 'es' ? "Anclado a Barra de Tareas" : "Pinned to Taskbar",
+                  message: t('notif_pinned_taskbar'),
                   type: 'success'
                 });
                 setSystemContextMenu(null);
@@ -10275,7 +10275,7 @@ export default function App() {
                 systemContextMenuIndex === 5 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
               }`}
             >
-              {language === 'es' ? "Anclar a Barra" : "Pin to Taskbar"} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
+              {t('ctx_pin_bar_short')} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
             </button>
           </motion.div>
         )}

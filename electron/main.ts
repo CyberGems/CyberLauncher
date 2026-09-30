@@ -2417,9 +2417,10 @@ function setupIpcHandlers() {
   ipcMain.handle('select-indexer-folder', async () => {
     if (!mainWindow) return null;
     isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
-      title: 'Seleccionar carpeta para indexar'
+      title: isEn ? 'Select folder to index' : 'Seleccionar carpeta para indexar'
     });
     isDialogOpen = false;
     showMainWindow();
@@ -2625,11 +2626,12 @@ function setupIpcHandlers() {
   ipcMain.handle('select-file', async (_event, options?: { filters?: Electron.FileFilter[] }) => {
     if (!mainWindow) return null;
     isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: options?.filters || [
-        { name: 'Todos los archivos', extensions: ['*'] },
-        { name: 'Ejecutables', extensions: ['exe', 'lnk', 'bat', 'cmd', 'ps1'] },
+        { name: isEn ? 'All Files' : 'Todos los archivos', extensions: ['*'] },
+        { name: isEn ? 'Executables' : 'Ejecutables', extensions: ['exe', 'lnk', 'bat', 'cmd', 'ps1'] },
       ],
     });
     isDialogOpen = false;
@@ -2646,10 +2648,11 @@ function setupIpcHandlers() {
   ipcMain.handle('select-image', async () => {
     if (!mainWindow) return null;
     isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [
-        { name: 'Imágenes', extensions: ['jpg', 'png', 'gif', 'webp', 'ico'] },
+        { name: isEn ? 'Images' : 'Imágenes', extensions: ['jpg', 'png', 'gif', 'webp', 'ico'] },
       ],
     });
     isDialogOpen = false;
@@ -3127,14 +3130,15 @@ foreach (\$app in \$startApps) {
   // --- Menú contextual nativo de edición de texto ---
   ipcMain.handle('show-text-context-menu', (_event, { x, y }: { x: number, y: number }) => {
     const webContents = _event.sender;
+    const isEn = getTrayLanguage() === 'en';
     const contextMenu = Menu.buildFromTemplate([
-      { label: 'Cortar', accelerator: 'CmdOrCtrl+X', click: () => webContents.cut() },
-      { label: 'Copiar', accelerator: 'CmdOrCtrl+C', click: () => webContents.copy() },
-      { label: 'Pegar', accelerator: 'CmdOrCtrl+V', click: () => webContents.paste() },
+      { label: isEn ? 'Cut' : 'Cortar', accelerator: 'CmdOrCtrl+X', click: () => webContents.cut() },
+      { label: isEn ? 'Copy' : 'Copiar', accelerator: 'CmdOrCtrl+C', click: () => webContents.copy() },
+      { label: isEn ? 'Paste' : 'Pegar', accelerator: 'CmdOrCtrl+V', click: () => webContents.paste() },
       { type: 'separator' },
-      { label: 'Eliminar', click: () => webContents.delete() },
+      { label: isEn ? 'Delete' : 'Eliminar', click: () => webContents.delete() },
       { type: 'separator' },
-      { label: 'Seleccionar todo', accelerator: 'CmdOrCtrl+A', click: () => webContents.selectAll() },
+      { label: isEn ? 'Select All' : 'Seleccionar todo', accelerator: 'CmdOrCtrl+A', click: () => webContents.selectAll() },
     ]);
     contextMenu.popup({ x, y });
   });
