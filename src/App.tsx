@@ -399,6 +399,8 @@ declare global {
       setAutoUpdate: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
+      onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => () => void;
+      onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
     };
   }
 }
@@ -1981,8 +1983,8 @@ export default function App() {
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'info' | 'error';
-    /** Optional click action (e.g. update toast → About). */
-    action?: 'open-about';
+    /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
+    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system';
     detail?: string;
     releaseUrl?: string;
   } | null>(null);
@@ -2044,7 +2046,8 @@ export default function App() {
       return;
     }
     if (toastPaused) return;
-    const ms = notification.action === 'open-about' ? 8000 : 3000;
+    const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system';
+    const ms = isLongToast ? 8000 : 3000;
     const timer = setTimeout(() => {
       setNotification(null);
     }, ms);
@@ -2854,6 +2857,14 @@ export default function App() {
   const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
+  const [systemAlertsEnabled, setSystemAlertsEnabled] = useState(() => localStorage.getItem('systemAlertsEnabled') !== 'false');
+  const [diskAlertsEnabled, setDiskAlertsEnabled] = useState(() => localStorage.getItem('diskAlertsEnabled') !== 'false');
+  const [ramAlertsEnabled, setRamAlertsEnabled] = useState(() => localStorage.getItem('ramAlertsEnabled') !== 'false');
+  const [ramThresholdPercent, setRamThresholdPercent] = useState<number>(() => {
+    const saved = localStorage.getItem('ramThresholdPercent');
+    return saved ? parseInt(saved, 10) : 80;
+  });
+  const [ramLowAbsoluteAlertEnabled, setRamLowAbsoluteAlertEnabled] = useState(() => localStorage.getItem('ramLowAbsoluteAlertEnabled') !== 'false');
   const [showHeaderClock, setShowHeaderClock] = useState(() => localStorage.getItem('showHeaderClock') === 'true');
   const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
   const [showFooterUptime, setShowFooterUptime] = useState(() => localStorage.getItem('showFooterUptime') !== 'false');
@@ -3170,6 +3181,11 @@ export default function App() {
           if (source.showFooterDateTime !== undefined) setShowFooterDateTime(source.showFooterDateTime !== false);
           if (source.showFooterUptime !== undefined) setShowFooterUptime(source.showFooterUptime !== false);
           if (source.showFooterLaunches !== undefined) setShowFooterLaunches(source.showFooterLaunches !== false);
+          if (source.systemAlertsEnabled !== undefined) setSystemAlertsEnabled(!!source.systemAlertsEnabled);
+          if (source.diskAlertsEnabled !== undefined) setDiskAlertsEnabled(!!source.diskAlertsEnabled);
+          if (source.ramAlertsEnabled !== undefined) setRamAlertsEnabled(!!source.ramAlertsEnabled);
+          if (source.ramThresholdPercent !== undefined) setRamThresholdPercent(Number(source.ramThresholdPercent) || 80);
+          if (source.ramLowAbsoluteAlertEnabled !== undefined) setRamLowAbsoluteAlertEnabled(!!source.ramLowAbsoluteAlertEnabled);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -3222,8 +3238,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, selectedMonitor, autoUpdate, language });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, selectedMonitor, autoUpdate, language };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3251,6 +3267,7 @@ export default function App() {
           leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
+          systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language
         }));
       } catch (e) {
@@ -3276,6 +3293,7 @@ export default function App() {
     leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
     showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
+    systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
     isConfigLoaded
   ]);
@@ -3426,7 +3444,8 @@ export default function App() {
       'startWithWindows', 'startMinimized', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth', 'rightSidebarCollapsed',
-      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor'
+      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
+      'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -3598,6 +3617,26 @@ export default function App() {
       if (config.autoUpdate !== undefined) {
         setAutoUpdate(!!config.autoUpdate);
       }
+      if (config.systemAlertsEnabled !== undefined) {
+        setSystemAlertsEnabled(!!config.systemAlertsEnabled);
+        localStorage.setItem('systemAlertsEnabled', config.systemAlertsEnabled.toString());
+      }
+      if (config.diskAlertsEnabled !== undefined) {
+        setDiskAlertsEnabled(!!config.diskAlertsEnabled);
+        localStorage.setItem('diskAlertsEnabled', config.diskAlertsEnabled.toString());
+      }
+      if (config.ramAlertsEnabled !== undefined) {
+        setRamAlertsEnabled(!!config.ramAlertsEnabled);
+        localStorage.setItem('ramAlertsEnabled', config.ramAlertsEnabled.toString());
+      }
+      if (config.ramThresholdPercent !== undefined) {
+        setRamThresholdPercent(Number(config.ramThresholdPercent) || 80);
+        localStorage.setItem('ramThresholdPercent', config.ramThresholdPercent.toString());
+      }
+      if (config.ramLowAbsoluteAlertEnabled !== undefined) {
+        setRamLowAbsoluteAlertEnabled(!!config.ramLowAbsoluteAlertEnabled);
+        localStorage.setItem('ramLowAbsoluteAlertEnabled', config.ramLowAbsoluteAlertEnabled.toString());
+      }
       if (config.selectedMonitor) {
         setSelectedMonitor(config.selectedMonitor);
         localStorage.setItem('selectedMonitor', config.selectedMonitor);
@@ -3605,6 +3644,33 @@ export default function App() {
       console.log('[CONFIG] Estado actualizado desde disco');
     });
     return cleanup;
+  }, []);
+
+  // Listen for system health alerts (toast and notification action clicks)
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI) return;
+
+    const cleanupToast = window.electronAPI.onSystemAlertToast?.((data) => {
+      setNotification({
+        message: data.title,
+        detail: data.message,
+        type: data.level === 'critical' ? 'error' : 'info',
+        action: data.type === 'disk' ? 'open-hud-storage' : 'open-hud-system',
+      });
+    });
+
+    const cleanupAction = window.electronAPI.onSystemAlertAction?.((data) => {
+      if (data.type === 'disk') {
+        setIsStorageHUDOpen(true);
+      } else if (data.type === 'ram') {
+        setIsSystemHUDOpen(true);
+      }
+    });
+
+    return () => {
+      cleanupToast?.();
+      cleanupAction?.();
+    };
   }, []);
 
   const startResizingLeft = (e: React.MouseEvent) => {
@@ -8848,6 +8914,169 @@ export default function App() {
                       </button>
                     </div>
 
+                    {/* System Health Alerts Section */}
+                    <div className="space-y-3 pt-6 border-t border-white/5">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-cyan-400" />
+                          {t('sys_alerts_title')}
+                        </label>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Master Switch */}
+                        <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                              <Activity className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_enabled')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_enabled_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newVal = !systemAlertsEnabled;
+                              setSystemAlertsEnabled(newVal);
+                              localStorage.setItem('systemAlertsEnabled', newVal.toString());
+                            }}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${systemAlertsEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${systemAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                              <div className={`w-2 h-2 rounded-full ${systemAlertsEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {systemAlertsEnabled && (
+                          <div className="space-y-2 ml-3 pl-3 border-l-2 border-cyan-500/30">
+                            {/* Disk Health Alert */}
+                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                              <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                  <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                                    <HardDrive className="w-4 h-4 text-amber-400" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_disk_enabled')}</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_disk_desc')}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const newVal = !diskAlertsEnabled;
+                                    setDiskAlertsEnabled(newVal);
+                                    localStorage.setItem('diskAlertsEnabled', newVal.toString());
+                                  }}
+                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${diskAlertsEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
+                                >
+                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${diskAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${diskAlertsEnabled ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                                  </div>
+                                </button>
+                              </div>
+
+                              {diskAlertsEnabled && (
+                                <div className="flex items-center gap-2 pt-2 border-t border-white/5 flex-wrap">
+                                  <span className="text-[11px] font-cyber text-slate-400 tracking-wider">
+                                    {t('sys_alerts_disk_tiers_badge')}:
+                                  </span>
+                                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                                    <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-semibold">20 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">10 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30 font-semibold">5 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 font-semibold">1 GB</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* RAM Health Alert */}
+                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                              <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                  <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                                    <Cpu className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_ram_enabled')}</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_ram_desc')}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const newVal = !ramAlertsEnabled;
+                                    setRamAlertsEnabled(newVal);
+                                    localStorage.setItem('ramAlertsEnabled', newVal.toString());
+                                  }}
+                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer ${ramAlertsEnabled ? 'bg-purple-500' : 'bg-slate-700'}`}
+                                >
+                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${ramAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${ramAlertsEnabled ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                                  </div>
+                                </button>
+                              </div>
+
+                              {ramAlertsEnabled && (
+                                <div className="space-y-3 pt-2 border-t border-white/5">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-medium text-slate-300 block">{t('sys_alerts_ram_threshold')}</span>
+                                      <span className="text-[11px] text-slate-500">{t('sys_alerts_ram_threshold_desc')}</span>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                      {[75, 80, 85, 90].map((pct) => (
+                                        <button
+                                          key={pct}
+                                          type="button"
+                                          onClick={() => {
+                                            setRamThresholdPercent(pct);
+                                            localStorage.setItem('ramThresholdPercent', pct.toString());
+                                          }}
+                                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+                                            ramThresholdPercent === pct
+                                              ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_8px_rgba(168,85,247,0.25)]'
+                                              : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                                          }`}
+                                        >
+                                          {pct}%
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-4 pt-1">
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-medium text-slate-300 block">{t('sys_alerts_ram_low_absolute')}</span>
+                                      <span className="text-[11px] text-slate-500">{t('sys_alerts_ram_low_absolute_desc')}</span>
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={() => {
+                                        const newVal = !ramLowAbsoluteAlertEnabled;
+                                        setRamLowAbsoluteAlertEnabled(newVal);
+                                        localStorage.setItem('ramLowAbsoluteAlertEnabled', newVal.toString());
+                                      }}
+                                      className={`relative w-9 h-5 rounded-full transition-colors shrink-0 focus:outline-none cursor-pointer ${ramLowAbsoluteAlertEnabled ? 'bg-purple-500' : 'bg-slate-700'}`}
+                                    >
+                                      <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform shadow ${ramLowAbsoluteAlertEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     </div>
                   </div>
 
@@ -10319,6 +10548,12 @@ export default function App() {
               if (notification.action === 'open-about') {
                 setIsAboutOpen(true);
                 setNotification(null);
+              } else if (notification.action === 'open-hud-storage') {
+                setIsStorageHUDOpen(true);
+                setNotification(null);
+              } else if (notification.action === 'open-hud-system') {
+                setIsSystemHUDOpen(true);
+                setNotification(null);
               }
             }}
             onKeyDown={(e) => {
@@ -10328,6 +10563,12 @@ export default function App() {
                 e.stopPropagation();
                 if (notification.action === 'open-about') {
                   setIsAboutOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-storage') {
+                  setIsStorageHUDOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-system') {
+                  setIsSystemHUDOpen(true);
                   setNotification(null);
                 }
               }
@@ -10363,8 +10604,38 @@ export default function App() {
                   {notification.detail}
                 </p>
               )}
-              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available')) && (
+              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available') || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system') && (
                 <div className="flex items-center gap-2 pt-0.5">
+                  {notification.action === 'open-hud-storage' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsStorageHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/40 bg-amber-500/20 px-2 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <HardDrive className="w-3 h-3" />
+                      {t('toast_action_view_storage')}
+                    </button>
+                  )}
+                  {notification.action === 'open-hud-system' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsSystemHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-purple-400/40 bg-purple-500/20 px-2 py-1 text-[11px] font-semibold text-purple-200 hover:bg-purple-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Cpu className="w-3 h-3" />
+                      {t('toast_action_view_system')}
+                    </button>
+                  )}
                   {notification.releaseUrl && (
                     <button
                       type="button"

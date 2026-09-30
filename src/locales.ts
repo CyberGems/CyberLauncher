@@ -428,6 +428,22 @@ export const translations = {
     sys_tray_pin_btn: "Abrir Configuración",
     sys_tray_pin_tip_btn: "Ver recomendación",
 
+    // System Health Alerts
+    sys_alerts_title: "ALERTAS DE SALUD DEL SISTEMA",
+    sys_alerts_enabled: "Activar alertas de recursos del sistema",
+    sys_alerts_enabled_desc: "Monitoriza silenciosamente en segundo plano el espacio en disco y el uso de memoria RAM.",
+    sys_alerts_disk_enabled: "Alerta de poco espacio en disco de sistema",
+    sys_alerts_disk_desc: "Avisa automáticamente al cruzar a la baja 20 GB, 10 GB, 5 GB y 1 GB libres en la unidad de sistema.",
+    sys_alerts_ram_enabled: "Alerta de alto consumo de memoria RAM",
+    sys_alerts_ram_desc: "Avisa cuando el consumo de memoria se mantiene elevado o la memoria disponible es crítica.",
+    sys_alerts_ram_threshold: "Umbral de uso de memoria RAM",
+    sys_alerts_ram_threshold_desc: "Porcentaje de memoria a partir del cual se dispara la advertencia.",
+    sys_alerts_ram_low_absolute: "Avisar también si quedan menos de 2 GB de memoria libre",
+    sys_alerts_ram_low_absolute_desc: "Genera una advertencia de seguridad si la memoria libre cae por debajo de 2 GB, sin importar el porcentaje.",
+    sys_alerts_disk_tiers_badge: "Escalones activos: 20 GB, 10 GB, 5 GB, 1 GB",
+    toast_action_view_storage: "Ver almacenamiento",
+    toast_action_view_system: "Ver sistema",
+
     // Backup & Data Tab Config
     backup_title: "RESPALDO Y DATOS",
     backup_section_backup: "COPIAS DE SEGURIDAD",
@@ -928,6 +944,22 @@ export const translations = {
     sys_tray_pin_desc: "Keeps the icon visible next to the system clock, outside the overflow menu (^).",
     sys_tray_pin_btn: "Open Settings",
     sys_tray_pin_tip_btn: "Show tip",
+
+    // System Health Alerts
+    sys_alerts_title: "SYSTEM HEALTH ALERTS",
+    sys_alerts_enabled: "Enable system resource alerts",
+    sys_alerts_enabled_desc: "Silently monitors system disk space and RAM usage in the background.",
+    sys_alerts_disk_enabled: "Low system disk space alert",
+    sys_alerts_disk_desc: "Automatically alerts when free space drops below 20 GB, 10 GB, 5 GB, and 1 GB on the system drive.",
+    sys_alerts_ram_enabled: "High RAM usage alert",
+    sys_alerts_ram_desc: "Alerts when memory usage remains sustained high or free RAM is critically low.",
+    sys_alerts_ram_threshold: "RAM usage alert threshold",
+    sys_alerts_ram_threshold_desc: "Percentage of memory usage that triggers the warning.",
+    sys_alerts_ram_low_absolute: "Also alert if free memory drops below 2 GB",
+    sys_alerts_ram_low_absolute_desc: "Generates a safety warning if free RAM drops below 2 GB, regardless of percentage.",
+    sys_alerts_disk_tiers_badge: "Active tiers: 20 GB, 10 GB, 5 GB, 1 GB",
+    toast_action_view_storage: "View storage",
+    toast_action_view_system: "View system",
 
     // Backup & Data Tab Config
     backup_title: "BACKUP & DATA",

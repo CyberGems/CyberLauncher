@@ -7,6 +7,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
+import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -3473,6 +3474,16 @@ foreach (\$app in \$startApps) {
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial
       await new Promise(r => setTimeout(r, 50));
       console.log('[CONFIG] Guardado:', CONFIG_FILE, 'apps:', config?.apps?.length || 0);
+      if (config) {
+        updateSystemAlertsConfig({
+          systemAlertsEnabled: config.systemAlertsEnabled,
+          diskAlertsEnabled: config.diskAlertsEnabled,
+          ramAlertsEnabled: config.ramAlertsEnabled,
+          ramThresholdPercent: config.ramThresholdPercent,
+          ramLowAbsoluteAlertEnabled: config.ramLowAbsoluteAlertEnabled,
+          language: config.language,
+        });
+      }
       rebuildTrayMenu();
       return true;
     } catch (e: any) {
@@ -3677,6 +3688,28 @@ app.whenReady().then(() => {
   } catch { /* keep default */ }
   initUpdater({ autoUpdate: bootAutoUpdate });
 
+  // Monitorización de salud de sistema (Disco y Memoria RAM en segundo plano)
+  let bootAlertsConfig = {};
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      bootAlertsConfig = {
+        systemAlertsEnabled: cfg.systemAlertsEnabled,
+        diskAlertsEnabled: cfg.diskAlertsEnabled,
+        ramAlertsEnabled: cfg.ramAlertsEnabled,
+        ramThresholdPercent: cfg.ramThresholdPercent,
+        ramLowAbsoluteAlertEnabled: cfg.ramLowAbsoluteAlertEnabled,
+        language: cfg.language,
+      };
+    }
+  } catch { /* keep defaults */ }
+  initSystemAlerts(
+    () => mainWindow,
+    () => getAppIconPath(),
+    () => showMainWindow(),
+    bootAlertsConfig
+  );
+
   // Iniciar guardia de hotspots
   startHotspotPolling();
 
@@ -3747,4 +3780,5 @@ app.on('before-quit', () => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   stopUACGuard();
+  stopSystemAlerts();
 });

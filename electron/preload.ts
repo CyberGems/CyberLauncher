@@ -155,4 +155,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update:status', handler);
     return () => { ipcRenderer.removeListener('update:status', handler); };
   },
+
+  // --- System Health Alerts ---
+  onSystemAlertToast: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('system-alert-toast', handler);
+    return () => { ipcRenderer.removeListener('system-alert-toast', handler); };
+  },
+  onSystemAlertAction: (callback: (data: { type: 'disk' | 'ram' }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('system-alert-action', handler);
+    return () => { ipcRenderer.removeListener('system-alert-action', handler); };
+  },
 });
