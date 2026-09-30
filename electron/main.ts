@@ -1012,6 +1012,28 @@ let trayRecents: TrayRecentItem[] = [];
 let pendingRecentLaunch: TrayRecentItem | null = null;
 let lastTrayRecentsKey = '';
 
+function getTrayRecentsFile() {
+  return path.join(app.getPath('userData'), 'tray-recents.json');
+}
+
+function loadPersistedTrayRecents(): TrayRecentItem[] {
+  try {
+    const f = getTrayRecentsFile();
+    if (fs.existsSync(f)) {
+      const data = JSON.parse(fs.readFileSync(f, 'utf-8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function savePersistedTrayRecents(items: TrayRecentItem[]) {
+  try {
+    const f = getTrayRecentsFile();
+    fs.writeFileSync(f, JSON.stringify(items, null, 2), 'utf-8');
+  } catch { /* ignore */ }
+}
+
 function setTrayRecents(items: unknown[]): void {
   const next: TrayRecentItem[] = [];
   for (const raw of items) {
@@ -1033,6 +1055,7 @@ function setTrayRecents(items: unknown[]): void {
   if (key === lastTrayRecentsKey) return;
   lastTrayRecentsKey = key;
   trayRecents = next;
+  savePersistedTrayRecents(next);
   rebuildTrayMenu();
 }
 
@@ -1318,6 +1341,9 @@ function loadTrayConfig() {
       if (typeof cfg.showSuiteRecommendations === 'boolean') showSuiteRecommendationsConfig = cfg.showSuiteRecommendations;
     }
   } catch { /* ignore */ }
+  if (trayRecents.length === 0) {
+    trayRecents = loadPersistedTrayRecents();
+  }
 }
 
 function isLauncherWindowVisible(): boolean {

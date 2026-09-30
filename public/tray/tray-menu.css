@@ -349,6 +349,36 @@ html, body {
   transform: scale(1.08);
 }
 
+.item-empty {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+
+.item-empty .item-ico {
+  color: var(--text-dim);
+}
+
+.item-empty-label {
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.item-ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.12s ease;
+}
+
+.item:hover .item-ico {
+  color: var(--accent);
+}
+
 .item-ico svg {
   width: 100%;
   height: 100%;

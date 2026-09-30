@@ -320,7 +320,7 @@ function renderMainView() {
   );
 
   // Recent apps (Option 1: Integrated top 4 apps for 1-click launch)
-  if (showRecents && recents.length > 0) {
+  if (showRecents) {
     items.push(makeSeparator());
 
     const labelRow = document.createElement('div');
@@ -328,29 +328,40 @@ function renderMainView() {
     labelRow.textContent = t('recentsTitle');
     items.push(labelRow);
 
-    const topRecents = recents.slice(0, 4);
-    for (const r of topRecents) {
-      items.push(
-        makeItem({
-          action: 'launch-recent',
-          payload: r,
-          img: r.iconPath || undefined,
-          icon: r.iconPath ? undefined : 'clock',
-          label: r.name,
-          title: r.path,
-        })
-      );
-    }
+    if (recents.length > 0) {
+      const topRecents = recents.slice(0, 4);
+      for (const r of topRecents) {
+        let iconSrc = r.iconPath;
+        if (iconSrc && !iconSrc.startsWith('data:') && !iconSrc.startsWith('http') && !iconSrc.startsWith('local-resource:')) {
+          iconSrc = `local-resource:///${iconSrc.replace(/\\/g, '/')}`;
+        }
+        items.push(
+          makeItem({
+            action: 'launch-recent',
+            payload: r,
+            img: iconSrc || undefined,
+            icon: iconSrc ? undefined : 'clock',
+            label: r.name,
+            title: r.path,
+          })
+        );
+      }
 
-    if (recents.length > 4) {
-      items.push(
-        makeItem({
-          localAction: 'recents',
-          icon: 'recent',
-          label: t('viewAllRecents', { count: recents.length }),
-          trailingIcon: 'chevron',
-        })
-      );
+      if (recents.length > 4) {
+        items.push(
+          makeItem({
+            localAction: 'recents',
+            icon: 'recent',
+            label: t('viewAllRecents', { count: recents.length }),
+            trailingIcon: 'chevron',
+          })
+        );
+      }
+    } else {
+      const emptyRow = document.createElement('div');
+      emptyRow.className = 'item item-empty';
+      emptyRow.innerHTML = `<span class="item-ico">${ICONS.clock}</span><span class="item-label item-empty-label">${t('noRecents')}</span>`;
+      items.push(emptyRow);
     }
   }
 
@@ -440,18 +451,28 @@ function renderSuiteView() {
 
 function renderRecentsView() {
   const recents = (currentState && Array.isArray(currentState.recents)) ? currentState.recents : [];
-  const items = recents.map((r, i) => {
-    return makeItem({
-      action: 'launch-recent',
-      payload: r,
-      img: r.iconPath || undefined,
-      icon: r.iconPath ? undefined : 'clock',
-      label: `${i + 1}. ${r.name}`,
-      title: r.path,
+  if (recents.length === 0) {
+    const emptyRow = document.createElement('div');
+    emptyRow.className = 'item item-empty';
+    emptyRow.innerHTML = `<span class="item-ico">${ICONS.clock}</span><span class="item-label item-empty-label">${t('noRecents')}</span>`;
+    groupEl.replaceChildren(emptyRow);
+  } else {
+    const items = recents.map((r, i) => {
+      let iconSrc = r.iconPath;
+      if (iconSrc && !iconSrc.startsWith('data:') && !iconSrc.startsWith('http') && !iconSrc.startsWith('local-resource:')) {
+        iconSrc = `local-resource:///${iconSrc.replace(/\\/g, '/')}`;
+      }
+      return makeItem({
+        action: 'launch-recent',
+        payload: r,
+        img: iconSrc || undefined,
+        icon: iconSrc ? undefined : 'clock',
+        label: `${i + 1}. ${r.name}`,
+        title: r.path,
+      });
     });
-  });
-
-  groupEl.replaceChildren(...items);
+    groupEl.replaceChildren(...items);
+  }
   exitDividerEl.style.display = 'none';
   exitGroupEl.style.display = 'none';
 }
