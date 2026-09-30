@@ -15,7 +15,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database
+  Archive, Database, Sparkles
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -401,6 +401,7 @@ declare global {
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
       setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) => Promise<{ success: boolean }>;
+      updateTraySettings?: (settings: { showTrayRecents?: boolean; showSuiteRecommendations?: boolean }) => Promise<{ success: boolean }>;
       getAppVersions: () => Promise<{
         app: string; electron: string; chrome: string; node: string;
         platform: string; arch: string; osRelease: string; osType: string;
@@ -2892,6 +2893,8 @@ export default function App() {
   const [showFooterDateTime, setShowFooterDateTime] = useState(() => localStorage.getItem('showFooterDateTime') !== 'false');
   const [showFooterUptime, setShowFooterUptime] = useState(() => localStorage.getItem('showFooterUptime') !== 'false');
   const [showFooterLaunches, setShowFooterLaunches] = useState(() => localStorage.getItem('showFooterLaunches') !== 'false');
+  const [showTrayRecents, setShowTrayRecents] = useState(() => localStorage.getItem('showTrayRecents') !== 'false');
+  const [showSuiteRecommendations, setShowSuiteRecommendations] = useState(() => localStorage.getItem('showSuiteRecommendations') !== 'false');
   const [showTrayPinTip, setShowTrayPinTip] = useState(false);
   const [sidebarStatsCollapsed, setSidebarStatsCollapsed] = useState(() => localStorage.getItem('sidebarStatsCollapsed') === 'true');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
@@ -3213,6 +3216,8 @@ export default function App() {
           if (source.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(source.autoBackupHours));
           if (source.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(source.autoBackupKeep));
           if (source.autoBackupLast !== undefined) setAutoBackupLast(typeof source.autoBackupLast === 'string' ? source.autoBackupLast : null);
+          if (source.showTrayRecents !== undefined) setShowTrayRecents(source.showTrayRecents !== false);
+          if (source.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(source.showSuiteRecommendations !== false);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -3265,8 +3270,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3296,7 +3301,8 @@ export default function App() {
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
-          autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast
+          autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
+          showTrayRecents, showSuiteRecommendations
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -3324,6 +3330,7 @@ export default function App() {
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
     autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
+    showTrayRecents, showSuiteRecommendations,
     isConfigLoaded
   ]);
 
@@ -3352,6 +3359,15 @@ export default function App() {
     }
     localStorage.setItem('showTaskbarIcon', showTaskbarIcon.toString());
   }, [showTaskbarIcon]);
+
+  // Sincronizar ajustes del tray con el proceso principal de Electron
+  useEffect(() => {
+    localStorage.setItem('showTrayRecents', showTrayRecents.toString());
+    localStorage.setItem('showSuiteRecommendations', showSuiteRecommendations.toString());
+    if (isElectron && window.electronAPI?.updateTraySettings) {
+      void window.electronAPI.updateTraySettings({ showTrayRecents, showSuiteRecommendations });
+    }
+  }, [showTrayRecents, showSuiteRecommendations, isElectron]);
 
   useEffect(() => {
     localStorage.setItem('showHeaderClock', showHeaderClock.toString());
@@ -3475,7 +3491,8 @@ export default function App() {
       'leftSidebarWidth', 'rightSidebarWidth', 'rightSidebarCollapsed',
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
       'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
-      'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast'
+      'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast',
+      'showTrayRecents', 'showSuiteRecommendations'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -3670,6 +3687,14 @@ export default function App() {
       }
       if (config.autoBackupLast !== undefined) {
         setAutoBackupLast(typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null);
+      }
+      if (config.showTrayRecents !== undefined) {
+        setShowTrayRecents(config.showTrayRecents !== false);
+        localStorage.setItem('showTrayRecents', (config.showTrayRecents !== false).toString());
+      }
+      if (config.showSuiteRecommendations !== undefined) {
+        setShowSuiteRecommendations(config.showSuiteRecommendations !== false);
+        localStorage.setItem('showSuiteRecommendations', (config.showSuiteRecommendations !== false).toString());
       }
       if (config.ramThresholdPercent !== undefined) {
         setRamThresholdPercent(Number(config.ramThresholdPercent) || 80);
@@ -8930,11 +8955,68 @@ export default function App() {
                         </div>
                       </div>
                       <button 
+                        type="button"
                         onClick={() => setShowTaskbarIcon(!showTaskbarIcon)}
                         className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${showTaskbarIcon ? 'bg-slate-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTaskbarIcon ? 'translate-x-5' : 'translate-x-0'}`}>
                           <div className={`w-2 h-2 rounded-full ${showTaskbarIcon ? 'bg-slate-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Accesos Recientes en Menú del Tray */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <History className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_recents_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_recents_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newVal = !showTrayRecents;
+                          setShowTrayRecents(newVal);
+                          if (isElectron && window.electronAPI?.updateTraySettings) {
+                            void window.electronAPI.updateTraySettings({ showTrayRecents: newVal });
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showTrayRecents ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTrayRecents ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showTrayRecents ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Recomendaciones de la Suite CyberGems */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_suite_recommendations_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_suite_recommendations_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newVal = !showSuiteRecommendations;
+                          setShowSuiteRecommendations(newVal);
+                          if (isElectron && window.electronAPI?.updateTraySettings) {
+                            void window.electronAPI.updateTraySettings({ showSuiteRecommendations: newVal });
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${showSuiteRecommendations ? 'bg-purple-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showSuiteRecommendations ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showSuiteRecommendations ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
                     </div>

@@ -1250,136 +1250,250 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
   ];
 }
 
-function rebuildTrayMenu(): void {
-  if (!tray) return;
+// =====================================
+// CUSTOM TRAY MENU WINDOW (SUITE STANDARD)
+// =====================================
+const SUITE_SHORT_DESCS: Record<string, { es: string; en: string }> = {
+  cyberclock: { es: 'Reloj de escritorio', en: 'Desktop Clock' },
+  cyberfeeds: { es: 'Lector RSS', en: 'RSS Reader' },
+  cyberlauncher: { es: 'Lanzador de apps', en: 'App Launcher' },
+  cybermanager: { es: 'Administrador de tareas', en: 'Task Manager' },
+  cybernotes: { es: 'Notas', en: 'Note Taking' },
+  cyberpaste: { es: 'Portapapeles', en: 'Clipboard Manager' },
+  cybersnap: { es: 'Captura de pantalla', en: 'Screen Capture' },
+  cybertray: { es: 'Accesos directos', en: 'Shortcut Manager' },
+  cyberviewer: { es: 'Visor de imágenes', en: 'Image Viewer' },
+  cyberwall: { es: 'Firewall', en: 'Firewall' },
+};
 
-  // Replacing the open Windows tray menu crashes on hover.
-  if (trayMenuOpen) {
-    pendingTrayRebuild = true;
-    return;
+function getSuiteAppsList(lang: 'es' | 'en') {
+  try {
+    const candidates = [
+      path.join(__dirname, '../public/assets/suite/suite.json'),
+      path.join(app.getAppPath(), 'dist/assets/suite/suite.json'),
+      path.join(app.getAppPath(), 'public/assets/suite/suite.json'),
+    ];
+    const found = candidates.find(p => fs.existsSync(p));
+    if (found) {
+      const data = JSON.parse(fs.readFileSync(found, 'utf-8'));
+      if (data && Array.isArray(data.apps)) {
+        return data.apps.map((a: any) => ({
+          slug: a.slug,
+          name: a.name,
+          desc: (SUITE_SHORT_DESCS[a.slug] && SUITE_SHORT_DESCS[a.slug][lang]) || (a.tagline && a.tagline[lang]) || a.name,
+          site: a.site || `https://cybergems.org/apps/${a.slug}/`,
+        }));
+      }
+    }
+  } catch { /* fallback */ }
+
+  return Object.entries(SUITE_SHORT_DESCS).map(([slug, descObj]) => ({
+    slug,
+    name: slug.charAt(0).toUpperCase() + slug.slice(1),
+    desc: descObj[lang] || descObj.en,
+    site: `https://cybergems.org/apps/${slug}/`,
+  }));
+}
+
+let trayMenuWin: BrowserWindow | null = null;
+let trayMenuAnchor: any = null;
+let trayMenuHideTimer: ReturnType<typeof setTimeout> | null = null;
+let trayMenuLastShown = 0;
+const TRAY_MENU_CARD_WIDTH = 290;
+const TRAY_MENU_SHADOW_PAD = 20;
+const TRAY_MENU_EST_HEIGHT = 480;
+
+let showTrayRecentsConfig = true;
+let showSuiteRecommendationsConfig = true;
+
+function loadTrayConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (typeof cfg.showTrayRecents === 'boolean') showTrayRecentsConfig = cfg.showTrayRecents;
+      if (typeof cfg.showSuiteRecommendations === 'boolean') showSuiteRecommendationsConfig = cfg.showSuiteRecommendations;
+    }
+  } catch { /* ignore */ }
+}
+
+function buildTrayMenuState(resetView = false) {
+  loadTrayConfig();
+  const lang = getTrayLanguage();
+  const isVisible = !!(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  const suiteApps = getSuiteAppsList(lang);
+
+  return {
+    version: app.getVersion(),
+    lang,
+    isVisible,
+    shortcut: currentShortcut || 'Alt+Shift+L',
+    showTrayRecents: showTrayRecentsConfig,
+    showSuiteRecommendations: showSuiteRecommendationsConfig,
+    recents: trayRecents,
+    suiteApps,
+    resetView,
+  };
+}
+
+function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
+  let b = (iconBounds && typeof iconBounds.x === 'number' && (iconBounds.width || iconBounds.height))
+    ? { x: iconBounds.x, y: iconBounds.y, width: iconBounds.width || 0, height: iconBounds.height || 0 }
+    : null;
+  if (!b) {
+    let p: any = null;
+    try { p = screen.getCursorScreenPoint(); } catch (_) { p = { x: 0, y: 0 }; }
+    b = { x: p.x, y: p.y, width: 0, height: 0 };
+  }
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  let display: any;
+  try { display = screen.getDisplayNearestPoint({ x: cx, y: cy }); }
+  catch (_) { display = screen.getPrimaryDisplay(); }
+  const work = (display && display.workArea) || { x: 0, y: 0, width: windowW, height: windowH };
+
+  const gap = 4;
+  const pad = TRAY_MENU_SHADOW_PAD;
+  const cardW = windowW - 2 * pad;
+  const cardH = windowH - 2 * pad;
+
+  let cardX: number, cardY: number;
+  const dLeft = cx - work.x;
+  const dRight = (work.x + work.width) - cx;
+  const dTop = cy - work.y;
+  const dBottom = (work.y + work.height) - cy;
+
+  if (dBottom <= dLeft && dBottom <= dRight && dBottom <= dTop) {
+    cardX = cx - cardW / 2;
+    cardY = b.y - gap - cardH;
+  } else if (dTop <= dLeft && dTop <= dRight) {
+    cardX = cx - cardW / 2;
+    cardY = b.y + b.height + gap;
+  } else if (dLeft <= dRight) {
+    cardX = b.x + b.width + gap;
+    cardY = cy - cardH / 2;
+  } else {
+    cardX = b.x - gap - cardW;
+    cardY = cy - cardH / 2;
   }
 
-  pendingTrayRebuild = false;
+  cardX = Math.min(Math.max(cardX, work.x + 4), work.x + work.width - cardW - 4);
+  cardY = Math.min(Math.max(cardY, work.y + 4), work.y + work.height - cardH - 4);
+  return { x: Math.round(cardX - pad), y: Math.round(cardY - pad), width: windowW, height: windowH };
+}
+
+function ensureTrayMenuWin(): BrowserWindow {
+  if (trayMenuWin && !trayMenuWin.isDestroyed()) return trayMenuWin;
+
+  const isDev = Boolean(VITE_DEV_SERVER_URL);
+  const trayHtml = isDev
+    ? path.join(__dirname, '../public/tray/tray-menu.html')
+    : path.join(app.getAppPath(), 'dist/tray/tray-menu.html');
+  const trayPreload = isDev
+    ? path.join(__dirname, '../public/tray/tray-preload.js')
+    : path.join(app.getAppPath(), 'dist/tray/tray-preload.js');
+
+  const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
+  trayMenuWin = new BrowserWindow({
+    width: windowW,
+    height: TRAY_MENU_EST_HEIGHT,
+    show: false,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: trayPreload,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  trayMenuWin.setAlwaysOnTop(true, 'pop-up-menu');
+  void trayMenuWin.loadFile(trayHtml);
+
+  trayMenuWin.on('blur', () => {
+    if (trayMenuHideTimer) return;
+    if (Date.now() - trayMenuLastShown < 250) return;
+    trayMenuHideTimer = setTimeout(() => {
+      trayMenuHideTimer = null;
+      hideCustomTrayMenu();
+    }, 120);
+  });
+
+  trayMenuWin.on('closed', () => {
+    trayMenuWin = null;
+    trayMenuOpen = false;
+  });
+
+  trayMenuWin.webContents.once('did-finish-load', () => {
+    if (!trayMenuWin || trayMenuWin.isDestroyed()) return;
+    trayMenuWin.webContents.send('tray-menu-state', buildTrayMenuState(true));
+  });
+
+  return trayMenuWin;
+}
+
+function showCustomTrayMenu(eventBounds?: any) {
+  if (!tray || tray.isDestroyed()) return;
+  let b = (eventBounds && typeof eventBounds.x === 'number' && (eventBounds.width || eventBounds.height))
+    ? eventBounds : null;
+  if (!b) { try { b = tray.getBounds(); } catch (_) { b = null; } }
+  if (!b || (!b.width && !b.height)) {
+    let p: any = null; try { p = screen.getCursorScreenPoint(); } catch (_) { p = null; }
+    b = p ? { x: p.x, y: p.y, width: 0, height: 0 } : { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  trayMenuAnchor = b;
+  if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
+
+  const w = ensureTrayMenuWin();
+  if (!w || w.isDestroyed()) return;
+
+  trayMenuOpen = true;
+  armTrayMenuGuard(3000);
+
+  const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
+  const geo = trayMenuGeometry(trayMenuAnchor, windowW, TRAY_MENU_EST_HEIGHT);
+  w.setBounds(geo);
+  if (!w.isVisible()) w.show();
+  w.focus();
+  trayMenuLastShown = Date.now();
+
+  if (!w.webContents.isLoading()) {
+    w.webContents.send('tray-menu-state', buildTrayMenuState(true));
+    w.webContents.send('tray-menu-show');
+  }
+}
+
+function hideCustomTrayMenu() {
+  if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
+  trayMenuOpen = false;
+  armTrayMenuGuard(400);
+  if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuWin.isVisible()) {
+    trayMenuWin.hide();
+  }
+}
+
+function updateCustomTrayMenuState() {
+  if (trayMenuWin && !trayMenuWin.isDestroyed() && !trayMenuWin.webContents.isLoading()) {
+    trayMenuWin.webContents.send('tray-menu-state', buildTrayMenuState(false));
+  }
+}
+
+function rebuildTrayMenu(): void {
+  if (!tray) return;
   const version = app.getVersion();
   tray.setImage(getTrayIcon());
   tray.setToolTip(`CyberLauncher v${version}`);
-
-  const menu = Menu.buildFromTemplate(getTrayMenuTemplate());
-  menu.on('menu-will-show', () => {
-    trayMenuOpen = true;
-    trayRightClickSeq++;
-    lastTrayRightClickAt = Date.now();
-    pendingTrayAction = null;
-    pendingHideAfterTray = false;
-    if (trayMenuCloseFallback) clearTimeout(trayMenuCloseFallback);
-    trayMenuCloseFallback = setTimeout(() => {
-      if (!trayMenuOpen) return;
-      console.log('[TRAY] menu close fallback');
-      onTrayMenuClosed();
-    }, 15_000);
-  });
-  menu.on('menu-will-close', () => {
-    console.log('[TRAY] menu-will-close');
-    onTrayMenuClosed();
-  });
-  tray.setContextMenu(menu);
-}
-
-function executePendingTrayAction() {
-  const action = pendingTrayAction;
-  pendingTrayAction = null;
-  if (action !== 'launch-recent') pendingRecentLaunch = null;
-  const blurHide = pendingHideAfterTray;
-  pendingHideAfterTray = false;
-
-  console.log('[TRAY] menu closed, action=' + (action || 'none'));
-
-  if (action === 'quit') {
-    isQuitting = true;
-    app.quit();
-    return;
-  }
-  if (action === 'launch-recent') {
-    const item = pendingRecentLaunch;
-    pendingRecentLaunch = null;
-    if (item?.path) {
-      void launchAppInternal(item.path, item.isAdmin).then((res) => {
-        if (!res?.success) {
-          console.warn('[TRAY] Recent launch failed:', res?.error || item.path);
-          return;
-        }
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('app-launched-via-hotkey', {
-            path: item.path,
-            name: item.name,
-          });
-        }
-      });
-    }
-    applyRendererThrottling();
-    return;
-  }
-  if (action === 'hide') {
-    windowVisibilityState = 'hidden-intentional';
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      console.log('[WM] hideMainWindow (tray Hide)');
-      mainWindow.hide();
-    }
-    applyRendererThrottling();
-    return;
-  }
-  if (action === 'show' || action === 'new-app' || action === 'settings' || action === 'about' || action === 'check-updates') {
-    if (action === 'about') {
-      triggerOpenAbout(false);
-    } else if (action === 'check-updates') {
-      triggerOpenAbout(true);
-    } else {
-      showMainWindow();
-      if (action === 'settings' && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('open-settings');
-      } else if (action === 'new-app' && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('open-add-app');
-      }
-    }
-    applyRendererThrottling();
-    return;
-  }
-
-  if (
-    blurHide &&
-    hideOnBlurEnabled &&
-    mainWindow &&
-    !mainWindow.isDestroyed() &&
-    !mainWindow.isFocused() &&
-    !mainWindow.isAlwaysOnTop() &&
-    !isDialogOpen &&
-    !isUiModalOpen
-  ) {
-    console.log('[WM] Applying deferred hide after tray menu dismissed');
-    windowVisibilityState = 'hidden-blur';
-    console.log('[WM] hideMainWindow');
-    mainWindow.hide();
-  }
-  applyRendererThrottling();
-}
-
-function onTrayMenuClosed() {
-  if (!trayMenuOpen) return;
-  if (trayMenuCloseFallback) {
-    clearTimeout(trayMenuCloseFallback);
-    trayMenuCloseFallback = null;
-  }
-  trayMenuOpen = false;
-  lastTrayRightClickAt = Date.now();
-  armTrayMenuGuard(400);
-  // Windows often fires menu-will-close BEFORE the item click handler.
-  setTimeout(() => {
-    executePendingTrayAction();
-    if (pendingTrayRebuild) {
-      pendingTrayRebuild = false;
-      rebuildTrayMenu();
-    }
-  }, 50);
+  updateCustomTrayMenuState();
 }
 
 function createTray() {
@@ -1391,33 +1505,23 @@ function createTray() {
     tray.on('mouse-enter', () => {
       if (!trayMenuOpen) rebuildTrayMenu();
     });
-    // Flag only — Windows shows tray.setContextMenu() itself.
-    // Calling popUpContextMenu on top of that crashes / races with left-click toggle.
-    tray.on('right-click', () => {
-      trayRightClickSeq++;
-      lastTrayRightClickAt = Date.now();
-      trayMenuOpen = true;
-      pendingTrayAction = null;
-      pendingHideAfterTray = false;
-      if (trayMenuCloseFallback) clearTimeout(trayMenuCloseFallback);
-      trayMenuCloseFallback = setTimeout(() => {
-        if (!trayMenuOpen) return;
-        console.log('[TRAY] menu close fallback');
-        onTrayMenuClosed();
-      }, 15_000);
+    tray.on('right-click', (_event, bounds) => {
+      if (trayMenuOpen && trayMenuWin && trayMenuWin.isVisible()) {
+        hideCustomTrayMenu();
+      } else {
+        showCustomTrayMenu(bounds);
+      }
     });
   }
 
-  // Windows also emits `click` on right-click, often BEFORE `right-click`.
-  // Delay + sequence check: a right-click cancels the pending toggle.
   tray.on('click', () => {
+    hideCustomTrayMenu();
     if (process.platform === 'win32') {
       const seq = trayRightClickSeq;
       if (trayClickTimer) clearTimeout(trayClickTimer);
       trayClickTimer = setTimeout(() => {
         trayClickTimer = null;
         if (trayMenuOpen || trayRightClickSeq !== seq || Date.now() - lastTrayRightClickAt < 400) {
-          console.log('[TRAY] skip click (context menu)');
           return;
         }
         if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -1427,7 +1531,9 @@ function createTray() {
     }
     toggleWindow();
   });
+
   tray.on('double-click', () => {
+    hideCustomTrayMenu();
     if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow();
       return;
@@ -1435,6 +1541,138 @@ function createTray() {
     showMainWindow();
   });
 }
+
+// IPC Handlers for custom tray menu
+ipcMain.on('tray-menu-action', (_event, action, payload) => {
+  hideCustomTrayMenu();
+
+  if (action === 'quit') {
+    isQuitting = true;
+    app.quit();
+    return;
+  }
+
+  if (action === 'show') {
+    showMainWindow();
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'hide') {
+    windowVisibilityState = 'hidden-intentional';
+    mainWindow?.hide();
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'new-app') {
+    showMainWindow();
+    mainWindow?.webContents.send('open-add-app');
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'settings') {
+    showMainWindow();
+    mainWindow?.webContents.send('open-settings');
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'about-modal') {
+    triggerOpenAbout(false);
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'check-updates') {
+    triggerOpenAbout(true);
+    applyRendererThrottling();
+    return;
+  }
+
+  if (action === 'help-pin') {
+    openTaskbarIconSettings();
+    return;
+  }
+
+  if (action === 'help-faq') {
+    void shell.openExternal('https://github.com/CyberGems/CyberLauncher/wiki#faq');
+    return;
+  }
+
+  if (action === 'help-changelog') {
+    void shell.openExternal('https://github.com/CyberGems/CyberLauncher/releases');
+    return;
+  }
+
+  if (action === 'help-website') {
+    void shell.openExternal('https://cybergems.org/apps/cyberlauncher/');
+    return;
+  }
+
+  if (action === 'help-donate') {
+    void shell.openExternal('https://ko-fi.com/cybergems');
+    return;
+  }
+
+  if (action === 'suite-app' && payload?.site) {
+    void shell.openExternal(payload.site);
+    return;
+  }
+
+  if (action === 'suite-view-all') {
+    void shell.openExternal('https://cybergems.org/#apps');
+    return;
+  }
+
+  if (action === 'suite-home') {
+    void shell.openExternal('https://cybergems.org');
+    return;
+  }
+
+  if (action === 'launch-recent' && payload?.path) {
+    void launchAppInternal(payload.path, payload.isAdmin).then((res) => {
+      if (!res?.success) {
+        console.warn('[TRAY] Recent launch failed:', res?.error || payload.path);
+        return;
+      }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-launched-via-hotkey', {
+          path: payload.path,
+          name: payload.name,
+        });
+      }
+    });
+    applyRendererThrottling();
+    return;
+  }
+});
+
+ipcMain.on('tray-menu-hide', () => {
+  hideCustomTrayMenu();
+});
+
+ipcMain.on('tray-menu-ready', (_event, rect) => {
+  if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuAnchor && rect && rect.height) {
+    const pad = TRAY_MENU_SHADOW_PAD;
+    const desiredH = Math.min(Math.max(rect.height, 200), 700);
+    const windowW = TRAY_MENU_CARD_WIDTH + 2 * pad;
+    const geo = trayMenuGeometry(trayMenuAnchor, windowW, desiredH);
+    trayMenuWin.setBounds(geo);
+  }
+});
+
+ipcMain.handle('tray:update-settings', (_event, settings) => {
+  if (settings && typeof settings.showTrayRecents === 'boolean') {
+    showTrayRecentsConfig = settings.showTrayRecents;
+  }
+  if (settings && typeof settings.showSuiteRecommendations === 'boolean') {
+    showSuiteRecommendationsConfig = settings.showSuiteRecommendations;
+  }
+  updateCustomTrayMenuState();
+  return { success: true };
+});
 
 // =====================================
 // TOGGLE WINDOW (Mostrar / Ocultar)

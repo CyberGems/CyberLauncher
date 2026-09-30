@@ -456,6 +456,12 @@ export const translations = {
     sys_tray_pin_btn: "Abrir Configuración",
     sys_tray_pin_tip_btn: "Ver recomendación",
 
+    // Tray Menu & Suite Recommendations
+    sys_tray_recents_title: "Accesos recientes en el menú de la bandeja",
+    sys_tray_recents_desc: "Muestra accesos rápidos directos a las aplicaciones lanzadas recientemente en el menú del tray.",
+    sys_suite_recommendations_title: "Recomendaciones de la suite",
+    sys_suite_recommendations_desc: "Muestra la sección 'Más de CyberGems' en el menú de la bandeja y en la ventana Acerca de.",
+
     // System Health Alerts
     sys_alerts_title: "ALERTAS DE SALUD DEL SISTEMA",
     sys_alerts_enabled: "Activar alertas de recursos del sistema",
@@ -1032,6 +1038,12 @@ export const translations = {
     sys_tray_pin_desc: "Keeps the icon visible next to the system clock, outside the overflow menu (^).",
     sys_tray_pin_btn: "Open Settings",
     sys_tray_pin_tip_btn: "Show tip",
+
+    // Tray Menu & Suite Recommendations
+    sys_tray_recents_title: "Recent shortcuts in tray menu",
+    sys_tray_recents_desc: "Show direct quick shortcuts to recently launched applications in the tray menu.",
+    sys_suite_recommendations_title: "Suite recommendations",
+    sys_suite_recommendations_desc: "Show 'More from CyberGems' in the tray menu and About dialog.",
 
     // System Health Alerts
     sys_alerts_title: "SYSTEM HEALTH ALERTS",
