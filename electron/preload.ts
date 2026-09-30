@@ -69,6 +69,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportConfig: (jsonData: string) => ipcRenderer.invoke('export-config', jsonData),
   importConfig: () => ipcRenderer.invoke('import-config'),
 
+  // --- Respaldo automático programado ---
+  backupNow: () => ipcRenderer.invoke('backup:now'),
+  listBackups: () => ipcRenderer.invoke('backup:list'),
+  openBackupsFolder: () => ipcRenderer.invoke('backup:openFolder'),
+  restoreBackup: (fileName: string) => ipcRenderer.invoke('backup:restore', fileName),
+  deleteBackup: (fileName: string) => ipcRenderer.invoke('backup:delete', fileName),
+  getBackupStatus: () => ipcRenderer.invoke('backup:get-status'),
+  onBackupCompleted: (callback: (data: { at: string; file: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('backup:completed', handler);
+    return () => { ipcRenderer.removeListener('backup:completed', handler); };
+  },
+
   // --- Persistencia centralizada automática ---
   saveConfig: (config: any) => ipcRenderer.invoke('saveConfig', config),
   loadConfig: () => ipcRenderer.invoke('loadConfig'),

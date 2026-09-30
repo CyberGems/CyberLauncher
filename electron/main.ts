@@ -8,6 +8,17 @@ import crypto from 'node:crypto';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
+import {
+  parseBackupHours,
+  parseBackupKeep,
+  isBackupDue,
+  backupFileName,
+  isBackupFile,
+  selectBackupsToPrune,
+  DEFAULT_AUTO_BACKUP_HOURS,
+  DEFAULT_AUTO_BACKUP_KEEP,
+  type BackupItem,
+} from '../shared/backup';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -305,6 +316,99 @@ function isCursorNearTrayIcon(): boolean {
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.json');
+const backupsDir = path.join(app.getPath('userData'), 'backups');
+
+// ─── Respaldo automático programado ─────────────────────────────────────
+let autoBackupTimer: NodeJS.Timeout | null = null;
+let autoBackupRunning = false;
+
+function getAutoBackupConfig(): { enabled: boolean; hours: number; keep: number; last: string | null } {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      return {
+        enabled: config.autoBackupEnabled !== false,
+        hours: parseBackupHours(config.autoBackupHours),
+        keep: parseBackupKeep(config.autoBackupKeep),
+        last: typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null,
+      };
+    }
+  } catch (err) {
+    console.error('[BACKUP] Error reading config for backup:', err);
+  }
+  return {
+    enabled: true,
+    hours: DEFAULT_AUTO_BACKUP_HOURS,
+    keep: DEFAULT_AUTO_BACKUP_KEEP,
+    last: null,
+  };
+}
+
+async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise<{ ok: boolean; file?: string; error?: string }> {
+  if (autoBackupRunning) return { ok: false, error: 'Backup already in progress' };
+  autoBackupRunning = true;
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return { ok: false, error: 'Config file does not exist' };
+    fs.mkdirSync(backupsDir, { recursive: true });
+    const file = backupFileName(new Date());
+    const targetPath = path.join(backupsDir, file);
+
+    fs.copyFileSync(CONFIG_FILE, targetPath);
+
+    const cfg = getAutoBackupConfig();
+    const files = fs.readdirSync(backupsDir);
+    for (const old of selectBackupsToPrune(files, cfg.keep)) {
+      try {
+        fs.unlinkSync(path.join(backupsDir, old));
+      } catch { /* ignore */ }
+    }
+
+    const now = new Date().toISOString();
+    try {
+      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
+      const config = JSON.parse(raw);
+      config.autoBackupLast = now;
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[BACKUP] Failed to record autoBackupLast in config:', err);
+    }
+
+    console.log(`[BACKUP] (${reason}) saved as ${file}`);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('backup:completed', { at: now, file });
+    }
+    return { ok: true, file };
+  } catch (err: any) {
+    console.error(`[BACKUP] (${reason}) failed:`, err);
+    return { ok: false, error: err?.message || String(err) };
+  } finally {
+    autoBackupRunning = false;
+  }
+}
+
+function startAutoBackupWatcher(): void {
+  if (autoBackupTimer) {
+    clearInterval(autoBackupTimer);
+    autoBackupTimer = null;
+  }
+  const check = (reason: 'schedule' | 'startup') => {
+    const cfg = getAutoBackupConfig();
+    if (!cfg.enabled) return;
+    if (isBackupDue(cfg.last, Date.now(), cfg.hours)) {
+      void runAutoBackup(reason);
+    }
+  };
+  setTimeout(() => check('startup'), 30_000);
+  autoBackupTimer = setInterval(() => check('schedule'), 60_000);
+}
+
+function stopAutoBackupWatcher(): void {
+  if (autoBackupTimer) {
+    clearInterval(autoBackupTimer);
+    autoBackupTimer = null;
+  }
+}
+
 const START_MINIMIZED_ARG = '--start-minimized';
 /** True when this process should boot to tray (login / --start-minimized). */
 let startHiddenThisSession = false;
@@ -3112,6 +3216,74 @@ foreach (\$app in \$startApps) {
     return content;
   });
 
+  // --- Respaldo automático programado ---
+  ipcMain.handle('backup:now', () => runAutoBackup('manual'));
+
+  ipcMain.handle('backup:list', () => {
+    try {
+      if (!fs.existsSync(backupsDir)) return [];
+      return fs
+        .readdirSync(backupsDir)
+        .filter(isBackupFile)
+        .sort()
+        .reverse()
+        .map((file) => {
+          try {
+            const stat = fs.statSync(path.join(backupsDir, file));
+            return { file, size: stat.size, mtime: stat.mtime.toISOString() };
+          } catch {
+            return null;
+          }
+        })
+        .filter((x): x is BackupItem => x !== null);
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle('backup:openFolder', async () => {
+    try {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    } catch { /* ignore */ }
+    return shell.openPath(backupsDir);
+  });
+
+  ipcMain.handle('backup:restore', async (_event, fileName: string) => {
+    try {
+      const safeFile = path.basename(fileName);
+      const backupPath = path.join(backupsDir, safeFile);
+      if (!fs.existsSync(backupPath) || !isBackupFile(safeFile)) {
+        return { success: false, error: 'Backup file not found' };
+      }
+      const content = await fs.promises.readFile(backupPath, 'utf-8');
+      await fs.promises.writeFile(CONFIG_FILE, content, 'utf-8');
+      return { success: true, content };
+    } catch (err: any) {
+      return { success: false, error: err?.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('backup:delete', async (_event, fileName: string) => {
+    try {
+      const safeFile = path.basename(fileName);
+      const backupPath = path.join(backupsDir, safeFile);
+      if (fs.existsSync(backupPath) && isBackupFile(safeFile)) {
+        await fs.promises.unlink(backupPath);
+        return { success: true };
+      }
+      return { success: false, error: 'Backup file not found' };
+    } catch (err: any) {
+      return { success: false, error: err?.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('backup:get-status', () => {
+    return {
+      config: getAutoBackupConfig(),
+      backupsDir,
+    };
+  });
+
   // --- Registrar hotspots desde React ---
   ipcMain.handle('set-hotspots', (_event, corners: string[], delay: number) => {
     console.log('ACTUALIZANDO HOTSPOTS:', corners, 'Delay:', delay);
@@ -3487,6 +3659,7 @@ foreach (\$app in \$startApps) {
           ramLowAbsoluteAlertEnabled: config.ramLowAbsoluteAlertEnabled,
           language: config.language,
         });
+        startAutoBackupWatcher();
       }
       rebuildTrayMenu();
       return true;
@@ -3714,6 +3887,9 @@ app.whenReady().then(() => {
     bootAlertsConfig
   );
 
+  // Iniciar vigilante de respaldo automático programado
+  startAutoBackupWatcher();
+
   // Iniciar guardia de hotspots
   startHotspotPolling();
 
@@ -3785,4 +3961,5 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   stopUACGuard();
   stopSystemAlerts();
+  stopAutoBackupWatcher();
 });

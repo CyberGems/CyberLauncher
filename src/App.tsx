@@ -14,8 +14,14 @@ import {
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
+  Archive, Database
 } from 'lucide-react';
+import {
+  parseBackupHours,
+  parseBackupKeep,
+  type BackupItem,
+} from '../shared/backup';
 
 // (CyberTray import removed)
 
@@ -364,6 +370,13 @@ declare global {
       openTaskbarSettings: () => Promise<{ success: boolean; error?: string }>;
       exportConfig: (jsonData: string) => Promise<string | null>;
       importConfig: () => Promise<string | null>;
+      backupNow?: () => Promise<{ ok: boolean; file?: string; error?: string }>;
+      listBackups?: () => Promise<Array<BackupItem>>;
+      openBackupsFolder?: () => Promise<string>;
+      restoreBackup?: (fileName: string) => Promise<{ success: boolean; content?: string; error?: string }>;
+      deleteBackup?: (fileName: string) => Promise<{ success: boolean; error?: string }>;
+      getBackupStatus?: () => Promise<{ config: { enabled: boolean; hours: number; keep: number; last: string | null }; backupsDir: string }>;
+      onBackupCompleted?: (callback: (data: { at: string; file: string }) => void) => () => void;
       saveConfig: (config: any) => Promise<boolean>;
       loadConfig: () => Promise<any | null>;
       getConfigPath: () => Promise<string>;
@@ -2009,6 +2022,16 @@ export default function App() {
   });
   const [systemDrives, setSystemDrives] = useState<string[]>([]);
 
+  // --- Scheduled Auto Backup State ---
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
+  const [autoBackupHours, setAutoBackupHours] = useState(24);
+  const [autoBackupKeep, setAutoBackupKeep] = useState(7);
+  const [autoBackupLast, setAutoBackupLast] = useState<string | null>(null);
+  const [backupsList, setBackupsList] = useState<BackupItem[]>([]);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupToRestore, setBackupToRestore] = useState<BackupItem | null>(null);
+  const [backupToDelete, setBackupToDelete] = useState<BackupItem | null>(null);
+
   // Search Guide Tooltip State
   const [showSearchGuide, setShowSearchGuide] = useState(false);
   const searchGuideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -3186,6 +3209,10 @@ export default function App() {
           if (source.ramAlertsEnabled !== undefined) setRamAlertsEnabled(!!source.ramAlertsEnabled);
           if (source.ramThresholdPercent !== undefined) setRamThresholdPercent(Number(source.ramThresholdPercent) || 80);
           if (source.ramLowAbsoluteAlertEnabled !== undefined) setRamLowAbsoluteAlertEnabled(!!source.ramLowAbsoluteAlertEnabled);
+          if (source.autoBackupEnabled !== undefined) setAutoBackupEnabled(source.autoBackupEnabled !== false);
+          if (source.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(source.autoBackupHours));
+          if (source.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(source.autoBackupKeep));
+          if (source.autoBackupLast !== undefined) setAutoBackupLast(typeof source.autoBackupLast === 'string' ? source.autoBackupLast : null);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -3238,8 +3265,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3268,7 +3295,8 @@ export default function App() {
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
-          selectedMonitor, autoUpdate, language
+          selectedMonitor, autoUpdate, language,
+          autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -3295,6 +3323,7 @@ export default function App() {
     showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
+    autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
     isConfigLoaded
   ]);
 
@@ -3445,7 +3474,8 @@ export default function App() {
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'rightSidebarWidth', 'rightSidebarCollapsed',
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
-      'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled'
+      'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
+      'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -3628,6 +3658,18 @@ export default function App() {
       if (config.ramAlertsEnabled !== undefined) {
         setRamAlertsEnabled(!!config.ramAlertsEnabled);
         localStorage.setItem('ramAlertsEnabled', config.ramAlertsEnabled.toString());
+      }
+      if (config.autoBackupEnabled !== undefined) {
+        setAutoBackupEnabled(config.autoBackupEnabled !== false);
+      }
+      if (config.autoBackupHours !== undefined) {
+        setAutoBackupHours(parseBackupHours(config.autoBackupHours));
+      }
+      if (config.autoBackupKeep !== undefined) {
+        setAutoBackupKeep(parseBackupKeep(config.autoBackupKeep));
+      }
+      if (config.autoBackupLast !== undefined) {
+        setAutoBackupLast(typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null);
       }
       if (config.ramThresholdPercent !== undefined) {
         setRamThresholdPercent(Number(config.ramThresholdPercent) || 80);
@@ -4128,6 +4170,10 @@ export default function App() {
            setHotspotCorners([data.settings.hotspotCorner]);
         }
         if (data.settings.hotspotDelay !== undefined) setHotspotDelay(data.settings.hotspotDelay);
+        if (data.settings.autoBackupEnabled !== undefined) setAutoBackupEnabled(data.settings.autoBackupEnabled !== false);
+        if (data.settings.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(data.settings.autoBackupHours));
+        if (data.settings.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(data.settings.autoBackupKeep));
+        if (data.settings.autoBackupLast !== undefined) setAutoBackupLast(data.settings.autoBackupLast || null);
         if (isElectron && (data.settings.startWithWindows !== undefined || data.settings.startMinimized !== undefined)) {
           const auto = data.settings.startWithWindows !== undefined ? !!data.settings.startWithWindows : startWithWindows;
           const mini = data.settings.startMinimized !== undefined ? !!data.settings.startMinimized : startMinimized;
@@ -4144,6 +4190,137 @@ export default function App() {
     if (isElectron) {
       const content = await window.electronAPI!.importConfig();
       if (content) applyImportData(content);
+    }
+  };
+
+  // --- Scheduled Auto Backup Handlers & Sync ---
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onBackupCompleted) return;
+    const cleanup = window.electronAPI.onBackupCompleted((data) => {
+      setAutoBackupLast(data.at);
+      if (settingsTab === 'backup') {
+        window.electronAPI?.listBackups?.().then(list => setBackupsList(list || [])).catch(() => {});
+      }
+    });
+    return cleanup;
+  }, [isElectron, settingsTab]);
+
+  useEffect(() => {
+    if (settingsTab === 'backup' && isElectron && window.electronAPI?.listBackups) {
+      window.electronAPI.listBackups().then(list => setBackupsList(list || [])).catch(console.error);
+    }
+  }, [settingsTab, isElectron]);
+
+  const handleToggleAutoBackup = (enabled: boolean) => {
+    setAutoBackupEnabled(enabled);
+  };
+
+  const handleBackupNow = async () => {
+    if (!isElectron || !window.electronAPI?.backupNow || isBackingUp) return;
+    setIsBackingUp(true);
+    try {
+      const res = await window.electronAPI.backupNow();
+      if (res?.ok && res.file) {
+        setAutoBackupLast(new Date().toISOString());
+        setNotification({
+          message: t('backup_auto_notif_success', { file: res.file }),
+          type: 'success'
+        });
+        const list = await window.electronAPI.listBackups?.();
+        if (list) setBackupsList(list);
+      } else {
+        setNotification({
+          message: res?.error || (language === 'es' ? 'Error al crear respaldo' : 'Failed to create backup'),
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setNotification({
+        message: err?.message || String(err),
+        type: 'error'
+      });
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleOpenBackupsFolder = () => {
+    if (isElectron && window.electronAPI?.openBackupsFolder) {
+      window.electronAPI.openBackupsFolder();
+    }
+  };
+
+  const handleConfirmRestoreBackup = async (item: BackupItem) => {
+    if (!isElectron || !window.electronAPI?.restoreBackup) return;
+    try {
+      const res = await window.electronAPI.restoreBackup(item.file);
+      if (res?.success && res.content) {
+        applyImportData(res.content);
+        setNotification({
+          message: t('backup_auto_notif_restored', { file: item.file }),
+          type: 'success'
+        });
+      } else {
+        setNotification({
+          message: res?.error || (language === 'es' ? 'Error al restaurar respaldo' : 'Failed to restore backup'),
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setNotification({
+        message: err?.message || String(err),
+        type: 'error'
+      });
+    } finally {
+      setBackupToRestore(null);
+    }
+  };
+
+  const handleConfirmDeleteBackup = async (item: BackupItem) => {
+    if (!isElectron || !window.electronAPI?.deleteBackup) return;
+    try {
+      const res = await window.electronAPI.deleteBackup(item.file);
+      if (res?.success) {
+        setNotification({
+          message: t('backup_auto_notif_deleted', { file: item.file }),
+          type: 'info'
+        });
+        const list = await window.electronAPI.listBackups?.();
+        if (list) setBackupsList(list);
+      } else {
+        setNotification({
+          message: res?.error || (language === 'es' ? 'Error al eliminar respaldo' : 'Failed to delete backup'),
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setNotification({
+        message: err?.message || String(err),
+        type: 'error'
+      });
+    } finally {
+      setBackupToDelete(null);
+    }
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes <= 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const formatBackupDate = (iso: string | null | undefined): string => {
+    if (!iso) return t('backup_auto_last_never');
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return t('backup_auto_last_never');
+      return d.toLocaleString(language === 'es' ? 'es-ES' : 'en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+    } catch {
+      return t('backup_auto_last_never');
     }
   };
 
@@ -4253,7 +4430,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || showTrayPinTip;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || showTrayPinTip || !!backupToRestore || !!backupToDelete;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -9154,6 +9331,178 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Sección Respaldo Automático Programado */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          <Archive className="w-4 h-4 text-cyan-400" />
+                          {t('backup_auto_title')}
+                        </label>
+                        {isElectron && (
+                          <button
+                            type="button"
+                            onClick={handleOpenBackupsFolder}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg border border-cyan-500/20 transition-all cursor-pointer"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                            <span>{t('backup_auto_btn_open_folder')}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-4">
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {t('backup_auto_desc')}
+                        </p>
+
+                        {/* Switch Activar/Desactivar Respaldo Programado */}
+                        <div className="flex items-center justify-between gap-4 pt-1">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+                            <div className="text-sm font-medium text-slate-200">{t('backup_auto_enabled_label')}</div>
+                            <div className="text-xs text-slate-500 leading-normal">{t('backup_auto_enabled_desc')}</div>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={autoBackupEnabled}
+                            onClick={() => handleToggleAutoBackup(!autoBackupEnabled)}
+                            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
+                              autoBackupEnabled ? 'bg-cyan-500' : 'bg-white/10'
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                autoBackupEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Selector de Frecuencia */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                              <Clock className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_frequency_label')}</div>
+                              <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_frequency_desc')}</div>
+                            </div>
+                          </div>
+                          <select
+                            value={autoBackupHours}
+                            onChange={(e) => setAutoBackupHours(Number(e.target.value))}
+                            disabled={!autoBackupEnabled}
+                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <option value={6}>{t('backup_auto_frequency_6h')}</option>
+                            <option value={12}>{t('backup_auto_frequency_12h')}</option>
+                            <option value={24}>{t('backup_auto_frequency_24h')}</option>
+                            <option value={168}>{t('backup_auto_frequency_168h')}</option>
+                          </select>
+                        </div>
+
+                        {/* Selector de Copias Conservadas */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                              <Database className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_keep_label')}</div>
+                              <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_keep_desc')}</div>
+                            </div>
+                          </div>
+                          <select
+                            value={autoBackupKeep}
+                            onChange={(e) => setAutoBackupKeep(Number(e.target.value))}
+                            disabled={!autoBackupEnabled}
+                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <option value={3}>3</option>
+                            <option value={5}>5</option>
+                            <option value={7}>7</option>
+                            <option value={14}>14</option>
+                            <option value={30}>30</option>
+                          </select>
+                        </div>
+
+                        {/* Fila Último Respaldo + Botón Respaldar Ahora */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-slate-300">{t('backup_auto_last_label')}</div>
+                            <div className="text-xs font-mono text-cyan-400 mt-0.5">
+                              {formatBackupDate(autoBackupLast)}
+                            </div>
+                          </div>
+                          {isElectron && (
+                            <button
+                              type="button"
+                              onClick={handleBackupNow}
+                              disabled={isBackingUp}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-lg transition-colors text-sm font-medium border border-cyan-500/40 disabled:opacity-50 disabled:cursor-wait shrink-0 cursor-pointer shadow-[0_0_12px_rgba(34,211,238,0.15)]"
+                            >
+                              <Archive className={`w-4 h-4 ${isBackingUp ? 'animate-spin' : ''}`} />
+                              <span>{isBackingUp ? t('backup_auto_btn_backing_up') : t('backup_auto_btn_now')}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Lista de Respaldos Existentes */}
+                        {isElectron && (
+                          <div className="pt-3 border-t border-white/5 space-y-2">
+                            <div className="text-xs font-cyber font-bold text-slate-400 tracking-wider">
+                              {t('backup_auto_list_title')}
+                            </div>
+                            {backupsList.length === 0 ? (
+                              <div className="text-xs text-slate-500 py-2 italic">
+                                {t('backup_auto_list_empty')}
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                {backupsList.map((bk) => (
+                                  <div
+                                    key={bk.file}
+                                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 hover:border-white/10 transition-colors text-xs"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-mono text-slate-300 truncate" title={bk.file}>
+                                        {bk.file}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                        <span>{formatBackupDate(bk.mtime)}</span>
+                                        <span>•</span>
+                                        <span>{formatBytes(bk.size)}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setBackupToRestore(bk)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors text-[11px] font-medium cursor-pointer"
+                                        title={t('backup_auto_btn_restore')}
+                                      >
+                                        <RotateCcw className="w-3 h-3" />
+                                        <span>{t('backup_auto_btn_restore')}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBackupToDelete(bk)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-colors text-[11px] font-medium cursor-pointer"
+                                        title={t('backup_auto_btn_delete')}
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Sección 2: Mantenimiento de Caché de Iconos */}
                     <div className="space-y-3 pt-2">
                       <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -10526,6 +10875,132 @@ export default function App() {
                   >
                     <span>{t('confirm_reset_btn_confirm')}</span>
                     <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONFIRM RESTORE BACKUP MODAL --- */}
+      <AnimatePresence>
+        {backupToRestore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setBackupToRestore(null)}
+            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
+                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-cyan-400" />
+                  {t('backup_auto_confirm_restore_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setBackupToRestore(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('backup_auto_confirm_restore_desc', { file: backupToRestore.file })}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToRestore(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_reset_btn_cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = backupToRestore;
+                      setBackupToRestore(null);
+                      void handleConfirmRestoreBackup(target);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('backup_auto_btn_restore')}</span>
+                    <RotateCcw className="w-3.5 h-3.5 opacity-70" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONFIRM DELETE BACKUP MODAL --- */}
+      <AnimatePresence>
+        {backupToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setBackupToDelete(null)}
+            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                  {t('backup_auto_confirm_delete_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setBackupToDelete(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('backup_auto_confirm_delete_desc', { file: backupToDelete.file })}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {t('confirm_reset_btn_cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = backupToDelete;
+                      setBackupToDelete(null);
+                      void handleConfirmDeleteBackup(target);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('backup_auto_btn_delete')}</span>
+                    <Trash2 className="w-3.5 h-3.5 opacity-70" />
                   </button>
                 </div>
               </div>
