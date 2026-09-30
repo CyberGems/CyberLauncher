@@ -30,7 +30,26 @@ const groupEl = document.getElementById('group');
 const exitDividerEl = document.getElementById('exitDivider');
 const exitGroupEl = document.getElementById('exitGroup');
 
-let currentState = null;
+let currentState = {
+  version: '1.9.2',
+  lang: 'es',
+  isVisible: true,
+  shortcut: 'Alt+Shift+L',
+  showTrayRecents: true,
+  showSuiteRecommendations: true,
+  recents: [],
+  suiteApps: [
+    { slug: 'cyberclock', name: 'CyberClock', desc: 'Reloj de escritorio', site: 'https://cybergems.org/apps/cyberclock/' },
+    { slug: 'cyberfeeds', name: 'CyberFeeds', desc: 'Lector RSS', site: 'https://cybergems.org/apps/cyberfeeds/' },
+    { slug: 'cybermanager', name: 'CyberManager', desc: 'Administrador de tareas', site: 'https://cybergems.org/apps/cybermanager/' },
+    { slug: 'cybernotes', name: 'CyberNotes', desc: 'Notas', site: 'https://cybergems.org/apps/cybernotes/' },
+    { slug: 'cyberpaste', name: 'CyberPaste', desc: 'Portapapeles', site: 'https://cybergems.org/apps/cyberpaste/' },
+    { slug: 'cybersnap', name: 'CyberSnap', desc: 'Captura de pantalla', site: 'https://cybergems.org/apps/cybersnap/' },
+    { slug: 'cybertray', name: 'CyberTray', desc: 'Accesos directos', site: 'https://cybergems.org/apps/cybertray/' },
+    { slug: 'cyberviewer', name: 'CyberViewer', desc: 'Visor de imágenes', site: 'https://cybergems.org/apps/cyberviewer/' },
+    { slug: 'cyberwall', name: 'CyberWall', desc: 'Firewall', site: 'https://cybergems.org/apps/cyberwall/' },
+  ],
+};
 let currentView = 'main';
 
 const I18N = {
@@ -482,16 +501,30 @@ window.addEventListener('blur', () => {
   }, 100);
 });
 
+// Initial immediate render so card is never empty
+renderView(false);
+
 // Subscribe to IPC
 if (api) {
-  api.onState((state) => {
-    currentState = state;
-    if (state && state.resetView) currentView = 'main';
-    renderView(false);
-  });
+  if (api.onState) {
+    api.onState((state) => {
+      if (state) {
+        currentState = { ...currentState, ...state };
+        if (state.resetView) currentView = 'main';
+      }
+      renderView(false);
+    });
+  }
 
-  api.onShow(() => {
-    currentView = 'main';
-    renderView(false);
-  });
+  if (api.onShow) {
+    api.onShow(() => {
+      currentView = 'main';
+      renderView(false);
+    });
+  }
+
+  if (api.requestState) {
+    api.requestState();
+  }
 }
+

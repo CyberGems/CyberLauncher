@@ -183,3 +183,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener('system-alert-action', handler); };
   },
 });
+
+contextBridge.exposeInMainWorld('trayMenu', {
+  onState: (cb: (state: any) => void) => {
+    const handler = (_event: any, state: any) => cb(state);
+    ipcRenderer.on('tray-menu-state', handler);
+    return () => { ipcRenderer.removeListener('tray-menu-state', handler); };
+  },
+  onShow: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on('tray-menu-show', handler);
+    return () => { ipcRenderer.removeListener('tray-menu-show', handler); };
+  },
+  action: (action: string, payload?: any) => ipcRenderer.send('tray-menu-action', action, payload),
+  ready: (rect: any) => ipcRenderer.send('tray-menu-ready', rect),
+  hide: () => ipcRenderer.send('tray-menu-hide'),
+  requestState: () => ipcRenderer.send('tray-menu-request-state'),
+});
+

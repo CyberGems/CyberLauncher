@@ -1388,9 +1388,7 @@ function ensureTrayMenuWin(): BrowserWindow {
   const trayHtml = isDev
     ? path.join(__dirname, '../public/tray/tray-menu.html')
     : path.join(app.getAppPath(), 'dist/tray/tray-menu.html');
-  const trayPreload = isDev
-    ? path.join(__dirname, '../public/tray/tray-preload.js')
-    : path.join(app.getAppPath(), 'dist/tray/tray-preload.js');
+  const preloadPath = path.join(__dirname, 'preload.mjs');
 
   const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
   trayMenuWin = new BrowserWindow({
@@ -1409,7 +1407,7 @@ function ensureTrayMenuWin(): BrowserWindow {
     focusable: true,
     backgroundColor: '#00000000',
     webPreferences: {
-      preload: trayPreload,
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -1662,6 +1660,11 @@ ipcMain.on('tray-menu-ready', (_event, rect) => {
     trayMenuWin.setBounds(geo);
   }
 });
+
+ipcMain.on('tray-menu-request-state', (event) => {
+  event.reply('tray-menu-state', buildTrayMenuState(false));
+});
+
 
 ipcMain.handle('tray:update-settings', (_event, settings) => {
   if (settings && typeof settings.showTrayRecents === 'boolean') {
