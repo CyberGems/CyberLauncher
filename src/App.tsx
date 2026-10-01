@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
 import AboutModal, { UpdateStatus, peekReleaseNotes } from './AboutModal';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
 import {
   Terminal, Globe, Lock, MousePointer2, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
@@ -2026,6 +2026,9 @@ export default function App() {
   });
   const [draggedFavId, setDraggedFavId] = useState<number | null>(null);
   const [favDropTarget, setFavDropTarget] = useState<number | null>(null);
+  const isDraggingFavRef = useRef(false);
+  const isFavReorderingRef = useRef(false);
+  const favContainerRef = useRef<HTMLDivElement>(null);
 
   // Taskbar State
   const [taskbarAppIds, setTaskbarAppIds] = useState<number[]>(() => {
@@ -2040,9 +2043,14 @@ export default function App() {
   });
   const [draggedTaskbarId, setDraggedTaskbarId] = useState<number | null>(null);
   const [taskbarDropTarget, setTaskbarDropTarget] = useState<number | null>(null);
+  const isTaskbarDraggingRef = useRef(false);
   const taskbarContainerRef = useRef<HTMLDivElement>(null);
   const taskbarLastWheelTime = useRef(0);
   const taskbarMousePos = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    isFavReorderingRef.current = false;
+  });
 
   // Restore taskbar hover effects only after wheel scrolling has stopped AND the mouse physically moves
   useEffect(() => {
@@ -4906,92 +4914,67 @@ export default function App() {
     setContextMenu({ x: e.clientX, y: e.clientY, app, source });
   };
 
-  const handleDragStart = (e: React.DragEvent, id: number) => {
-    setDraggedFavId(id);
-    document.body.setAttribute('data-cl-drag', 'favorites');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id.toString());
-  };
+  const handleFavLiveDrag = useCallback((draggedId: number, pointerX: number, pointerY: number) => {
+    if (isFavReorderingRef.current) return;
+    const container = favContainerRef.current;
+    if (!container) return;
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-  };
+    const itemElements = Array.from(container.querySelectorAll('[data-fav-id]')) as HTMLElement[];
+    if (itemElements.length <= 1) return;
 
-  const handleFavDragOver = (e: React.DragEvent, targetId: number) => {
-    if (document.body.getAttribute('data-cl-drag') !== 'favorites') {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'none';
-      return;
+    const containerRect = container.getBoundingClientRect();
+    const relX = pointerX - containerRect.left + container.scrollLeft;
+    const relY = pointerY - containerRect.top + container.scrollTop;
+
+    // Expand slot detection by 6px to seamlessly cover the 12px gap between tiles
+    const EXPAND = 6;
+    let targetId: number | null = null;
+
+    for (const el of itemElements) {
+      const id = Number(el.getAttribute('data-fav-id'));
+      if (id === draggedId) continue;
+
+      const left = el.offsetLeft - EXPAND;
+      const right = el.offsetLeft + el.offsetWidth + EXPAND;
+      const top = el.offsetTop - EXPAND;
+      const bottom = el.offsetTop + el.offsetHeight + EXPAND;
+
+      if (relX >= left && relX <= right && relY >= top && relY <= bottom) {
+        targetId = id;
+        break;
+      }
     }
-    handleDragOver(e);
-    if (draggedFavId !== null && draggedFavId !== targetId) {
-      setFavDropTarget(targetId);
+
+    // Fallback: If in diagonal gaps or edges, find closest slot within 40px radius
+    if (targetId === null) {
+      let minDistance = 40;
+      for (const el of itemElements) {
+        const id = Number(el.getAttribute('data-fav-id'));
+        if (id === draggedId) continue;
+        const centerX = el.offsetLeft + el.offsetWidth / 2;
+        const centerY = el.offsetTop + el.offsetHeight / 2;
+        const dist = Math.hypot(relX - centerX, relY - centerY);
+        if (dist < minDistance) {
+          minDistance = dist;
+          targetId = id;
+        }
+      }
     }
-  };
 
-  const handleDrop = (e: React.DragEvent, targetId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFavDropTarget(null);
-    if (document.body.getAttribute('data-cl-drag') !== 'favorites') return;
-    if (draggedFavId === null || draggedFavId === targetId) return;
+    if (targetId !== null && targetId !== draggedId) {
+      isFavReorderingRef.current = true;
+      setFavoriteIds((prev) => {
+        const fromIdx = prev.indexOf(draggedId);
+        const toIdx = prev.indexOf(targetId!);
+        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
 
-    setFavoriteIds(prev => {
-      const newIds = [...prev];
-      const draggedIdx = newIds.indexOf(draggedFavId);
-      const targetIdx = newIds.indexOf(targetId);
-      newIds.splice(draggedIdx, 1);
-      newIds.splice(targetIdx, 0, draggedFavId);
-      return newIds;
-    });
-    setDraggedFavId(null);
-  };
-
-  const handleTaskbarDragStart = (e: React.DragEvent, id: number) => {
-    setDraggedTaskbarId(id);
-    document.body.setAttribute('data-cl-drag', 'taskbar');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id.toString());
-    const ghost = document.createElement('div');
-    ghost.style.opacity = '0';
-    document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 0, 0);
-    setTimeout(() => document.body.removeChild(ghost), 0);
-  };
-
-  const handleTaskbarDragOver = (e: React.DragEvent, targetId: number) => {
-    if (document.body.getAttribute('data-cl-drag') !== 'taskbar') {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'none';
-      return;
+        const next = [...prev];
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        return next;
+      });
     }
-    handleDragOver(e);
-    if (draggedTaskbarId !== null && draggedTaskbarId !== targetId) {
-      setTaskbarDropTarget(targetId);
-    }
-  };
-
-  const handleTaskbarDrop = (e: React.DragEvent, targetId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setTaskbarDropTarget(null);
-    if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
-    if (draggedTaskbarId === null || draggedTaskbarId === targetId) return;
-
-    setTaskbarAppIds(prev => {
-      const newIds = [...prev];
-      const draggedIdx = newIds.indexOf(draggedTaskbarId);
-      const targetIdx = newIds.indexOf(targetId);
-
-      newIds.splice(draggedIdx, 1);
-      newIds.splice(targetIdx, 0, draggedTaskbarId);
-
-      return newIds;
-    });
-    setDraggedTaskbarId(null);
-  };
+  }, []);
 
   const handleExport = async () => {
     const data = {
@@ -7675,61 +7658,82 @@ export default function App() {
                 {t('title_favorites')}
               </h3>
               <div
-                className="flex flex-wrap gap-3 rounded-2xl p-1 -m-1 transition-[box-shadow,background-color] duration-150"
+                ref={favContainerRef}
+                className="flex flex-wrap gap-3 rounded-2xl p-1 -m-1"
                 data-cl-drop="favorites"
-                onDragOver={(e) => {
-                  if (document.body.getAttribute('data-cl-drag') !== 'favorites') return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = 'move';
-                }}
               >
                 {favorites.map((app, favIdx) => {
                   const isFavSelected = keyboardNav?.section === 'favorites' && keyboardNav.index === favIdx;
                   const isFavContextActive = contextMenu?.app?.id === app.id;
                   const isFavActive = isFavSelected || isFavContextActive;
+                  const isBeingDragged = draggedFavId === app.id;
                   return (
-                    <Tooltip
+                    <motion.div
                       key={`fav-${app.id}`}
-                      placement="bottom"
-                      delay={0}
-                      label={
-                        <span className="flex flex-col items-center gap-0.5">
-                          <span>{app.name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
-                            {getCategoryDisplayName(app.category, t)}
-                          </span>
-                        </span>
-                      }
+                      layout
+                      drag
+                      dragSnapToOrigin
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileDrag={{
+                        scale: 1.18,
+                        zIndex: 60,
+                        cursor: 'grabbing',
+                      }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 450,
+                        damping: 32,
+                      }}
+                      onDragStart={() => {
+                        isDraggingFavRef.current = true;
+                        setDraggedFavId(app.id);
+                        window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                      }}
+                      onDrag={(_e, info) => {
+                        handleFavLiveDrag(app.id, info.point.x, info.point.y);
+                      }}
+                      onDragEnd={() => {
+                        setTimeout(() => {
+                          isDraggingFavRef.current = false;
+                        }, 60);
+                        setDraggedFavId(null);
+                      }}
+                      data-fav-id={app.id}
+                      className="relative touch-none flex-shrink-0"
                     >
-                      <div
-                        data-nav-fav-index={favIdx}
-                        draggable
-                        // @ts-ignore
-                        onDragStart={(e) => handleDragStart(e, app.id)}
-                        onDragOver={(e) => handleFavDragOver(e, app.id)}
-                        onDrop={(e) => handleDrop(e, app.id)}
-                        // @ts-ignore
-                        onDragEnd={() => { setDraggedFavId(null); setFavDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
-                        onDragLeave={() => setFavDropTarget(prev => prev === app.id ? null : prev)}
-                        onContextMenu={(e: any) => handleContextMenu(e, app)}
-                        onClick={() => {
-                          setKeyboardNav(null);
-                          handleLaunchApp(app);
-                        }}
-                        className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-pointer active:cursor-grabbing hover:z-50 ${app.color} ${
-                          isFavActive
-                            ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 scale-105 -translate-y-0.5 z-30'
-                            : draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
-                        } ${!isFavActive && favDropTarget === app.id
-                          ? 'border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)] scale-105'
-                          : !isFavActive ? 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-105 hover:-translate-y-0.5 active:scale-95' : ''
-                        } transition-[transform,border-color,background-color,box-shadow,opacity] duration-100 ease-out`}
+                      <Tooltip
+                        placement="bottom"
+                        delay={0}
+                        label={
+                          <span className="flex flex-col items-center gap-0.5">
+                            <span>{app.name}</span>
+                            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
+                              {getCategoryDisplayName(app.category, t)}
+                            </span>
+                          </span>
+                        }
                       >
-                        <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
-                        <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
-                      </div>
-                    </Tooltip>
+                        <div
+                          data-nav-fav-index={favIdx}
+                          onContextMenu={(e: any) => handleContextMenu(e, app, 'favorites')}
+                          onClick={() => {
+                            if (isDraggingFavRef.current) return;
+                            setKeyboardNav(null);
+                            handleLaunchApp(app);
+                          }}
+                          className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing select-none ${app.color} ${
+                            isFavActive
+                              ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 z-30'
+                              : isBeingDragged
+                              ? 'border-cyan-400 bg-cyan-500/25 shadow-[0_0_24px_rgba(34,211,238,0.7),0_12px_24px_rgba(0,0,0,0.5)] ring-2 ring-cyan-400/90'
+                              : 'border-white/10 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] active:scale-95'
+                          } transition-[border-color,background-color,box-shadow,opacity] duration-150 ease-out`}
+                        >
+                          <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
+                          <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
+                        </div>
+                      </Tooltip>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -8655,7 +8659,11 @@ export default function App() {
             </button>
           </Tooltip>
           <div className="w-px h-6 bg-white/10 mx-2" />
-          <div
+          <Reorder.Group
+            as="div"
+            axis="x"
+            values={taskbarAppIds}
+            onReorder={setTaskbarAppIds}
             ref={taskbarContainerRef}
             className={`flex gap-2 relative rounded-xl p-0.5 pb-3 -m-0.5 -mb-3 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
             data-cl-drop="taskbar"
@@ -8675,56 +8683,74 @@ export default function App() {
                 window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
               }
             }}
-            onDragOver={(e) => {
-              if (document.body.getAttribute('data-cl-drag') !== 'taskbar') return;
-              e.preventDefault();
-              e.stopPropagation();
-              e.dataTransfer.dropEffect = 'move';
-            }}
           >
             {taskbarAppIds.map(id => {
               const app = apps.find(a => a.id === id);
               if (!app) return null;
               const isTaskbarContextActive = contextMenu?.app?.id === app.id;
+              const isBeingDragged = draggedTaskbarId === app.id;
               return (
-                <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top" delay={0}>
-                  <button 
-                    draggable
-                    data-taskbar-btn
-                    data-context-active={isTaskbarContextActive ? "true" : "false"}
-                    onDragStart={(e) => {
-                      taskbarContainerRef.current?.classList.remove('taskbar-scrolling');
-                      handleTaskbarDragStart(e, app.id);
-                    }}
-                    onDragOver={(e) => handleTaskbarDragOver(e, app.id)}
-                    onDrop={(e) => handleTaskbarDrop(e, app.id)}
-                    onDragEnd={() => { setDraggedTaskbarId(null); setTaskbarDropTarget(null); document.body.removeAttribute('data-cl-drag'); }}
-                    onDragLeave={() => setTaskbarDropTarget(prev => prev === app.id ? null : prev)}
-                    onContextMenu={(e) => handleContextMenu(e, app)}
-                    onClick={() => handleLaunchApp(app)}
-                    className={`group relative focus:outline-none p-1 cursor-pointer ${
-                      isTaskbarContextActive
-                        ? 'bg-cyan-500/25 rounded-lg ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-105'
-                        : draggedTaskbarId === app.id ? 'opacity-50 scale-95' : ''
-                    } ${taskbarDropTarget === app.id ? 'bg-cyan-500/20 rounded-lg shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110' : ''}`} 
-                  >
-                    <div
-                      data-taskbar-icon
-                      className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}
+                <Reorder.Item
+                  as="div"
+                  key={`taskbar-${app.id}`}
+                  value={id}
+                  className="relative flex-shrink-0 touch-none"
+                  whileHover={{ scale: 1.08, y: -1 }}
+                  whileDrag={{
+                    scale: 1.24,
+                    zIndex: 60,
+                    cursor: 'grabbing',
+                  }}
+                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                  onDragStart={() => {
+                    isTaskbarDraggingRef.current = true;
+                    setDraggedTaskbarId(app.id);
+                    taskbarContainerRef.current?.classList.remove('taskbar-scrolling');
+                    window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                  }}
+                  onDragEnd={() => {
+                    setTimeout(() => {
+                      isTaskbarDraggingRef.current = false;
+                    }, 60);
+                    setDraggedTaskbarId(null);
+                  }}
+                >
+                  <Tooltip label={app.name} placement="top" delay={0}>
+                    <button 
+                      type="button"
+                      data-taskbar-btn
+                      data-context-active={isTaskbarContextActive ? "true" : "false"}
+                      onContextMenu={(e) => handleContextMenu(e, app, 'taskbar')}
+                      onClick={() => {
+                        if (isTaskbarDraggingRef.current) return;
+                        handleLaunchApp(app);
+                      }}
+                      className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing select-none rounded-lg transition-[background-color,box-shadow,border-color] duration-150 ${
+                        isTaskbarContextActive
+                          ? 'bg-cyan-500/25 ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)]'
+                          : isBeingDragged
+                          ? 'bg-cyan-500/30 ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.8),0_8px_16px_rgba(0,0,0,0.5)]'
+                          : ''
+                      }`} 
                     >
-                      <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
-                    </div>
-                    <div
-                      data-taskbar-indicator
-                      className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center ${isTaskbarContextActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none`}
-                    >
-                      <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
-                    </div>
-                  </button>
-                </Tooltip>
+                      <div
+                        data-taskbar-icon
+                        className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}
+                      >
+                        <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
+                      </div>
+                      <div
+                        data-taskbar-indicator
+                        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex justify-center ${isTaskbarContextActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity pointer-events-none`}
+                      >
+                        <div className="w-4 h-1 rounded-t-sm bg-cyan-400 shadow-[0_0_10px_#22d3ee]" />
+                      </div>
+                    </button>
+                  </Tooltip>
+                </Reorder.Item>
               );
             })}
-          </div>
+          </Reorder.Group>
         </div>
 
         {/* Lado derecho: Info del sistema */}
