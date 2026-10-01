@@ -1976,8 +1976,10 @@ export default function App() {
   const [showSearchGuide, setShowSearchGuide] = useState(false);
   const searchGuideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isHoveringRightActionsRef = useRef(false);
 
   const triggerShowGuide = useCallback((currentQuery?: string) => {
+    if (isHoveringRightActionsRef.current) return;
     const query = currentQuery !== undefined ? currentQuery : searchQuery;
     if (query.length > 0) {
       setShowSearchGuide(false);
@@ -5760,9 +5762,12 @@ export default function App() {
           <div 
             className="relative flex-1 min-w-[100px] max-w-[480px] group shrink"
             onMouseEnter={() => {
+              if (isHoveringRightActionsRef.current) return;
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
               searchHoverTimeoutRef.current = setTimeout(() => {
-                triggerShowGuide();
+                if (!isHoveringRightActionsRef.current) {
+                  triggerShowGuide();
+                }
               }, 500);
             }}
             onMouseLeave={() => {
@@ -6249,7 +6254,18 @@ export default function App() {
             </div>
 
             {/* Unified Inline Right Actions Container */}
-            <div className="absolute inset-y-0 right-3 flex items-center gap-2 z-20 select-none">
+            <div 
+              className="absolute inset-y-0 right-3 flex items-center gap-2 z-20 select-none"
+              onMouseEnter={() => {
+                isHoveringRightActionsRef.current = true;
+                setShowSearchGuide(false);
+                if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+                if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+              }}
+              onMouseLeave={() => {
+                isHoveringRightActionsRef.current = false;
+              }}
+            >
               {searchQuery && (
                 <Tooltip label={t('clear_search')} placement="bottom">
                   <button
