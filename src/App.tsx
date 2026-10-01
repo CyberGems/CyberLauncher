@@ -2179,6 +2179,7 @@ export default function App() {
   const browseDropdownMenuRef = useRef<HTMLDivElement>(null);
   const modalScrollContainerRef = useRef<HTMLDivElement>(null);
   const browseHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isBrowsePinnedRef = useRef(false);
   const webFileInputRef = useRef<HTMLInputElement>(null);
   const webFolderInputRef = useRef<HTMLInputElement>(null);
 
@@ -2186,6 +2187,7 @@ export default function App() {
     if (!browseDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (browseDropdownRef.current && !browseDropdownRef.current.contains(e.target as Node)) {
+        isBrowsePinnedRef.current = false;
         setBrowseDropdownOpen(false);
       }
     };
@@ -2204,14 +2206,14 @@ export default function App() {
         const containerRect = container.getBoundingClientRect();
 
         const overflowBottom = menuRect.bottom - containerRect.bottom + 16;
-        if (overflowBottom > 0) {
+        if (overflowBottom > 4) {
           container.scrollBy({
             top: overflowBottom,
             behavior: 'smooth',
           });
         }
       }
-    }, 60);
+    }, 80);
     return () => clearTimeout(timer);
   }, [browseDropdownOpen]);
 
@@ -2230,9 +2232,10 @@ export default function App() {
 
   const handleBrowseContainerMouseLeave = useCallback(() => {
     if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
+    if (isBrowsePinnedRef.current) return;
     browseHoverTimeoutRef.current = setTimeout(() => {
       setBrowseDropdownOpen(false);
-    }, 220);
+    }, 450);
   }, []);
 
   const handleBrowseFile = useCallback(async () => {
@@ -2300,6 +2303,7 @@ export default function App() {
       clearTimeout(browseHoverTimeoutRef.current);
       browseHoverTimeoutRef.current = null;
     }
+    isBrowsePinnedRef.current = false;
     setBrowseDropdownOpen(false);
     if (mode === 'folder') {
       handleBrowseFolder();
@@ -2313,6 +2317,7 @@ export default function App() {
       clearTimeout(browseHoverTimeoutRef.current);
       browseHoverTimeoutRef.current = null;
     }
+    isBrowsePinnedRef.current = false;
     setBrowseDropdownOpen(false);
     if (lastBrowseMode === 'folder') {
       handleBrowseFolder();
@@ -3116,6 +3121,13 @@ export default function App() {
   const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
+  const [enableTooltips, setEnableTooltips] = useState(() => {
+    try {
+      return localStorage.getItem('cl_enable_tooltips') !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const [systemAlertsEnabled, setSystemAlertsEnabled] = useState(() => localStorage.getItem('systemAlertsEnabled') !== 'false');
   const [diskAlertsEnabled, setDiskAlertsEnabled] = useState(() => localStorage.getItem('diskAlertsEnabled') !== 'false');
   const [ramAlertsEnabled, setRamAlertsEnabled] = useState(() => localStorage.getItem('ramAlertsEnabled') !== 'false');
@@ -3213,6 +3225,12 @@ export default function App() {
     if (isElectron) window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen);
   }, [hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen]);
   useEffect(() => { localStorage.setItem('hotspotDelay', hotspotDelay.toString()); }, [hotspotDelay]);
+  useEffect(() => { 
+    try {
+      localStorage.setItem('cl_enable_tooltips', enableTooltips.toString());
+    } catch {}
+    document.body.setAttribute('data-tooltips-enabled', enableTooltips.toString());
+  }, [enableTooltips]);
 
   // Layout Resizing State
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(() => {
@@ -3413,6 +3431,7 @@ export default function App() {
           if (source.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!source.rightSidebarCollapsed);
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
           if (source.resetOnLaunch !== undefined) setResetOnLaunch(source.resetOnLaunch);
+          if (source.enableTooltips !== undefined) setEnableTooltips(!!source.enableTooltips);
           if (source.autoUpdate !== undefined) setAutoUpdate(!!source.autoUpdate);
           if (source.language === 'es' || source.language === 'en') {
             setLanguage(source.language);
@@ -3485,8 +3504,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3512,7 +3531,7 @@ export default function App() {
           startWithWindows, startMinimized, activationShortcut,
           hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen,
           leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
-          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+          hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
@@ -3540,7 +3559,7 @@ export default function App() {
     startWithWindows, startMinimized, activationShortcut,
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
-    hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
+    hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
     showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
@@ -3822,6 +3841,10 @@ export default function App() {
       if (config.hideOnClickDeadSpot !== undefined) {
         setHideOnClickDeadSpot(config.hideOnClickDeadSpot);
         localStorage.setItem('hideOnClickDeadSpot', config.hideOnClickDeadSpot.toString());
+      }
+      if (config.enableTooltips !== undefined) {
+        setEnableTooltips(!!config.enableTooltips);
+        localStorage.setItem('cl_enable_tooltips', config.enableTooltips.toString());
       }
       if (config.hideOnBlur !== undefined && config.hideOnBlur !== null) {
         const val = typeof config.hideOnBlur === 'boolean' ? config.hideOnBlur : config.hideOnBlur !== 'false';
@@ -5725,7 +5748,7 @@ export default function App() {
               }}
               aria-label={`${t('tooltip_add_category')} (Ctrl+Shift+N)`}
               aria-keyshortcuts="Control+Shift+N"
-              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -5758,7 +5781,7 @@ export default function App() {
                     });
                   }
                 }}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border ${
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all duration-200 group border cursor-pointer ${
                   isCatContextActive
                     ? 'bg-blue-500/30 text-white border-cyan-400/70 shadow-[inset_2px_0_0_0_#22d3ee,0_0_12px_rgba(34,211,238,0.35)] ring-1 ring-cyan-400/60'
                     : isCatActive 
@@ -7011,6 +7034,7 @@ export default function App() {
                     <Tooltip
                       key={`fav-${app.id}`}
                       placement="bottom"
+                      delay={0}
                       label={
                         <span className="flex flex-col items-center gap-0.5">
                           <span>{app.name}</span>
@@ -7035,7 +7059,7 @@ export default function App() {
                           setKeyboardNav(null);
                           handleLaunchApp(app);
                         }}
-                        className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing hover:z-50 ${app.color} ${
+                        className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-pointer active:cursor-grabbing hover:z-50 ${app.color} ${
                           isFavActive
                             ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 scale-105 -translate-y-0.5 z-30'
                             : draggedFavId === app.id ? 'opacity-50 border-cyan-500/50 scale-95' : ''
@@ -7819,7 +7843,7 @@ export default function App() {
                       type="button"
                       onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
                       onClick={() => handleLaunchApp(app)}
-                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors cursor-pointer ${
                         isMostUsedContextActive
                           ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
                           : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
@@ -7911,7 +7935,7 @@ export default function App() {
                           recentItem: item
                         });
                       }}
-                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${
+                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors cursor-pointer ${
                         isRecentContextActive
                           ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
                           : 'border-transparent hover:bg-white/5 hover:border-white/10 text-slate-300'
@@ -7960,7 +7984,7 @@ export default function App() {
                 setIsResolvingIcon(false);
                 setIsAddingApp(true);
               }}
-              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed flex-shrink-0"
+              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all border border-transparent hover:border-white/5 border-dashed flex-shrink-0 cursor-pointer"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -8526,7 +8550,13 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
-                                setBrowseDropdownOpen(prev => !prev);
+                                if (browseDropdownOpen && isBrowsePinnedRef.current) {
+                                  isBrowsePinnedRef.current = false;
+                                  setBrowseDropdownOpen(false);
+                                } else {
+                                  isBrowsePinnedRef.current = true;
+                                  setBrowseDropdownOpen(true);
+                                }
                               }}
                               onMouseEnter={() => {
                                 if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
@@ -8553,7 +8583,7 @@ export default function App() {
                               exit={{ opacity: 0, scale: 0.95, y: -4 }}
                               transition={{ duration: 0.12 }}
                               onMouseEnter={handleBrowseContainerMouseEnter}
-                              className="absolute right-0 top-full mt-1.5 z-[70] w-64 p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none"
+                              className="absolute right-0 top-full mt-1.5 z-[70] w-64 p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none before:content-[''] before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
                               role="menu"
                             >
                               <button
@@ -9077,6 +9107,40 @@ export default function App() {
                     ))}
                   </div>
                   <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
+                </div>
+
+                {/* Help Tooltips Section */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-slate-500" />
+                    {t('general_tooltips')}
+                  </label>
+                  <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                        <HelpCircle className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_tooltips')}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{t('general_tooltips_desc')}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const next = !enableTooltips;
+                        setEnableTooltips(next);
+                        if (!next) {
+                          window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                        }
+                      }}
+                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${enableTooltips ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${enableTooltips ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${enableTooltips ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
                 </div>
                 
                 </>)}

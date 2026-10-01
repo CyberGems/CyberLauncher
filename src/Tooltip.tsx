@@ -102,6 +102,9 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
   const show = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseEnter?.(e);
     clearTimer();
+    if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
+      return;
+    }
     if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
       return;
     }
@@ -118,6 +121,9 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
 
   const mouseMoveShow = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseMove?.(e);
+    if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
+      return;
+    }
     if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
       return;
     }

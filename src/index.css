@@ -184,6 +184,8 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
   line-height: 1.4;
   margin-top: 1px;
 }
-
-
-
+/* Menu items cursor */
+.more-menu-item,
+.help-submenu-item {
+  cursor: pointer;
+}
