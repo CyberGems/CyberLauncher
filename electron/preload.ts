@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Diálogos nativos de archivos ---
   selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>
     ipcRenderer.invoke('select-file', options),
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
   selectImage: () => ipcRenderer.invoke('select-image'),
   getImageData: (filePath: string) => ipcRenderer.invoke('get-image-data', filePath),
 

@@ -3428,6 +3428,24 @@ function setupIpcHandlers() {
     return { name, path: selectedPath, iconPath: '' };
   });
 
+  // --- Seleccionar carpeta desde el explorador de Windows ---
+  ipcMain.handle('select-folder', async () => {
+    if (!mainWindow) return null;
+    isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: isEn ? 'Select Folder' : 'Seleccionar carpeta',
+    });
+    isDialogOpen = false;
+    showMainWindow();
+    if (result.canceled || result.filePaths.length === 0) return null;
+
+    const selectedPath = result.filePaths[0];
+    const name = path.basename(selectedPath);
+    return { name, path: selectedPath, iconPath: '' };
+  });
+
   // --- Seleccionar imagen desde el explorador de Windows ---
   ipcMain.handle('select-image', async () => {
     if (!mainWindow) return null;

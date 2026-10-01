@@ -348,6 +348,7 @@ declare global {
       launchApp: (path: string, isAdmin?: boolean) => Promise<{ success: boolean; error?: string }>;
       getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
+      selectFolder: () => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectImage: () => Promise<string | null>;
       getMonitors: () => Promise<Array<{ id: string; label: string; isPrimary: boolean; bounds: any; size: any }>>;
       setMonitor: (monitorId: string) => Promise<void>;
@@ -2165,6 +2166,80 @@ export default function App() {
   });
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
+  const [browseDropdownOpen, setBrowseDropdownOpen] = useState(false);
+  const browseDropdownRef = useRef<HTMLDivElement>(null);
+  const webFileInputRef = useRef<HTMLInputElement>(null);
+  const webFolderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!browseDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (browseDropdownRef.current && !browseDropdownRef.current.contains(e.target as Node)) {
+        setBrowseDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [browseDropdownOpen]);
+
+  const handleBrowseFile = useCallback(async () => {
+    if (!isElectron) {
+      webFileInputRef.current?.click();
+      return;
+    }
+    const fileInfo = await window.electronAPI?.selectFile();
+    if (!fileInfo || typeof fileInfo !== 'object') return;
+    setEditForm(prev => ({
+      ...prev,
+      path: fileInfo.path,
+      name: prev.name || fileInfo.name,
+    }));
+    setIsResolvingIcon(true);
+    try {
+      const resolved = await window.electronAPI!.resolveFilePath(fileInfo.path);
+      if (resolved) {
+        setEditForm(prev => ({
+          ...prev,
+          path: resolved.path || prev.path,
+          name: prev.name || resolved.name,
+          iconPath: prev.iconPath || resolved.iconPath || '',
+        }));
+      }
+    } finally {
+      setIsResolvingIcon(false);
+    }
+  }, []);
+
+  const handleBrowseFolder = useCallback(async () => {
+    if (!isElectron) {
+      webFolderInputRef.current?.click();
+      return;
+    }
+    const folderInfo = await window.electronAPI?.selectFolder();
+    if (!folderInfo || typeof folderInfo !== 'object') return;
+    setEditForm(prev => ({
+      ...prev,
+      path: folderInfo.path,
+      name: prev.name || folderInfo.name,
+    }));
+    setIsResolvingIcon(true);
+    try {
+      const resolved = await window.electronAPI!.resolveFilePath(folderInfo.path);
+      if (resolved) {
+        setEditForm(prev => ({
+          ...prev,
+          path: resolved.path || prev.path,
+          name: prev.name || resolved.name,
+          iconPath: prev.iconPath || resolved.iconPath || '',
+        }));
+      }
+    } finally {
+      setIsResolvingIcon(false);
+    }
+  }, []);
+
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(() => {
     try { return localStorage.getItem('cl_advanced_open') === 'true'; } catch { return false; }
@@ -2503,6 +2578,7 @@ export default function App() {
         setTaskbarAppIds(prev => [...prev, newId]);
       }
       setIsAddingApp(false);
+      setBrowseDropdownOpen(false);
     } else if (editingApp) {
       setApps(prev => prev.map(a => {
         if (a.id === editingApp.id) {
@@ -2533,6 +2609,7 @@ export default function App() {
         return prev;
       });
       setEditingApp(null);
+      setBrowseDropdownOpen(false);
     }
   };
 
@@ -5141,7 +5218,9 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        if (backupToDelete) {
+        if (browseDropdownOpen) {
+          setBrowseDropdownOpen(false);
+        } else if (backupToDelete) {
           setBackupToDelete(null);
         } else if (backupToRestore) {
           setBackupToRestore(null);
@@ -7977,7 +8056,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             data-no-hide
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
-            onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
+            onClick={(e) => { e.stopPropagation(); setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); setBrowseDropdownOpen(false); }}
           />
           <motion.div
             initial={{ x: '100%', opacity: 0.9 }}
@@ -8175,7 +8254,7 @@ export default function App() {
                     </Tooltip>
                   )}
                   <button
-                    onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
+                    onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); setBrowseDropdownOpen(false); }}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
                   >
                     <X className="w-5 h-5" />
@@ -8327,57 +8406,113 @@ export default function App() {
                         onContextMenu={handleInputContextMenu}
                         placeholder={t('app_path_placeholder')}
                       />
-                      {isElectron ? (
-                        <Tooltip label={t('tooltip_browse_file')} placement="top">
+                      <div className="relative shrink-0" ref={browseDropdownRef}>
+                        <Tooltip label={browseDropdownOpen ? null : t('tooltip_browse')} placement="top">
                           <button
-                            onClick={async () => {
-                              const fileInfo = await window.electronAPI!.selectFile();
-                              if (!fileInfo || typeof fileInfo !== 'object') return;
-                              setEditForm(prev => ({
-                                ...prev,
-                                path: fileInfo.path,
-                                name: prev.name || fileInfo.name,
-                              }));
-                              setIsResolvingIcon(true);
-                              try {
-                                const resolved = await window.electronAPI!.resolveFilePath(fileInfo.path);
-                                if (resolved) {
-                                  setEditForm(prev => ({
-                                    ...prev,
-                                    path: resolved.path || prev.path,
-                                    name: prev.name || resolved.name,
-                                    iconPath: prev.iconPath || resolved.iconPath || '',
-                                  }));
-                                }
-                              } finally {
-                                setIsResolvingIcon(false);
-                              }
-                            }}
+                            type="button"
+                            onClick={() => setBrowseDropdownOpen(prev => !prev)}
                             disabled={isResolvingIcon}
-                            className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 disabled:opacity-50 disabled:cursor-wait active:scale-95"
+                            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border shrink-0 disabled:opacity-50 disabled:cursor-wait active:scale-95 ${
+                              browseDropdownOpen
+                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
+                                : 'bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border-white/10 hover:border-cyan-500/30'
+                            }`}
+                            aria-haspopup="true"
+                            aria-expanded={browseDropdownOpen}
                           >
                             <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
                             <span>{t('btn_browse')}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${browseDropdownOpen ? 'rotate-180 text-cyan-300' : ''}`} />
                           </button>
                         </Tooltip>
-                      ) : (
-                        <Tooltip label={t('tooltip_browse_file')} placement="top">
-                          <label className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 active:scale-95">
-                            <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
-                            <span>{t('btn_browse')}</span>
+
+                        <AnimatePresence>
+                          {browseDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                              transition={{ duration: 0.12 }}
+                              className="absolute right-0 top-full mt-1.5 z-[70] w-64 p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none"
+                              role="menu"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBrowseDropdownOpen(false);
+                                  handleBrowseFile();
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-200 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors text-left group/item cursor-pointer"
+                                role="menuitem"
+                              >
+                                <div className="p-1 rounded-md bg-white/5 group-hover/item:bg-cyan-500/20 transition-colors shrink-0">
+                                  <File className="w-3.5 h-3.5 text-cyan-400 group-hover/item:scale-110 transition-transform shrink-0" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-medium text-slate-200 group-hover/item:text-cyan-200 transition-colors leading-snug">{t('browse_file')}</span>
+                                  <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{t('browse_file_desc')}</span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBrowseDropdownOpen(false);
+                                  handleBrowseFolder();
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-200 hover:text-amber-300 hover:bg-amber-500/10 transition-colors text-left group/item cursor-pointer"
+                                role="menuitem"
+                              >
+                                <div className="p-1 rounded-md bg-white/5 group-hover/item:bg-amber-500/20 transition-colors shrink-0">
+                                  <Folder className="w-3.5 h-3.5 text-amber-400 group-hover/item:scale-110 transition-transform shrink-0" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-medium text-slate-200 group-hover/item:text-amber-200 transition-colors leading-snug">{t('browse_folder')}</span>
+                                  <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{t('browse_folder_desc')}</span>
+                                </div>
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {!isElectron && (
+                          <>
                             <input
+                              ref={webFileInputRef}
                               type="file"
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setEditForm(prev => ({ ...prev, path: `C:\\Local\\${file.name}` }));
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    path: `C:\\Local\\${file.name}`,
+                                    name: prev.name || file.name,
+                                  }));
                                 }
                               }}
                             />
-                          </label>
-                        </Tooltip>
-                      )}
+                            <input
+                              ref={webFolderInputRef}
+                              type="file"
+                              webkitdirectory=""
+                              directory=""
+                              className="hidden"
+                              onChange={(e) => {
+                                const files = e.target.files;
+                                if (files && files.length > 0) {
+                                  const folderName = files[0].webkitRelativePath?.split('/')[0] || files[0].name || 'Carpeta';
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    path: `C:\\Local\\${folderName}`,
+                                    name: prev.name || folderName,
+                                  }));
+                                }
+                              }}
+                            />
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -8556,7 +8691,7 @@ export default function App() {
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
                 <button
                   type="button"
-                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setOpenedViaDrop(false); setIsResolvingIcon(false); }}
+                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setOpenedViaDrop(false); setIsResolvingIcon(false); setBrowseDropdownOpen(false); }}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
                 >
                   <span>{t('app_cancel')}</span>
