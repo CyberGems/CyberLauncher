@@ -2176,6 +2176,8 @@ export default function App() {
     }
   });
   const browseDropdownRef = useRef<HTMLDivElement>(null);
+  const browseDropdownMenuRef = useRef<HTMLDivElement>(null);
+  const modalScrollContainerRef = useRef<HTMLDivElement>(null);
   const browseHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const webFileInputRef = useRef<HTMLInputElement>(null);
   const webFolderInputRef = useRef<HTMLInputElement>(null);
@@ -2191,6 +2193,26 @@ export default function App() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [browseDropdownOpen]);
+
+  useEffect(() => {
+    if (!browseDropdownOpen) return;
+    const timer = setTimeout(() => {
+      if (browseDropdownMenuRef.current && modalScrollContainerRef.current) {
+        const container = modalScrollContainerRef.current;
+        const menuRect = browseDropdownMenuRef.current.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        const overflowBottom = menuRect.bottom - containerRect.bottom + 16;
+        if (overflowBottom > 0) {
+          container.scrollBy({
+            top: overflowBottom,
+            behavior: 'smooth',
+          });
+        }
+      }
+    }, 60);
+    return () => clearTimeout(timer);
   }, [browseDropdownOpen]);
 
   useEffect(() => {
@@ -7976,7 +7998,7 @@ export default function App() {
               if (!app) return null;
               const isTaskbarContextActive = contextMenu?.app?.id === app.id;
               return (
-                <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top">
+                <Tooltip key={`taskbar-${app.id}`} label={app.name} placement="top" delay={0}>
                   <button 
                     draggable
                     data-taskbar-btn
@@ -8321,7 +8343,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
+              <div ref={modalScrollContainerRef} className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
                 {/* Informative / friendly card describing supported shortcut types */}
                 {isAddingApp && !openedViaDrop && !isGuideCardDismissed && (
                   <div className="p-3.5 bg-gradient-to-br from-white/[0.04] to-cyan-950/20 border border-cyan-500/25 rounded-xl relative shadow-[0_4px_20px_rgba(0,0,0,0.25)] min-w-0">
@@ -8525,6 +8547,7 @@ export default function App() {
                         <AnimatePresence>
                           {browseDropdownOpen && (
                             <motion.div
+                              ref={browseDropdownMenuRef}
                               initial={{ opacity: 0, scale: 0.95, y: -4 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: -4 }}

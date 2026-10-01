@@ -8,8 +8,10 @@ interface TooltipProps {
   label: ReactNode;
   placement?: Placement;
   children: ReactElement;
+  delay?: number;
 }
 
+const DEFAULT_DELAY = 400;
 const VIEWPORT_MARGIN = 8;
 const GAP = 8;
 
@@ -23,10 +25,18 @@ function clamp(value: number, min: number, max: number) {
 }
 
 /** CyberGems-style tooltip (ported from CyberNotes). Clones the child without wrapping layout. */
-const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) => {
+const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAULT_DELAY, children }) => {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number; arrow: CSSProperties } | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   useLayoutEffect(() => {
     if (!anchor || !cardRef.current) {
@@ -62,12 +72,16 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
   }, [anchor, placement]);
 
   useEffect(() => {
-    const hide = () => setAnchor(null);
+    const hide = () => {
+      clearTimer();
+      setAnchor(null);
+    };
     window.addEventListener('scroll', hide, true);
     window.addEventListener('wheel', hide, true);
     window.addEventListener('contextmenu', hide, true);
     window.addEventListener('cyber-hide-tooltips', hide, true);
     return () => {
+      clearTimer();
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('wheel', hide, true);
       window.removeEventListener('contextmenu', hide, true);
@@ -75,33 +89,64 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
     };
   }, []);
 
+  useEffect(() => {
+    if (!label) {
+      clearTimer();
+      setAnchor(null);
+    }
+  }, [label]);
+
   if (!isValidElement(children)) return children;
   const child = children as ReactElement<any>;
 
   const show = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseEnter?.(e);
-    if (document.body.getAttribute('data-context-menu-active') === 'true') {
+    clearTimer();
+    if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
       return;
     }
-    if (label) setAnchor(e.currentTarget.getBoundingClientRect());
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (delay <= 0) {
+      setAnchor(rect);
+    } else {
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        setAnchor(rect);
+      }, delay);
+    }
   };
+
   const mouseMoveShow = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseMove?.(e);
-    if (document.body.getAttribute('data-context-menu-active') === 'true') {
+    if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
       return;
     }
-    if (label && !anchor) setAnchor(e.currentTarget.getBoundingClientRect());
+    if (!anchor && !timerRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (delay <= 0) {
+        setAnchor(rect);
+      } else {
+        timerRef.current = setTimeout(() => {
+          timerRef.current = null;
+          setAnchor(rect);
+        }, delay);
+      }
+    }
   };
+
   const hide = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseLeave?.(e);
+    clearTimer();
     setAnchor(null);
   };
   const clickHide = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onClick?.(e);
+    clearTimer();
     setAnchor(null);
   };
   const contextMenuHide = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onContextMenu?.(e);
+    clearTimer();
     setAnchor(null);
   };
 
