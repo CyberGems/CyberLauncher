@@ -79,12 +79,16 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
     window.addEventListener('scroll', hide, true);
     window.addEventListener('wheel', hide, true);
     window.addEventListener('contextmenu', hide, true);
+    window.addEventListener('pointerdown', hide, true);
+    window.addEventListener('mousedown', hide, true);
     window.addEventListener('cyber-hide-tooltips', hide, true);
     return () => {
       clearTimer();
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('wheel', hide, true);
       window.removeEventListener('contextmenu', hide, true);
+      window.removeEventListener('pointerdown', hide, true);
+      window.removeEventListener('mousedown', hide, true);
       window.removeEventListener('cyber-hide-tooltips', hide, true);
     };
   }, []);
@@ -102,6 +106,10 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
   const show = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseEnter?.(e);
     clearTimer();
+    if (e.buttons !== 0) {
+      setAnchor(null);
+      return;
+    }
     if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
       return;
     }
@@ -121,6 +129,11 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
 
   const mouseMoveShow = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseMove?.(e);
+    if (e.buttons !== 0) {
+      clearTimer();
+      setAnchor(null);
+      return;
+    }
     if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
       return;
     }
@@ -145,6 +158,12 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
     clearTimer();
     setAnchor(null);
   };
+  const downHide = (e: ReactMouseEvent<HTMLElement>) => {
+    child.props.onMouseDown?.(e);
+    child.props.onPointerDown?.(e);
+    clearTimer();
+    setAnchor(null);
+  };
   const clickHide = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onClick?.(e);
     clearTimer();
@@ -160,6 +179,8 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
     onMouseEnter: show,
     onMouseMove: mouseMoveShow,
     onMouseLeave: hide,
+    onMouseDown: downHide,
+    onPointerDown: downHide,
     onClick: clickHide,
     onContextMenu: contextMenuHide,
   });

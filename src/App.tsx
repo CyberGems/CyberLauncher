@@ -2029,6 +2029,15 @@ export default function App() {
   const isDraggingFavRef = useRef(false);
   const isFavReorderingRef = useRef(false);
   const favContainerRef = useRef<HTMLDivElement>(null);
+  const slotRectsRef = useRef<{
+    index: number;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    centerX: number;
+    centerY: number;
+  }[]>([]);
 
   // Taskbar State
   const [taskbarAppIds, setTaskbarAppIds] = useState<number[]>(() => {
@@ -4914,63 +4923,82 @@ export default function App() {
     setContextMenu({ x: e.clientX, y: e.clientY, app, source });
   };
 
-  const handleFavLiveDrag = useCallback((draggedId: number, pointerX: number, pointerY: number) => {
-    if (isFavReorderingRef.current) return;
+  const handleFavDragStart = useCallback((id: number) => {
+    isDraggingFavRef.current = true;
+    setDraggedFavId(id);
+    window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+
     const container = favContainerRef.current;
     if (!container) return;
 
-    const itemElements = Array.from(container.querySelectorAll('[data-fav-id]')) as HTMLElement[];
-    if (itemElements.length <= 1) return;
+    const elements = Array.from(container.querySelectorAll('[data-fav-id]')) as HTMLElement[];
+    if (elements.length <= 1) return;
 
     const containerRect = container.getBoundingClientRect();
-    const relX = pointerX - containerRect.left + container.scrollLeft;
-    const relY = pointerY - containerRect.top + container.scrollTop;
+    const GAP_HALF = 6;
+    slotRectsRef.current = elements.map((el, idx) => {
+      const rect = el.getBoundingClientRect();
+      const relLeft = rect.left - containerRect.left;
+      const relTop = rect.top - containerRect.top;
+      const width = rect.width;
+      const height = rect.height;
+      return {
+        index: idx,
+        left: relLeft - GAP_HALF,
+        right: relLeft + width + GAP_HALF,
+        top: relTop - GAP_HALF,
+        bottom: relTop + height + GAP_HALF,
+        centerX: relLeft + width / 2,
+        centerY: relTop + height / 2,
+      };
+    });
+  }, []);
 
-    // Expand slot detection by 6px to seamlessly cover the 12px gap between tiles
-    const EXPAND = 6;
-    let targetId: number | null = null;
+  const handleFavLiveDrag = useCallback((draggedId: number, pointerX: number, pointerY: number) => {
+    const container = favContainerRef.current;
+    if (!container) return;
 
-    for (const el of itemElements) {
-      const id = Number(el.getAttribute('data-fav-id'));
-      if (id === draggedId) continue;
+    const slots = slotRectsRef.current;
+    if (!slots || slots.length <= 1) return;
 
-      const left = el.offsetLeft - EXPAND;
-      const right = el.offsetLeft + el.offsetWidth + EXPAND;
-      const top = el.offsetTop - EXPAND;
-      const bottom = el.offsetTop + el.offsetHeight + EXPAND;
+    const containerRect = container.getBoundingClientRect();
+    const relX = pointerX - containerRect.left;
+    const relY = pointerY - containerRect.top;
 
-      if (relX >= left && relX <= right && relY >= top && relY <= bottom) {
-        targetId = id;
+    // 1. Direct bounding box check across all slots (seamless gap coverage)
+    let targetIdx: number | null = null;
+    for (const slot of slots) {
+      if (
+        relX >= slot.left &&
+        relX <= slot.right &&
+        relY >= slot.top &&
+        relY <= slot.bottom
+      ) {
+        targetIdx = slot.index;
         break;
       }
     }
 
-    // Fallback: If in diagonal gaps or edges, find closest slot within 40px radius
-    if (targetId === null) {
-      let minDistance = 40;
-      for (const el of itemElements) {
-        const id = Number(el.getAttribute('data-fav-id'));
-        if (id === draggedId) continue;
-        const centerX = el.offsetLeft + el.offsetWidth / 2;
-        const centerY = el.offsetTop + el.offsetHeight / 2;
-        const dist = Math.hypot(relX - centerX, relY - centerY);
+    // 2. Fallback: If dragged slightly beyond edge or diagonal gap, find closest slot
+    if (targetIdx === null) {
+      let minDistance = Infinity;
+      for (const slot of slots) {
+        const dist = Math.hypot(relX - slot.centerX, relY - slot.centerY);
         if (dist < minDistance) {
           minDistance = dist;
-          targetId = id;
+          targetIdx = slot.index;
         }
       }
     }
 
-    if (targetId !== null && targetId !== draggedId) {
-      isFavReorderingRef.current = true;
+    if (targetIdx !== null) {
       setFavoriteIds((prev) => {
-        const fromIdx = prev.indexOf(draggedId);
-        const toIdx = prev.indexOf(targetId!);
-        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
+        const currentIdx = prev.indexOf(draggedId);
+        if (currentIdx === -1 || currentIdx === targetIdx) return prev;
 
         const next = [...prev];
-        const [moved] = next.splice(fromIdx, 1);
-        next.splice(toIdx, 0, moved);
+        const [moved] = next.splice(currentIdx, 1);
+        next.splice(targetIdx!, 0, moved);
         return next;
       });
     }
@@ -7659,7 +7687,7 @@ export default function App() {
               </h3>
               <div
                 ref={favContainerRef}
-                className="flex flex-wrap gap-3 rounded-2xl p-1 -m-1"
+                className="relative flex flex-wrap gap-3 rounded-2xl p-2 -m-2"
                 data-cl-drop="favorites"
               >
                 {favorites.map((app, favIdx) => {
@@ -7675,7 +7703,7 @@ export default function App() {
                       dragSnapToOrigin
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileDrag={{
-                        scale: 1.18,
+                        scale: 1.16,
                         zIndex: 60,
                         cursor: 'grabbing',
                       }}
@@ -7684,10 +7712,11 @@ export default function App() {
                         stiffness: 450,
                         damping: 32,
                       }}
-                      onDragStart={() => {
-                        isDraggingFavRef.current = true;
-                        setDraggedFavId(app.id);
+                      onPointerDown={() => {
                         window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                      }}
+                      onDragStart={() => {
+                        handleFavDragStart(app.id);
                       }}
                       onDrag={(_e, info) => {
                         handleFavLiveDrag(app.id, info.point.x, info.point.y);
@@ -7697,6 +7726,7 @@ export default function App() {
                           isDraggingFavRef.current = false;
                         }, 60);
                         setDraggedFavId(null);
+                        slotRectsRef.current = [];
                       }}
                       data-fav-id={app.id}
                       className="relative touch-none flex-shrink-0"
@@ -8665,7 +8695,7 @@ export default function App() {
             values={taskbarAppIds}
             onReorder={setTaskbarAppIds}
             ref={taskbarContainerRef}
-            className={`flex gap-2 relative rounded-xl p-0.5 pb-3 -m-0.5 -mb-3 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
+            className={`flex items-center gap-2 relative rounded-xl px-1.5 py-3 -my-3 transition-[box-shadow,background-color] duration-150 overflow-x-auto scrollbar-hide min-w-0 ${taskbarAppIds.length > 8 ? 'taskbar-fade-mask' : ''}`}
             data-cl-drop="taskbar"
             onWheel={(e) => {
               const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
@@ -8695,13 +8725,16 @@ export default function App() {
                   key={`taskbar-${app.id}`}
                   value={id}
                   className="relative flex-shrink-0 touch-none"
-                  whileHover={{ scale: 1.08, y: -1 }}
+                  whileHover={{ scale: 1.05, y: -1 }}
                   whileDrag={{
-                    scale: 1.24,
+                    scale: 1.12,
                     zIndex: 60,
                     cursor: 'grabbing',
                   }}
                   transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                  onPointerDown={() => {
+                    window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                  }}
                   onDragStart={() => {
                     isTaskbarDraggingRef.current = true;
                     setDraggedTaskbarId(app.id);
@@ -8729,7 +8762,7 @@ export default function App() {
                         isTaskbarContextActive
                           ? 'bg-cyan-500/25 ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)]'
                           : isBeingDragged
-                          ? 'bg-cyan-500/30 ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.8),0_8px_16px_rgba(0,0,0,0.5)]'
+                          ? 'bg-cyan-500/30 ring-2 ring-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.7)]'
                           : ''
                       }`} 
                     >
