@@ -47,6 +47,7 @@ export type AppVersions = {
   arch: string;
   osRelease: string;
   osType: string;
+  isPortable?: boolean;
 };
 
 export type UpdateStatus =
@@ -143,7 +144,8 @@ export default function AboutModal({
   const handleCopyDiagnostics = useCallback(async () => {
     if (!versions) return;
     const lines = [
-      `CyberLauncher ${versions.app}`,
+      `CyberLauncher ${versions.app}${versions.isPortable ? ' (Portable)' : ''}`,
+      `Portable: ${versions.isPortable ? 'Yes' : 'No'}`,
       `Electron: ${versions.electron}`,
       `Chrome: ${versions.chrome}`,
       `Node: ${versions.node}`,
@@ -208,8 +210,13 @@ export default function AboutModal({
           <h1 className="text-[26px] font-cyber font-bold tracking-wide text-white mb-1">
             Cyber<span className="text-cyan-400">Launcher</span>
           </h1>
-          <div className="text-[11px] font-digits font-bold text-slate-500 uppercase tracking-[0.12em] mb-3.5">
-            {t('about_version', { version: appVersion || '…' })}
+          <div className="text-[11px] font-digits font-bold text-slate-500 uppercase tracking-[0.12em] mb-3.5 inline-flex items-center justify-center gap-2">
+            <span>{t('about_version', { version: appVersion || '…' })}</span>
+            {versions?.isPortable && (
+              <span className="text-[9px] font-cyber font-bold tracking-[0.08em] px-2 py-0.5 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 leading-normal">
+                {t('about_portable_badge')}
+              </span>
+            )}
           </div>
 
           <p className="text-[13px] text-slate-400 leading-relaxed mb-6">
@@ -250,7 +257,7 @@ export default function AboutModal({
                     className="flex items-center justify-center gap-1.5 w-full py-2.5 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
-                    {t('about_download_btn')}
+                    {versions?.isPortable ? t('about_download_portable') : t('about_download_btn')}
                   </button>
                 </div>
               ) : status.state === 'downloaded' ? (

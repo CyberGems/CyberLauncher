@@ -33,6 +33,17 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 // Forzar mismo nombre en dev y produccion para compartir userData
 app.setName('CyberLauncher');
 
+// Modo portable: aislar datos de usuario en una subcarpeta 'data' junto al ejecutable portable
+if (process.env.PORTABLE_EXECUTABLE_DIR) {
+  const portableUserDataPath = path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data');
+  try {
+    fs.mkdirSync(portableUserDataPath, { recursive: true });
+  } catch (err) {
+    console.error('[PORTABLE] Failed to create portable data directory:', err);
+  }
+  app.setPath('userData', portableUserDataPath);
+}
+
 // Prevenir pantallas negras causadas por el cálculo erróneo de oclusión de Chromium en Windows
 // (especialmente con ventanas sin marco 'frame: false', maximizadas o en configuraciones multimonitor).
 if (process.platform === 'win32') {
@@ -424,9 +435,10 @@ function readConfigBoolean(key: string): boolean {
 }
 
 function applyAutoLaunchSettings(enabled: boolean, startMinimized: boolean) {
+  const exePath = process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe');
   app.setLoginItemSettings({
     openAtLogin: enabled,
-    path: app.getPath('exe'),
+    path: exePath,
     args: enabled && startMinimized ? [START_MINIMIZED_ARG] : [],
   });
 }

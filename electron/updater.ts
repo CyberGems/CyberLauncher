@@ -7,6 +7,7 @@ const { autoUpdater } = electronUpdater;
 
 const GITHUB_REPO = 'CyberGems/CyberLauncher';
 const NOTES_MAX_CHARS = 8000;
+const isPortable = Boolean(process.env.PORTABLE_EXECUTABLE_DIR);
 
 type UpdateInfoLike = {
   version?: string;
@@ -200,6 +201,11 @@ function registerUpdateIpc(): void {
   });
 
   ipcMain.handle('update:download', async () => {
+    if (isPortable) {
+      const url = cachedRelease?.url || githubReleaseUrl(cachedRelease?.version || app.getVersion());
+      await shell.openExternal(url);
+      return { ok: true, isPortable: true };
+    }
     try {
       await autoUpdater.downloadUpdate();
       return { ok: true };
@@ -210,7 +216,12 @@ function registerUpdateIpc(): void {
     }
   });
 
-  ipcMain.handle('update:install', () => {
+  ipcMain.handle('update:install', async () => {
+    if (isPortable) {
+      const url = cachedRelease?.url || githubReleaseUrl(cachedRelease?.version || app.getVersion());
+      await shell.openExternal(url);
+      return;
+    }
     autoUpdater.quitAndInstall(false, true);
   });
 
@@ -223,6 +234,7 @@ function registerUpdateIpc(): void {
     arch: process.arch,
     osRelease: os.release(),
     osType: os.type(),
+    isPortable,
   }));
 
   ipcMain.handle('open-external', async (_event, url: string) => {

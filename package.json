@@ -11,6 +11,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "build:electron": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:portable": "vite build && electron-builder --win portable",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -36,9 +38,19 @@
     "win": {
       "icon": "public/icon.ico",
       "target": [
-        "nsis"
-      ],
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -55,7 +67,13 @@
         "es"
       ],
       "multiLanguageInstaller": false,
-      "shortcutName": "CyberLauncher"
+      "shortcutName": "CyberLauncher",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}",
+      "unpackDirName": "CyberLauncher-portable",
+      "requestExecutionLevel": "user"
     },
     "publish": {
       "provider": "github",
