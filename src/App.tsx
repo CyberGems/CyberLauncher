@@ -16,7 +16,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database, Sparkles, FolderSearch
+  Archive, Database, Sparkles, FolderSearch, Moon, LogOut
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -380,6 +380,7 @@ declare global {
       setHotspots: (corners: string[], delay: number, disableInFullscreen?: boolean) => Promise<{ success: boolean }>;
       openDevTools: () => Promise<{ success: boolean }>;
       openTaskbarSettings: () => Promise<{ success: boolean; error?: string }>;
+      systemPowerAction?: (action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout', force?: boolean) => Promise<{ success: boolean; error?: string }>;
       showTrayPinTip?: () => Promise<{ success: boolean }>;
       getSeenTrayPinTip?: () => Promise<boolean>;
       exportConfig: (jsonData: string) => Promise<string | null>;
@@ -2323,6 +2324,12 @@ export default function App() {
   const [footerContextMenu, setFooterContextMenu] = useState<{ x: number; y: number; target: 'uptime' | 'launches' | 'datetime' } | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<typeof INITIAL_CATEGORIES[0] | null>(null);
   const [confirmResetType, setConfirmResetType] = useState<'most-used' | 'recent' | null>(null);
+  const [isPowerMenuOpen, setIsPowerMenuOpen] = useState(false);
+  const [powerConfirmAction, setPowerConfirmAction] = useState<'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout' | null>(null);
+  const [powerCountdown, setPowerCountdown] = useState<number>(10);
+  const [powerForceClose, setPowerForceClose] = useState<boolean>(false);
+  const powerForceCloseRef = useRef(powerForceClose);
+  powerForceCloseRef.current = powerForceClose;
   const lastContextMenuDismissedRef = useRef(0);
 
   // Launcher Activity State
@@ -3224,6 +3231,39 @@ export default function App() {
     setEditingCategory(null);
     setCategoryToDelete(target);
   };
+
+  const handleExecutePowerAction = useCallback((action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout', force?: boolean) => {
+    setPowerConfirmAction(null);
+    setIsPowerMenuOpen(false);
+    if (isElectron && window.electronAPI?.systemPowerAction) {
+      void window.electronAPI.systemPowerAction(action, force);
+    } else {
+      console.log(`[POWER DEMO] Executed ${action} (force: ${force})`);
+      setNotification({
+        message: `Power action: ${action.toUpperCase()} ${force ? '(FORCED)' : ''}`,
+        type: 'info'
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!powerConfirmAction) {
+      setPowerCountdown(10);
+      return;
+    }
+    setPowerCountdown(10);
+    const timer = setInterval(() => {
+      setPowerCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleExecutePowerAction(powerConfirmAction, powerForceCloseRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [powerConfirmAction, handleExecutePowerAction]);
 
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(() => localStorage.getItem('isAlwaysOnTop') === 'true');
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
@@ -5356,7 +5396,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -5887,6 +5927,11 @@ export default function App() {
 
       // Confirmar modales activos con Enter
       if (e.key === 'Enter') {
+        if (powerConfirmAction) {
+          e.preventDefault();
+          handleExecutePowerAction(powerConfirmAction, powerForceCloseRef.current);
+          return;
+        }
         if (backupToRestore) {
           e.preventDefault();
           const target = backupToRestore;
@@ -5975,7 +6020,11 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        if (browseDropdownOpen) {
+        if (powerConfirmAction) {
+          setPowerConfirmAction(null);
+        } else if (isPowerMenuOpen) {
+          setIsPowerMenuOpen(false);
+        } else if (browseDropdownOpen) {
           setBrowseDropdownOpen(false);
         } else if (backupToDelete) {
           setBackupToDelete(null);
@@ -8865,6 +8914,156 @@ export default function App() {
               />
             </div>
           )}
+
+          {/* Divider */}
+          {(showFooterUptime || showFooterLaunches || showFooterDateTime) && (
+            <div className="w-px h-4 bg-white/10" />
+          )}
+
+          {/* System Power Menu */}
+          <div className="relative">
+            <Tooltip label={t('tooltip_power_menu')} placement="top">
+              <button
+                type="button"
+                data-no-hide
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPowerMenuOpen(prev => !prev);
+                }}
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                  isPowerMenuOpen
+                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.35)]'
+                    : 'bg-white/[0.03] hover:bg-rose-500/10 border-white/10 hover:border-rose-500/30 text-slate-400 hover:text-rose-300'
+                }`}
+                aria-label={t('power_menu_title')}
+              >
+                <Power className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
+
+            {/* Power Flyout */}
+            <AnimatePresence>
+              {isPowerMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-[110]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPowerMenuOpen(false);
+                    }}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    onClick={(e) => e.stopPropagation()}
+                    data-no-hide
+                    className="absolute right-0 bottom-full mb-3 w-64 bg-[#0a0f18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[120] select-none overflow-hidden"
+                  >
+                    <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Power className="w-3.5 h-3.5 text-rose-400" />
+                        <span className="text-[11px] font-cyber font-bold tracking-wider text-slate-200 uppercase">
+                          {t('power_menu_title')}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-mono">Win</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPowerMenuOpen(false);
+                          setPowerConfirmAction('lock');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20 transition-all group cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                          <Lock className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold">{t('power_action_lock')}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_lock_desc')}</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPowerMenuOpen(false);
+                          setPowerConfirmAction('sleep');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-sky-500/10 border border-transparent hover:border-sky-500/20 transition-all group cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+                          <Moon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold">{t('power_action_sleep')}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_sleep_desc')}</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPowerMenuOpen(false);
+                          setPowerConfirmAction('signout');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all group cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform">
+                          <LogOut className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold">{t('power_action_signout')}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_signout_desc')}</div>
+                        </div>
+                      </button>
+
+                      <div className="h-px bg-white/5 my-1" />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPowerMenuOpen(false);
+                          setPowerConfirmAction('restart');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all group cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold">{t('power_action_restart')}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_restart_desc')}</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPowerMenuOpen(false);
+                          setPowerConfirmAction('shutdown');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all group cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
+                          <Power className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-rose-300">{t('power_action_shutdown')}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_shutdown_desc')}</div>
+                        </div>
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -12557,6 +12756,150 @@ export default function App() {
                     <EnterKeyBadge variant="danger" />
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- SYSTEM POWER CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {powerConfirmAction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-no-hide
+            className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setPowerConfirmAction(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              data-no-hide
+              className={`w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 shadow-2xl space-y-5 text-center ${
+                powerConfirmAction === 'shutdown'
+                  ? 'border-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.2)]'
+                  : powerConfirmAction === 'restart'
+                  ? 'border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
+                  : powerConfirmAction === 'sleep'
+                  ? 'border-sky-500/40 shadow-[0_0_30px_rgba(56,189,248,0.2)]'
+                  : powerConfirmAction === 'signout'
+                  ? 'border-purple-500/40 shadow-[0_0_30px_rgba(192,132,252,0.2)]'
+                  : 'border-cyan-500/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
+              }`}
+            >
+              {/* Glowing Icon & Header */}
+              <div className="flex flex-col items-center justify-center pt-2">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border shadow-inner ${
+                  powerConfirmAction === 'shutdown'
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
+                    : powerConfirmAction === 'restart'
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                    : powerConfirmAction === 'sleep'
+                    ? 'bg-sky-500/15 border-sky-500/30 text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]'
+                    : powerConfirmAction === 'signout'
+                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.3)]'
+                    : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                }`}>
+                  {powerConfirmAction === 'shutdown' && <Power className="w-8 h-8" />}
+                  {powerConfirmAction === 'restart' && <RotateCcw className="w-8 h-8" />}
+                  {powerConfirmAction === 'sleep' && <Moon className="w-8 h-8" />}
+                  {powerConfirmAction === 'signout' && <LogOut className="w-8 h-8" />}
+                  {powerConfirmAction === 'lock' && <Lock className="w-8 h-8" />}
+                </div>
+
+                <h3 className="text-lg font-cyber font-bold text-white tracking-wider">
+                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_title')}
+                  {powerConfirmAction === 'restart' && t('power_confirm_restart_title')}
+                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_title')}
+                  {powerConfirmAction === 'signout' && t('power_confirm_signout_title')}
+                  {powerConfirmAction === 'lock' && t('power_confirm_lock_title')}
+                </h3>
+
+                <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'restart' && t('power_confirm_restart_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'signout' && t('power_confirm_signout_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'lock' && t('power_confirm_lock_msg', { seconds: powerCountdown.toString() })}
+                </p>
+              </div>
+
+              {/* Countdown Progress Bar */}
+              <div className="space-y-1.5 px-4">
+                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
+                  <span className="uppercase tracking-wider">Auto-trigger in</span>
+                  <span className="font-bold text-white font-digits text-xs tabular-nums">{powerCountdown}s</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      powerConfirmAction === 'shutdown'
+                        ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+                        : powerConfirmAction === 'restart'
+                        ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
+                        : powerConfirmAction === 'sleep'
+                        ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
+                        : powerConfirmAction === 'signout'
+                        ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]'
+                        : 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]'
+                    }`}
+                    style={{ width: `${(powerCountdown / 10) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Force Option (for shutdown/restart/signout) */}
+              {(powerConfirmAction === 'shutdown' || powerConfirmAction === 'restart' || powerConfirmAction === 'signout') && (
+                <label className="flex items-center justify-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
+                  <input
+                    type="checkbox"
+                    checked={powerForceClose}
+                    onChange={(e) => setPowerForceClose(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                  />
+                  <span>{t('power_confirm_force')}</span>
+                </label>
+              )}
+
+              {/* Action Buttons with Suite Badges */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPowerConfirmAction(null)}
+                  className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                >
+                  <span>{t('power_confirm_cancel')}</span>
+                  <EscKeyBadge />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExecutePowerAction(powerConfirmAction, powerForceClose)}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                    powerConfirmAction === 'shutdown'
+                      ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                      : powerConfirmAction === 'restart'
+                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                      : powerConfirmAction === 'sleep'
+                      ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.2)]'
+                      : powerConfirmAction === 'signout'
+                      ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(192,132,252,0.2)]'
+                      : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                  }`}
+                >
+                  <span>
+                    {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_now')}
+                    {powerConfirmAction === 'restart' && t('power_confirm_restart_now')}
+                    {powerConfirmAction === 'sleep' && t('power_confirm_sleep_now')}
+                    {powerConfirmAction === 'signout' && t('power_confirm_signout_now')}
+                    {powerConfirmAction === 'lock' && t('power_confirm_lock_now')}
+                  </span>
+                  <EnterKeyBadge variant={powerConfirmAction === 'shutdown' ? 'danger' : 'primary'} />
+                </button>
               </div>
             </motion.div>
           </motion.div>

@@ -62,6 +62,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Diagnóstico y Sistema ---
   openDevTools: () => ipcRenderer.invoke('open-dev-tools'),
   openTaskbarSettings: () => ipcRenderer.invoke('open-taskbar-settings'),
+  systemPowerAction: (action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout', force?: boolean) =>
+    ipcRenderer.invoke('system-power-action', action, force),
 
   // --- Menú contextual nativo ---
   showTextContextMenu: (x: number, y: number) => ipcRenderer.invoke('show-text-context-menu', { x, y }),

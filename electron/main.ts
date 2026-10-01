@@ -4185,6 +4185,40 @@ foreach (\$app in \$startApps) {
     return { success: true };
   });
 
+  // --- Opciones de energía del sistema ---
+  ipcMain.handle('system-power-action', async (_event, action: string, force?: boolean) => {
+    try {
+      console.log(`[POWER] Executing power action: ${action} (force: ${!!force})`);
+      if (action === 'lock') {
+        exec('rundll32.exe user32.dll,LockWorkStation');
+        return { success: true };
+      }
+      if (action === 'sleep') {
+        exec('powershell -Command "Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState([System.Windows.Forms.PowerState]::Suspend, $false, $false)"');
+        return { success: true };
+      }
+      if (action === 'signout') {
+        const flag = force ? '/f' : '';
+        exec(`shutdown /l ${flag}`.trim());
+        return { success: true };
+      }
+      if (action === 'restart') {
+        const flag = force ? '/f' : '';
+        exec(`shutdown /r ${flag} /t 0`.trim());
+        return { success: true };
+      }
+      if (action === 'shutdown') {
+        const flag = force ? '/f' : '';
+        exec(`shutdown /s ${flag} /t 0`.trim());
+        return { success: true };
+      }
+      return { success: false, error: 'Unknown power action' };
+    } catch (err: any) {
+      console.error('[POWER] Error executing power action:', err);
+      return { success: false, error: err?.message || String(err) };
+    }
+  });
+
   // --- Menú contextual nativo de edición de texto ---
   ipcMain.handle('show-text-context-menu', (_event, { x, y }: { x: number, y: number }) => {
     const webContents = _event.sender;
