@@ -106,6 +106,12 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
   background-color: rgba(34, 211, 238, 0.06);
 }
 
+/* Force grabbing cursor during drag operations */
+body[data-cl-drag],
+body[data-cl-drag] * {
+  cursor: grabbing !important;
+}
+
 /* CyberGems tooltip (same motion language as CyberNotes) */
 @keyframes tooltipPop {
   from {
