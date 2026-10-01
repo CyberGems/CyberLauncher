@@ -15,7 +15,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database, Sparkles
+  Archive, Database, Sparkles, FolderSearch
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -8338,15 +8338,17 @@ export default function App() {
                               }
                             }}
                             disabled={isResolvingIcon}
-                            className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
+                            className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 disabled:opacity-50 disabled:cursor-wait active:scale-95"
                           >
-                            <Upload className="w-4 h-4 mr-2" /> PC
+                            <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>{t('btn_browse')}</span>
                           </button>
                         </Tooltip>
                       ) : (
                         <Tooltip label={t('tooltip_browse_file')} placement="top">
-                          <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
-                            <Upload className="w-4 h-4 mr-2" /> PC
+                          <label className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 active:scale-95">
+                            <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <span>{t('btn_browse')}</span>
                             <input
                               type="file"
                               className="hidden"
@@ -8441,19 +8443,20 @@ export default function App() {
                                   }
                                 }}
                                 disabled={isResolvingIcon}
-                                className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0 disabled:opacity-50 disabled:cursor-wait"
+                                className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 disabled:opacity-50 disabled:cursor-wait active:scale-95"
                               >
                                 {isResolvingIcon
-                                  ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin mr-2" />
-                                  : <Upload className="w-4 h-4 mr-2" />}
-                                PC
+                                  ? <div className="w-4 h-4 border-2 border-white/20 border-t-cyan-400 rounded-full animate-spin" />
+                                  : <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />}
+                                <span>{t('btn_browse')}</span>
                               </button>
                             </Tooltip>
                           </>
                         ) : (
                           <Tooltip label={t('tooltip_browse_icon')} placement="top">
-                            <label className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors border border-white/5 shrink-0">
-                              <Upload className="w-4 h-4 mr-2" /> PC
+                            <label className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border border-white/10 hover:border-cyan-500/30 shrink-0 active:scale-95">
+                              <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
+                              <span>{t('btn_browse')}</span>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -8538,7 +8541,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => { setEditingApp(null); setIsAddingApp(false); setOpenedViaDrop(false); setIsResolvingIcon(false); }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors cursor-pointer inline-flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
                 >
                   <span>{t('app_cancel')}</span>
                   <span className="modal-key-esc">Esc</span>
@@ -8928,7 +8931,7 @@ export default function App() {
                                     }}
                                     className="flex items-center gap-1.5 bg-blue-600/90 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-blue-500/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
                                   >
-                                    <Upload className="w-3.5 h-3.5" />
+                                    <FolderSearch className="w-3.5 h-3.5" />
                                     <span>{t('app_bg_browse')}</span>
                                   </button>
                                 </div>
@@ -8947,7 +8950,7 @@ export default function App() {
                                 }}
                                 className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                               >
-                                <Upload className="w-5 h-5" />
+                                <FolderSearch className="w-5 h-5 text-cyan-400" />
                                 <span className="text-xs font-medium tracking-wide">{t('app_bg_browse')}</span>
                               </button>
                             )}
