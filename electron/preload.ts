@@ -187,6 +187,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   showNotification: (options: { title: string; body: string }) =>
     ipcRenderer.invoke('show-notification', options),
+  showDesktopToast: (payload: any) =>
+    ipcRenderer.invoke('show-desktop-toast', payload),
+  hideDesktopToast: () =>
+    ipcRenderer.invoke('hide-desktop-toast'),
+  onCancelScheduledTask: (callback: (taskId: string) => void) => {
+    const handler = (_event: any, taskId: string) => callback(taskId);
+    ipcRenderer.on('cancel-scheduled-task', handler);
+    return () => { ipcRenderer.removeListener('cancel-scheduled-task', handler); };
+  },
+  onLaunchScheduledNow: (callback: (taskId: string) => void) => {
+    const handler = (_event: any, taskId: string) => callback(taskId);
+    ipcRenderer.on('launch-scheduled-now', handler);
+    return () => { ipcRenderer.removeListener('launch-scheduled-now', handler); };
+  },
+  onOpenHudAction: (callback: (target: string) => void) => {
+    const handler = (_event: any, target: string) => callback(target);
+    ipcRenderer.on('open-hud-action', handler);
+    return () => { ipcRenderer.removeListener('open-hud-action', handler); };
+  },
 });
 
 contextBridge.exposeInMainWorld('trayMenu', {

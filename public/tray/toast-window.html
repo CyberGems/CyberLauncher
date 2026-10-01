@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: local-resource:; script-src 'self'; font-src 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberLauncher Notification</title>
+  <link rel="stylesheet" href="toast-window.css">
+</head>
+<body>
+  <div id="toastRoot" class="toast-shell">
+    <!-- Imminent countdown card -->
+    <div id="imminentCard" class="toast-card card-imminent hidden">
+      <div class="countdown-badge">
+        <span class="badge-label">T - MINUS</span>
+        <div class="badge-num-row">
+          <span id="imminentSeconds" class="badge-num">10</span>
+          <span class="badge-unit">s</span>
+        </div>
+      </div>
+      <div class="task-info">
+        <div class="task-header">
+          <span class="pulse-dot dot-amber"></span>
+          <span id="imminentTitle" class="task-title-label">LANZAMIENTO EN 10S</span>
+        </div>
+        <p id="imminentDetail" class="task-detail-label">Lanzar aplicación</p>
+      </div>
+      <div class="card-actions">
+        <button type="button" id="launchNowBtn" class="btn btn-cyan">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="launchNowLabel">Lanzar ya</span>
+        </button>
+        <button type="button" id="cancelLaunchBtn" class="btn btn-red">
+          <svg class="icon-svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span id="cancelLaunchLabel">Cancelar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Standard Notification card (Success, Error, Info) -->
+    <div id="standardCard" class="toast-card card-standard hidden">
+      <div id="statusDot" class="pulse-dot dot-emerald"></div>
+      <div class="standard-body">
+        <h4 id="standardTitle" class="standard-title">APLICACIÓN PROGRAMADA INICIADA</h4>
+        <p id="standardDetail" class="standard-detail">"Lanzar mp3DirectCut" fue iniciada según lo programado.</p>
+        <button type="button" id="standardActionBtn" class="btn-link hidden">
+          <svg class="icon-svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="standardActionLabel">Ver programador</span>
+        </button>
+      </div>
+      <button type="button" id="dismissToastBtn" class="close-btn" aria-label="Dismiss">
+        <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <script src="toast-window.js"></script>
+</body>
+</html>

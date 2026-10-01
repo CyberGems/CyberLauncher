@@ -1805,6 +1805,133 @@ function hideTrayPinTip() {
   }
 }
 
+// =====================================
+// INDEPENDENT DESKTOP TOAST WINDOW
+// =====================================
+let desktopToastWin: BrowserWindow | null = null;
+let desktopToastAutoDismissTimer: NodeJS.Timeout | null = null;
+let latestToastPayload: any = null;
+
+function getToastWindowHtmlPath(): string {
+  const isDev = Boolean(VITE_DEV_SERVER_URL);
+  const candidates = [
+    isDev ? path.join(__dirname, '../public/tray/toast-window.html') : '',
+    path.join(app.getAppPath(), 'dist/tray/toast-window.html'),
+    path.join(app.getAppPath(), 'public/tray/toast-window.html'),
+    path.join(process.resourcesPath, 'public/tray/toast-window.html'),
+    path.join(__dirname, '../dist/tray/toast-window.html'),
+    path.join(__dirname, '../public/tray/toast-window.html'),
+    path.join(process.cwd(), 'public/tray/toast-window.html'),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(__dirname, '../public/tray/toast-window.html');
+}
+
+function ensureDesktopToastWin(): BrowserWindow {
+  if (desktopToastWin && !desktopToastWin.isDestroyed()) return desktopToastWin;
+
+  const htmlPath = getToastWindowHtmlPath();
+  const preloadPath = getTrayPreloadPath();
+
+  desktopToastWin = new BrowserWindow({
+    width: 490,
+    height: 150,
+    show: false,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  desktopToastWin.setAlwaysOnTop(true, 'screen-saver');
+  void desktopToastWin.loadFile(htmlPath);
+
+  desktopToastWin.webContents.on('did-finish-load', () => {
+    if (latestToastPayload && desktopToastWin && !desktopToastWin.isDestroyed()) {
+      desktopToastWin.webContents.send('desktop-toast-data', latestToastPayload);
+    }
+  });
+
+  desktopToastWin.on('closed', () => {
+    desktopToastWin = null;
+  });
+
+  return desktopToastWin;
+}
+
+function showDesktopToastInternal(payload: any) {
+  latestToastPayload = payload;
+  const win = ensureDesktopToastWin();
+
+  let targetDisplay: any;
+  try {
+    const point = screen.getCursorScreenPoint();
+    targetDisplay = screen.getDisplayNearestPoint(point);
+  } catch (_) {
+    targetDisplay = screen.getPrimaryDisplay();
+  }
+
+  const work = targetDisplay.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
+  const winWidth = 490;
+  const winHeight = 150;
+  const pad = 16;
+  const x = Math.round(work.x + work.width - winWidth - pad);
+  const y = Math.round(work.y + work.height - winHeight - pad);
+
+  win.setBounds({ x, y, width: winWidth, height: winHeight });
+
+  if (desktopToastAutoDismissTimer) {
+    clearTimeout(desktopToastAutoDismissTimer);
+    desktopToastAutoDismissTimer = null;
+  }
+
+  if (!win.isVisible()) {
+    win.showInactive();
+  }
+
+  if (!win.webContents.isLoading()) {
+    win.webContents.send('desktop-toast-data', payload);
+  }
+
+  if (payload.type !== 'imminent') {
+    const ms = payload.action ? 8000 : 4500;
+    desktopToastAutoDismissTimer = setTimeout(() => {
+      hideDesktopToastInternal();
+    }, ms);
+  }
+}
+
+function hideDesktopToastInternal() {
+  if (desktopToastAutoDismissTimer) {
+    clearTimeout(desktopToastAutoDismissTimer);
+    desktopToastAutoDismissTimer = null;
+  }
+  if (desktopToastWin && !desktopToastWin.isDestroyed()) {
+    desktopToastWin.webContents.send('desktop-toast-data', { type: 'hide' });
+    setTimeout(() => {
+      if (desktopToastWin && !desktopToastWin.isDestroyed()) {
+        desktopToastWin.hide();
+      }
+    }, 220);
+  }
+}
+
+
 function rebuildTrayMenu(): void {
   if (!tray) return;
   const version = app.getVersion();
@@ -3511,6 +3638,41 @@ function setupIpcHandlers() {
     return { success: true };
   });
 
+  // --- Desktop Toast Window IPC ---
+  ipcMain.handle('show-desktop-toast', (_event, payload: any) => {
+    showDesktopToastInternal(payload);
+    return true;
+  });
+
+  ipcMain.handle('hide-desktop-toast', () => {
+    hideDesktopToastInternal();
+    return true;
+  });
+
+  ipcMain.on('desktop-toast-action', (_event, action: string, payload: any) => {
+    if (action === 'cancel-task') {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('cancel-scheduled-task', payload?.taskId);
+      }
+      hideDesktopToastInternal();
+    } else if (action === 'launch-now') {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('launch-scheduled-now', payload?.taskId);
+      }
+      hideDesktopToastInternal();
+    } else if (action === 'open-hud') {
+      showMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('open-hud-action', payload?.target);
+      }
+      hideDesktopToastInternal();
+    }
+  });
+
+  ipcMain.on('desktop-toast-hide', () => {
+    hideDesktopToastInternal();
+  });
+
   // --- Obtener aplicaciones de Windows Store (UWP/MSIX) ---
   ipcMain.handle('get-uwp-apps', async () => {
     return new Promise((resolve) => {
@@ -4563,6 +4725,7 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
+  ensureDesktopToastWin();
 
   // Initialize display cache and listen for changes
   updateCachedDisplays();

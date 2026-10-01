@@ -429,6 +429,22 @@ declare global {
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
       onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => () => void;
       onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
+      showDesktopToast?: (payload: {
+        type: 'imminent' | 'success' | 'error' | 'info';
+        taskId?: string;
+        countdownSeconds?: number;
+        title: string;
+        detail?: string;
+        level?: 'warning' | 'critical';
+        action?: string;
+        actionLabel?: string;
+        actionLabelLaunch?: string;
+        actionLabelCancel?: string;
+      }) => Promise<boolean>;
+      hideDesktopToast?: () => Promise<boolean>;
+      onCancelScheduledTask?: (callback: (taskId: string) => void) => () => void;
+      onLaunchScheduledNow?: (callback: (taskId: string) => void) => () => void;
+      onOpenHudAction?: (callback: (target: string) => void) => () => void;
     };
   }
 }
@@ -2437,16 +2453,16 @@ export default function App() {
       return;
     }
     if (toastPaused) return;
-    if (typeof document !== 'undefined' && document.hidden) return;
+    if (!isElectron && typeof document !== 'undefined' && document.hidden) return;
 
     const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock';
-    const ms = isLongToast ? 8000 : 4000;
+    const ms = isLongToast ? 8000 : 4500;
     const timer = setTimeout(() => {
       setNotification(null);
     }, ms);
 
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (!isElectron && document.hidden) {
         clearTimeout(timer);
       }
     };
@@ -3350,15 +3366,17 @@ export default function App() {
     return [...candidates].sort((a, b) => a.remainingSeconds - b.remainingSeconds)[0];
   }, [scheduledTasks]);
 
-  const handleCancelImminentTask = useCallback((taskId: string, taskName: string) => {
+  const handleCancelImminentTask = useCallback((taskId: string, taskName?: string) => {
+    const task = scheduledTasks.find(t => t.id === taskId);
+    const resolvedName = taskName || task?.name || 'Task';
     setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
     setNotification({
       message: t('notif_scheduled_cancelled'),
-      detail: t('notif_scheduled_cancelled_detail', { name: taskName }),
+      detail: t('notif_scheduled_cancelled_detail', { name: resolvedName }),
       type: 'info',
       action: 'open-hud-clock'
     });
-  }, [t]);
+  }, [scheduledTasks, t]);
 
   const handleLaunchImminentNow = useCallback((task: ScheduledTask) => {
     if (task.type === 'app' && task.targetPath) {
@@ -3398,6 +3416,91 @@ export default function App() {
     playCyberBeep();
     setScheduledTasks(prev => prev.filter(t => t.id !== task.id));
   }, [t, addToHistory]);
+
+  const handleLaunchById = useCallback((taskId: string) => {
+    const task = scheduledTasks.find(t => t.id === taskId);
+    if (task) {
+      handleLaunchImminentNow(task);
+    }
+  }, [scheduledTasks, handleLaunchImminentNow]);
+
+  // Synchronize desktop toast window for imminent countdown and system/launcher notifications
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.showDesktopToast) return;
+
+    if (imminentTask) {
+      void window.electronAPI.showDesktopToast({
+        type: 'imminent',
+        taskId: imminentTask.id,
+        countdownSeconds: imminentTask.remainingSeconds,
+        title: t('notif_scheduled_imminent', { seconds: imminentTask.remainingSeconds.toString() }),
+        detail: imminentTask.name,
+        actionLabelLaunch: t('notif_action_launch_now'),
+        actionLabelCancel: t('notif_action_cancel_launch'),
+      });
+      return;
+    }
+
+    if (notification) {
+      let actionLabel = '';
+      if (notification.action === 'open-hud-clock') {
+        actionLabel = t('toast_action_view_clock');
+      } else if (notification.action === 'open-hud-storage') {
+        actionLabel = t('toast_action_view_storage');
+      } else if (notification.action === 'open-hud-system') {
+        actionLabel = t('toast_action_view_system');
+      } else if (notification.action === 'open-about') {
+        actionLabel = t('about_title');
+      }
+
+      void window.electronAPI.showDesktopToast({
+        type: notification.type,
+        title: notification.message,
+        detail: notification.detail || '',
+        action: notification.action,
+        actionLabel,
+      });
+      return;
+    }
+
+    void window.electronAPI.hideDesktopToast?.();
+  }, [imminentTask, notification, t]);
+
+  // Register desktop toast IPC action listeners (Cancel, Launch now, Open HUD)
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI) return;
+    const unsubs: Array<() => void> = [];
+
+    if (window.electronAPI.onCancelScheduledTask) {
+      unsubs.push(window.electronAPI.onCancelScheduledTask((taskId) => {
+        handleCancelImminentTask(taskId);
+      }));
+    }
+
+    if (window.electronAPI.onLaunchScheduledNow) {
+      unsubs.push(window.electronAPI.onLaunchScheduledNow((taskId) => {
+        handleLaunchById(taskId);
+      }));
+    }
+
+    if (window.electronAPI.onOpenHudAction) {
+      unsubs.push(window.electronAPI.onOpenHudAction((target) => {
+        if (target === 'open-hud-clock') {
+          setIsClockHUDOpen(true);
+        } else if (target === 'open-hud-storage') {
+          setIsStorageHUDOpen(true);
+        } else if (target === 'open-hud-system') {
+          setIsSystemHUDOpen(true);
+        } else if (target === 'open-about') {
+          setIsAboutOpen(true);
+        }
+      }));
+    }
+
+    return () => {
+      unsubs.forEach(u => u());
+    };
+  }, [handleCancelImminentTask, handleLaunchById]);
 
   const playPinBlockSound = useCallback(() => {
     try {
@@ -12375,7 +12478,7 @@ export default function App() {
 
       {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
       <AnimatePresence>
-        {imminentTask && (
+        {!isElectron && imminentTask && (
           <motion.div
             key={imminentTask.id}
             data-no-hide
@@ -12440,7 +12543,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {notification && (
+        {!isElectron && notification && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide

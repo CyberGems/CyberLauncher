@@ -101,13 +101,44 @@ const trayPinTipBridge = {
   },
 };
 
+const desktopToastBridge = {
+  onData: (cb) => {
+    const handler = (_event, data) => {
+      try {
+        if (typeof cb === 'function') cb(data);
+      } catch (err) {
+        console.error('[TOAST-PRELOAD] onData handler error:', err);
+      }
+    };
+    ipcRenderer.on('desktop-toast-data', handler);
+    return () => ipcRenderer.removeListener('desktop-toast-data', handler);
+  },
+  action: (actionName, payload) => {
+    try {
+      ipcRenderer.send('desktop-toast-action', actionName, payload);
+    } catch (err) {
+      console.error('[TOAST-PRELOAD] action error:', err);
+    }
+  },
+  hide: () => {
+    try {
+      ipcRenderer.send('desktop-toast-hide');
+    } catch (err) {
+      console.error('[TOAST-PRELOAD] hide error:', err);
+    }
+  }
+};
+
 try {
   contextBridge.exposeInMainWorld('trayMenu', trayMenuBridge);
   contextBridge.exposeInMainWorld('trayPinTip', trayPinTipBridge);
+  contextBridge.exposeInMainWorld('desktopToast', desktopToastBridge);
   contextBridge.exposeInMainWorld('electronAPI', {
     trayMenu: trayMenuBridge,
     trayPinTip: trayPinTipBridge,
+    desktopToast: desktopToastBridge,
   });
 } catch (err) {
   console.error('[TRAY-PRELOAD] Failed to expose bridges:', err);
 }
+
