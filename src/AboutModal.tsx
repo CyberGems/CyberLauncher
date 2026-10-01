@@ -5,6 +5,7 @@ import {
   Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Heart, ExternalLink
 } from 'lucide-react';
 import Tooltip from './Tooltip';
+import { EscKeyBadge } from './KeyBadge';
 import { TranslationKey } from './locales';
 
 const REPO_URL = 'https://github.com/CyberGems/CyberLauncher';
@@ -239,7 +240,7 @@ export default function AboutModal({
               className="p-1.5 px-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
               aria-label={t('tooltip_close')}
             >
-              <span className="modal-key-esc">Esc</span>
+              <EscKeyBadge />
               <X className="w-4 h-4" />
             </button>
           </Tooltip>

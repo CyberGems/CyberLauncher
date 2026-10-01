@@ -161,19 +161,87 @@ body[data-cl-drag] * {
   transition: none !important;
 }
 
-/* Modal keyboard hint badges (Suite standard from CyberNotes) */
+/* Modal keyboard hint badges (Suite standard from CyberClock / CyberNotes) */
+.btn-kbd,
 .modal-key-esc {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  line-height: 1.25;
-  opacity: 0.75;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: inherit;
+  opacity: 0.85;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+  user-select: none;
+  pointer-events: none;
+  vertical-align: middle;
+}
+
+:not([class*="gap-"]) > .btn-kbd,
+:not([class*="gap-"]) > .modal-key-esc {
+  margin-left: 5px;
+}
+
+.btn-kbd svg,
+.btn-kbd .btn-kbd-icon,
+.modal-key-esc svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.2;
+  stroke: currentColor;
+  fill: none;
+  display: block;
+}
+
+/* Primary variant (cyan) */
+.btn-kbd-primary,
+.btn-kbd.btn-kbd-primary {
+  background: rgba(34, 211, 238, 0.22);
+  border-color: rgba(34, 211, 238, 0.45);
+  color: #22d3ee;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 6px rgba(34, 211, 238, 0.2);
+}
+
+/* Danger variant (red) */
+.btn-kbd-danger,
+.btn-kbd.btn-kbd-danger {
+  background: rgba(255, 68, 68, 0.16);
+  border-color: rgba(255, 102, 136, 0.45);
+  color: #ff8aa2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 6px rgba(255, 68, 68, 0.2);
+}
+
+/* Secondary / neutral variant */
+.btn-kbd-secondary,
+.btn-kbd.btn-kbd-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: inherit;
+}
+
+/* Dark text button adaptation (e.g. solid cyan button with slate-950 text) */
+.text-slate-950 .btn-kbd-primary,
+.text-slate-950 .btn-kbd {
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.25);
+  color: #020617;
+  box-shadow: none;
+}
+
+/* Disabled state */
+button:disabled .btn-kbd,
+button[disabled] .btn-kbd {
+  opacity: 0.4;
+  box-shadow: none;
 }
 
 /* Tooltip keyboard shortcut badge (Suite standard from CyberFeeds) */

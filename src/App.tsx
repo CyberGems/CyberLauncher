@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
 import AboutModal, { UpdateStatus, peekReleaseNotes } from './AboutModal';
+import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import {
   Terminal, Globe, Lock, MousePointer2, Star,
@@ -13,7 +14,7 @@ import {
   HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw, Calculator, Activity, FileText, CornerDownLeft, ScanSearch,
+  RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
   Archive, Database, Sparkles, FolderSearch
 } from 'lucide-react';
@@ -1401,7 +1402,7 @@ const ClockHUD = ({
                   className="p-1.5 px-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
                   aria-label={t('tooltip_close')}
                 >
-                  <span className="modal-key-esc">Esc</span>
+                  <EscKeyBadge />
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1661,7 +1662,7 @@ const ClockHUD = ({
                   >
                     <Plus className="w-4 h-4" />
                     <span>{t('hud_clock_schedule_btn')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-60 ml-1.5" />
+                    <EnterKeyBadge variant="primary" />
                   </button>
                 </div>
               </div>
@@ -1823,7 +1824,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
                 className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{t('tooltip_close').toUpperCase()}</span>
-                <span className="modal-key-esc">Esc</span>
+                <EscKeyBadge />
               </button>
             </div>
           </motion.div>
@@ -1974,7 +1975,7 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
                 className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{t('tooltip_close').toUpperCase()}</span>
-                <span className="modal-key-esc">Esc</span>
+                <EscKeyBadge />
               </button>
             </div>
           </motion.div>
@@ -9587,7 +9588,7 @@ export default function App() {
                   className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
                 >
                   <span>{t('app_cancel')}</span>
-                  <span className="modal-key-esc">Esc</span>
+                  <EscKeyBadge />
                 </button>
                 <button
                   type="button"
@@ -9595,7 +9596,7 @@ export default function App() {
                   className="px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl font-cyber font-bold text-sm shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>{isAddingApp ? t('app_add_submit') : t('app_edit_submit')}</span>
-                  <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                  <EnterKeyBadge variant="primary" />
                 </button>
               </div>
             </div>
@@ -9676,7 +9677,7 @@ export default function App() {
                       className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>{t('tooltip_close').toUpperCase()}</span>
-                      <span className="modal-key-esc">Esc</span>
+                      <EscKeyBadge />
                     </button>
                   </div>
                 </div>
@@ -11345,7 +11346,7 @@ export default function App() {
                                 className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <span>{t('uwp_confirm_cancel')}</span>
-                                <span className="modal-key-esc">Esc</span>
+                                <EscKeyBadge />
                               </button>
                               <button
                                 type="button"
@@ -11367,7 +11368,7 @@ export default function App() {
                                 className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <span>{t('uwp_confirm_ok')}</span>
-                                <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                                <EnterKeyBadge variant="primary" />
                               </button>
                             </div>
                           </motion.div>
@@ -11676,14 +11677,14 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_delete_category_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button 
                     type="submit"
                     className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>{t('modal_add_category_btn_create')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="primary" />
                   </button>
                 </div>
               </form>
@@ -11764,7 +11765,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_delete_category_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button 
                     type="button"
@@ -11772,7 +11773,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>{t('edit_cat_btn_save')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="primary" />
                   </button>
                 </div>
               </div>
@@ -12347,7 +12348,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_delete_category_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button 
                     type="button"
@@ -12355,7 +12356,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_delete_category_btn_confirm')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="danger" />
                   </button>
                 </div>
               </div>
@@ -12410,7 +12411,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_reset_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button 
                     type="button"
@@ -12425,7 +12426,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_reset_btn_confirm')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="primary" />
                   </button>
                 </div>
               </div>
@@ -12477,7 +12478,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_reset_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button
                     type="button"
@@ -12489,7 +12490,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('backup_auto_btn_restore')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="primary" />
                   </button>
                 </div>
               </div>
@@ -12541,7 +12542,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('confirm_reset_btn_cancel')}</span>
-                    <span className="modal-key-esc">Esc</span>
+                    <EscKeyBadge />
                   </button>
                   <button
                     type="button"
@@ -12553,7 +12554,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('backup_auto_btn_delete')}</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
+                    <EnterKeyBadge variant="danger" />
                   </button>
                 </div>
               </div>
