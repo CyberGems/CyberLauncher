@@ -678,7 +678,8 @@ const CyberAnalogClock = () => {
 };
 
 /** Isolated digital clock — ticks without re-rendering the full App tree. */
-const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title: string }) => {
+/** Isolated digital clock — ticks without re-rendering the full App tree. */
+const HeaderClock = React.memo(({ onClick, title, activeTasksCount = 0 }: { onClick: () => void; title: string; activeTasksCount?: number }) => {
   const [time, setTime] = useState(() => new Date());
   const visible = useDocumentVisible();
 
@@ -698,13 +699,19 @@ const HeaderClock = React.memo(({ onClick, title }: { onClick: () => void; title
       >
         <Clock className="w-3.5 h-3.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
         <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
+        {activeTasksCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse ml-0.5">
+            <Timer className="w-3 h-3 text-cyan-400" />
+            <span>{activeTasksCount}</span>
+          </span>
+        )}
       </button>
     </Tooltip>
   );
 });
 
 /** Footer date & time — live digital time alongside formatted calendar date. */
-const FooterDateTime = React.memo(({ title, onClick }: { title: string; onClick?: () => void }) => {
+const FooterDateTime = React.memo(({ title, onClick, activeTasksCount = 0 }: { title: string; onClick?: () => void; activeTasksCount?: number }) => {
   const [now, setNow] = useState(() => new Date());
   const visible = useDocumentVisible();
 
@@ -729,6 +736,12 @@ const FooterDateTime = React.memo(({ title, onClick }: { title: string; onClick?
         <span className="text-[13px] font-mono tracking-wide text-slate-400 group-hover:text-slate-300 tabular-nums shrink-0">
           {timeStr}
         </span>
+        {activeTasksCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.3)] animate-pulse">
+            <Timer className="w-2.5 h-2.5 text-cyan-400" />
+            <span>{activeTasksCount}</span>
+          </span>
+        )}
         <span className="text-[10px] text-slate-600 font-bold shrink-0">·</span>
         <span className="text-[13px] font-mono tracking-wide text-slate-400 group-hover:text-slate-300 shrink-0">
           {dateStr}
@@ -852,12 +865,33 @@ const getCategoryDisplayName = (categoryName: string, t: any) => {
   return translated !== translationKey ? translated : categoryName;
 };
 
+interface TaskHistoryItem {
+  id: string;
+  name: string;
+  targetPath?: string;
+  command?: string;
+  type: 'app' | 'command';
+  appId?: string;
+  totalSeconds: number;
+  timestamp: number;
+}
+
+const QUICK_PRESETS = [
+  { label: '5m', totalSecs: 300 },
+  { label: '15m', totalSecs: 900 },
+  { label: '30m', totalSecs: 1800 },
+  { label: '1h', totalSecs: 3600 },
+  { label: '2h', totalSecs: 7200 },
+];
+
 const ClockHUD = ({ 
   isOpen, 
   onClose, 
   apps, 
   scheduledTasks, 
   setScheduledTasks,
+  preselectedAppId,
+  onClearPreselectedAppId,
   t
 }: { 
   isOpen: boolean; 
@@ -865,6 +899,8 @@ const ClockHUD = ({
   apps: Array<any>; 
   scheduledTasks: Array<ScheduledTask>; 
   setScheduledTasks: React.Dispatch<React.SetStateAction<Array<ScheduledTask>>>;
+  preselectedAppId?: string;
+  onClearPreselectedAppId?: () => void;
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
 }) => {
   const [selectedType, setSelectedType] = useState<'app' | 'command'>('app');
@@ -874,11 +910,79 @@ const ClockHUD = ({
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
 
+  const [taskHistory, setTaskHistory] = useState<Array<TaskHistoryItem>>(() => {
+    try {
+      const saved = localStorage.getItem('cl_task_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveToHistory = (item: TaskHistoryItem) => {
+    setTaskHistory(prev => {
+      const filtered = prev.filter(h => !(h.name === item.name && h.totalSeconds === item.totalSeconds && h.type === item.type));
+      const updated = [item, ...filtered].slice(0, 8);
+      try {
+        localStorage.setItem('cl_task_history', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleClearHistory = () => {
+    setTaskHistory([]);
+    try {
+      localStorage.removeItem('cl_task_history');
+    } catch {}
+  };
+
+  const handleRepeatHistoryItem = (item: TaskHistoryItem) => {
+    const newTask: ScheduledTask = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: item.name,
+      totalSeconds: item.totalSeconds,
+      remainingSeconds: item.totalSeconds,
+      targetPath: item.targetPath || '',
+      isAdmin: false,
+      command: item.command || '',
+      type: item.type
+    };
+
+    saveToHistory({
+      ...item,
+      id: newTask.id,
+      timestamp: Date.now()
+    });
+
+    setScheduledTasks(prev => [...prev, newTask]);
+  };
+
+  const handleLoadHistoryItem = (item: TaskHistoryItem) => {
+    setSelectedType(item.type);
+    if (item.type === 'app' && item.appId) {
+      setSelectedAppId(item.appId);
+    } else if (item.command) {
+      setCustomCommand(item.command);
+    }
+    setTimerMinutes(Math.floor(item.totalSeconds / 60));
+    setTimerSeconds(item.totalSeconds % 60);
+  };
+
   const adjustTimer = (deltaSeconds: number) => {
     const next = Math.max(0, timerMinutes * 60 + timerSeconds + deltaSeconds);
     setTimerMinutes(Math.floor(next / 60));
     setTimerSeconds(next % 60);
   };
+
+  // Consume preselected app if passed
+  useEffect(() => {
+    if (isOpen && preselectedAppId) {
+      setSelectedType('app');
+      setSelectedAppId(preselectedAppId);
+      onClearPreselectedAppId?.();
+    }
+  }, [isOpen, preselectedAppId, onClearPreselectedAppId]);
 
   // Set default app selection when apps list loads
   useEffect(() => {
@@ -918,6 +1022,17 @@ const ClockHUD = ({
       command,
       type: selectedType
     };
+
+    saveToHistory({
+      id: newTask.id,
+      name: taskName,
+      targetPath,
+      command,
+      type: selectedType,
+      appId: selectedType === 'app' ? selectedAppId : undefined,
+      totalSeconds: totalSecs,
+      timestamp: Date.now()
+    });
 
     setScheduledTasks(prev => [...prev, newTask]);
     setCustomCommand('');
@@ -1043,6 +1158,68 @@ const ClockHUD = ({
                             </div>
                           );
                         })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Historial Reciente Section */}
+                  <div className="text-left mt-6 pt-5 border-t border-cyan-500/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-widest uppercase">
+                        {t('hud_clock_history')}
+                      </h3>
+                      {taskHistory.length > 0 && (
+                        <Tooltip label={t('hud_clock_clear_history')} placement="left">
+                          <button
+                            type="button"
+                            onClick={handleClearHistory}
+                            className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </Tooltip>
+                      )}
+                    </div>
+
+                    {taskHistory.length === 0 ? (
+                      <p className="text-[10px] font-mono text-slate-500 italic py-2 text-center">
+                        {t('hud_clock_history_empty')}
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {taskHistory.map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleLoadHistoryItem(item)}
+                            className="group/hist relative flex items-center justify-between p-2 rounded-lg bg-slate-950/60 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer"
+                          >
+                            <div className="flex-1 min-w-0 pr-2">
+                              <p className="text-[11px] font-medium text-slate-200 group-hover/hist:text-cyan-300 truncate">
+                                {item.name}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] font-mono text-cyan-400/80 bg-cyan-500/10 px-1 py-0.2 rounded border border-cyan-500/20 tabular-nums">
+                                  {formatRemaining(item.totalSeconds)}
+                                </span>
+                                <span className="text-[8px] font-mono text-slate-500 uppercase">
+                                  {item.type === 'app' ? t('hud_clock_task_type_local') : t('hud_clock_task_type_cmd')}
+                                </span>
+                              </div>
+                            </div>
+                            <Tooltip label={t('hud_clock_repeat')} placement="left">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRepeatHistoryItem(item);
+                                }}
+                                className="p-1.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-400 hover:text-cyan-200 border border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer shrink-0"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                              </button>
+                            </Tooltip>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1173,6 +1350,35 @@ const ClockHUD = ({
                           onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
                           className="bg-transparent text-center text-white font-digits font-bold text-4xl w-full focus:outline-none tabular-nums leading-none"
                         />
+                      </div>
+                    </div>
+
+                    {/* Quick 1-click Presets */}
+                    <div className="mb-4">
+                      <div className="text-[9px] font-cyber font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                        {t('hud_clock_quick_presets')}
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {QUICK_PRESETS.map((preset) => {
+                          const isSelected = timerMinutes * 60 + timerSeconds === preset.totalSecs;
+                          return (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => {
+                                setTimerMinutes(Math.floor(preset.totalSecs / 60));
+                                setTimerSeconds(preset.totalSecs % 60);
+                              }}
+                              className={`py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_8px_rgba(34,211,238,0.3)]'
+                                  : 'bg-slate-900/90 border-cyan-500/20 text-slate-300 hover:text-cyan-300 hover:bg-cyan-500/10 hover:border-cyan-500/40'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2754,6 +2960,7 @@ export default function App() {
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
+  const [schedulerPreselectedAppId, setSchedulerPreselectedAppId] = useState<string>('');
   const normalizeHistoryKey = (str?: string) => (str || '').trim().toLowerCase().replace(/\\/g, '/');
 
   const [launchHistory, setLaunchHistory] = useState<HistoryItem[]>(() => {
@@ -5181,7 +5388,7 @@ export default function App() {
         }
 
         // Ctrl+T -> Clock HUD
-        if (key === 't' && showHeaderClock) {
+        if (key === 't') {
           e.preventDefault();
           setIsClockHUDOpen(prev => !prev);
           return;
@@ -6526,14 +6733,31 @@ export default function App() {
               </button>
             </Tooltip>
             
-            {showHeaderClock && (
+            {showHeaderClock ? (
+              <HeaderClock
+                onClick={() => setIsClockHUDOpen(prev => !prev)}
+                title={withShortcut(t('hud_clock'), 'Ctrl+T')}
+                activeTasksCount={scheduledTasks.length}
+              />
+            ) : (
               <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement="bottom">
-                <div className="inline-flex items-center">
-                  <HeaderClock
-                    onClick={() => setIsClockHUDOpen(prev => !prev)}
-                    title={t('hud_clock')}
-                  />
-                </div>
+                <button 
+                  type="button"
+                  onClick={() => setIsClockHUDOpen(prev => !prev)}
+                  className={`relative p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    scheduledTasks.length > 0 
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]' 
+                      : 'bg-black/40 border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
+                  }`}
+                  aria-label={t('hud_clock')}
+                >
+                  <Timer className={`w-4 h-4 ${scheduledTasks.length > 0 ? 'text-cyan-300 animate-pulse' : ''}`} />
+                  {scheduledTasks.length > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
+                      {scheduledTasks.length}
+                    </span>
+                  )}
+                </button>
               </Tooltip>
             )}
           </div>
@@ -7610,10 +7834,17 @@ export default function App() {
                         setIsMoreMenuOpen(false);
                         setIsClockHUDOpen(true);
                       }}
-                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
+                      className="more-menu-item group flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
-                      <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
-                      <span>{t('more_menu_hud_clock')}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                        <span className="truncate">{t('more_menu_hud_clock')}</span>
+                      </div>
+                      {scheduledTasks.length > 0 && (
+                        <span className="text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-1.5 py-0.2 rounded-full tabular-nums">
+                          {scheduledTasks.length}
+                        </span>
+                      )}
                     </button>
 
                     <div className="h-px bg-white/10 my-1 mx-1.5" />
@@ -8127,6 +8358,7 @@ export default function App() {
               <FooterDateTime 
                 title={t('tooltip_datetime')} 
                 onClick={() => setIsClockHUDOpen(true)}
+                activeTasksCount={scheduledTasks.length}
               />
             </div>
           )}
@@ -11052,7 +11284,7 @@ export default function App() {
             className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[210px] text-sm select-none"
             style={{ 
               left: Math.min(contextMenu.x, window.innerWidth - 230), 
-              top: Math.min(contextMenu.y, window.innerHeight - (contextMenu.app ? 320 : 130)) 
+              top: Math.min(contextMenu.y, window.innerHeight - (contextMenu.app ? 360 : 130)) 
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -11130,6 +11362,18 @@ export default function App() {
                     <RotateCcw className={`w-4 h-4 ml-2 text-cyan-400 ${refreshingAppId === contextMenu.app.id ? 'animate-spin' : ''}`} />
                   </button>
                 )}
+
+                <button
+                  onClick={() => {
+                    const appId = String(contextMenu.app!.id);
+                    setSchedulerPreselectedAppId(appId);
+                    setContextMenu(null);
+                    setIsClockHUDOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                >
+                  {t('ctx_schedule_launch')} <Timer className="w-4 h-4 ml-2 text-cyan-400" />
+                </button>
                 
                 <button
                    onClick={() => {
@@ -11981,6 +12225,8 @@ export default function App() {
         apps={apps}
         scheduledTasks={scheduledTasks}
         setScheduledTasks={setScheduledTasks}
+        preselectedAppId={schedulerPreselectedAppId}
+        onClearPreselectedAppId={() => setSchedulerPreselectedAppId('')}
         t={t}
       />
 

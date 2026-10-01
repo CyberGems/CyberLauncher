@@ -284,6 +284,7 @@ export const translations = {
     ctx_add_fav: "Agregar a favoritos",
     ctx_remove_fav: "Quitar de favoritos",
     ctx_open_location: "Abrir ubicación",
+    ctx_schedule_launch: "Programar ejecución...",
     ctx_edit_app: "Editar",
     ctx_delete_app: "Eliminar",
     ctx_pin_fav: "Anclar a Favoritos de CyberLauncher",
@@ -450,6 +451,13 @@ export const translations = {
     hud_clock_cancel: "Cancelar ejecución",
     hud_clock_task_launch_prefix: "Lanzar",
     hud_clock_task_cmd_prefix: "Consola",
+    hud_clock_quick_presets: "PRESETS RÁPIDOS",
+    hud_clock_history: "HISTORIAL RECIENTE",
+    hud_clock_history_empty: "Sin programaciones recientes",
+    hud_clock_repeat: "Repetir",
+    hud_clock_clear_history: "Borrar historial",
+    hud_clock_badge_active: "{count} activa",
+    hud_clock_badge_active_plural: "{count} activas",
 
     // History HUD
     hud_history: "Abrir historial de ejecuciones",
@@ -904,6 +912,7 @@ export const translations = {
     ctx_add_fav: "Add to favorites",
     ctx_remove_fav: "Remove from favorites",
     ctx_open_location: "Open file location",
+    ctx_schedule_launch: "Schedule launch...",
     ctx_edit_app: "Edit",
     ctx_delete_app: "Delete",
     ctx_pin_fav: "Pin to CyberLauncher Favorites",
@@ -1070,6 +1079,13 @@ export const translations = {
     hud_clock_cancel: "Cancel execution",
     hud_clock_task_launch_prefix: "Launch",
     hud_clock_task_cmd_prefix: "Console",
+    hud_clock_quick_presets: "QUICK PRESETS",
+    hud_clock_history: "RECENT HISTORY",
+    hud_clock_history_empty: "No recent scheduled tasks",
+    hud_clock_repeat: "Repeat",
+    hud_clock_clear_history: "Clear history",
+    hud_clock_badge_active: "{count} active",
+    hud_clock_badge_active_plural: "{count} active",
 
     // History HUD
     hud_history: "Open execution history",
