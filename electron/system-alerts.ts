@@ -27,6 +27,7 @@ let warmUpTimer: NodeJS.Timeout | null = null;
 let getMainWindowFn: () => BrowserWindow | null = () => null;
 let getAppIconPathFn: () => string = () => '';
 let showMainWindowFn: () => void = () => {};
+let showDesktopToastFn: ((payload: any) => void) | null = null;
 
 // State tracking for disk alerts
 let lastDiskTier: number | null = null;
@@ -52,8 +53,26 @@ function sendAlertNotification(options: {
 }) {
   const win = getMainWindowFn();
   const icon = getAppIconPathFn();
+  const isEs = currentConfig.language !== 'en';
 
-  // Send toast event to renderer window (if alive)
+  // 1. Direct standalone desktop toast (fast, independent)
+  if (showDesktopToastFn) {
+    showDesktopToastFn({
+      type: options.level === 'critical' ? 'error' : 'warning',
+      level: options.level,
+      title: options.title,
+      detail: options.body,
+      action: options.type === 'disk' ? 'open-hud-storage' : 'open-hud-system',
+      actionLabel: options.type === 'disk'
+        ? (isEs ? 'Ver almacenamiento' : 'View storage')
+        : (isEs ? 'Ver sistema' : 'View system'),
+      brandTag: options.type === 'disk'
+        ? (isEs ? 'DISCO' : 'STORAGE')
+        : (isEs ? 'MEMORIA' : 'MEMORY'),
+    });
+  }
+
+  // 2. Send toast event to renderer window (if alive)
   if (win && !win.isDestroyed()) {
     win.webContents.send('system-alert-toast', {
       type: options.type,
@@ -63,7 +82,7 @@ function sendAlertNotification(options: {
     });
   }
 
-  // Send native desktop notification via Electron
+  // 3. Send native desktop notification via Electron
   if (Notification.isSupported()) {
     try {
       const notif = new Notification({
@@ -113,13 +132,15 @@ function checkDiskHealth() {
     }
 
     const now = Date.now();
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const REMINDER_MS = 6 * 60 * 60 * 1000; // Reminder every 6 hours
+
+    console.log(`[SYSTEM-ALERTS] Disk check: ${freeGb.toFixed(1)} GB free on ${driveLetter} (tier: ${currentTier ?? 'OK'}, lastTier: ${lastDiskTier ?? 'none'})`);
 
     if (currentTier !== null) {
       const isWorseTier = lastDiskTier === null || currentTier < lastDiskTier;
-      const isDailyReminder = currentTier === lastDiskTier && (now - lastDiskAlertTime >= ONE_DAY_MS);
+      const isReminder = currentTier === lastDiskTier && (now - lastDiskAlertTime >= REMINDER_MS);
 
-      if (isWorseTier || isDailyReminder) {
+      if (isWorseTier || isReminder) {
         lastDiskTier = currentTier;
         lastDiskAlertTime = now;
 
@@ -161,7 +182,7 @@ function checkDiskHealth() {
       if (freeGb >= 22) {
         lastDiskTier = null;
       } else if (lastDiskTier !== null && freeGb >= lastDiskTier + 2) {
-        // Step-up hysteresis: if previously at tier 1, and now at >= 3 GB, relax tier
+        // Step-up hysteresis
         if (lastDiskTier === 1 && freeGb >= 3) lastDiskTier = 5;
         else if (lastDiskTier === 5 && freeGb >= 7) lastDiskTier = 10;
         else if (lastDiskTier === 10 && freeGb >= 12) lastDiskTier = 20;
@@ -191,19 +212,26 @@ function checkRamHealth() {
     const isHighPercent = percent >= thresholdPercent;
     const isLowAbsolute = currentConfig.ramLowAbsoluteAlertEnabled && freeGb < 2.0;
 
+    console.log(`[SYSTEM-ALERTS] RAM check: ${percent}% used (${usedGb}/${totalGb}GB), ${freeGb}GB free (threshold: ${thresholdPercent}%, count: ${ramHighConsecutiveCount})`);
+
+    const now = Date.now();
+
     if (isHighPercent || isLowAbsolute) {
       ramHighConsecutiveCount++;
     } else {
       ramHighConsecutiveCount = 0;
+      // If RAM recovered for at least 2 minutes, clear last alert time to allow next sustained spike
+      if (lastRamAlertTime > 0 && now - lastRamAlertTime >= 2 * 60 * 1000) {
+        lastRamAlertTime = 0;
+      }
     }
 
-    const now = Date.now();
     const isEmergency = percent >= 92 || freeGb < 1.0;
-    const cooldownMs = isEmergency ? 5 * 60 * 1000 : 25 * 60 * 1000;
+    const cooldownMs = isEmergency ? 4 * 60 * 1000 : 12 * 60 * 1000;
     const timeSinceLastAlert = now - lastRamAlertTime;
 
     // Condition must be sustained across at least 2 consecutive checks (~60s apart)
-    if (ramHighConsecutiveCount >= 2 && timeSinceLastAlert >= cooldownMs) {
+    if (ramHighConsecutiveCount >= 2 && (lastRamAlertTime === 0 || timeSinceLastAlert >= cooldownMs)) {
       lastRamAlertTime = now;
 
       const isEs = currentConfig.language !== 'en';
@@ -241,11 +269,15 @@ export function initSystemAlerts(
   getMainWindow: () => BrowserWindow | null,
   getAppIconPath: () => string,
   showMainWindow: () => void,
-  initialConfig?: Partial<SystemAlertsConfig>
+  initialConfig?: Partial<SystemAlertsConfig>,
+  showDesktopToast?: (payload: any) => void
 ) {
   getMainWindowFn = getMainWindow;
   getAppIconPathFn = getAppIconPath;
   showMainWindowFn = showMainWindow;
+  if (showDesktopToast) {
+    showDesktopToastFn = showDesktopToast;
+  }
 
   if (initialConfig) {
     updateSystemAlertsConfig(initialConfig);
@@ -268,10 +300,11 @@ export function initSystemAlerts(
 }
 
 export function updateSystemAlertsConfig(newConfig: Partial<SystemAlertsConfig>) {
-  currentConfig = {
-    ...currentConfig,
-    ...newConfig,
-  };
+  for (const [key, val] of Object.entries(newConfig)) {
+    if (val !== undefined && val !== null) {
+      (currentConfig as any)[key] = val;
+    }
+  }
 }
 
 export function stopSystemAlerts() {

@@ -19,6 +19,12 @@
         </div>
       </div>
       <div class="task-info">
+        <div class="card-brand-micro">
+          <img src="../icon-32.png" class="brand-micro-icon" alt="" />
+          <span class="brand-micro-text">CYBERLAUNCHER</span>
+          <span class="brand-micro-sep">/</span>
+          <span id="imminentBrandTag" class="brand-micro-sub">TIMER</span>
+        </div>
         <div class="task-header">
           <span class="pulse-dot dot-amber"></span>
           <span id="imminentTitle" class="task-title-label">LANZAMIENTO EN 10S</span>
@@ -37,20 +43,31 @@
       </div>
     </div>
 
-    <!-- Standard Notification card (Success, Error, Info) -->
+    <!-- Standard Notification card (Success, Error, Info, Warning) -->
     <div id="standardCard" class="toast-card card-standard hidden">
-      <div id="statusDot" class="pulse-dot dot-emerald"></div>
-      <div class="standard-body">
-        <h4 id="standardTitle" class="standard-title">APLICACIÓN PROGRAMADA INICIADA</h4>
-        <p id="standardDetail" class="standard-detail">"Lanzar mp3DirectCut" fue iniciada según lo programado.</p>
-        <button type="button" id="standardActionBtn" class="btn-link hidden">
-          <svg class="icon-svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span id="standardActionLabel">Ver programador</span>
+      <div class="card-header-bar">
+        <div class="brand-meta">
+          <img src="../icon-32.png" class="brand-meta-icon" alt="" />
+          <span class="brand-meta-name">CYBERLAUNCHER</span>
+          <span class="brand-meta-slash">/</span>
+          <span id="brandMetaTag" class="brand-meta-tag">SISTEMA</span>
+        </div>
+        <button type="button" id="dismissToastBtn" class="close-btn" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <button type="button" id="dismissToastBtn" class="close-btn" aria-label="Dismiss">
-        <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+
+      <div class="standard-main-row">
+        <div id="statusDot" class="pulse-dot dot-emerald"></div>
+        <div class="standard-body">
+          <h4 id="standardTitle" class="standard-title">APLICACIÓN PROGRAMADA INICIADA</h4>
+          <p id="standardDetail" class="standard-detail">"Lanzar mp3DirectCut" fue iniciada según lo programado.</p>
+          <button type="button" id="standardActionBtn" class="btn-link hidden">
+            <svg class="icon-svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="standardActionLabel">Ver programador</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="toast-window.js"></script>

@@ -430,12 +430,13 @@ declare global {
       onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => () => void;
       onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
       showDesktopToast?: (payload: {
-        type: 'imminent' | 'success' | 'error' | 'info';
+        type: 'imminent' | 'success' | 'error' | 'warning' | 'info';
         taskId?: string;
         countdownSeconds?: number;
         title: string;
         detail?: string;
         level?: 'warning' | 'critical';
+        brandTag?: string;
         action?: string;
         actionLabel?: string;
         actionLabelLaunch?: string;
@@ -2377,7 +2378,9 @@ export default function App() {
   }, [isAnyContextMenuOpen]);
   const [notification, setNotification] = useState<{
     message: string;
-    type: 'success' | 'info' | 'error';
+    type: 'success' | 'info' | 'error' | 'warning';
+    level?: 'warning' | 'critical';
+    brandTag?: string;
     /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
     action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock';
     detail?: string;
@@ -3437,28 +3440,36 @@ export default function App() {
         detail: imminentTask.name,
         actionLabelLaunch: t('notif_action_launch_now'),
         actionLabelCancel: t('notif_action_cancel_launch'),
+        brandTag: t('toast_brand_timer') || 'TIMER',
       });
       return;
     }
 
     if (notification) {
       let actionLabel = '';
+      let brandTag = notification.brandTag;
       if (notification.action === 'open-hud-clock') {
         actionLabel = t('toast_action_view_clock');
+        if (!brandTag) brandTag = t('toast_brand_scheduler');
       } else if (notification.action === 'open-hud-storage') {
         actionLabel = t('toast_action_view_storage');
+        if (!brandTag) brandTag = t('toast_brand_storage');
       } else if (notification.action === 'open-hud-system') {
         actionLabel = t('toast_action_view_system');
+        if (!brandTag) brandTag = t('toast_brand_memory');
       } else if (notification.action === 'open-about') {
         actionLabel = t('about_title');
+        if (!brandTag) brandTag = t('toast_brand_system');
       }
 
       void window.electronAPI.showDesktopToast({
         type: notification.type,
+        level: notification.level,
         title: notification.message,
         detail: notification.detail || '',
         action: notification.action,
         actionLabel,
+        brandTag: brandTag || t('toast_brand_system') || 'SISTEMA',
       });
       return;
     }
@@ -4593,7 +4604,9 @@ export default function App() {
       setNotification({
         message: data.title,
         detail: data.message,
-        type: data.level === 'critical' ? 'error' : 'info',
+        type: data.level === 'critical' ? 'error' : 'warning',
+        level: data.level,
+        brandTag: data.type === 'disk' ? (t('toast_brand_storage') || 'DISCO') : (t('toast_brand_memory') || 'MEMORIA'),
         action: data.type === 'disk' ? 'open-hud-storage' : 'open-hud-system',
       });
     });

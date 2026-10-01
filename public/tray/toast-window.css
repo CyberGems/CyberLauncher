@@ -31,17 +31,18 @@ html, body {
 .toast-shell {
   width: 100%;
   height: 100%;
-  padding: 12px 14px;
+  padding: 24px 28px;
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .toast-card {
   pointer-events: auto;
   width: 100%;
-  max-width: 450px;
+  max-width: 460px;
   border-radius: 16px;
   background: var(--bg-dark);
   backdrop-filter: blur(28px) saturate(1.8);
@@ -78,8 +79,8 @@ html, body {
 .card-imminent {
   border: 1px solid rgba(245, 158, 11, 0.45);
   box-shadow:
-    0 12px 28px -2px rgba(0, 0, 0, 0.75),
-    0 0 30px rgba(245, 158, 11, 0.22),
+    0 8px 24px -2px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(245, 158, 11, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -133,6 +134,46 @@ html, body {
   flex: 1;
   min-width: 0;
   text-align: left;
+}
+
+/* Imminent micro branding */
+.card-brand-micro {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.brand-micro-icon {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+}
+
+.brand-micro-text {
+  font-family: monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(251, 191, 36, 0.75);
+}
+
+.brand-micro-sep {
+  font-family: monospace;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.brand-micro-sub {
+  font-family: monospace;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.75);
+  text-transform: uppercase;
 }
 
 .task-header {
@@ -222,24 +263,28 @@ html, body {
 .card-standard {
   border: 1px solid rgba(34, 211, 238, 0.3);
   box-shadow:
-    0 12px 28px -2px rgba(0, 0, 0, 0.75),
-    0 0 25px rgba(34, 211, 238, 0.15),
+    0 8px 24px -2px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(34, 211, 238, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 14px 12px 14px;
 }
 
 .card-standard.type-success {
   border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 12px 28px -2px rgba(0,0,0,0.75), 0 0 25px rgba(16, 185, 129, 0.18);
+  box-shadow: 0 8px 24px -2px rgba(0,0,0,0.7), 0 0 20px rgba(16, 185, 129, 0.18);
 }
 
 .card-standard.type-error {
   border-color: rgba(239, 68, 68, 0.35);
-  box-shadow: 0 12px 28px -2px rgba(0,0,0,0.75), 0 0 25px rgba(239, 68, 68, 0.18);
+  box-shadow: 0 8px 24px -2px rgba(0,0,0,0.7), 0 0 20px rgba(239, 68, 68, 0.18);
 }
 
 .card-standard.type-warning {
   border-color: rgba(245, 158, 11, 0.4);
-  box-shadow: 0 12px 28px -2px rgba(0,0,0,0.75), 0 0 25px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 8px 24px -2px rgba(0,0,0,0.7), 0 0 20px rgba(245, 158, 11, 0.2);
 }
 
 .card-standard.has-action {
@@ -248,6 +293,63 @@ html, body {
 
 .card-standard.has-action:hover {
   filter: brightness(1.08);
+}
+
+/* Card Header Bar */
+.card-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  user-select: none;
+}
+
+.brand-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.brand-meta-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.4));
+}
+
+.brand-meta-name {
+  font-family: monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(34, 211, 238, 0.75);
+}
+
+.brand-meta-slash {
+  font-family: monospace;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.brand-meta-tag {
+  font-family: monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.75);
+  text-transform: uppercase;
+}
+
+.standard-main-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.standard-main-row .pulse-dot {
+  margin-top: 3px;
 }
 
 .standard-detail.hidden {
@@ -308,6 +410,10 @@ html, body {
   color: #f87171;
 }
 
+.card-standard.type-warning .standard-title {
+  color: #fbbf24;
+}
+
 .card-standard.type-info .standard-title {
   color: #22d3ee;
 }
@@ -352,9 +458,9 @@ html, body {
 }
 
 .close-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   background: transparent;
   border: none;
   color: #64748b;
@@ -364,14 +470,11 @@ html, body {
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s ease;
-  align-self: flex-start;
-  margin-top: -2px;
-  margin-right: -4px;
 }
 
 .close-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .close-btn:hover {

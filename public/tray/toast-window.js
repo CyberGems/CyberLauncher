@@ -7,6 +7,7 @@ const imminentCard = document.getElementById('imminentCard');
 const imminentSeconds = document.getElementById('imminentSeconds');
 const imminentTitle = document.getElementById('imminentTitle');
 const imminentDetail = document.getElementById('imminentDetail');
+const imminentBrandTag = document.getElementById('imminentBrandTag');
 const launchNowBtn = document.getElementById('launchNowBtn');
 const launchNowLabel = document.getElementById('launchNowLabel');
 const cancelLaunchBtn = document.getElementById('cancelLaunchBtn');
@@ -18,6 +19,7 @@ const standardTitle = document.getElementById('standardTitle');
 const standardDetail = document.getElementById('standardDetail');
 const standardActionBtn = document.getElementById('standardActionBtn');
 const standardActionLabel = document.getElementById('standardActionLabel');
+const brandMetaTag = document.getElementById('brandMetaTag');
 const dismissToastBtn = document.getElementById('dismissToastBtn');
 
 launchNowBtn.addEventListener('click', (e) => {
@@ -79,6 +81,10 @@ if (window.desktopToast) {
       imminentTitle.textContent = data.title || `LANZAMIENTO EN ${secs}S`;
       imminentDetail.textContent = data.detail || '';
 
+      if (imminentBrandTag) {
+        imminentBrandTag.textContent = data.brandTag || 'TIMER';
+      }
+
       if (data.actionLabelLaunch) launchNowLabel.textContent = data.actionLabelLaunch;
       if (data.actionLabelCancel) cancelLaunchLabel.textContent = data.actionLabelCancel;
     } else {
@@ -99,7 +105,7 @@ if (window.desktopToast) {
       } else if (data.type === 'error' || data.level === 'critical') {
         standardCard.classList.add('type-error');
         statusDot.classList.add('dot-red');
-      } else if (data.level === 'warning') {
+      } else if (data.type === 'warning' || data.level === 'warning') {
         standardCard.classList.add('type-warning');
         statusDot.classList.add('dot-amber');
       } else {
@@ -121,6 +127,20 @@ if (window.desktopToast) {
         standardActionLabel.textContent = data.actionLabel;
       } else {
         standardActionBtn.classList.add('hidden');
+      }
+
+      if (brandMetaTag) {
+        if (data.brandTag) {
+          brandMetaTag.textContent = data.brandTag;
+        } else if (data.action === 'open-hud-clock') {
+          brandMetaTag.textContent = 'PROGRAMADOR';
+        } else if (data.action === 'open-hud-storage') {
+          brandMetaTag.textContent = 'DISCO';
+        } else if (data.action === 'open-hud-system') {
+          brandMetaTag.textContent = 'MEMORIA';
+        } else {
+          brandMetaTag.textContent = 'SISTEMA';
+        }
       }
     }
   });

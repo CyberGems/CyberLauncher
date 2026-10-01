@@ -1836,8 +1836,8 @@ function ensureDesktopToastWin(): BrowserWindow {
   const preloadPath = getTrayPreloadPath();
 
   desktopToastWin = new BrowserWindow({
-    width: 490,
-    height: 150,
+    width: 530,
+    height: 180,
     show: false,
     frame: false,
     transparent: true,
@@ -1887,9 +1887,9 @@ function showDesktopToastInternal(payload: any) {
   }
 
   const work = targetDisplay.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
-  const winWidth = 490;
-  const winHeight = 150;
-  const pad = 16;
+  const winWidth = 530;
+  const winHeight = 180;
+  const pad = 12;
   const x = Math.round(work.x + work.width - winWidth - pad);
   const y = Math.round(work.y + work.height - winHeight - pad);
 
@@ -4784,7 +4784,8 @@ app.whenReady().then(() => {
     () => mainWindow,
     () => getAppIconPath(),
     () => showMainWindow(),
-    bootAlertsConfig
+    bootAlertsConfig,
+    (payload) => showDesktopToastInternal(payload)
   );
 
   // Iniciar vigilante de respaldo automático programado
