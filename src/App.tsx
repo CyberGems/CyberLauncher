@@ -597,7 +597,7 @@ const UptimeMonitor = React.memo(() => {
 });
 
 const CyberAnalogClock = () => {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => new Date());
   const visible = useDocumentVisible();
 
   useEffect(() => {
@@ -615,63 +615,150 @@ const CyberAnalogClock = () => {
   const minDeg = (mins * 6) + (secs * 0.1);
   const secDeg = secs * 6;
 
+  const timeStr = time.toLocaleTimeString('en-US', { hour12: false });
+
+  // Precompute 60 ticks
+  const ticks = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < 60; i++) {
+      const angle = (i * 6 * Math.PI) / 180;
+      const isQuarter = i % 15 === 0;
+      const isHour = i % 5 === 0;
+      const rOuter = 80;
+      const rInner = isQuarter ? 69 : isHour ? 72 : 75;
+
+      const cos = Math.cos(angle - Math.PI / 2);
+      const sin = Math.sin(angle - Math.PI / 2);
+
+      list.push({
+        x1: 90 + rInner * cos,
+        y1: 90 + rInner * sin,
+        x2: 90 + rOuter * cos,
+        y2: 90 + rOuter * sin,
+        isQuarter,
+        isHour,
+      });
+    }
+    return list;
+  }, []);
+
   return (
-    <div className="flex flex-col items-center justify-center my-2 relative">
-      <div className="w-36 h-36 rounded-full border-2 border-cyan-500/25 bg-black/45 backdrop-blur-md shadow-[0_0_20px_rgba(34,211,238,0.12)] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#22d3ee_0%,_transparent_70%)] pointer-events-none" />
-        <div className="absolute w-[92%] h-[92%] rounded-full border border-dashed border-cyan-500/10 pointer-events-none" />
-        
-        {/* Ticks */}
-        {[...Array(12)].map((_, i) => {
-          const rotation = i * 30;
-          const isQuarter = i % 3 === 0;
-          return (
-            <div 
-              key={i} 
-              className="absolute w-full h-full pointer-events-none" 
-              style={{ transform: `rotate(${rotation}deg)` }}
-            >
-              <div 
-                className={`mx-auto w-[1.5px] rounded-full ${
-                  isQuarter ? 'h-2.5 bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.6)]' : 'h-1.5 bg-slate-500/30'
-                }`} 
-                style={{ marginTop: '3px' }}
-              />
-            </div>
-          );
-        })}
+    <div className="flex flex-col items-center justify-center my-3 relative select-none">
+      <div className="relative w-44 h-44 rounded-full p-1 bg-gradient-to-b from-cyan-500/20 via-slate-900/60 to-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.18)] flex items-center justify-center">
+        {/* Outer Tech Ring / Glow Frame */}
+        <div className="absolute inset-0 rounded-full border border-cyan-500/30 pointer-events-none" />
+        <div className="absolute inset-1 rounded-full border border-cyan-400/15 pointer-events-none" />
 
-        <div className="absolute bottom-8 text-[9px] font-mono text-cyan-400/30 tracking-widest uppercase select-none">
-          CyberGems
-        </div>
+        <svg viewBox="0 0 180 180" className="w-full h-full drop-shadow-[0_0_12px_rgba(34,211,238,0.25)]">
+          <defs>
+            <radialGradient id="dial-bg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#0c1729" />
+              <stop offset="65%" stopColor="#050a14" />
+              <stop offset="100%" stopColor="#020408" />
+            </radialGradient>
+            <linearGradient id="hour-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#c084fc" />
+              <stop offset="100%" stopColor="#818cf8" />
+            </linearGradient>
+            <linearGradient id="min-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#67e8f9" />
+              <stop offset="100%" stopColor="#06b6d4" />
+            </linearGradient>
+            <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="hand-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
-        {/* Hour hand */}
-        <div 
-          className="absolute w-full h-full pointer-events-none"
-          style={{ transform: `rotate(${hrDeg}deg)` }}
-        >
-          <div className="mx-auto w-1 h-11 bg-purple-500/80 shadow-[0_0_8px_rgba(168,85,247,0.7)] rounded-full" style={{ marginTop: '32px' }} />
-        </div>
+          {/* Dial Background */}
+          <circle cx="90" cy="90" r="82" fill="url(#dial-bg)" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
 
-        {/* Minute hand */}
-        <div 
-          className="absolute w-full h-full pointer-events-none"
-          style={{ transform: `rotate(${minDeg}deg)` }}
-        >
-          <div className="mx-auto w-[2px] h-14 bg-cyan-400/80 shadow-[0_0_10px_rgba(34,211,238,0.7)] rounded-full" style={{ marginTop: '20px' }} />
-        </div>
+          {/* Inner Radar Rings */}
+          <circle cx="90" cy="90" r="60" fill="none" stroke="#22d3ee" strokeWidth="0.7" strokeDasharray="3 3" strokeOpacity="0.2" />
+          <circle cx="90" cy="90" r="38" fill="none" stroke="#22d3ee" strokeWidth="0.5" strokeOpacity="0.15" />
 
-        {/* Second hand */}
-        <div 
-          className="absolute w-full h-full pointer-events-none"
-          style={{ transform: `rotate(${secDeg}deg)` }}
-        >
-          <div className="mx-auto w-[1px] h-16 bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.7)]" style={{ marginTop: '14px' }} />
-          <div className="mx-auto w-[1px] h-3 bg-emerald-500/40" style={{ marginTop: '0px' }} />
-        </div>
+          {/* Reticle Axes / Crosshairs */}
+          <line x1="90" y1="48" x2="90" y2="54" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
+          <line x1="90" y1="126" x2="90" y2="132" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
+          <line x1="48" y1="90" x2="54" y2="90" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
+          <line x1="126" y1="90" x2="132" y2="90" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
 
-        {/* Spindle */}
-        <div className="w-2 h-2 rounded-full bg-slate-900 border border-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)] z-10" />
+          {/* 60 Graduation Ticks */}
+          {ticks.map((t, idx) => (
+            <line
+              key={idx}
+              x1={t.x1}
+              y1={t.y1}
+              x2={t.x2}
+              y2={t.y2}
+              stroke={t.isQuarter ? '#22d3ee' : t.isHour ? '#38bdf8' : '#334155'}
+              strokeWidth={t.isQuarter ? 2.5 : t.isHour ? 1.5 : 0.8}
+              strokeLinecap="round"
+              filter={t.isQuarter ? 'url(#neon-glow)' : undefined}
+            />
+          ))}
+
+          {/* Cardinal Markers */}
+          <text x="90" y="27" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">12</text>
+          <text x="156" y="93" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">03</text>
+          <text x="90" y="158" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">06</text>
+          <text x="24" y="93" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">09</text>
+
+          {/* Brand Emblem */}
+          <text x="90" y="63" textAnchor="middle" fill="#38bdf8" fillOpacity="0.75" fontSize="7" fontWeight="bold" fontFamily="sans-serif" letterSpacing="2.5">
+            CYBERGEMS
+          </text>
+          <circle cx="90" cy="69" r="1" fill="#22d3ee" fillOpacity="0.8" />
+
+          {/* Digital Time Pill */}
+          <g transform="translate(62, 107)">
+            <rect x="0" y="0" width="56" height="15" rx="3.5" fill="#030712" stroke="#22d3ee" strokeWidth="0.8" strokeOpacity="0.35" />
+            <text x="28" y="10.5" textAnchor="middle" fill="#22d3ee" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">
+              {timeStr}
+            </text>
+          </g>
+
+          {/* Hour Hand (Faceted Sword) */}
+          <g transform={`rotate(${hrDeg} 90 90)`} filter="url(#hand-glow)">
+            {/* Body */}
+            <path d="M87.5 90 L88.5 54 L90 48 L91.5 54 L92.5 90 L91 97 L89 97 Z" fill="url(#hour-grad)" stroke="#c084fc" strokeWidth="0.6" />
+            {/* Slotted Center Lumen */}
+            <path d="M89.3 84 L89.3 57 L90.7 57 L90.7 84 Z" fill="#f5d0fe" />
+          </g>
+
+          {/* Minute Hand (Extended Lance) */}
+          <g transform={`rotate(${minDeg} 90 90)`} filter="url(#hand-glow)">
+            {/* Body */}
+            <path d="M88 90 L88.8 33 L90 26 L91.2 33 L92 90 L91 101 L89 101 Z" fill="url(#min-grad)" stroke="#22d3ee" strokeWidth="0.7" />
+            {/* Slotted Center Lumen */}
+            <path d="M89.3 84 L89.3 36 L90.7 36 L90.7 84 Z" fill="#e0f2fe" />
+          </g>
+
+          {/* Second Hand (Neon Precision Needle with Counterweight) */}
+          <g transform={`rotate(${secDeg} 90 90)`}>
+            {/* Long needle */}
+            <line x1="90" y1="108" x2="90" y2="18" stroke="#f43f5e" strokeWidth="1.2" strokeLinecap="round" filter="url(#neon-glow)" />
+            {/* Arrow/Diamond tip */}
+            <polygon points="90,16 88,21 92,21" fill="#f43f5e" />
+            {/* Counterbalance Ring */}
+            <circle cx="90" cy="101" r="3.5" fill="#050a14" stroke="#f43f5e" strokeWidth="1.2" />
+          </g>
+
+          {/* Center Turret / Spindle Cap */}
+          <circle cx="90" cy="90" r="5.5" fill="#0f172a" stroke="#22d3ee" strokeWidth="1.5" />
+          <circle cx="90" cy="90" r="2.5" fill="#f43f5e" />
+          <circle cx="90" cy="90" r="1" fill="#ffffff" />
+        </svg>
       </div>
     </div>
   );
@@ -1138,18 +1225,18 @@ const ClockHUD = ({
                                 </p>
                               </div>
                               <div className="relative z-10 flex items-center gap-2 shrink-0">
-                                <div className="text-right">
+                                <div className="w-[84px] shrink-0 text-right">
                                   <span className="block text-sm font-digits font-bold text-cyan-400 tracking-wider tabular-nums leading-none">
                                     {formatRemaining(task.remainingSeconds)}
                                   </span>
-                                  <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">
+                                  <span className="block text-[8px] font-mono text-slate-500 uppercase tracking-widest truncate">
                                     {t('hud_clock_countdown')}
                                   </span>
                                 </div>
                                 <Tooltip label={t('hud_clock_cancel')} placement="left">
                                   <button
                                     onClick={() => handleRemoveTask(task.id)}
-                                    className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
+                                    className="w-7 h-7 shrink-0 rounded-lg border border-red-500/10 hover:border-red-500/40 text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center focus:outline-none cursor-pointer"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -2144,7 +2231,7 @@ export default function App() {
     message: string;
     type: 'success' | 'info' | 'error';
     /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
-    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system';
+    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock';
     detail?: string;
     releaseUrl?: string;
   } | null>(null);
@@ -2218,7 +2305,7 @@ export default function App() {
       return;
     }
     if (toastPaused) return;
-    const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system';
+    const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock';
     const ms = isLongToast ? 8000 : 3000;
     const timer = setTimeout(() => {
       setNotification(null);
@@ -3050,12 +3137,24 @@ export default function App() {
                 console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
               }
               addToHistory(task.name, task.targetPath, 'app');
+              setNotification({
+                message: t('notif_scheduled_app_launched'),
+                detail: t('notif_scheduled_app_launched_detail', { name: task.name }),
+                type: 'success',
+                action: 'open-hud-clock'
+              });
             } else if (task.type === 'command' && task.command) {
               if (isElectron) {
                 window.electronAPI!.runShellCommand(task.command);
               } else {
                 console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
               }
+              setNotification({
+                message: t('notif_scheduled_cmd_executed'),
+                detail: task.command,
+                type: 'success',
+                action: 'open-hud-clock'
+              });
             }
             
             // Play our retro cyber sci-fi synthesized beep sound!
@@ -12075,6 +12174,9 @@ export default function App() {
               } else if (notification.action === 'open-hud-system') {
                 setIsSystemHUDOpen(true);
                 setNotification(null);
+              } else if (notification.action === 'open-hud-clock') {
+                setIsClockHUDOpen(true);
+                setNotification(null);
               }
             }}
             onKeyDown={(e) => {
@@ -12090,6 +12192,9 @@ export default function App() {
                   setNotification(null);
                 } else if (notification.action === 'open-hud-system') {
                   setIsSystemHUDOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-clock') {
+                  setIsClockHUDOpen(true);
                   setNotification(null);
                 }
               }
@@ -12125,7 +12230,7 @@ export default function App() {
                   {notification.detail}
                 </p>
               )}
-              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available') || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system') && (
+              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available') || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock') && (
                 <div className="flex items-center gap-2 pt-0.5">
                   {notification.action === 'open-hud-storage' && (
                     <button
@@ -12155,6 +12260,21 @@ export default function App() {
                     >
                       <Cpu className="w-3 h-3" />
                       {t('toast_action_view_system')}
+                    </button>
+                  )}
+                  {notification.action === 'open-hud-clock' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsClockHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Timer className="w-3 h-3" />
+                      {t('toast_action_view_clock')}
                     </button>
                   )}
                   {notification.releaseUrl && (

@@ -447,7 +447,7 @@ export const translations = {
     hud_clock_no_tasks: "Ninguna ejecución en espera",
     hud_clock_task_type_local: "Ejecutable local",
     hud_clock_task_type_cmd: "Comando",
-    hud_clock_countdown: "Countdown",
+    hud_clock_countdown: "Cuenta atrás",
     hud_clock_cancel: "Cancelar ejecución",
     hud_clock_task_launch_prefix: "Lanzar",
     hud_clock_task_cmd_prefix: "Consola",
@@ -522,6 +522,11 @@ export const translations = {
     sys_alerts_disk_tiers_badge: "Escalones activos: 20 GB, 10 GB, 5 GB, 1 GB",
     toast_action_view_storage: "Ver almacenamiento",
     toast_action_view_system: "Ver sistema",
+    toast_action_view_clock: "Ver programador",
+    notif_scheduled_app_launched: "Aplicación programada iniciada",
+    notif_scheduled_app_launched_detail: "\"{name}\" fue iniciada según lo programado.",
+    notif_scheduled_cmd_executed: "Comando programado ejecutado",
+    notif_scheduled_cmd_executed_detail: "El comando de consola fue ejecutado.",
 
     // Backup & Data Tab Config
     backup_title: "RESPALDO Y DATOS",
@@ -1150,6 +1155,11 @@ export const translations = {
     sys_alerts_disk_tiers_badge: "Active tiers: 20 GB, 10 GB, 5 GB, 1 GB",
     toast_action_view_storage: "View storage",
     toast_action_view_system: "View system",
+    toast_action_view_clock: "View scheduler",
+    notif_scheduled_app_launched: "Scheduled application launched",
+    notif_scheduled_app_launched_detail: "\"{name}\" was launched according to schedule.",
+    notif_scheduled_cmd_executed: "Scheduled command executed",
+    notif_scheduled_cmd_executed_detail: "The console command was executed.",
 
     // Backup & Data Tab Config
     backup_title: "BACKUP & DATA",
