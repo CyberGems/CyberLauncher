@@ -222,7 +222,11 @@ function registerUpdateIpc(): void {
       await shell.openExternal(url);
       return;
     }
-    autoUpdater.quitAndInstall(false, true);
+    try {
+      autoUpdater.quitAndInstall(true, true);
+    } catch {
+      /* ignore */
+    }
   });
 
   ipcMain.handle('app:get-versions', () => ({

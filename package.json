@@ -68,9 +68,10 @@
       "createDesktopShortcut": "always",
       "runAfterFinish": true,
       "installerLanguages": [
-        "es"
+        "es",
+        "en"
       ],
-      "multiLanguageInstaller": false,
+      "multiLanguageInstaller": true,
       "shortcutName": "CyberLauncher",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
