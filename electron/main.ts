@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net, powerMonitor } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { exec, execSync, spawn } from 'node:child_process';
+import { exec, execSync, spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
@@ -59,6 +59,7 @@ let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
 let hotspotCorners: string[] = [];
 let hotspotDelay = 300;
+let hotspotsDisableInFullscreen = true;
 let hotspotTimer: NodeJS.Timeout | null = null;
 let lastHotspotCorner = '';
 let hotspotEntryTime = 0;
@@ -2107,6 +2108,35 @@ function stopHotspotPolling() {
   }
 }
 
+function getCheckFullscreenExePath(): string | null {
+  const candidates = [
+    path.join(process.resourcesPath || '', 'check-fullscreen.exe'),
+    path.join(__dirname, '../electron/check-fullscreen.exe'),
+    path.join(app.getAppPath(), 'electron', 'check-fullscreen.exe'),
+    path.join(__dirname, 'check-fullscreen.exe'),
+  ];
+  return candidates.find((c) => c && fs.existsSync(c)) || null;
+}
+
+function checkFullscreenActive(x: number, y: number, callback: (isFullscreen: boolean) => void) {
+  if (!hotspotsDisableInFullscreen) {
+    callback(false);
+    return;
+  }
+  const exePath = getCheckFullscreenExePath();
+  if (!exePath) {
+    callback(false);
+    return;
+  }
+  execFile(exePath, [Math.round(x).toString(), Math.round(y).toString()], { windowsHide: true, timeout: 500 }, (error) => {
+    if (error && (error as any).code === 1) {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
+}
+
 const HOTSPOT_CORNER_THRESHOLD = 4; // px: margen de entrada en la esquina (amigable con HiDPI)
 const HOTSPOT_EXIT_THRESHOLD = 30; // px: distancia mínima para considerar que el cursor abandonó la esquina
 // Bounce guard after a hotspot toggle while the cursor is still in the corner.
@@ -2271,6 +2301,22 @@ function startHotspotPolling() {
     };
 
     const { x, y } = screen.getCursorScreenPoint();
+
+    const runHotspotWithGuards = () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (!mainWindow.isVisible() && hotspotsDisableInFullscreen) {
+        checkFullscreenActive(x, y, (isFs) => {
+          if (isFs) {
+            console.log(`[HOTSPOT] Ignored activation: fullscreen window detected on display under cursor (${currentCorner})`);
+            return;
+          }
+          executeHotspotAction();
+        });
+      } else {
+        executeHotspotAction();
+      }
+    };
+
     const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
     if (isVulnerableToUAC) {
       isCheckingUAC = true;
@@ -2285,11 +2331,11 @@ function startHotspotPolling() {
             hideMainWindow();
           }
         } else {
-          executeHotspotAction();
+          runHotspotWithGuards();
         }
       });
     } else {
-      executeHotspotAction();
+      runHotspotWithGuards();
     }
   }, 100);
 }
@@ -3919,10 +3965,13 @@ foreach (\$app in \$startApps) {
   });
 
   // --- Registrar hotspots desde React ---
-  ipcMain.handle('set-hotspots', (_event, corners: string[], delay: number) => {
-    console.log('ACTUALIZANDO HOTSPOTS:', corners, 'Delay:', delay);
+  ipcMain.handle('set-hotspots', (_event, corners: string[], delay: number, disableInFullscreen?: boolean) => {
+    console.log('ACTUALIZANDO HOTSPOTS:', corners, 'Delay:', delay, 'DisableInFullscreen:', disableInFullscreen);
     hotspotCorners = corners;
     hotspotDelay = delay;
+    if (disableInFullscreen !== undefined) {
+      hotspotsDisableInFullscreen = disableInFullscreen;
+    }
     startHotspotPolling(); // no-op interval when corners empty
     return { success: true };
   });

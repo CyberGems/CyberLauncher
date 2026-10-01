@@ -33,6 +33,10 @@
       {
         "from": "electron/open-taskbar-settings.exe",
         "to": "open-taskbar-settings.exe"
+      },
+      {
+        "from": "electron/check-fullscreen.exe",
+        "to": "check-fullscreen.exe"
       }
     ],
     "win": {

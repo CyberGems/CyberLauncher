@@ -1,4 +1,8 @@
 <p align="center">
+  English · <a href="./README.es.md">Español</a>
+</p>
+
+<p align="center">
   <a href="https://cybergems.org/apps/cyberlauncher/">
     <img src="https://cybergems.org/banners/cyberlauncher.png" alt="CyberLauncher, a fast and customizable launcher for apps, files and commands" />
   </a>
@@ -58,7 +62,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 
 ### 🎯 Activation
 - **Global Shortcut**: Show/hide with a customizable keyboard shortcut (default: `Alt+Shift+L`)
-- **Hot Corners**: Activate the launcher by moving your cursor to any screen corner
+- **Hot Corners (Display-Aware)**: Activate the launcher by moving your cursor to any screen corner. Includes smart full-screen suppression: automatically ignores triggers on displays playing full-screen videos or games, while other monitors continue responding normally.
 - **Multi-Monitor Support**: Choose which display CyberLauncher appears on (including "Follow cursor")
 - **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
 
@@ -81,6 +85,41 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Export / Import**: Backup and restore your entire configuration as JSON
 - **Single Instance**: Only one instance runs at a time; second launches focus the existing window
 - **Launch with Windows**: Optionally start minimized or visible at system boot
+
+---
+
+## 🚀 Getting Started
+
+### Install (Recommended)
+
+1. Download the latest installer from [Releases](https://github.com/CyberGems/CyberLauncher/releases/latest)
+2. Run the `.exe` installer and follow the setup wizard
+3. Launch CyberLauncher. No other requirements needed: you do **not** need Node.js or Git
+
+### 🛡️ Windows SmartScreen
+
+Windows may show a SmartScreen warning the first time you run the CyberLauncher installer: this is an unsigned hobby app, so Windows hasn't built reputation for the file yet. This is expected; the source is public so you can inspect exactly what it does.
+
+To continue:
+
+<details>
+<summary><strong>See how to run the installer (step by step)</strong></summary>
+
+Windows shows this warning for any installer without a paid code-signing certificate; it does not mean the file is unsafe. Do <strong>not</strong> click "Don't run":
+
+1. Run the installer. Windows may show the blue "Windows protected your PC" dialog.
+
+![Windows SmartScreen warning](https://cybergems.org/branding/smartscreen-warning.svg)
+
+2. Click the small **More info** link.
+
+![SmartScreen dialog after More info](https://cybergems.org/branding/smartscreen-runanyway.svg)
+
+3. Click **Run anyway**. The installer starts normally.
+
+You can verify the file independently: compare the SHA with the GitHub release, scan it on VirusTotal, or build from source. More details: [SmartScreen guide on the website](https://cybergems.org/download#smartscreen).
+
+</details>
 
 ---
 
@@ -114,16 +153,16 @@ CyberLauncher/
 └── tsconfig.json          TypeScript configuration
 ```
 
----
+### Building from Source (Developers)
 
-## 🚀 Getting Started
+Only needed if you want to work on CyberLauncher or build it yourself; regular users can skip this section.
 
-### Prerequisites
+#### Prerequisites
 
 - [Node.js](https://nodejs.org/) v18+
 - [Git](https://git-scm.com/)
 
-### Development
+#### Development
 
 ```bash
 git clone https://github.com/CyberGems/CyberLauncher.git
@@ -132,7 +171,7 @@ npm install
 npm run dev
 ```
 
-### Build for Production
+#### Build for Production
 
 ```bash
 npm run build:electron
@@ -140,36 +179,11 @@ npm run build:electron
 
 The installer will be in the `release/` directory.
 
-### Lint
+#### Lint
 
 ```bash
 npm run lint
 ```
-
-### 🛡️ Windows SmartScreen
-
-Windows may show a SmartScreen warning the first time you run the CyberLauncher installer: this is an unsigned hobby app, so Windows hasn't built reputation for the file yet. This is expected; the source is public so you can inspect exactly what it does.
-
-To continue:
-
-<details>
-<summary><strong>See how to run the installer (step by step)</strong></summary>
-
-Windows shows this warning for any installer without a paid code-signing certificate; it does not mean the file is unsafe. Do <strong>not</strong> click "Don't run":
-
-1. Run the installer. Windows may show the blue "Windows protected your PC" dialog.
-
-![Windows SmartScreen warning](https://cybergems.org/branding/smartscreen-warning.svg)
-
-2. Click the small **More info** link.
-
-![SmartScreen dialog after More info](https://cybergems.org/branding/smartscreen-runanyway.svg)
-
-3. Click **Run anyway**. The installer starts normally.
-
-You can verify the file independently: compare the SHA with the GitHub release, scan it on VirusTotal, or build from source. More details: [SmartScreen guide on the website](https://cybergems.org/download#smartscreen).
-
-</details>
 
 ---
 

@@ -56,7 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 
   // --- Hotspots ---
-  setHotspots: (corners: string[], delay: number) => ipcRenderer.invoke('set-hotspots', corners, delay),
+  setHotspots: (corners: string[], delay: number, disableInFullscreen?: boolean) => ipcRenderer.invoke('set-hotspots', corners, delay, disableInFullscreen),
 
   // --- Diagnóstico y Sistema ---
   openDevTools: () => ipcRenderer.invoke('open-dev-tools'),

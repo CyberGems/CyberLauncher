@@ -365,7 +365,7 @@ declare global {
       getSystemDrives: () => Promise<string[]>;
       getPathForFile: (file: File) => string;
       getImageData: (filePath: string) => Promise<string | null>;
-      setHotspots: (corners: string[], delay: number) => Promise<{ success: boolean }>;
+      setHotspots: (corners: string[], delay: number, disableInFullscreen?: boolean) => Promise<{ success: boolean }>;
       openDevTools: () => Promise<{ success: boolean }>;
       openTaskbarSettings: () => Promise<{ success: boolean; error?: string }>;
       showTrayPinTip?: () => Promise<{ success: boolean }>;
@@ -1865,6 +1865,10 @@ export default function App() {
     const saved = localStorage.getItem('hotspotDelay');
     return saved ? parseInt(saved, 10) : 300;
   });
+  const [hotspotsDisableInFullscreen, setHotspotsDisableInFullscreen] = useState<boolean>(() => {
+    const saved = localStorage.getItem('hotspotsDisableInFullscreen');
+    return saved !== null ? saved === 'true' : true;
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -2900,8 +2904,9 @@ export default function App() {
   useEffect(() => { localStorage.setItem('activationShortcut', activationShortcut); }, [activationShortcut]);
   useEffect(() => { 
     localStorage.setItem('hotspotCorners', JSON.stringify(hotspotCorners)); 
-    if (isElectron) window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay);
-  }, [hotspotCorners, hotspotDelay]);
+    localStorage.setItem('hotspotsDisableInFullscreen', hotspotsDisableInFullscreen.toString());
+    if (isElectron) window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen);
+  }, [hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen]);
   useEffect(() => { localStorage.setItem('hotspotDelay', hotspotDelay.toString()); }, [hotspotDelay]);
 
   // Layout Resizing State
@@ -3175,8 +3180,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -3200,7 +3205,7 @@ export default function App() {
           bgType, bgImage, customImageUrl, customSlotImage, bgColor,
           bgGradient, glassIntensity, bgOpacity,
           startWithWindows, startMinimized, activationShortcut,
-          hotspotCorners, hotspotDelay,
+          hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen,
           leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch,
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
@@ -3528,6 +3533,10 @@ export default function App() {
       if (config.hotspotDelay !== undefined) {
         setHotspotDelay(config.hotspotDelay);
         localStorage.setItem('hotspotDelay', config.hotspotDelay.toString());
+      }
+      if (config.hotspotsDisableInFullscreen !== undefined) {
+        setHotspotsDisableInFullscreen(!!config.hotspotsDisableInFullscreen);
+        localStorage.setItem('hotspotsDisableInFullscreen', (!!config.hotspotsDisableInFullscreen).toString());
       }
       if (config.leftSidebarWidth !== undefined) {
         setLeftSidebarWidth(config.leftSidebarWidth);
@@ -4038,7 +4047,8 @@ export default function App() {
         rightSidebarCollapsed,
         activationShortcut,
         hotspotCorners,
-        hotspotDelay
+        hotspotDelay,
+        hotspotsDisableInFullscreen
       }
     };
     
@@ -4100,6 +4110,9 @@ export default function App() {
            setHotspotCorners([data.settings.hotspotCorner]);
         }
         if (data.settings.hotspotDelay !== undefined) setHotspotDelay(data.settings.hotspotDelay);
+        if (data.settings.hotspotsDisableInFullscreen !== undefined) {
+          setHotspotsDisableInFullscreen(!!data.settings.hotspotsDisableInFullscreen);
+        }
         if (data.settings.autoBackupEnabled !== undefined) setAutoBackupEnabled(data.settings.autoBackupEnabled !== false);
         if (data.settings.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(data.settings.autoBackupHours));
         if (data.settings.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(data.settings.autoBackupKeep));
@@ -4293,7 +4306,7 @@ export default function App() {
         // Registrar el atajo guardado al iniciar
         window.electronAPI!.registerShortcut(activationShortcut);
         // Registrar hotspots al iniciar
-        window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay);
+        window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen);
       } else {
         setMonitors([
           { id: '1', label: '1 (Primario)', isPrimary: true },
@@ -8784,6 +8797,22 @@ export default function App() {
                             className="w-full accent-cyan-500 h-1 bg-white/10 rounded-full appearance-none outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(34,211,238,0.5)] cursor-pointer mt-3"
                           />
                           <p className="text-[10px] text-slate-500 text-right mt-1">{t('general_hotspots_delay_desc')}</p>
+                        </div>
+
+                        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hotspots_disable_fullscreen')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_disable_fullscreen_desc')}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
+                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 mt-0.5 cursor-pointer ${hotspotsDisableInFullscreen ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hotspotsDisableInFullscreen ? 'translate-x-5' : 'translate-x-0'}`}>
+                              <div className={`w-2 h-2 rounded-full ${hotspotsDisableInFullscreen ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                            </div>
+                          </button>
                         </div>
                       </div>
                     </div>
