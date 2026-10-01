@@ -451,6 +451,9 @@ export const translations = {
     hud_clock_cancel: "Cancelar ejecución",
     hud_clock_task_launch_prefix: "Lanzar",
     hud_clock_task_cmd_prefix: "Consola",
+    hud_clock_select_placeholder: "Seleccionar acceso...",
+    hud_clock_reset_form: "Restablecer formulario",
+    hud_clock_search_apps: "Buscar acceso...",
     hud_clock_quick_presets: "PRESETS RÁPIDOS",
     hud_clock_history: "HISTORIAL RECIENTE",
     hud_clock_history_empty: "Sin programaciones recientes",
@@ -527,6 +530,11 @@ export const translations = {
     notif_scheduled_app_launched_detail: "\"{name}\" fue iniciada según lo programado.",
     notif_scheduled_cmd_executed: "Comando programado ejecutado",
     notif_scheduled_cmd_executed_detail: "El comando de consola fue ejecutado.",
+    notif_scheduled_imminent: "Lanzamiento en {seconds}s",
+    notif_action_cancel_launch: "Cancelar",
+    notif_action_launch_now: "Lanzar ya",
+    notif_scheduled_cancelled: "Ejecución cancelada",
+    notif_scheduled_cancelled_detail: "Se canceló el lanzamiento de \"{name}\".",
 
     // Backup & Data Tab Config
     backup_title: "RESPALDO Y DATOS",
@@ -1084,6 +1092,9 @@ export const translations = {
     hud_clock_cancel: "Cancel execution",
     hud_clock_task_launch_prefix: "Launch",
     hud_clock_task_cmd_prefix: "Console",
+    hud_clock_select_placeholder: "Select app...",
+    hud_clock_reset_form: "Reset form",
+    hud_clock_search_apps: "Search app...",
     hud_clock_quick_presets: "QUICK PRESETS",
     hud_clock_history: "RECENT HISTORY",
     hud_clock_history_empty: "No recent scheduled tasks",
@@ -1160,6 +1171,11 @@ export const translations = {
     notif_scheduled_app_launched_detail: "\"{name}\" was launched according to schedule.",
     notif_scheduled_cmd_executed: "Scheduled command executed",
     notif_scheduled_cmd_executed_detail: "The console command was executed.",
+    notif_scheduled_imminent: "Launch in {seconds}s",
+    notif_action_cancel_launch: "Cancel",
+    notif_action_launch_now: "Launch now",
+    notif_scheduled_cancelled: "Scheduled execution cancelled",
+    notif_scheduled_cancelled_detail: "Launch was cancelled for \"{name}\".",
 
     // Backup & Data Tab Config
     backup_title: "BACKUP & DATA",

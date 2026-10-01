@@ -345,7 +345,8 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
 declare global {
   interface Window {
     electronAPI?: {
-      launchApp: (path: string, isAdmin?: boolean) => Promise<{ success: boolean; error?: string }>;
+      launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<{ success: boolean; error?: string }>;
+      showNotification?: (options: { title: string; body: string }) => Promise<boolean>;
       getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectFolder: () => Promise<{ name: string; path: string; iconPath?: string } | null>;
@@ -993,6 +994,19 @@ const ClockHUD = ({
   const [selectedType, setSelectedType] = useState<'app' | 'command'>('app');
   const [selectedAppId, setSelectedAppId] = useState<string>('');
   const [customCommand, setCustomCommand] = useState('');
+  const [isAppDropdownOpen, setIsAppDropdownOpen] = useState(false);
+  const appDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isAppDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (appDropdownRef.current && !appDropdownRef.current.contains(e.target as Node)) {
+        setIsAppDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAppDropdownOpen]);
   
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -1071,16 +1085,23 @@ const ClockHUD = ({
     }
   }, [isOpen, preselectedAppId, onClearPreselectedAppId]);
 
-  // Set default app selection when apps list loads
-  useEffect(() => {
-    if (apps && apps.length > 0 && !selectedAppId) {
-      setSelectedAppId(apps[0].id.toString());
-    }
+  const selectedApp = useMemo(() => {
+    return apps.find(a => a.id.toString() === selectedAppId);
   }, [apps, selectedAppId]);
 
+  const handleResetForm = () => {
+    setSelectedAppId('');
+    setCustomCommand('');
+    setTimerMinutes(0);
+    setTimerSeconds(0);
+    setIsAppDropdownOpen(false);
+  };
+
+  const totalSecs = (timerMinutes * 60) + timerSeconds;
+  const canSchedule = totalSecs > 0 && (selectedType === 'app' ? !!selectedAppId : !!customCommand.trim());
+
   const handleAddTask = () => {
-    const totalSecs = (timerMinutes * 60) + timerSeconds;
-    if (totalSecs <= 0) return;
+    if (!canSchedule) return;
 
     let taskName = '';
     let targetPath = '';
@@ -1128,6 +1149,24 @@ const ClockHUD = ({
   const handleRemoveTask = (taskId: string) => {
     setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      // If dropdown is open, don't trigger add
+      if (isAppDropdownOpen) return;
+      if (!canSchedule) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      handleAddTask();
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isOpen, isAppDropdownOpen, canSchedule, timerMinutes, timerSeconds, selectedType, selectedAppId, customCommand, apps]);
 
   const formatRemaining = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -1216,9 +1255,11 @@ const ClockHUD = ({
                                 style={{ width: `${percent}%` }}
                               />
                               <div className="relative z-10 flex-1 min-w-0 pr-2 text-left">
-                                <div className="flex items-center gap-1.5 mb-1">
+                                <div className="flex items-center gap-1.5 mb-1 min-w-0">
                                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.type === 'app' ? 'bg-cyan-400' : 'bg-orange-400 animate-pulse'}`} />
-                                  <h4 className="text-[11px] font-cyber font-bold text-white truncate uppercase tracking-wider">{task.name}</h4>
+                                  <Tooltip label={task.name} placement="top">
+                                    <h4 className="text-[11px] font-cyber font-bold text-white truncate uppercase tracking-wider cursor-default">{task.name}</h4>
+                                  </Tooltip>
                                 </div>
                                 <p className="text-[9px] font-mono text-slate-500 truncate">
                                   {task.type === 'app' ? t('hud_clock_task_type_local') : `${t('hud_clock_task_type_cmd')}: ${task.command}`}
@@ -1349,10 +1390,31 @@ const ClockHUD = ({
               </div>
 
               <div className="flex-1 min-h-0 flex flex-col p-5">
-                <div className="flex-1 min-h-0 flex flex-col bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-5 text-left overflow-y-auto custom-scrollbar">
-                  <div className="shrink-0 mb-4">
-                    <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-widest">{t('hud_clock_new_timer')}</h3>
-                    <p className="text-[11px] text-slate-500 leading-snug mt-1.5">{t('hud_clock_helper')}</p>
+                <div 
+                  className="flex-1 min-h-0 flex flex-col bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-5 text-left overflow-y-auto custom-scrollbar"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isAppDropdownOpen && canSchedule) {
+                      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+                      e.preventDefault();
+                      handleAddTask();
+                    }
+                  }}
+                >
+                  <div className="shrink-0 mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-widest">{t('hud_clock_new_timer')}</h3>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-1.5">{t('hud_clock_helper')}</p>
+                    </div>
+                    <Tooltip label={t('hud_clock_reset_form')} placement="left">
+                      <button
+                        type="button"
+                        onClick={handleResetForm}
+                        className="p-1.5 rounded-lg border border-white/10 hover:border-cyan-500/40 text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all cursor-pointer shrink-0 mt-0.5"
+                        aria-label={t('hud_clock_reset_form')}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
                   </div>
 
                   <div className="flex gap-2 mb-5 shrink-0">
@@ -1379,25 +1441,75 @@ const ClockHUD = ({
                   </div>
 
                   {selectedType === 'app' ? (
-                    <div className="mb-5 shrink-0">
+                    <div className="relative mb-5 shrink-0" ref={appDropdownRef}>
                       <label className="block text-[10px] font-cyber font-bold text-slate-400 mb-2 tracking-wider">{t('hud_clock_select_app')}</label>
-                      <select
-                        value={selectedAppId}
-                        onChange={(e) => setSelectedAppId(e.target.value)}
-                        className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
+                      <button
+                        type="button"
+                        onClick={() => setIsAppDropdownOpen(prev => !prev)}
+                        className={`w-full bg-slate-950/80 border rounded-lg px-3 py-2.5 text-sm text-left flex items-center justify-between transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500/40 ${
+                          isAppDropdownOpen 
+                            ? 'border-cyan-400 text-white shadow-[0_0_12px_rgba(34,211,238,0.2)]' 
+                            : 'border-cyan-500/20 text-slate-200 hover:border-cyan-500/40'
+                        }`}
                       >
-                        {apps.length === 0 ? (
-                          <option value="" className="bg-slate-900 text-slate-500">{t('hud_clock_no_apps')}</option>
-                        ) : (
-                          [...apps]
-                            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-                            .map(app => (
-                            <option key={app.id} value={app.id} className="bg-slate-900 text-white">
-                              {app.name} ({getCategoryDisplayName(app.category, t)})
-                            </option>
-                          ))
-                        )}
-                      </select>
+                        <span className={`truncate mr-2 ${!selectedAppId ? 'text-slate-500 italic' : 'text-slate-200 font-medium'}`}>
+                          {selectedApp
+                            ? `${selectedApp.name} (${getCategoryDisplayName(selectedApp.category, t)})`
+                            : t('hud_clock_select_placeholder')}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-cyan-400 shrink-0 transition-transform duration-200 ${isAppDropdownOpen ? 'rotate-180 text-cyan-300' : ''}`} />
+                      </button>
+
+                      {isAppDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#070b13] border border-cyan-500/30 rounded-xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] backdrop-blur-2xl max-h-56 overflow-y-auto custom-scrollbar p-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedAppId('');
+                              setIsAppDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between mb-1 cursor-pointer ${
+                              !selectedAppId
+                                ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
+                                : 'text-slate-400 italic hover:bg-white/5 hover:text-slate-300'
+                            }`}
+                          >
+                            <span>{t('hud_clock_select_placeholder')}</span>
+                          </button>
+
+                          {apps.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-slate-500 italic text-center">
+                              {t('hud_clock_no_apps')}
+                            </div>
+                          ) : (
+                            [...apps]
+                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+                              .map(app => {
+                                const isSelected = selectedAppId === app.id.toString();
+                                return (
+                                  <button
+                                    key={app.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedAppId(app.id.toString());
+                                      setIsAppDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between mb-0.5 cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-cyan-500/25 text-cyan-200 font-bold border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                                        : 'text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300'
+                                    }`}
+                                  >
+                                    <span className="truncate mr-2 font-medium">{app.name}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                                      {getCategoryDisplayName(app.category, t)}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="mb-5 shrink-0">
@@ -1407,6 +1519,12 @@ const ClockHUD = ({
                         placeholder={t('hud_clock_command_placeholder')}
                         value={customCommand}
                         onChange={(e) => setCustomCommand(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && canSchedule) {
+                            e.preventDefault();
+                            handleAddTask();
+                          }
+                        }}
                         className="w-full bg-slate-950/80 border border-cyan-500/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                       />
                     </div>
@@ -1423,6 +1541,12 @@ const ClockHUD = ({
                           max="999"
                           value={timerMinutes}
                           onChange={(e) => setTimerMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && canSchedule) {
+                              e.preventDefault();
+                              handleAddTask();
+                            }
+                          }}
                           className="bg-transparent text-center text-white font-digits font-bold text-4xl w-full focus:outline-none tabular-nums leading-none"
                         />
                       </div>
@@ -1435,6 +1559,12 @@ const ClockHUD = ({
                           max="59"
                           value={timerSeconds}
                           onChange={(e) => setTimerSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && canSchedule) {
+                              e.preventDefault();
+                              handleAddTask();
+                            }
+                          }}
                           className="bg-transparent text-center text-white font-digits font-bold text-4xl w-full focus:outline-none tabular-nums leading-none"
                         />
                       </div>
@@ -1507,12 +1637,14 @@ const ClockHUD = ({
                   </div>
 
                   <button
+                    type="button"
                     onClick={handleAddTask}
-                    disabled={selectedType === 'app' && apps.length === 0}
-                    className="w-full shrink-0 mt-auto py-3.5 bg-cyan-400/90 hover:bg-cyan-300 disabled:bg-cyan-400/40 disabled:cursor-not-allowed text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={!canSchedule}
+                    className="w-full shrink-0 mt-auto py-3.5 bg-cyan-400/90 hover:bg-cyan-300 disabled:bg-cyan-500/10 disabled:border disabled:border-white/5 disabled:text-slate-500 disabled:hover:shadow-none disabled:cursor-not-allowed text-slate-950 font-cyber font-bold text-xs tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    {t('hud_clock_schedule_btn')}
+                    <span>{t('hud_clock_schedule_btn')}</span>
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-60 ml-1.5" />
                   </button>
                 </div>
               </div>
@@ -2305,12 +2437,25 @@ export default function App() {
       return;
     }
     if (toastPaused) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+
     const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock';
-    const ms = isLongToast ? 8000 : 3000;
+    const ms = isLongToast ? 8000 : 4000;
     const timer = setTimeout(() => {
       setNotification(null);
     }, ms);
-    return () => clearTimeout(timer);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearTimeout(timer);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [notification, toastPaused]);
 
   useEffect(() => {
@@ -3132,7 +3277,11 @@ export default function App() {
             // Executing scheduled action!
             if (task.type === 'app' && task.targetPath) {
               if (isElectron) {
-                window.electronAPI!.launchApp(task.targetPath, task.isAdmin);
+                window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
+                window.electronAPI?.showNotification?.({
+                  title: t('notif_scheduled_app_launched'),
+                  body: t('notif_scheduled_app_launched_detail', { name: task.name })
+                });
               } else {
                 console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
               }
@@ -3146,6 +3295,10 @@ export default function App() {
             } else if (task.type === 'command' && task.command) {
               if (isElectron) {
                 window.electronAPI!.runShellCommand(task.command);
+                window.electronAPI?.showNotification?.({
+                  title: t('notif_scheduled_cmd_executed'),
+                  body: task.command
+                });
               } else {
                 console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
               }
@@ -3161,6 +3314,17 @@ export default function App() {
             playCyberBeep();
             return null; // Remove task
           }
+          // Pre-launch imminent alert at 10s (or at start if duration < 10)
+          if (task.remainingSeconds === 10 || (task.totalSeconds < 10 && task.remainingSeconds === task.totalSeconds)) {
+            playCyberBeep();
+            if (isElectron) {
+              window.electronAPI?.showNotification?.({
+                title: t('notif_scheduled_imminent', { seconds: task.remainingSeconds.toString() }),
+                body: `${task.name} — ${t('notif_action_cancel_launch')}`
+              });
+            }
+          }
+
           return { ...task, remainingSeconds: task.remainingSeconds - 1 };
         }).filter(Boolean) as Array<ScheduledTask>;
 
@@ -3179,6 +3343,61 @@ export default function App() {
       window.electronAPI?.setRendererAwake(false);
     };
   }, [scheduledTasks.length > 0]);
+
+  const imminentTask = useMemo(() => {
+    const candidates = scheduledTasks.filter(t => t.remainingSeconds > 0 && t.remainingSeconds <= 10);
+    if (candidates.length === 0) return null;
+    return [...candidates].sort((a, b) => a.remainingSeconds - b.remainingSeconds)[0];
+  }, [scheduledTasks]);
+
+  const handleCancelImminentTask = useCallback((taskId: string, taskName: string) => {
+    setScheduledTasks(prev => prev.filter(t => t.id !== taskId));
+    setNotification({
+      message: t('notif_scheduled_cancelled'),
+      detail: t('notif_scheduled_cancelled_detail', { name: taskName }),
+      type: 'info',
+      action: 'open-hud-clock'
+    });
+  }, [t]);
+
+  const handleLaunchImminentNow = useCallback((task: ScheduledTask) => {
+    if (task.type === 'app' && task.targetPath) {
+      if (isElectron) {
+        window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
+        window.electronAPI?.showNotification?.({
+          title: t('notif_scheduled_app_launched'),
+          body: t('notif_scheduled_app_launched_detail', { name: task.name })
+        });
+      } else {
+        console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
+      }
+      addToHistory(task.name, task.targetPath, 'app');
+      setNotification({
+        message: t('notif_scheduled_app_launched'),
+        detail: t('notif_scheduled_app_launched_detail', { name: task.name }),
+        type: 'success',
+        action: 'open-hud-clock'
+      });
+    } else if (task.type === 'command' && task.command) {
+      if (isElectron) {
+        window.electronAPI!.runShellCommand(task.command);
+        window.electronAPI?.showNotification?.({
+          title: t('notif_scheduled_cmd_executed'),
+          body: task.command
+        });
+      } else {
+        console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
+      }
+      setNotification({
+        message: t('notif_scheduled_cmd_executed'),
+        detail: task.command,
+        type: 'success',
+        action: 'open-hud-clock'
+      });
+    }
+    playCyberBeep();
+    setScheduledTasks(prev => prev.filter(t => t.id !== task.id));
+  }, [t, addToHistory]);
 
   const playPinBlockSound = useCallback(() => {
     try {
@@ -3882,15 +4101,15 @@ export default function App() {
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
 
-  // While Add/Edit App modal is open, block hide-on-blur (separate from native dialogs).
+  // While Add/Edit App modal or HUD modals are open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp);
+    const open = !!(isAddingApp || editingApp || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp]);
+  }, [isAddingApp, editingApp, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -12154,10 +12373,76 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
+      <AnimatePresence>
+        {imminentTask && (
+          <motion.div
+            key={imminentTask.id}
+            data-no-hide
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 25, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-amber-500/40 backdrop-blur-2xl shadow-[0_0_35px_rgba(245,158,11,0.25)] select-none max-w-lg min-w-[360px]"
+          >
+            {/* Ticking countdown badge with generous breathing room */}
+            <div className="flex flex-col items-center justify-center shrink-0 min-w-[58px] h-12 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-300 shadow-[inset_0_0_10px_rgba(245,158,11,0.15)]">
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-amber-400/70 mb-0.5">T - MINUS</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-xl font-digits font-bold text-amber-300 tabular-nums animate-pulse leading-none">
+                  {imminentTask.remainingSeconds.toString().padStart(2, '0')}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-amber-400/80">s</span>
+              </div>
+            </div>
+
+            {/* Task Info */}
+            <div className="flex-1 min-w-0 text-left">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="text-[10px] font-cyber font-bold uppercase tracking-widest text-amber-400 truncate">
+                  {t('notif_scheduled_imminent', { seconds: imminentTask.remainingSeconds.toString() })}
+                </span>
+              </div>
+              <Tooltip label={imminentTask.name} placement="top">
+                <p className="text-xs font-medium text-white truncate max-w-[210px] cursor-default">
+                  {imminentTask.name}
+                </p>
+              </Tooltip>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Tooltip label={t('notif_action_launch_now')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => handleLaunchImminentNow(imminentTask)}
+                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/60 font-cyber font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>{t('notif_action_launch_now')}</span>
+                </button>
+              </Tooltip>
+              <Tooltip label={t('notif_action_cancel_launch')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => handleCancelImminentTask(imminentTask.id, imminentTask.name)}
+                  className="px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 hover:border-red-400/70 font-cyber font-bold text-[11px] transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)] flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{t('notif_action_cancel_launch')}</span>
+                </button>
+              </Tooltip>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
         {notification && (
           <motion.div
+            key={notification.message + (notification.detail || '')}
             data-no-hide
             role={notification.action ? 'button' : undefined}
             tabIndex={notification.action ? 0 : undefined}

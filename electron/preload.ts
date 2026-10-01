@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 // =====================================
 contextBridge.exposeInMainWorld('electronAPI', {
   // --- Lanzar aplicación (.exe, .lnk, URL, etc.) ---
-  launchApp: (appPath: string, isAdmin?: boolean) => ipcRenderer.invoke('launch-app', appPath, isAdmin),
+  launchApp: (appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean) => ipcRenderer.invoke('launch-app', appPath, isAdmin, keepWindowOpen),
   getUwpApps: () => ipcRenderer.invoke('get-uwp-apps'),
 
   // --- Diálogos nativos de archivos ---
@@ -185,6 +185,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('system-alert-action', handler);
     return () => { ipcRenderer.removeListener('system-alert-action', handler); };
   },
+  showNotification: (options: { title: string; body: string }) =>
+    ipcRenderer.invoke('show-notification', options),
 });
 
 contextBridge.exposeInMainWorld('trayMenu', {

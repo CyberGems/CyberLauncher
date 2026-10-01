@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net, powerMonitor } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net, powerMonitor, Notification } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { exec, execSync, spawn, execFile } from 'node:child_process';
@@ -3075,7 +3075,7 @@ async function buildSystemIndex() {
 // =====================================
 // IPC HANDLERS
 // =====================================
-async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ success: boolean; error?: string }> {
+async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<{ success: boolean; error?: string }> {
   if (!appPath) return { success: false, error: 'No path provided' };
 
   try {
@@ -3087,7 +3087,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ 
     if (isUriProtocol) {
       console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
       await shell.openExternal(trimmedPath);
-      if (!mainWindow?.isAlwaysOnTop()) {
+      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
         windowVisibilityState = 'hidden-intentional';
         hideMainWindow();
       }
@@ -3103,7 +3103,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ 
           console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
         }
       });
-      if (!mainWindow?.isAlwaysOnTop()) {
+      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
         windowVisibilityState = 'hidden-intentional';
         hideMainWindow();
       }
@@ -3141,7 +3141,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ 
         }
       });
 
-      if (!mainWindow?.isAlwaysOnTop()) {
+      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
         windowVisibilityState = 'hidden-intentional';
         hideMainWindow();
       }
@@ -3156,7 +3156,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean): Promise<{ 
         }
       });
     }
-    if (!mainWindow?.isAlwaysOnTop()) {
+    if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
       windowVisibilityState = 'hidden-intentional';
       hideMainWindow();
     }
@@ -3479,9 +3479,32 @@ function setupIpcHandlers() {
     }
   });
   // --- Lanzar aplicación (ejecutar .exe, abrir URL, etc.) ---
-  ipcMain.handle('launch-app', (_event, appPath: string, isAdmin?: boolean) =>
-    launchAppInternal(appPath, isAdmin)
+  ipcMain.handle('launch-app', (_event, appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean) =>
+    launchAppInternal(appPath, isAdmin, keepWindowOpen)
   );
+
+  // --- Mostrar notificación nativa del sistema ---
+  ipcMain.handle('show-notification', (_event, payload: { title: string; body: string }) => {
+    if (Notification.isSupported()) {
+      try {
+        const iconPath = path.join(__dirname, '../public/icon.png');
+        const notif = new Notification({
+          title: payload.title,
+          body: payload.body,
+          icon: fs.existsSync(iconPath) ? iconPath : undefined,
+          silent: false,
+        });
+        notif.on('click', () => {
+          showMainWindow();
+        });
+        notif.show();
+        return true;
+      } catch (err) {
+        console.error('[NOTIF] Error mostrando notificación de escritorio:', err);
+      }
+    }
+    return false;
+  });
 
   ipcMain.handle('tray:set-recents', (_event, items: unknown) => {
     setTrayRecents(Array.isArray(items) ? items : []);
