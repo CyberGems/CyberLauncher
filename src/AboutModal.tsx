@@ -100,7 +100,19 @@ export default function AboutModal({
       off?.();
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
     };
-  }, [isElectron]);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const appVersion = versions?.app || '';
 
@@ -188,9 +200,10 @@ export default function AboutModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 px-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
               aria-label={t('tooltip_close')}
             >
+              <span className="modal-key-esc">Esc</span>
               <X className="w-4 h-4" />
             </button>
           </Tooltip>

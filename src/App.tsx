@@ -1064,10 +1064,13 @@ const ClockHUD = ({
                   </h2>
                 </div>
                 <button 
+                  type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
+                  className="p-1.5 px-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
+                  aria-label={t('tooltip_close')}
                 >
-                  <X className="w-5 h-5" />
+                  <span className="modal-key-esc">Esc</span>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1365,9 +1368,10 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
+                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
               >
-                {t('tooltip_close').toUpperCase()}
+                <span>{t('tooltip_close').toUpperCase()}</span>
+                <span className="modal-key-esc">Esc</span>
               </button>
             </div>
           </motion.div>
@@ -1515,9 +1519,10 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
+                className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
               >
-                {t('tooltip_close').toUpperCase()}
+                <span>{t('tooltip_close').toUpperCase()}</span>
+                <span className="modal-key-esc">Esc</span>
               </button>
             </div>
           </motion.div>
@@ -4355,7 +4360,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -4797,6 +4802,37 @@ export default function App() {
 
       // Confirmar modales activos con Enter
       if (e.key === 'Enter') {
+        if (backupToRestore) {
+          e.preventDefault();
+          const target = backupToRestore;
+          setBackupToRestore(null);
+          void handleConfirmRestoreBackup(target);
+          return;
+        }
+        if (backupToDelete) {
+          e.preventDefault();
+          const target = backupToDelete;
+          setBackupToDelete(null);
+          void handleConfirmDeleteBackup(target);
+          return;
+        }
+        if (importingUwpApp) {
+          e.preventDefault();
+          const newApp = {
+            id: Date.now(),
+            name: importingUwpApp.name,
+            category: uwpImportCategory,
+            path: importingUwpApp.aumid,
+            iconPath: importingUwpApp.icon || '',
+            color: 'text-cyan-400',
+            isFav: false,
+            usage: 0
+          };
+          // @ts-ignore
+          setApps(prev => [...prev, newApp]);
+          setImportingUwpApp(null);
+          return;
+        }
         if (confirmResetType) {
           e.preventDefault();
           if (confirmResetType === 'most-used') {
@@ -4854,7 +4890,13 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        if (confirmResetType) {
+        if (backupToDelete) {
+          setBackupToDelete(null);
+        } else if (backupToRestore) {
+          setBackupToRestore(null);
+        } else if (importingUwpApp) {
+          setImportingUwpApp(null);
+        } else if (confirmResetType) {
           setConfirmResetType(null);
         } else if (categoryToDelete) {
           setCategoryToDelete(null);
@@ -4868,6 +4910,8 @@ export default function App() {
           e.preventDefault();
           setKeyboardNav(null);
           searchInputRef.current?.focus();
+        } else if (isClockHUDOpen) {
+          setIsClockHUDOpen(false);
         } else if (isSystemHUDOpen) {
           setIsSystemHUDOpen(false);
         } else if (isStorageHUDOpen) {
@@ -8106,9 +8150,10 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => { setEditingApp(null); setIsAddingApp(false); setOpenedViaDrop(false); setIsResolvingIcon(false); }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors cursor-pointer inline-flex items-center gap-2"
                 >
-                  {t('app_cancel')}
+                  <span>{t('app_cancel')}</span>
+                  <span className="modal-key-esc">Esc</span>
                 </button>
                 <button
                   type="button"
@@ -8194,9 +8239,10 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setIsSettingsOpen(false)}
-                      className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all"
+                      className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      {t('tooltip_close').toUpperCase()}
+                      <span>{t('tooltip_close').toUpperCase()}</span>
+                      <span className="modal-key-esc">Esc</span>
                     </button>
                   </div>
                 </div>
@@ -9805,12 +9851,15 @@ export default function App() {
 
                             <div className="flex gap-3 pt-2">
                               <button
+                                type="button"
                                 onClick={() => setImportingUwpApp(null)}
-                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700"
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                {t('uwp_confirm_cancel')}
+                                <span>{t('uwp_confirm_cancel')}</span>
+                                <span className="modal-key-esc">Esc</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => {
                                   const newApp = {
                                     id: Date.now(),
@@ -9826,9 +9875,10 @@ export default function App() {
                                   setApps(prev => [...prev, newApp]);
                                   setImportingUwpApp(null);
                                 }}
-                                className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
+                                className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                {t('uwp_confirm_ok')}
+                                <span>{t('uwp_confirm_ok')}</span>
+                                <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                               </button>
                             </div>
                           </motion.div>
@@ -10134,9 +10184,10 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={() => setIsAddingCategory(false)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_delete_category_btn_cancel')}
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button 
                     type="submit"
@@ -10221,9 +10272,10 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={() => setEditingCategory(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_delete_category_btn_cancel')}
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button 
                     type="button"
@@ -10791,9 +10843,10 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={() => setCategoryToDelete(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_delete_category_btn_cancel')}
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button 
                     type="button"
@@ -10853,9 +10906,10 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={() => setConfirmResetType(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_reset_btn_cancel')}
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button 
                     type="button"
@@ -10919,9 +10973,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setBackupToRestore(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_reset_btn_cancel')}
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button
                     type="button"
@@ -10933,7 +10988,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('backup_auto_btn_restore')}</span>
-                    <RotateCcw className="w-3.5 h-3.5 opacity-70" />
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                 </div>
               </div>
@@ -10982,9 +11037,10 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setBackupToDelete(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer"
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    {t('confirm_reset_btn_cancel')}
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <span className="modal-key-esc">Esc</span>
                   </button>
                   <button
                     type="button"
@@ -10996,7 +11052,7 @@ export default function App() {
                     className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
                     <span>{t('backup_auto_btn_delete')}</span>
-                    <Trash2 className="w-3.5 h-3.5 opacity-70" />
+                    <CornerDownLeft className="w-3.5 h-3.5 opacity-70" />
                   </button>
                 </div>
               </div>

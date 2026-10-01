@@ -155,8 +155,19 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
   transition: none !important;
 }
 
-.taskbar-scrolling [data-taskbar-btn]:not([data-context-active="true"]) [data-taskbar-icon] {
-  background-color: transparent !important;
-  transition: none !important;
+/* Modal keyboard hint badges (Suite standard from CyberNotes) */
+.modal-key-esc {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  line-height: 1.25;
+  opacity: 0.75;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+
 
