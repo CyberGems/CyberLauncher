@@ -13,9 +13,9 @@ interface TooltipProps {
 const VIEWPORT_MARGIN = 8;
 const GAP = 8;
 
-const BORDER = 'rgba(34, 211, 238, 0.28)';
-const ACCENT_GLOW = 'rgba(34, 211, 238, 0.35)';
-const SURFACE = 'rgba(10, 15, 24, 0.97)';
+const BORDER = 'rgba(34, 211, 238, 0.18)';
+const ACCENT_GLOW = 'rgba(34, 211, 238, 0.08)';
+const SURFACE = 'rgba(10, 15, 24, 0.98)';
 
 function clamp(value: number, min: number, max: number) {
   if (max < min) return min;
@@ -132,7 +132,7 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', children }) =>
               background: SURFACE,
               backdropFilter: 'blur(10px)',
               border: `1px solid ${BORDER}`,
-              boxShadow: `0 8px 24px rgba(0, 0, 0, 0.5), 0 0 10px ${ACCENT_GLOW}`,
+              boxShadow: `0 8px 24px rgba(0, 0, 0, 0.6), 0 0 4px ${ACCENT_GLOW}`,
               borderRadius: 8,
               padding: '6px 10px',
               color: 'rgba(255, 255, 255, 0.95)',

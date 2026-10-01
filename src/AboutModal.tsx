@@ -259,10 +259,10 @@ export default function AboutModal({
           <h1 className="text-[26px] font-cyber font-bold tracking-wide text-white mb-1">
             Cyber<span className="text-cyan-400">Launcher</span>
           </h1>
-          <div className="text-[11px] font-digits font-bold text-slate-500 uppercase tracking-[0.12em] mb-3 inline-flex items-center justify-center gap-2">
+          <div className="text-xs font-cyber font-semibold text-slate-300 uppercase tracking-wider mb-3 inline-flex items-center justify-center gap-2">
             <span>{t('about_version', { version: appVersion || '…' })}</span>
             {versions?.isPortable && (
-              <span className="text-[9px] font-cyber font-bold tracking-[0.08em] px-2 py-0.5 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 leading-normal">
+              <span className="text-[10px] font-cyber font-bold tracking-wide px-2 py-0.5 rounded-full bg-cyan-400/15 text-cyan-300 border border-cyan-400/30 leading-normal">
                 {t('about_portable_badge')}
               </span>
             )}
