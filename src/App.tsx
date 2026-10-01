@@ -2167,7 +2167,16 @@ export default function App() {
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [browseDropdownOpen, setBrowseDropdownOpen] = useState(false);
+  const [lastBrowseMode, setLastBrowseMode] = useState<'file' | 'folder'>(() => {
+    try {
+      const saved = localStorage.getItem('cl_last_browse_mode');
+      return saved === 'folder' ? 'folder' : 'file';
+    } catch {
+      return 'file';
+    }
+  });
   const browseDropdownRef = useRef<HTMLDivElement>(null);
+  const browseHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const webFileInputRef = useRef<HTMLInputElement>(null);
   const webFolderInputRef = useRef<HTMLInputElement>(null);
 
@@ -2184,7 +2193,29 @@ export default function App() {
     };
   }, [browseDropdownOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
+    };
+  }, []);
+
+  const handleBrowseContainerMouseEnter = useCallback(() => {
+    if (browseHoverTimeoutRef.current) {
+      clearTimeout(browseHoverTimeoutRef.current);
+      browseHoverTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleBrowseContainerMouseLeave = useCallback(() => {
+    if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
+    browseHoverTimeoutRef.current = setTimeout(() => {
+      setBrowseDropdownOpen(false);
+    }, 220);
+  }, []);
+
   const handleBrowseFile = useCallback(async () => {
+    setLastBrowseMode('file');
+    try { localStorage.setItem('cl_last_browse_mode', 'file'); } catch {}
     if (!isElectron) {
       webFileInputRef.current?.click();
       return;
@@ -2213,6 +2244,8 @@ export default function App() {
   }, []);
 
   const handleBrowseFolder = useCallback(async () => {
+    setLastBrowseMode('folder');
+    try { localStorage.setItem('cl_last_browse_mode', 'folder'); } catch {}
     if (!isElectron) {
       webFolderInputRef.current?.click();
       return;
@@ -2239,6 +2272,32 @@ export default function App() {
       setIsResolvingIcon(false);
     }
   }, []);
+
+  const selectBrowseMode = useCallback((mode: 'file' | 'folder') => {
+    if (browseHoverTimeoutRef.current) {
+      clearTimeout(browseHoverTimeoutRef.current);
+      browseHoverTimeoutRef.current = null;
+    }
+    setBrowseDropdownOpen(false);
+    if (mode === 'folder') {
+      handleBrowseFolder();
+    } else {
+      handleBrowseFile();
+    }
+  }, [handleBrowseFile, handleBrowseFolder]);
+
+  const handleMainBrowseClick = useCallback(() => {
+    if (browseHoverTimeoutRef.current) {
+      clearTimeout(browseHoverTimeoutRef.current);
+      browseHoverTimeoutRef.current = null;
+    }
+    setBrowseDropdownOpen(false);
+    if (lastBrowseMode === 'folder') {
+      handleBrowseFolder();
+    } else {
+      handleBrowseFile();
+    }
+  }, [lastBrowseMode, handleBrowseFolder, handleBrowseFile]);
 
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(() => {
@@ -8406,25 +8465,62 @@ export default function App() {
                         onContextMenu={handleInputContextMenu}
                         placeholder={t('app_path_placeholder')}
                       />
-                      <div className="relative shrink-0" ref={browseDropdownRef}>
-                        <Tooltip label={browseDropdownOpen ? null : t('tooltip_browse')} placement="top">
-                          <button
-                            type="button"
-                            onClick={() => setBrowseDropdownOpen(prev => !prev)}
-                            disabled={isResolvingIcon}
-                            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-cyber font-medium tracking-wide cursor-pointer transition-all border shrink-0 disabled:opacity-50 disabled:cursor-wait active:scale-95 ${
-                              browseDropdownOpen
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
-                                : 'bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border-white/10 hover:border-cyan-500/30'
-                            }`}
-                            aria-haspopup="true"
-                            aria-expanded={browseDropdownOpen}
-                          >
-                            <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
-                            <span>{t('btn_browse')}</span>
-                            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${browseDropdownOpen ? 'rotate-180 text-cyan-300' : ''}`} />
-                          </button>
-                        </Tooltip>
+                      <div
+                        className="relative shrink-0"
+                        ref={browseDropdownRef}
+                        onMouseEnter={handleBrowseContainerMouseEnter}
+                        onMouseLeave={handleBrowseContainerMouseLeave}
+                      >
+                        <div
+                          className={`inline-flex items-stretch rounded-lg border transition-all text-xs font-cyber shrink-0 overflow-hidden ${
+                            browseDropdownOpen
+                              ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
+                              : 'border-white/10 hover:border-cyan-500/30 bg-white/5'
+                          }`}
+                        >
+                          {/* Main Browse Action Button (default/last used mode) */}
+                          <Tooltip label={browseDropdownOpen ? null : (lastBrowseMode === 'folder' ? t('browse_folder_desc') : t('browse_file_desc'))} placement="top">
+                            <button
+                              type="button"
+                              onClick={handleMainBrowseClick}
+                              disabled={isResolvingIcon}
+                              className="flex items-center justify-center gap-1.5 px-3 py-2 text-slate-300 hover:text-cyan-300 hover:bg-cyan-500/15 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-wait active:scale-[0.98]"
+                            >
+                              {lastBrowseMode === 'folder' ? (
+                                <Folder className="w-4 h-4 text-amber-400 shrink-0" />
+                              ) : (
+                                <FolderSearch className="w-4 h-4 text-cyan-400 shrink-0" />
+                              )}
+                              <span>{t('btn_browse')}</span>
+                            </button>
+                          </Tooltip>
+
+                          {/* Internal Divider */}
+                          <div className="w-[1px] bg-white/10 my-1.5 self-stretch shrink-0" />
+
+                          {/* Chevron trigger (Hover/Click to open dropdown) */}
+                          <Tooltip label={browseDropdownOpen ? null : t('tooltip_browse_options')} placement="top">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
+                                setBrowseDropdownOpen(prev => !prev);
+                              }}
+                              onMouseEnter={() => {
+                                if (browseHoverTimeoutRef.current) clearTimeout(browseHoverTimeoutRef.current);
+                                setBrowseDropdownOpen(true);
+                              }}
+                              disabled={isResolvingIcon}
+                              className={`flex items-center justify-center px-2 text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/15 cursor-pointer transition-colors disabled:opacity-50 active:scale-95 ${
+                                browseDropdownOpen ? 'bg-cyan-500/20 text-cyan-300' : ''
+                              }`}
+                              aria-haspopup="true"
+                              aria-expanded={browseDropdownOpen}
+                            >
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${browseDropdownOpen ? 'rotate-180 text-cyan-300' : ''}`} />
+                            </button>
+                          </Tooltip>
+                        </div>
 
                         <AnimatePresence>
                           {browseDropdownOpen && (
@@ -8433,43 +8529,52 @@ export default function App() {
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: -4 }}
                               transition={{ duration: 0.12 }}
+                              onMouseEnter={handleBrowseContainerMouseEnter}
                               className="absolute right-0 top-full mt-1.5 z-[70] w-64 p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none"
                               role="menu"
                             >
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setBrowseDropdownOpen(false);
-                                  handleBrowseFile();
-                                }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-200 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors text-left group/item cursor-pointer"
+                                onClick={() => selectBrowseMode('file')}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors text-left group/item cursor-pointer ${
+                                  lastBrowseMode === 'file'
+                                    ? 'bg-cyan-500/15 text-cyan-200'
+                                    : 'text-slate-200 hover:text-cyan-300 hover:bg-cyan-500/10'
+                                }`}
                                 role="menuitem"
                               >
                                 <div className="p-1 rounded-md bg-white/5 group-hover/item:bg-cyan-500/20 transition-colors shrink-0">
                                   <File className="w-3.5 h-3.5 text-cyan-400 group-hover/item:scale-110 transition-transform shrink-0" />
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="font-medium text-slate-200 group-hover/item:text-cyan-200 transition-colors leading-snug">{t('browse_file')}</span>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="font-medium leading-snug">{t('browse_file')}</span>
                                   <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{t('browse_file_desc')}</span>
                                 </div>
+                                {lastBrowseMode === 'file' && (
+                                  <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                )}
                               </button>
 
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setBrowseDropdownOpen(false);
-                                  handleBrowseFolder();
-                                }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-200 hover:text-amber-300 hover:bg-amber-500/10 transition-colors text-left group/item cursor-pointer"
+                                onClick={() => selectBrowseMode('folder')}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors text-left group/item cursor-pointer ${
+                                  lastBrowseMode === 'folder'
+                                    ? 'bg-amber-500/15 text-amber-200'
+                                    : 'text-slate-200 hover:text-amber-300 hover:bg-amber-500/10'
+                                }`}
                                 role="menuitem"
                               >
                                 <div className="p-1 rounded-md bg-white/5 group-hover/item:bg-amber-500/20 transition-colors shrink-0">
                                   <Folder className="w-3.5 h-3.5 text-amber-400 group-hover/item:scale-110 transition-transform shrink-0" />
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="font-medium text-slate-200 group-hover/item:text-amber-200 transition-colors leading-snug">{t('browse_folder')}</span>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="font-medium leading-snug">{t('browse_folder')}</span>
                                   <span className="text-[10px] text-slate-400 leading-tight mt-0.5">{t('browse_folder_desc')}</span>
                                 </div>
+                                {lastBrowseMode === 'folder' && (
+                                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                )}
                               </button>
                             </motion.div>
                           )}
