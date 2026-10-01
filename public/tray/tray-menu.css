@@ -36,7 +36,6 @@ html, body {
 
 .card {
   width: 292px;
-  max-height: calc(100vh - 48px);
   overflow: hidden;
   border-radius: 16px;
   background: var(--bg-card);
@@ -50,6 +49,8 @@ html, body {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   -webkit-app-region: no-drag;
   animation: trayCardFade 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes trayCardFade {
@@ -271,15 +272,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.group::-webkit-scrollbar {
-  display: none;
+  flex: 1 1 auto;
 }
 
 .group-bottom {

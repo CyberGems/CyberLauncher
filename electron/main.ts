@@ -1330,6 +1330,7 @@ const TRAY_MENU_CARD_WIDTH = 292;
 const TRAY_MENU_SHADOW_PAD = 24;
 const TRAY_MENU_EST_HEIGHT = 550;
 let lastTrayMenuHeight = 550;
+let mainViewHeight = 550;
 
 let showTrayRecentsConfig = true;
 let showSuiteRecommendationsConfig = true;
@@ -1555,7 +1556,7 @@ function showCustomTrayMenu(eventBounds?: any) {
   armTrayMenuGuard(3000);
 
   const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
-  const initialH = lastTrayMenuHeight || TRAY_MENU_EST_HEIGHT;
+  const initialH = mainViewHeight || lastTrayMenuHeight || TRAY_MENU_EST_HEIGHT;
   const geo = trayMenuGeometry(trayMenuAnchor, windowW, initialH);
   w.setBounds(geo);
   if (!w.isVisible()) w.show();
@@ -1761,13 +1762,28 @@ ipcMain.on('tray-menu-hide', () => {
 ipcMain.on('tray-menu-ready', (_event, rect) => {
   if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuAnchor && rect && rect.height) {
     const pad = TRAY_MENU_SHADOW_PAD;
-    const desiredH = Math.min(Math.max(rect.height, 200), 750);
-    lastTrayMenuHeight = desiredH;
     const windowW = TRAY_MENU_CARD_WIDTH + 2 * pad;
-    const currentBounds = trayMenuWin.getBounds();
-    if (Math.abs(currentBounds.height - desiredH) > 4 || Math.abs(currentBounds.width - windowW) > 4) {
-      const geo = trayMenuGeometry(trayMenuAnchor, windowW, desiredH);
-      trayMenuWin.setBounds(geo);
+    const isMain = rect.view === 'main' || !rect.view;
+
+    if (isMain) {
+      const naturalMainH = Math.min(Math.max(rect.height, 350), 750);
+      mainViewHeight = naturalMainH;
+      lastTrayMenuHeight = naturalMainH;
+
+      const currentBounds = trayMenuWin.getBounds();
+      if (Math.abs(currentBounds.height - naturalMainH) > 4 || Math.abs(currentBounds.width - windowW) > 4) {
+        const geo = trayMenuGeometry(trayMenuAnchor, windowW, naturalMainH);
+        trayMenuWin.setBounds(geo);
+      }
+    } else {
+      // In a submenu: maintain at least mainViewHeight so the window never shrinks awkwardly
+      // and forces scrolling. If the submenu needs more space, expand smoothly up to 750px.
+      const desiredH = Math.min(Math.max(rect.height, mainViewHeight), 750);
+      const currentBounds = trayMenuWin.getBounds();
+      if (Math.abs(currentBounds.height - desiredH) > 4 || Math.abs(currentBounds.width - windowW) > 4) {
+        const geo = trayMenuGeometry(trayMenuAnchor, windowW, desiredH);
+        trayMenuWin.setBounds(geo);
+      }
     }
   }
 });

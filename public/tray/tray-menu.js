@@ -510,13 +510,20 @@ function renderView(slideRight = false) {
 function reportSize() {
   if (!cardEl) return;
   requestAnimationFrame(() => {
-    const cardRect = cardEl.getBoundingClientRect();
     const pad = 24;
-    const h = Math.ceil(cardRect.height + 2 * pad);
-    const w = Math.ceil(cardRect.width + 2 * pad);
+    let contentH = 0;
+    const parts = [headEl, headDividerEl, groupEl, exitDividerEl, exitGroupEl];
+    for (const el of parts) {
+      if (el && el.style.display !== 'none') {
+        contentH += el.getBoundingClientRect().height;
+      }
+    }
+    const cardH = Math.max(cardEl.scrollHeight, Math.ceil(contentH + 2));
+    const h = Math.ceil(cardH + 2 * pad);
+    const w = Math.ceil(cardEl.offsetWidth + 2 * pad);
     const api = getApi();
     if (api && api.ready && w > 0 && h > 0) {
-      api.ready({ width: w, height: h });
+      api.ready({ width: w, height: h, view: currentView });
     }
   });
 }
