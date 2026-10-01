@@ -361,7 +361,7 @@ function renderMainView() {
           makeItem({
             localAction: 'recents',
             icon: 'recent',
-            label: t('viewAllRecents', { count: recents.length }),
+            label: t('viewAllRecents', { count: Math.min(recents.length, 10) }),
             trailingIcon: 'chevron',
           })
         );
@@ -459,7 +459,7 @@ function renderSuiteView() {
 }
 
 function renderRecentsView() {
-  const recents = (currentState && Array.isArray(currentState.recents)) ? currentState.recents : [];
+  const recents = ((currentState && Array.isArray(currentState.recents)) ? currentState.recents : []).slice(0, 10);
   if (recents.length === 0) {
     const emptyRow = document.createElement('div');
     emptyRow.className = 'item item-empty';
@@ -471,12 +471,15 @@ function renderRecentsView() {
       if (iconSrc && !iconSrc.startsWith('data:') && !iconSrc.startsWith('http') && !iconSrc.startsWith('local-resource:')) {
         iconSrc = `local-resource:///${iconSrc.replace(/\\/g, '/')}`;
       }
+      const num = i + 1;
+      const shortcutKey = num === 10 ? '0' : String(num);
       return makeItem({
         action: 'launch-recent',
         payload: r,
         img: iconSrc || undefined,
         icon: iconSrc ? undefined : 'clock',
-        label: `${i + 1}. ${r.name}`,
+        label: `${num}. ${r.name}`,
+        shortcut: `Alt+${shortcutKey}`,
         title: r.path,
       });
     });
@@ -508,8 +511,9 @@ function reportSize() {
   if (!cardEl) return;
   requestAnimationFrame(() => {
     const cardRect = cardEl.getBoundingClientRect();
-    const h = Math.ceil(cardEl.scrollHeight + 40);
-    const w = Math.ceil(cardRect.width + 40);
+    const pad = 24;
+    const h = Math.ceil(cardRect.height + 2 * pad);
+    const w = Math.ceil(cardRect.width + 2 * pad);
     const api = getApi();
     if (api && api.ready && w > 0 && h > 0) {
       api.ready({ width: w, height: h });
@@ -529,7 +533,30 @@ function hideMenu() {
 // Global key handlers
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    hideMenu();
+    if (currentView !== 'main') {
+      currentView = 'main';
+      renderView(false);
+    } else {
+      hideMenu();
+    }
+    return;
+  }
+
+  if (currentView === 'recents') {
+    const recents = ((currentState && Array.isArray(currentState.recents)) ? currentState.recents : []).slice(0, 10);
+    let idx = -1;
+    if (e.key >= '1' && e.key <= '9') {
+      idx = parseInt(e.key, 10) - 1;
+    } else if (e.key === '0') {
+      idx = 9;
+    }
+    if (idx >= 0 && idx < recents.length) {
+      e.preventDefault();
+      const api = getApi();
+      if (api && api.action) {
+        api.action('launch-recent', recents[idx]);
+      }
+    }
   }
 });
 

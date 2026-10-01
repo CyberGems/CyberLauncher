@@ -29,27 +29,27 @@ html, body {
 }
 
 .shell {
-  padding: 20px;
+  padding: 24px;
   background: transparent;
   display: block;
 }
 
 .card {
-  width: 290px;
-  max-height: calc(100vh - 40px);
-  overflow-x: hidden;
-  overflow-y: auto;
+  width: 292px;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
   border-radius: 16px;
   background: var(--bg-card);
   backdrop-filter: blur(28px) saturate(1.8);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   border: 1px solid var(--border);
   box-shadow:
-    0 12px 36px rgba(0, 0, 0, 0.7),
-    0 0 20px rgba(var(--accent-rgb), 0.12),
+    0 10px 24px -2px rgba(0, 0, 0, 0.65),
+    0 3px 8px -1px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(var(--accent-rgb), 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   -webkit-app-region: no-drag;
-  animation: trayCardFade 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: trayCardFade 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes trayCardFade {
@@ -61,21 +61,6 @@ html, body {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
-}
-
-/* Custom scrollbar */
-.card::-webkit-scrollbar {
-  width: 4px;
-}
-.card::-webkit-scrollbar-track {
-  background: transparent;
-}
-.card::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.35);
-  border-radius: 4px;
-}
-.card::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.65);
 }
 
 .divider {
@@ -286,6 +271,15 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.group::-webkit-scrollbar {
+  display: none;
 }
 
 .group-bottom {

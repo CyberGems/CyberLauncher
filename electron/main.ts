@@ -1326,9 +1326,10 @@ let trayMenuWin: BrowserWindow | null = null;
 let trayMenuAnchor: any = null;
 let trayMenuHideTimer: ReturnType<typeof setTimeout> | null = null;
 let trayMenuLastShown = 0;
-const TRAY_MENU_CARD_WIDTH = 290;
-const TRAY_MENU_SHADOW_PAD = 20;
-const TRAY_MENU_EST_HEIGHT = 480;
+const TRAY_MENU_CARD_WIDTH = 292;
+const TRAY_MENU_SHADOW_PAD = 24;
+const TRAY_MENU_EST_HEIGHT = 550;
+let lastTrayMenuHeight = 550;
 
 let showTrayRecentsConfig = true;
 let showSuiteRecommendationsConfig = true;
@@ -1414,9 +1415,19 @@ function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
     cardY = cy - cardH / 2;
   }
 
-  cardX = Math.min(Math.max(cardX, work.x + 4), work.x + work.width - cardW - 4);
-  cardY = Math.min(Math.max(cardY, work.y + 4), work.y + work.height - cardH - 4);
-  return { x: Math.round(cardX - pad), y: Math.round(cardY - pad), width: windowW, height: windowH };
+  // Position outer window centered on card
+  let windowX = cardX - pad;
+  let windowY = cardY - pad;
+
+  // Clamp outer window strictly inside display workArea / screen boundaries.
+  // This guarantees that the window padding (where the shadow fades out) never
+  // crosses the monitor boundary, eliminating sharp shadow clipping by DWM.
+  windowX = Math.min(Math.max(windowX, work.x + 2), work.x + work.width - windowW - 2);
+
+  const screenBottom = (display.bounds ? display.bounds.y + display.bounds.height : work.y + work.height) - 2;
+  windowY = Math.min(Math.max(windowY, work.y + 2), screenBottom - windowH);
+
+  return { x: Math.round(windowX), y: Math.round(windowY), width: Math.round(windowW), height: Math.round(windowH) };
 }
 
 function getTrayPreloadPath(): string {
@@ -1544,7 +1555,8 @@ function showCustomTrayMenu(eventBounds?: any) {
   armTrayMenuGuard(3000);
 
   const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
-  const geo = trayMenuGeometry(trayMenuAnchor, windowW, TRAY_MENU_EST_HEIGHT);
+  const initialH = lastTrayMenuHeight || TRAY_MENU_EST_HEIGHT;
+  const geo = trayMenuGeometry(trayMenuAnchor, windowW, initialH);
   w.setBounds(geo);
   if (!w.isVisible()) w.show();
   w.focus();
@@ -1749,10 +1761,14 @@ ipcMain.on('tray-menu-hide', () => {
 ipcMain.on('tray-menu-ready', (_event, rect) => {
   if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuAnchor && rect && rect.height) {
     const pad = TRAY_MENU_SHADOW_PAD;
-    const desiredH = Math.min(Math.max(rect.height, 200), 700);
+    const desiredH = Math.min(Math.max(rect.height, 200), 750);
+    lastTrayMenuHeight = desiredH;
     const windowW = TRAY_MENU_CARD_WIDTH + 2 * pad;
-    const geo = trayMenuGeometry(trayMenuAnchor, windowW, desiredH);
-    trayMenuWin.setBounds(geo);
+    const currentBounds = trayMenuWin.getBounds();
+    if (Math.abs(currentBounds.height - desiredH) > 4 || Math.abs(currentBounds.width - windowW) > 4) {
+      const geo = trayMenuGeometry(trayMenuAnchor, windowW, desiredH);
+      trayMenuWin.setBounds(geo);
+    }
   }
 });
 
