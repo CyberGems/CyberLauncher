@@ -424,6 +424,24 @@ const START_MINIMIZED_ARG = '--start-minimized';
 /** True when this process should boot to tray (login / --start-minimized). */
 let startHiddenThisSession = false;
 
+function hasStartupMinimizedArg(argv: string[]): boolean {
+  if (!Array.isArray(argv)) return false;
+  return argv.some((arg) => {
+    if (typeof arg !== 'string') return false;
+    const clean = arg.replace(/^["']|["']$/g, '').trim().toLowerCase();
+    return (
+      clean === '--start-minimized' ||
+      clean === '--minimized' ||
+      clean === '--hidden' ||
+      clean === '--autostart' ||
+      clean === '--startup' ||
+      clean === '-minimized' ||
+      clean === '-hidden' ||
+      clean.startsWith('--start-minimized=')
+    );
+  });
+}
+
 function readConfigBoolean(key: string): boolean {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -435,6 +453,11 @@ function readConfigBoolean(key: string): boolean {
 }
 
 function applyAutoLaunchSettings(enabled: boolean, startMinimized: boolean) {
+  // En modo desarrollo puro, no contaminar el registro de inicio de Windows con node_modules\electron.exe
+  if (!app.isPackaged && !process.env.PORTABLE_EXECUTABLE_FILE) {
+    console.log('[AUTO-LAUNCH] Skipping setLoginItemSettings in development mode');
+    return;
+  }
   const exePath = process.env.PORTABLE_EXECUTABLE_FILE || app.getPath('exe');
   app.setLoginItemSettings({
     openAtLogin: enabled,
@@ -444,13 +467,25 @@ function applyAutoLaunchSettings(enabled: boolean, startMinimized: boolean) {
 }
 
 function computeStartHiddenThisSession(): boolean {
-  if (process.argv.includes(START_MINIMIZED_ARG)) return true;
+  // 1. Argumentos explícitos de línea de comandos
+  if (hasStartupMinimizedArg(process.argv)) {
+    console.log('[BOOT] Starting hidden to tray via command-line argument');
+    return true;
+  }
+
+  // 2. Detección de arranque/reinicio del sistema:
+  // Si las preferencias 'startWithWindows' y 'startMinimized' están activas y el sistema
+  // operativo arrancó hace menos de 120 segundos (cubre reinicios y restauración de sesión).
   try {
-    const login = app.getLoginItemSettings();
-    if (login.wasOpenedAtLogin && readConfigBoolean('startWithWindows') && readConfigBoolean('startMinimized')) {
-      return true;
+    if (readConfigBoolean('startWithWindows') && readConfigBoolean('startMinimized')) {
+      const uptimeSec = os.uptime();
+      if (typeof uptimeSec === 'number' && uptimeSec < 120) {
+        console.log(`[BOOT] Detected Windows startup/reboot (uptime: ${Math.round(uptimeSec)}s) with startMinimized enabled -> starting hidden to tray`);
+        return true;
+      }
     }
   } catch { /* ignore */ }
+
   return false;
 }
 
@@ -2154,13 +2189,18 @@ function syncHotspotLockAfterWindowChange() {
   }
 }
 
+let bootHotspotGuardUntil = Date.now() + 4000;
+
 function startHotspotPolling() {
   stopHotspotPolling();
   lastHotspotPollTime = Date.now();
   lastHotspotCorner = '';
   hotspotEntryTime = 0;
   hotspotCooldown = false;
-  hasCursorExitedSinceLastAction = true;
+  // Al arrancar, el cursor NO ha salido aún de una posible esquina (ej. 0,0 al boot de Windows).
+  // Debe salir de la zona de esquina antes de que se arme cualquier disparo.
+  hasCursorExitedSinceLastAction = false;
+  bootHotspotGuardUntil = Date.now() + 4000;
 
   if (hotspotCorners.length === 0) {
     console.log('[HOTSPOT] No corners configured — polling stopped');
@@ -2169,6 +2209,7 @@ function startHotspotPolling() {
   
   hotspotTimer = setInterval(() => {
     if (hotspotsPausedByUAC || isCheckingUAC) return;
+    if (Date.now() < bootHotspotGuardUntil) return;
 
     const now = Date.now();
     const elapsed = now - lastHotspotPollTime;
@@ -4300,8 +4341,14 @@ if (!gotTheLock) {
   console.log('[SINGLE-INSTANCE] Otra instancia detectada, cerrando...');
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
     console.log('[SINGLE-INSTANCE] Intento de segunda instancia (state=' + windowVisibilityState + ')');
+    // Si la segunda instancia fue invocada por el sistema con flag de arranque minimizado, ignorar
+    if (hasStartupMinimizedArg(commandLine)) {
+      console.log('[SINGLE-INSTANCE] Ignored second-instance launch because it had start-minimized flag');
+      return;
+    }
+    // Apertura manual por el usuario (acceso directo, lanzador, etc.): SIEMPRE mostrar y enfocar
     if (mainWindow) {
       if (!mainWindow.isVisible()) showMainWindow();
       if (mainWindow.isMinimized()) {
@@ -4336,6 +4383,13 @@ app.on('child-process-gone', (_event, details) => {
 // =====================================
 
 app.whenReady().then(() => {
+  // Limpiar cualquier clave residual de desarrollo en el registro de inicio de Windows
+  if (process.platform === 'win32') {
+    try {
+      exec('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "electron.app.Electron" /f', () => {});
+    } catch { /* ignore */ }
+  }
+
   setupIpcHandlers();
   buildSystemIndex().catch(err => console.error('[INDEXER] Error building index:', err));
   
