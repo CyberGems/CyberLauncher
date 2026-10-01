@@ -10185,23 +10185,28 @@ export default function App() {
                           />
                           <p className="text-[10px] text-slate-500 text-right mt-1">{t('general_hotspots_delay_desc')}</p>
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hotspots_disable_fullscreen')}</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_disable_fullscreen_desc')}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
-                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 mt-0.5 cursor-pointer ${hotspotsDisableInFullscreen ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                          >
-                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hotspotsDisableInFullscreen ? 'translate-x-5' : 'translate-x-0'}`}>
-                              <div className={`w-2 h-2 rounded-full ${hotspotsDisableInFullscreen ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                            </div>
-                          </button>
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-6 w-full">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Monitor className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hotspots_disable_fullscreen')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_disable_fullscreen_desc')}</p>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${hotspotsDisableInFullscreen ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hotspotsDisableInFullscreen ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${hotspotsDisableInFullscreen ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
                     </div>
                   </div>
                 </div>
