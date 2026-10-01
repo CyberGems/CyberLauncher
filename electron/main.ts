@@ -1587,6 +1587,176 @@ function updateCustomTrayMenuState() {
   }
 }
 
+// =====================================
+// FLOATING TRAY PIN TIP WINDOW (SUITE MODEL)
+// =====================================
+let trayPinTipWin: BrowserWindow | null = null;
+
+function hasSeenTrayPinTip(): boolean {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (typeof cfg.hasSeenTrayPinTip === 'boolean') return cfg.hasSeenTrayPinTip;
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+function setSeenTrayPinTip(seen: boolean) {
+  try {
+    let cfg: any = {};
+    if (fs.existsSync(CONFIG_FILE)) {
+      cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    }
+    cfg.hasSeenTrayPinTip = seen;
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+  } catch { /* ignore */ }
+}
+
+function getTrayPinTipHtmlPath(): string {
+  const isDev = Boolean(VITE_DEV_SERVER_URL);
+  const candidates = [
+    isDev ? path.join(__dirname, '../public/tray/tray-pin-tip.html') : '',
+    path.join(app.getAppPath(), 'dist/tray/tray-pin-tip.html'),
+    path.join(__dirname, '../dist/tray/tray-pin-tip.html'),
+    path.join(__dirname, '../public/tray/tray-pin-tip.html'),
+    path.join(process.cwd(), 'public/tray/tray-pin-tip.html'),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(__dirname, '../public/tray/tray-pin-tip.html');
+}
+
+function ensureTrayPinTipWin(): BrowserWindow {
+  if (trayPinTipWin && !trayPinTipWin.isDestroyed()) return trayPinTipWin;
+
+  const htmlPath = getTrayPinTipHtmlPath();
+  const preloadPath = getTrayPreloadPath();
+
+  trayPinTipWin = new BrowserWindow({
+    width: 380,
+    height: 230,
+    show: false,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  trayPinTipWin.setAlwaysOnTop(true, 'pop-up-menu');
+  void trayPinTipWin.loadFile(htmlPath);
+
+  trayPinTipWin.on('closed', () => {
+    trayPinTipWin = null;
+  });
+
+  return trayPinTipWin;
+}
+
+function trayPinTipGeometry(anchor: any, windowW = 380, windowH = 230) {
+  let b = (anchor && typeof anchor.x === 'number' && (anchor.width || anchor.height))
+    ? { x: anchor.x, y: anchor.y, width: anchor.width || 0, height: anchor.height || 0 }
+    : null;
+  if (!b && tray && !tray.isDestroyed()) {
+    try { b = tray.getBounds(); } catch (_) { b = null; }
+  }
+  if (!b || (!b.width && !b.height)) {
+    let p: any = null;
+    try { p = screen.getCursorScreenPoint(); } catch (_) { p = { x: 0, y: 0 }; }
+    b = { x: p.x, y: p.y, width: 0, height: 0 };
+  }
+
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  let display: any;
+  try { display = screen.getDisplayNearestPoint({ x: cx, y: cy }); }
+  catch (_) { display = screen.getPrimaryDisplay(); }
+
+  const work = (display && display.workArea) || { x: 0, y: 0, width: 1920, height: 1080 };
+  const bounds = (display && display.bounds) || work;
+
+  const pad = 20;
+  const cardW = 340;
+  const gap = 6;
+
+  const dBottom = (bounds.y + bounds.height) - cy;
+  const dTop = cy - bounds.y;
+  let edge: 'bottom' | 'top' = 'bottom';
+  let windowX: number, windowY: number;
+
+  if (dTop < dBottom && dTop < 100) {
+    edge = 'top';
+    windowY = b.y + b.height + gap - pad;
+  } else {
+    edge = 'bottom';
+    windowY = b.y - windowH - gap + pad;
+  }
+
+  windowX = cx - windowW / 2;
+  windowX = Math.min(Math.max(windowX, bounds.x + 4), bounds.x + bounds.width - windowW - 4);
+  windowY = Math.min(Math.max(windowY, work.y + 4), bounds.y + bounds.height - windowH - 4);
+
+  const cardLeft = windowX + pad;
+  let tailOffset = cx - cardLeft - 8;
+  tailOffset = Math.min(Math.max(tailOffset, 16), cardW - 32);
+
+  return {
+    x: Math.round(windowX),
+    y: Math.round(windowY),
+    width: Math.round(windowW),
+    height: Math.round(windowH),
+    edge,
+    tailOffset: Math.round(tailOffset),
+  };
+}
+
+function showTrayPinTip(customAnchor?: any) {
+  const w = ensureTrayPinTipWin();
+  if (!w || w.isDestroyed()) return;
+
+  const anchor = customAnchor || (tray && !tray.isDestroyed() ? tray.getBounds() : null);
+  const geo = trayPinTipGeometry(anchor);
+
+  w.setBounds({ x: geo.x, y: geo.y, width: geo.width, height: geo.height });
+  if (!w.isVisible()) w.show();
+  w.focus();
+
+  const lang = getTrayLanguage();
+  const sendData = () => {
+    if (w && !w.isDestroyed()) {
+      w.webContents.send('tray-pin-tip-data', {
+        lang,
+        edge: geo.edge,
+        tailOffset: geo.tailOffset,
+      });
+    }
+  };
+
+  sendData();
+  w.webContents.once('did-finish-load', sendData);
+}
+
+function hideTrayPinTip() {
+  if (trayPinTipWin && !trayPinTipWin.isDestroyed()) {
+    trayPinTipWin.hide();
+  }
+}
+
 function rebuildTrayMenu(): void {
   if (!tray) return;
   const version = app.getVersion();
@@ -1604,6 +1774,12 @@ function createTray() {
   } catch (err: any) {
     console.warn('[TRAY] Failed to prewarm tray window:', err?.message || err);
   }
+
+  setTimeout(() => {
+    if (!hasSeenTrayPinTip()) {
+      showTrayPinTip();
+    }
+  }, 2000);
 
   if (process.platform === 'win32') {
     tray.on('mouse-enter', () => {
@@ -1698,7 +1874,8 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   }
 
   if (action === 'help-pin') {
-    openTaskbarIconSettings();
+    hideCustomTrayMenu();
+    showTrayPinTip();
     return;
   }
 
@@ -1802,6 +1979,42 @@ ipcMain.handle('tray:update-settings', (_event, settings) => {
   }
   updateCustomTrayMenuState();
   return { success: true };
+});
+
+ipcMain.on('tray-pin-tip-ready', (_event, size) => {
+  if (trayPinTipWin && !trayPinTipWin.isDestroyed() && size && size.height) {
+    const cur = trayPinTipWin.getBounds();
+    const h = Math.min(Math.max(size.height, 180), 300);
+    const w = Math.min(Math.max(size.width, 340), 450);
+    if (Math.abs(cur.height - h) > 4 || Math.abs(cur.width - w) > 4) {
+      const geo = trayPinTipGeometry(tray && !tray.isDestroyed() ? tray.getBounds() : null, w, h);
+      trayPinTipWin.setBounds({ x: geo.x, y: geo.y, width: geo.width, height: geo.height });
+    }
+  }
+});
+
+ipcMain.on('tray-pin-tip-dismiss', (_event, dontShowAgain) => {
+  if (dontShowAgain) {
+    setSeenTrayPinTip(true);
+  }
+  hideTrayPinTip();
+});
+
+ipcMain.on('tray-pin-tip-open-settings', (_event, dontShowAgain) => {
+  if (dontShowAgain) {
+    setSeenTrayPinTip(true);
+  }
+  hideTrayPinTip();
+  openTaskbarIconSettings();
+});
+
+ipcMain.handle('show-tray-pin-tip', () => {
+  showTrayPinTip();
+  return { success: true };
+});
+
+ipcMain.handle('get-seen-tray-pin-tip', () => {
+  return hasSeenTrayPinTip();
 });
 
 // =====================================

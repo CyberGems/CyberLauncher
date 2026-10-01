@@ -156,6 +156,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('tray:set-recents', items),
   updateTraySettings: (settings: { showTrayRecents?: boolean; showSuiteRecommendations?: boolean }) =>
     ipcRenderer.invoke('tray:update-settings', settings),
+  showTrayPinTip: () => ipcRenderer.invoke('show-tray-pin-tip'),
+  getSeenTrayPinTip: () => ipcRenderer.invoke('get-seen-tray-pin-tip'),
 
   // --- App versions / updates (CyberFeeds model) ---
   getAppVersions: () => ipcRenderer.invoke('app:get-versions'),

@@ -66,9 +66,48 @@ const trayMenuBridge = {
   },
 };
 
+const trayPinTipBridge = {
+  onData: (cb) => {
+    const handler = (_event, data) => {
+      try {
+        if (typeof cb === 'function') cb(data);
+      } catch (err) {
+        console.error('[PIN-TIP-PRELOAD] onData handler error:', err);
+      }
+    };
+    ipcRenderer.on('tray-pin-tip-data', handler);
+    return () => ipcRenderer.removeListener('tray-pin-tip-data', handler);
+  },
+  ready: (size) => {
+    try {
+      ipcRenderer.send('tray-pin-tip-ready', size);
+    } catch (err) {
+      console.error('[PIN-TIP-PRELOAD] ready error:', err);
+    }
+  },
+  dismiss: (dontShowAgain) => {
+    try {
+      ipcRenderer.send('tray-pin-tip-dismiss', !!dontShowAgain);
+    } catch (err) {
+      console.error('[PIN-TIP-PRELOAD] dismiss error:', err);
+    }
+  },
+  openSettings: (dontShowAgain) => {
+    try {
+      ipcRenderer.send('tray-pin-tip-open-settings', !!dontShowAgain);
+    } catch (err) {
+      console.error('[PIN-TIP-PRELOAD] openSettings error:', err);
+    }
+  },
+};
+
 try {
   contextBridge.exposeInMainWorld('trayMenu', trayMenuBridge);
-  contextBridge.exposeInMainWorld('electronAPI', { trayMenu: trayMenuBridge });
+  contextBridge.exposeInMainWorld('trayPinTip', trayPinTipBridge);
+  contextBridge.exposeInMainWorld('electronAPI', {
+    trayMenu: trayMenuBridge,
+    trayPinTip: trayPinTipBridge,
+  });
 } catch (err) {
-  console.error('[TRAY-PRELOAD] Failed to expose trayMenu bridge:', err);
+  console.error('[TRAY-PRELOAD] Failed to expose bridges:', err);
 }

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: local-resource:; script-src 'self'; font-src 'self';"
+  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberLauncher Tray Pin Tip</title>
+  <link rel="stylesheet" href="tray-pin-tip.css">
+</head>
+<body>
+  <div id="root" class="shell">
+    <div id="cardWrap" class="card-wrap edge-bottom">
+      <div id="card" class="card" role="dialog" aria-labelledby="title">
+        <div class="head">
+          <div class="head-left">
+            <div class="head-icon-box">
+              <img src="../icon.png" alt="" class="head-icon" onerror="this.src='../icon-20.png'">
+            </div>
+            <h3 id="title" class="head-title"></h3>
+          </div>
+          <button type="button" id="closeBtn" class="close-btn" aria-label="Dismiss">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <p id="body" class="body-text"></p>
+        <label class="dont-show-wrap">
+          <input type="checkbox" id="dontShowCheckbox" checked>
+          <span id="dontShowLabel"></span>
+        </label>
+        <div class="actions">
+          <button type="button" id="gotItBtn" class="btn btn-secondary"></button>
+          <button type="button" id="settingsBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" class="btn-icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span id="settingsBtnLabel"></span>
+          </button>
+        </div>
+      </div>
+      <div id="tailWrap" class="tail-wrap">
+        <svg id="tailSvg" class="tail-svg" viewBox="0 0 18 10">
+          <polygon id="tailPoly" points="0,0 9,10 18,0" />
+        </svg>
+      </div>
+    </div>
+  </div>
+  <script src="tray-pin-tip.js"></script>
+</body>
+</html>

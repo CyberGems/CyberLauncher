@@ -368,6 +368,8 @@ declare global {
       setHotspots: (corners: string[], delay: number) => Promise<{ success: boolean }>;
       openDevTools: () => Promise<{ success: boolean }>;
       openTaskbarSettings: () => Promise<{ success: boolean; error?: string }>;
+      showTrayPinTip?: () => Promise<{ success: boolean }>;
+      getSeenTrayPinTip?: () => Promise<boolean>;
       exportConfig: (jsonData: string) => Promise<string | null>;
       importConfig: () => Promise<string | null>;
       backupNow?: () => Promise<{ ok: boolean; file?: string; error?: string }>;
@@ -797,89 +799,7 @@ const TrayOverflowText = ({ text }: { text: string }) => {
   );
 };
 
-const TrayPinTip = React.memo(({
-  onClose,
-  onOpenSettings,
-  t
-}: {
-  onClose: (dontShowAgain: boolean) => void;
-  onOpenSettings: (dontShowAgain: boolean) => void;
-  t: (key: TranslationKey, variables?: Record<string, string>) => string;
-}) => {
-  const [dontShowAgain, setDontShowAgain] = useState(true);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 16, scale: 0.96 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      onClick={(e) => e.stopPropagation()}
-      data-no-hide="true"
-      className="fixed bottom-14 right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] bg-[#090d19]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.85),0_0_24px_rgba(34,211,238,0.2)] select-none"
-      role="dialog"
-      aria-labelledby="tray-pin-title"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 shrink-0">
-            <Pin className="w-4 h-4 text-cyan-400" />
-          </div>
-          <h3 id="tray-pin-title" className="text-sm font-cyber font-bold text-slate-100 tracking-wide leading-snug">
-            {t('tray_pin_tip_title')}
-          </h3>
-        </div>
-        <Tooltip label={t('tray_pin_tip_dismiss')} placement="bottom">
-          <button
-            type="button"
-            onClick={() => onClose(dontShowAgain)}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </Tooltip>
-      </div>
-
-      <p className="mt-2.5 text-xs leading-relaxed text-slate-300 font-sans">
-        <TrayOverflowText text={t('tray_pin_tip_body')} />
-      </p>
-
-      <label 
-        onClick={(e) => e.stopPropagation()}
-        data-no-hide="true"
-        className="mt-3 flex items-center gap-2 text-xs text-slate-400 hover:text-slate-300 cursor-pointer select-none"
-      >
-        <input
-          type="checkbox"
-          checked={dontShowAgain}
-          onChange={(e) => setDontShowAgain(e.target.checked)}
-          onClick={(e) => e.stopPropagation()}
-          data-no-hide="true"
-          className="w-3.5 h-3.5 rounded border-white/20 bg-black/40 accent-cyan-500 cursor-pointer"
-        />
-        <span data-no-hide="true">{t('tray_pin_tip_dont_show')}</span>
-      </label>
-
-      <div className="mt-3.5 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => onClose(dontShowAgain)}
-          className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
-        >
-          {t('tray_pin_tip_got_it')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenSettings(dontShowAgain)}
-          className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-cyber font-bold tracking-wide shadow-[0_0_15px_rgba(34,211,238,0.35)] hover:shadow-[0_0_20px_rgba(34,211,238,0.6)] transition-all cursor-pointer flex items-center gap-1.5"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          <span>{t('tray_pin_tip_open_settings')}</span>
-        </button>
-      </div>
-    </motion.div>
-  );
-});
 
 interface ScheduledTask {
   id: string;
@@ -2895,7 +2815,6 @@ export default function App() {
   const [showFooterLaunches, setShowFooterLaunches] = useState(() => localStorage.getItem('showFooterLaunches') !== 'false');
   const [showTrayRecents, setShowTrayRecents] = useState(() => localStorage.getItem('showTrayRecents') !== 'false');
   const [showSuiteRecommendations, setShowSuiteRecommendations] = useState(() => localStorage.getItem('showSuiteRecommendations') !== 'false');
-  const [showTrayPinTip, setShowTrayPinTip] = useState(false);
   const [sidebarStatsCollapsed, setSidebarStatsCollapsed] = useState(() => localStorage.getItem('sidebarStatsCollapsed') === 'true');
   const [bgColor, setBgColor] = useState(() => localStorage.getItem('bgColor') || PRESET_SOLIDS[0]);
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
@@ -3074,30 +2993,10 @@ export default function App() {
     localStorage.setItem('apps', JSON.stringify(apps));
   }, [apps]);
 
-  // Tray Pin Tip startup prompt and handlers
-  useEffect(() => {
-    const hasSeen = localStorage.getItem('cyber_has_seen_tray_pin_tip') === 'true';
-    if (!hasSeen) {
-      const timer = setTimeout(() => {
-        setShowTrayPinTip(true);
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  const handleDismissTrayPinTip = useCallback((dontShowAgain: boolean) => {
-    if (dontShowAgain) {
-      localStorage.setItem('cyber_has_seen_tray_pin_tip', 'true');
-    }
-    setShowTrayPinTip(false);
-  }, []);
-
-  const handleOpenTaskbarSettings = useCallback((dontShowAgain?: boolean) => {
-    if (dontShowAgain) {
-      localStorage.setItem('cyber_has_seen_tray_pin_tip', 'true');
-    }
-    setShowTrayPinTip(false);
-    if (isElectron && window.electronAPI?.openTaskbarSettings) {
+  const handleOpenTaskbarSettings = useCallback(() => {
+    if (isElectron && window.electronAPI?.showTrayPinTip) {
+      void window.electronAPI.showTrayPinTip();
+    } else if (isElectron && window.electronAPI?.openTaskbarSettings) {
       window.electronAPI.openTaskbarSettings();
     } else {
       setNotification({ message: t('notif_opening_windows_settings'), type: 'info' });
@@ -3342,15 +3241,15 @@ export default function App() {
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
 
-  // While Add/Edit App modal or TrayPinTip is open, block hide-on-blur (separate from native dialogs).
+  // While Add/Edit App modal is open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp || showTrayPinTip);
+    const open = !!(isAddingApp || editingApp);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp, showTrayPinTip]);
+  }, [isAddingApp, editingApp]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -4455,7 +4354,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || showTrayPinTip || !!backupToRestore || !!backupToDelete;
+  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete;
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -7253,7 +7152,11 @@ export default function App() {
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
-                        setShowTrayPinTip(true);
+                        if (window.electronAPI?.showTrayPinTip) {
+                          void window.electronAPI.showTrayPinTip();
+                        } else {
+                          handleOpenTaskbarSettings();
+                        }
                       }}
                       className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
                     >
@@ -9037,14 +8940,22 @@ export default function App() {
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
                         <button
                           type="button"
-                          onClick={() => setShowTrayPinTip(true)}
+                          onClick={() => {
+                            if (window.electronAPI?.showTrayPinTip) {
+                              void window.electronAPI.showTrayPinTip();
+                            }
+                          }}
                           className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-cyber font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
                         >
                           {t('sys_tray_pin_tip_btn')}
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleOpenTaskbarSettings(false)}
+                          onClick={() => {
+                            if (window.electronAPI?.openTaskbarSettings) {
+                              void window.electronAPI.openTaskbarSettings();
+                            }
+                          }}
                           className="px-3.5 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-xs font-cyber font-bold text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/50 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -11241,16 +11152,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- TRAY PIN TIP PROMPT --- */}
-      <AnimatePresence>
-        {showTrayPinTip && (
-          <TrayPinTip
-            onClose={handleDismissTrayPinTip}
-            onOpenSettings={handleOpenTaskbarSettings}
-            t={t}
-          />
-        )}
-      </AnimatePresence>
+      {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}
 
       <SystemHUD 
         isOpen={isSystemHUDOpen}
