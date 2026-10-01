@@ -2154,6 +2154,13 @@ export default function App() {
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [openedViaDrop, setOpenedViaDrop] = useState(false);
+  const [isGuideCardDismissed, setIsGuideCardDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hide_add_app_guide_card') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [isRecordingAppShortcut, setIsRecordingAppShortcut] = useState(false);
@@ -2332,11 +2339,19 @@ export default function App() {
         }
       }
     };
+    const handleBlurOrHide = () => {
+      setIsMoreMenuOpen(false);
+      setIsHelpSubmenuOpen(false);
+    };
     document.addEventListener('pointerdown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('blur', handleBlurOrHide);
+    document.addEventListener('visibilitychange', handleBlurOrHide);
     return () => {
       document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('blur', handleBlurOrHide);
+      document.removeEventListener('visibilitychange', handleBlurOrHide);
     };
   }, [isMoreMenuOpen, isHelpSubmenuOpen, getMoreMenuItems, getHelpSubmenuItems, focusMoreMenuItem, moreMenuKeyboardIndex]);
 
@@ -3455,6 +3470,8 @@ export default function App() {
       }, 50);
 
       setKeyboardNav(null);
+      setIsMoreMenuOpen(false);
+      setIsHelpSubmenuOpen(false);
 
       if (localStorage.getItem('resetOnLaunch') === 'false') return;
 
@@ -4993,6 +5010,13 @@ export default function App() {
           setIsAboutOpen(true);
           return;
         }
+      }
+
+      // F1 opens About / Help modal
+      if (e.key === 'F1' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setIsAboutOpen(prev => !prev);
+        return;
       }
 
       // F10 also toggles More menu
@@ -7166,7 +7190,7 @@ export default function App() {
       {!rightSidebarCollapsed && (
         <div 
           data-no-hide
-          className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
+          className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-20 transition-colors shrink-0 bg-white/5"
           style={getGlassStyle(0.6)}
           onMouseDown={startResizingRight}
         />
@@ -7175,7 +7199,7 @@ export default function App() {
       {/* --- RIGHT SIDEBAR (Recent + Most Used) --- */}
       <aside 
         ref={rightAsideRef}
-        className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-20 ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
+        className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-30 ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarCollapsed ? RIGHT_SIDEBAR_RAIL_WIDTH : rightSidebarWidth }}
       >
         <div className={`pt-3 pb-1 flex ${rightSidebarCollapsed ? 'px-1 flex-col items-center' : 'px-3 items-center justify-end'}`}>
@@ -7276,7 +7300,7 @@ export default function App() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -4 }}
                     transition={{ duration: 0.12 }}
-                    className={`${rightSidebarCollapsed ? 'fixed z-[60]' : 'absolute right-0 top-full mt-1.5 z-50'} w-[224px] p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none`}
+                    className={`${rightSidebarCollapsed ? 'fixed z-[70]' : 'absolute right-0 top-full mt-1.5 z-[70]'} w-[224px] p-1.5 rounded-xl bg-[#0c121e]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8),0_0_15px_rgba(34,211,238,0.1)] flex flex-col gap-0.5 select-none`}
                     style={rightSidebarCollapsed && moreMenuRef.current
                       ? (() => {
                           const rect = moreMenuRef.current!.getBoundingClientRect();
@@ -7535,8 +7559,10 @@ export default function App() {
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span className="flex-1">{t('more_menu_about')}</span>
-                      {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                      {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') ? (
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                      ) : (
+                        <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">F1</kbd>
                       )}
                     </button>
                   </motion.div>
@@ -7550,6 +7576,8 @@ export default function App() {
             <Tooltip label={withShortcut(t('tooltip_minimize'), 'Ctrl+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  setIsHelpSubmenuOpen(false);
                   if (isAlwaysOnTop) {
                     triggerPinFlash();
                     return;
@@ -8115,15 +8143,115 @@ export default function App() {
                     {isAddingApp ? t('app_add_title') : t('app_edit_title')}
                   </h2>
                 </div>
-                <button
-                  onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {isAddingApp && !openedViaDrop && isGuideCardDismissed && (
+                    <Tooltip label={t('app_add_guide_show')} placement="left">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsGuideCardDismissed(false);
+                          try { localStorage.removeItem('hide_add_app_guide_card'); } catch {}
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+                      >
+                        <HelpCircle className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  <button
+                    onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <div className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
+                {/* Informative / friendly card describing supported shortcut types */}
+                {isAddingApp && !openedViaDrop && !isGuideCardDismissed && (
+                  <div className="p-3.5 bg-gradient-to-br from-white/[0.04] to-cyan-950/20 border border-cyan-500/25 rounded-xl relative shadow-[0_4px_20px_rgba(0,0,0,0.25)] min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <h4 className="text-xs font-cyber font-bold text-cyan-300 tracking-wide">
+                          {t('app_add_guide_title')}
+                        </h4>
+                      </div>
+                      <Tooltip label={t('app_add_guide_dismiss')} placement="left">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsGuideCardDismissed(true);
+                            try { localStorage.setItem('hide_add_app_guide_card', 'true'); } catch {}
+                          }}
+                          className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </Tooltip>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
+                      {/* Apps & Scripts */}
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                        <Package className="w-3.5 h-3.5 text-violet-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                            {t('app_add_guide_type_apps_title')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                            {t('app_add_guide_type_apps_desc')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* System Folders */}
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                        <Folder className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                            {t('app_add_guide_type_folders_title')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                            {t('app_add_guide_type_folders_desc')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Web Links / URLs */}
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                        <Globe className="w-3.5 h-3.5 text-cyan-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                            {t('app_add_guide_type_urls_title')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                            {t('app_add_guide_type_urls_desc')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Files & Documents */}
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                        <FileText className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                            {t('app_add_guide_type_docs_title')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                            {t('app_add_guide_type_docs_desc')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-slate-400/90 italic flex items-center gap-1.5 border-t border-white/5 pt-2">
+                      <Sparkles className="w-2.5 h-2.5 text-cyan-400/70 shrink-0" />
+                      <span>{t('app_add_guide_tip')}</span>
+                    </div>
+                  </div>
+                )}
                 {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
                 {isAddingApp && !openedViaDrop && (
                   <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] min-w-0">

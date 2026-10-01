@@ -48,7 +48,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 ## ✨ Funciones principales
 
 ### 🔍 Lanzamiento y búsqueda
-- **Lanzamiento instantáneo**: abre cualquier app, acceso directo (`.lnk`) o URL con un solo clic o Intro
+- **Lanzamiento instantáneo**: abre cualquier app, carpeta, archivo o documento, acceso directo (`.lnk`) o URL con un solo clic o Intro
 - **Búsqueda difusa**: empieza a escribir para filtrar al instante tu biblioteca de apps (sin necesidad de coincidencia exacta)
 - **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y apps en todas las unidades
 - **Soporte UWP / Windows Store**: escanea, importa y lanza apps UWP y MSIX de forma nativa mediante AUMID
@@ -80,7 +80,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 ### ⚡ Usuarios avanzados
 - **Ejecutar como Administrador**: opción por app para solicitar privilegios elevados al iniciar
 - **Atajos globales por app**: asigna atajos personalizados para lanzar cualquier app desde cualquier lugar
-- **Arrastrar y soltar desde el Explorador**: arrastra archivos `.exe` o `.lnk` directamente al lanzador para añadirlos
+- **Arrastrar y soltar desde el Explorador**: arrastra aplicaciones, carpetas o cualquier archivo directamente al lanzador para agregarlos como accesos directos
 - **Actualizaciones automáticas**: comprobación y descarga automáticas mediante GitHub releases
 - **Exportar / Importar**: copia de seguridad y restauración de toda tu configuración en JSON
 - **Instancia única**: solo se ejecuta una instancia; un segundo lanzamiento enfoca la ventana existente

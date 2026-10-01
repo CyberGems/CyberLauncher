@@ -48,7 +48,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 ## ✨ Key Features
 
 ### 🔍 Launch & Search
-- **Instant Launch**: Open any app, shortcut (.lnk), or URL with a single click or Enter
+- **Instant Launch**: Open any app, folder, file/document, shortcut (.lnk), or URL with a single click or Enter
 - **Fuzzy Search**: Start typing to instantly filter your app library (no exact match needed)
 - **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
 - **UWP / Windows Store Support**: Natively scan, import, and launch UWP & MSIX apps via AUMID
@@ -80,7 +80,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 ### ⚡ Power User
 - **Run as Administrator**: Per-app option to request elevated privileges on launch
 - **Per-App Global Shortcuts**: Assign custom hotkeys to launch any app from anywhere
-- **Drag & Drop from Explorer**: Drag `.exe` or `.lnk` files directly into the launcher to add them
+- **Drag & Drop from Explorer**: Drag applications, folders, or files directly into the launcher to create instant shortcuts
 - **Auto-Updates**: Automatic update checks and downloads via GitHub releases
 - **Export / Import**: Backup and restore your entire configuration as JSON
 - **Single Instance**: Only one instance runs at a time; second launches focus the existing window
