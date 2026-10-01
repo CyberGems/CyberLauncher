@@ -7672,6 +7672,7 @@ export default function App() {
             onClose={() => setIsAboutOpen(false)}
             isElectron={isElectron}
             autoCheckSeq={aboutAutoCheckSeq}
+            showSuiteRecommendations={showSuiteRecommendations}
           />
         )}
       </AnimatePresence>
