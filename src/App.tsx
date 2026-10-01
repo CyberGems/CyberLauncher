@@ -6303,7 +6303,7 @@ export default function App() {
       onDrop={handleSystemDrop}
       onClick={(e) => {
         if (!hideOnClickDeadSpot || !isElectron) return;
-        if (suppressDeadSpotHideRef.current) return;
+        if (suppressDeadSpotHideRef.current || isDraggingFavRef.current || isTaskbarDraggingRef.current) return;
         if (isAnyModalOpen || isAnyContextMenuOpen || (Date.now() - lastContextMenuDismissedRef.current < 300)) return;
         const target = e.target as HTMLElement;
         if (target.closest('button, a, input, select, textarea, label, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
@@ -7687,6 +7687,7 @@ export default function App() {
               </h3>
               <div
                 ref={favContainerRef}
+                data-no-hide
                 className="relative flex flex-wrap gap-3 rounded-2xl p-2 -m-2"
                 data-cl-drop="favorites"
               >
@@ -7716,18 +7717,21 @@ export default function App() {
                         window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
                       }}
                       onDragStart={() => {
+                        suppressDeadSpotHideRef.current = true;
                         handleFavDragStart(app.id);
                       }}
                       onDrag={(_e, info) => {
                         handleFavLiveDrag(app.id, info.point.x, info.point.y);
                       }}
                       onDragEnd={() => {
-                        setTimeout(() => {
-                          isDraggingFavRef.current = false;
-                        }, 60);
                         setDraggedFavId(null);
                         slotRectsRef.current = [];
+                        setTimeout(() => {
+                          isDraggingFavRef.current = false;
+                          suppressDeadSpotHideRef.current = false;
+                        }, 350);
                       }}
+                      data-no-hide
                       data-fav-id={app.id}
                       className="relative touch-none flex-shrink-0"
                     >
@@ -7744,6 +7748,9 @@ export default function App() {
                         }
                       >
                         <div
+                          role="button"
+                          tabIndex={0}
+                          data-no-hide
                           data-nav-fav-index={favIdx}
                           onContextMenu={(e: any) => handleContextMenu(e, app, 'favorites')}
                           onClick={() => {
@@ -8736,16 +8743,18 @@ export default function App() {
                     window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
                   }}
                   onDragStart={() => {
+                    suppressDeadSpotHideRef.current = true;
                     isTaskbarDraggingRef.current = true;
                     setDraggedTaskbarId(app.id);
                     taskbarContainerRef.current?.classList.remove('taskbar-scrolling');
                     window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
                   }}
                   onDragEnd={() => {
+                    setDraggedTaskbarId(null);
                     setTimeout(() => {
                       isTaskbarDraggingRef.current = false;
-                    }, 60);
-                    setDraggedTaskbarId(null);
+                      suppressDeadSpotHideRef.current = false;
+                    }, 350);
                   }}
                 >
                   <Tooltip label={app.name} placement="top" delay={0}>
