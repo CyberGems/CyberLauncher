@@ -5528,7 +5528,7 @@ export default function App() {
               style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
             >
         <div className="p-6 flex items-center gap-2.5 min-w-0">
-          <Tooltip label={t('tooltip_about')} placement="bottom">
+          <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="bottom">
             <button 
               onClick={() => setIsAboutOpen(true)}
               className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer"
@@ -8252,15 +8252,15 @@ export default function App() {
                     </div>
                   </div>
                 )}
-                {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
+                {/* Tarjeta de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
                 {isAddingApp && !openedViaDrop && (
-                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] min-w-0">
+                  <div className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3 min-w-0 group/uwp">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
-                        <ScanSearch className="w-4 h-4 text-cyan-400" />
+                      <div className="p-2 bg-black/30 rounded-lg border border-white/5 shrink-0 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors">
+                        <ScanSearch className="w-4 h-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-cyber font-bold text-cyan-300 leading-tight">
+                        <h4 className="text-xs font-cyber font-semibold text-slate-200 group-hover/uwp:text-white transition-colors leading-tight">
                           {t('app_add_uwp_banner_title')}
                         </h4>
                         <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
@@ -8277,10 +8277,10 @@ export default function App() {
                         setSettingsTab('uwp');
                         setIsSettingsOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-cyber font-bold tracking-wide transition-all shrink-0 cursor-pointer hover:shadow-[0_0_12px_rgba(34,211,238,0.3)] active:scale-95"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 text-xs font-cyber font-medium tracking-wide transition-all shrink-0 cursor-pointer active:scale-95"
                     >
                       <span>{t('app_add_uwp_banner_btn')}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors" />
                     </button>
                   </div>
                 )}
@@ -8500,15 +8500,15 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Banner de acceso directo a Escáner WS (en la parte inferior si se abrió arrastrando) */}
+                {/* Tarjeta de acceso directo a Escáner WS (en la parte inferior si se abrió arrastrando) */}
                 {isAddingApp && openedViaDrop && (
-                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] mt-2 min-w-0">
+                  <div className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3 mt-2 min-w-0 group/uwp">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
-                        <ScanSearch className="w-4 h-4 text-cyan-400" />
+                      <div className="p-2 bg-black/30 rounded-lg border border-white/5 shrink-0 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors">
+                        <ScanSearch className="w-4 h-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-cyber font-bold text-cyan-300 leading-tight">
+                        <h4 className="text-xs font-cyber font-semibold text-slate-200 group-hover/uwp:text-white transition-colors leading-tight">
                           {t('app_add_uwp_banner_title')}
                         </h4>
                         <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
@@ -8525,10 +8525,10 @@ export default function App() {
                         setSettingsTab('uwp');
                         setIsSettingsOpen(true);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-cyber font-bold tracking-wide transition-all shrink-0 cursor-pointer hover:shadow-[0_0_12px_rgba(34,211,238,0.3)] active:scale-95"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 text-xs font-cyber font-medium tracking-wide transition-all shrink-0 cursor-pointer active:scale-95"
                     >
                       <span>{t('app_add_uwp_banner_btn')}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors" />
                     </button>
                   </div>
                 )}
