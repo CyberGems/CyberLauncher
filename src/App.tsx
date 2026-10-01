@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
@@ -79,6 +79,15 @@ const emptyEditForm = () => ({
   pinToFavorites: false,
   pinToTaskbar: false,
 });
+
+function withShortcut(label: ReactNode, shortcut: string): ReactNode {
+  return (
+    <>
+      <span>{label}</span>
+      <kbd className="tooltip-shortcut">{shortcut}</kbd>
+    </>
+  );
+}
 
 type LauncherApp = {
   id: number;
@@ -2160,10 +2169,31 @@ export default function App() {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isHelpSubmenuOpen, setIsHelpSubmenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const [moreMenuKeyboardIndex, setMoreMenuKeyboardIndex] = useState(0);
   const helpItemRef = useRef<HTMLDivElement>(null);
   const helpSubmenuRef = useRef<HTMLDivElement>(null);
   const helpLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [helpSubmenuPos, setHelpSubmenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const getMoreMenuItems = useCallback(() => {
+    if (!moreMenuRef.current) return [];
+    return Array.from(moreMenuRef.current.querySelectorAll<HTMLButtonElement>('.more-menu-item:not([disabled])'));
+  }, []);
+
+  const focusMoreMenuItem = useCallback((index: number) => {
+    const items = getMoreMenuItems();
+    if (items.length === 0) return false;
+    const nextIndex = (index + items.length) % items.length;
+    setMoreMenuKeyboardIndex(nextIndex);
+    items[nextIndex]?.focus();
+    return true;
+  }, [getMoreMenuItems]);
+
+  const getHelpSubmenuItems = useCallback(() => {
+    if (!helpSubmenuRef.current) return [];
+    return Array.from(helpSubmenuRef.current.querySelectorAll<HTMLButtonElement>('.help-submenu-item:not([disabled])'));
+  }, []);
 
   const keepHelpSubmenuOpen = useCallback(() => {
     if (helpLeaveTimerRef.current) clearTimeout(helpLeaveTimerRef.current);
@@ -2182,6 +2212,18 @@ export default function App() {
     }
   }, [isElectron]);
 
+  // Focus first item when More menu opens
+  useEffect(() => {
+    if (!isMoreMenuOpen) {
+      setIsHelpSubmenuOpen(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      focusMoreMenuItem(0);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [isMoreMenuOpen, focusMoreMenuItem]);
+
   useEffect(() => {
     if (!isMoreMenuOpen) return;
     const handleClickOutside = (e: MouseEvent | PointerEvent) => {
@@ -2195,11 +2237,99 @@ export default function App() {
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         if (isHelpSubmenuOpen) {
           setIsHelpSubmenuOpen(false);
+          const helpBtn = helpItemRef.current?.querySelector<HTMLButtonElement>('button');
+          helpBtn?.focus();
           return;
         }
         setIsMoreMenuOpen(false);
+        moreMenuButtonRef.current?.focus();
+        return;
+      }
+
+      if (isHelpSubmenuOpen) {
+        const subItems = getHelpSubmenuItems();
+        if (subItems.length > 0) {
+          const currentIdx = subItems.indexOf(document.activeElement as HTMLButtonElement);
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const next = currentIdx >= 0 ? (currentIdx + 1) % subItems.length : 0;
+            subItems[next]?.focus();
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            const next = currentIdx >= 0 ? (currentIdx - 1 + subItems.length) % subItems.length : subItems.length - 1;
+            subItems[next]?.focus();
+            return;
+          }
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsHelpSubmenuOpen(false);
+            const helpBtn = helpItemRef.current?.querySelector<HTMLButtonElement>('button');
+            helpBtn?.focus();
+            return;
+          }
+        }
+      } else {
+        const items = getMoreMenuItems();
+        if (items.length > 0) {
+          const currentIdx = items.indexOf(document.activeElement as HTMLButtonElement);
+          const baseIdx = currentIdx >= 0 ? currentIdx : moreMenuKeyboardIndex;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            focusMoreMenuItem(baseIdx + 1);
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            focusMoreMenuItem(baseIdx - 1);
+            return;
+          }
+          if (e.key === 'Home') {
+            e.preventDefault();
+            e.stopPropagation();
+            focusMoreMenuItem(0);
+            return;
+          }
+          if (e.key === 'End') {
+            e.preventDefault();
+            e.stopPropagation();
+            focusMoreMenuItem(items.length - 1);
+            return;
+          }
+          if (e.key === 'ArrowRight') {
+            const active = document.activeElement as HTMLButtonElement | null;
+            if (active && helpItemRef.current?.contains(active)) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsHelpSubmenuOpen(true);
+              setTimeout(() => {
+                const subItems = getHelpSubmenuItems();
+                subItems[0]?.focus();
+              }, 40);
+              return;
+            }
+          }
+        }
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        const active = document.activeElement as HTMLButtonElement | null;
+        if (active && (moreMenuRef.current?.contains(active) || helpSubmenuRef.current?.contains(active))) {
+          e.preventDefault();
+          e.stopPropagation();
+          active.click();
+          return;
+        }
       }
     };
     document.addEventListener('pointerdown', handleClickOutside);
@@ -2208,7 +2338,7 @@ export default function App() {
       document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMoreMenuOpen, isHelpSubmenuOpen]);
+  }, [isMoreMenuOpen, isHelpSubmenuOpen, getMoreMenuItems, getHelpSubmenuItems, focusMoreMenuItem, moreMenuKeyboardIndex]);
 
   useEffect(() => {
     if (!isMoreMenuOpen) setIsHelpSubmenuOpen(false);
@@ -4790,6 +4920,88 @@ export default function App() {
         }
       }
 
+      // Top bar keyboard shortcuts (single modifier: Ctrl)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        const key = e.key.toLowerCase();
+
+        // Ctrl+, -> Settings
+        if (e.key === ',' || key === ',') {
+          e.preventDefault();
+          setIsSettingsOpen(prev => !prev);
+          return;
+        }
+
+        // Ctrl+. -> More options menu
+        if (e.key === '.' || key === '.') {
+          e.preventDefault();
+          setIsMoreMenuOpen(prev => !prev);
+          return;
+        }
+
+        // Ctrl+M -> Minimize / Hide to tray
+        if (key === 'm') {
+          e.preventDefault();
+          if (isAlwaysOnTop) {
+            triggerPinFlash();
+          } else if (isElectron) {
+            window.electronAPI!.windowHideToTray();
+          } else {
+            setIsAppActive(false);
+          }
+          return;
+        }
+
+        // Ctrl+P -> Pin / Always on top
+        if (key === 'p') {
+          e.preventDefault();
+          setIsAlwaysOnTop(prev => !prev);
+          return;
+        }
+
+        // Ctrl+B -> Toggle right sidebar
+        if (key === 'b') {
+          e.preventDefault();
+          setIsMoreMenuOpen(false);
+          setRightSidebarCollapsed(prev => !prev);
+          return;
+        }
+
+        // Ctrl+H -> System HUD
+        if (key === 'h') {
+          e.preventDefault();
+          setIsSystemHUDOpen(prev => !prev);
+          return;
+        }
+
+        // Ctrl+D -> Storage HUD
+        if (key === 'd') {
+          e.preventDefault();
+          setIsStorageHUDOpen(prev => !prev);
+          return;
+        }
+
+        // Ctrl+T -> Clock HUD
+        if (key === 't' && showHeaderClock) {
+          e.preventDefault();
+          setIsClockHUDOpen(prev => !prev);
+          return;
+        }
+
+        // Ctrl+U -> Update / About (when update is available)
+        if (key === 'u' && autoUpdate && (updateStatus.state === 'available' || updateStatus.state === 'downloaded' || updateStatus.state === 'downloading')) {
+          e.preventDefault();
+          setIsAboutOpen(true);
+          return;
+        }
+      }
+
+      // F10 also toggles More menu
+      if (e.key === 'F10' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setIsMoreMenuOpen(prev => !prev);
+        return;
+      }
+
       // Hotkey para nuevo acceso: Ctrl + N (o Alt + +)
       if (((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.altKey && !e.shiftKey) ||
           (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
@@ -6074,17 +6286,17 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            <Tooltip label={t('hud_system')} placement="bottom">
+            <Tooltip label={withShortcut(t('hud_system'), 'Ctrl+H')} placement="bottom">
               <button 
-                onClick={() => setIsSystemHUDOpen(true)}
+                onClick={() => setIsSystemHUDOpen(prev => !prev)}
                 className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
               >
                 <SystemMonitor />
               </button>
             </Tooltip>
-            <Tooltip label={t('hud_storage')} placement="bottom">
+            <Tooltip label={withShortcut(t('hud_storage'), 'Ctrl+D')} placement="bottom">
               <button 
-                onClick={() => setIsStorageHUDOpen(true)}
+                onClick={() => setIsStorageHUDOpen(prev => !prev)}
                 className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
               >
                 <DiskMonitor />
@@ -6092,10 +6304,14 @@ export default function App() {
             </Tooltip>
             
             {showHeaderClock && (
-              <HeaderClock
-                onClick={() => setIsClockHUDOpen(true)}
-                title={t('hud_clock')}
-              />
+              <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement="bottom">
+                <div className="inline-flex items-center">
+                  <HeaderClock
+                    onClick={() => setIsClockHUDOpen(prev => !prev)}
+                    title={t('hud_clock')}
+                  />
+                </div>
+              </Tooltip>
             )}
           </div>
         </header>
@@ -6965,7 +7181,7 @@ export default function App() {
         <div className={`pt-3 pb-1 flex ${rightSidebarCollapsed ? 'px-1 flex-col items-center' : 'px-3 items-center justify-end'}`}>
           <div className={`flex gap-1 ${rightSidebarCollapsed ? 'flex-col items-center' : 'items-center'}`}>
             <Tooltip
-              label={rightSidebarCollapsed ? t('tooltip_right_sidebar_expand') : t('tooltip_right_sidebar_collapse')}
+              label={withShortcut(rightSidebarCollapsed ? t('tooltip_right_sidebar_expand') : t('tooltip_right_sidebar_collapse'), 'Ctrl+B')}
               placement={rightSidebarCollapsed ? 'left' : 'bottom'}
             >
               <button
@@ -6984,13 +7200,14 @@ export default function App() {
             {/* Update Available Button (CyberWall style - only if autoUpdate is enabled) */}
             {autoUpdate && (updateStatus.state === 'available' || updateStatus.state === 'downloaded' || updateStatus.state === 'downloading') && (
               <Tooltip 
-                label={
+                label={withShortcut(
                   updateStatus.state === 'downloaded'
                     ? t('about_status_downloaded', { version: (updateStatus as any).version || '' })
                     : updateStatus.state === 'downloading'
                     ? t('about_status_downloading', { percent: String((updateStatus as any).percent || 0) })
-                    : t('about_status_available', { version: (updateStatus as any).version || '' })
-                }
+                    : t('about_status_available', { version: (updateStatus as any).version || '' }),
+                  'Ctrl+U'
+                )}
                 placement={rightSidebarCollapsed ? 'left' : 'bottom'}
               >
                 <button
@@ -7003,7 +7220,7 @@ export default function App() {
               </Tooltip>
             )}
 
-            <Tooltip label={isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on'), 'Ctrl+P')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
                 className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none cursor-pointer ${
@@ -7023,10 +7240,10 @@ export default function App() {
                 }`} />
               </button>
             </Tooltip>
-            <Tooltip label={t('tooltip_settings')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(t('tooltip_settings'), 'Ctrl+,')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer"
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
               </button>
@@ -7034,13 +7251,14 @@ export default function App() {
 
             {/* More options menu dropdown (CyberFeeds style) */}
             <div className="relative" ref={moreMenuRef}>
-              <Tooltip label={t('tooltip_more')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+              <Tooltip label={withShortcut(t('tooltip_more'), 'Ctrl+.')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
                 <button
                   type="button"
+                  ref={moreMenuButtonRef}
                   onClick={() => setIsMoreMenuOpen(prev => !prev)}
                   aria-haspopup="true"
                   aria-expanded={isMoreMenuOpen}
-                  className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-colors group cursor-pointer ${
+                  className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-colors group cursor-pointer focus:outline-none ${
                     isMoreMenuOpen ? 'bg-white/15 text-white' : 'hover:bg-white/10 text-slate-400 hover:text-white'
                   }`}
                 >
@@ -7071,11 +7289,13 @@ export default function App() {
                     {/* Donate */}
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher#%EF%B8%8F-donate');
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white hover:bg-cyan-500/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white hover:bg-cyan-500/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Heart className="w-3.5 h-3.5 text-[#00D8F1] fill-[#00D8F1]/20 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(0,216,241,0.8)] transition-transform shrink-0" />
                       <span className="font-semibold text-[#00D8F1]">{t('more_menu_donate')}</span>
@@ -7086,11 +7306,13 @@ export default function App() {
                     {/* Quick Tools */}
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       disabled={isRefreshingIcons || !isElectron}
                       onClick={() => {
                         handleRefreshAllIcons();
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 disabled:opacity-50 transition-colors text-left"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
                       <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('more_menu_refresh_icons')}</span>
@@ -7098,12 +7320,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setSettingsTab('uwp');
                         setIsSettingsOpen(true);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <ScanSearch className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_uwp_scanner')}</span>
@@ -7111,6 +7335,8 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
@@ -7118,7 +7344,7 @@ export default function App() {
                         setSearchQuery('');
                         setTimeout(() => searchInputRef.current?.focus(), 50);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Terminal className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_terminal')}</span>
@@ -7126,11 +7352,13 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsSystemHUDOpen(true);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Cpu className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_hud_system')}</span>
@@ -7138,11 +7366,13 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsStorageHUDOpen(true);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <HardDrive className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_hud_storage')}</span>
@@ -7150,11 +7380,13 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsClockHUDOpen(true);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_hud_clock')}</span>
@@ -7170,10 +7402,12 @@ export default function App() {
                     >
                       <button
                         type="button"
+                        role="menuitem"
+                        tabIndex={-1}
                         onClick={() => setIsHelpSubmenuOpen(prev => !prev)}
                         aria-haspopup="true"
                         aria-expanded={isHelpSubmenuOpen}
-                        className={`group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left ${
+                        className={`more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 ${
                           isHelpSubmenuOpen ? 'text-white bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/10'
                         }`}
                       >
@@ -7207,6 +7441,8 @@ export default function App() {
                   >
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
@@ -7216,7 +7452,7 @@ export default function App() {
                           handleOpenTaskbarSettings();
                         }
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Pin className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_pin_tray')}</span>
@@ -7226,12 +7462,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/wiki');
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_docs')}</span>
@@ -7239,12 +7477,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/issues');
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_faq')}</span>
@@ -7252,12 +7492,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://github.com/CyberGems/CyberLauncher/releases');
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Tag className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_changelog')}</span>
@@ -7265,12 +7507,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
                         openExternalUrl('https://cybergems.org');
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Globe className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span>{t('more_menu_website')}</span>
@@ -7280,12 +7524,14 @@ export default function App() {
 
                     <button
                       type="button"
+                      role="menuitem"
+                      tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
                         setIsAboutOpen(true);
                       }}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left"
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span className="flex-1">{t('more_menu_about')}</span>
@@ -7301,7 +7547,7 @@ export default function App() {
 
             {/* Titlebar Divider before Window Controls */}
             <div className={rightSidebarCollapsed ? 'w-5 h-px bg-white/10 my-0.5' : 'w-[1px] h-3.5 bg-white/10 mx-0.5'} />
-            <Tooltip label={t('tooltip_minimize')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Ctrl+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
                   if (isAlwaysOnTop) {
@@ -7314,7 +7560,7 @@ export default function App() {
                     setIsAppActive(false);
                   }
                 }}
-                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer"
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none"
               >
                 <Shrink className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
               </button>
@@ -7877,10 +8123,10 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+              <div className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
                 {/* Banner de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
                 {isAddingApp && !openedViaDrop && (
-                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)]">
+                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] min-w-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
                         <ScanSearch className="w-4 h-4 text-cyan-400" />
@@ -7911,7 +8157,7 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-4 min-w-0">
                   {/* Name field */}
                   <div>
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_name')}</label>
@@ -7928,10 +8174,10 @@ export default function App() {
                   {/* Shortcut path field */}
                   <div>
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_path')}</label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 min-w-0">
                       <input
                         type="text"
-                        className="flex-1 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors font-mono"
+                        className="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors font-mono"
                         value={editForm.path}
                         onChange={(e) => setEditForm(prev => ({ ...prev, path: e.target.value }))}
                         onContextMenu={handleInputContextMenu}
@@ -7993,7 +8239,7 @@ export default function App() {
                   {(editForm.iconPath || isResolvingIcon) && (
                   <div>
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_icon')}</label>
-                    <div className="flex gap-3 items-center">
+                    <div className="flex gap-3 items-center min-w-0">
                       <div className="w-11 h-11 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-inner group">
                          {isResolvingIcon ? (
                            <div className="w-5 h-5 border-2 border-cyan-500/25 border-t-cyan-400 rounded-full animate-spin" />
@@ -8001,7 +8247,7 @@ export default function App() {
                            <img src={editForm.iconPath} alt="Preview" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]" />
                          )}
                       </div>
-                      <div className="flex-1 flex gap-2">
+                      <div className="flex-1 flex gap-2 min-w-0">
                         <input
                           type="text"
                           value={
@@ -8015,7 +8261,7 @@ export default function App() {
                           onChange={(e) => setEditForm({ ...editForm, iconPath: e.target.value })}
                           onContextMenu={handleInputContextMenu}
                           placeholder={t('app_icon_placeholder')}
-                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors"
+                          className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 transition-colors truncate"
                         />
                         {isElectron ? (
                           <>
@@ -8128,7 +8374,7 @@ export default function App() {
 
                 {/* Banner de acceso directo a Escáner WS (en la parte inferior si se abrió arrastrando) */}
                 {isAddingApp && openedViaDrop && (
-                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] mt-2">
+                  <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 via-cyan-950/20 to-transparent border border-cyan-500/25 rounded-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(34,211,238,0.06)] mt-2 min-w-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="p-2 bg-cyan-500/15 rounded-lg border border-cyan-500/30 shrink-0">
                         <ScanSearch className="w-4 h-4 text-cyan-400" />
@@ -11283,6 +11529,7 @@ export default function App() {
 
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
+          height: 0px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;

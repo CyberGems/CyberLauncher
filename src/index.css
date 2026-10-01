@@ -170,4 +170,20 @@ body[data-cl-drag="taskbar"] [data-cl-drop="taskbar"] {
   justify-content: center;
 }
 
+/* Tooltip keyboard shortcut badge (Suite standard from CyberFeeds) */
+.tooltip-shortcut {
+  color: #22d3ee;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+
 
