@@ -2330,6 +2330,7 @@ export default function App() {
   const [powerForceClose, setPowerForceClose] = useState<boolean>(false);
   const powerForceCloseRef = useRef(powerForceClose);
   powerForceCloseRef.current = powerForceClose;
+  const powerMenuRef = useRef<HTMLDivElement>(null);
   const lastContextMenuDismissedRef = useRef(0);
 
   // Launcher Activity State
@@ -3264,6 +3265,19 @@ export default function App() {
     }, 1000);
     return () => clearInterval(timer);
   }, [powerConfirmAction, handleExecutePowerAction]);
+
+  useEffect(() => {
+    if (!isPowerMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent | PointerEvent) => {
+      if (powerMenuRef.current && !powerMenuRef.current.contains(e.target as Node)) {
+        setIsPowerMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick, true);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick, true);
+    };
+  }, [isPowerMenuOpen]);
 
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(() => localStorage.getItem('isAlwaysOnTop') === 'true');
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
@@ -8861,7 +8875,7 @@ export default function App() {
                 }}
                 className="flex items-center gap-1.5 cursor-default hover:text-slate-200 transition-colors"
               >
-                <Power className="w-3.5 h-3.5 text-slate-400" />
+                <Activity className="w-3.5 h-3.5 text-slate-400" />
                 <UptimeMonitor />
               </div>
             </Tooltip>
@@ -8921,7 +8935,7 @@ export default function App() {
           )}
 
           {/* System Power Menu */}
-          <div className="relative">
+          <div className="relative" ref={powerMenuRef}>
             <Tooltip label={t('tooltip_power_menu')} placement="top">
               <button
                 type="button"
@@ -8944,123 +8958,114 @@ export default function App() {
             {/* Power Flyout */}
             <AnimatePresence>
               {isPowerMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-[110]"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsPowerMenuOpen(false);
-                    }}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                    transition={{ duration: 0.15, ease: 'easeOut' }}
-                    onClick={(e) => e.stopPropagation()}
-                    data-no-hide
-                    className="absolute right-0 bottom-full mb-3 w-64 bg-[#0a0f18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[120] select-none overflow-hidden"
-                  >
-                    <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <Power className="w-3.5 h-3.5 text-rose-400" />
-                        <span className="text-[11px] font-cyber font-bold tracking-wider text-slate-200 uppercase">
-                          {t('power_menu_title')}
-                        </span>
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  onClick={(e) => e.stopPropagation()}
+                  data-no-hide
+                  className="absolute right-0 bottom-full mb-3 w-72 min-w-[280px] bg-[#0a0f18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[120] select-none overflow-hidden"
+                >
+                  <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Power className="w-3.5 h-3.5 text-rose-400" />
+                      <span className="text-[11px] font-cyber font-bold tracking-wider text-slate-200 uppercase">
+                        {t('power_menu_title')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">Win</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPowerMenuOpen(false);
+                        setPowerConfirmAction('lock');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20 transition-all group cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Lock className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">Win</span>
-                    </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold">{t('power_action_lock')}</div>
+                        <div className="text-[10px] text-slate-400/80 leading-normal">{t('power_action_lock_desc')}</div>
+                      </div>
+                    </button>
 
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPowerMenuOpen(false);
-                          setPowerConfirmAction('lock');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-cyan-500/10 border border-transparent hover:border-cyan-500/20 transition-all group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
-                          <Lock className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold">{t('power_action_lock')}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_lock_desc')}</div>
-                        </div>
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPowerMenuOpen(false);
+                        setPowerConfirmAction('sleep');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-sky-500/10 border border-transparent hover:border-sky-500/20 transition-all group cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Moon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold">{t('power_action_sleep')}</div>
+                        <div className="text-[10px] text-slate-400/80 leading-normal">{t('power_action_sleep_desc')}</div>
+                      </div>
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPowerMenuOpen(false);
-                          setPowerConfirmAction('sleep');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-sky-500/10 border border-transparent hover:border-sky-500/20 transition-all group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-                          <Moon className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold">{t('power_action_sleep')}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_sleep_desc')}</div>
-                        </div>
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPowerMenuOpen(false);
+                        setPowerConfirmAction('signout');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all group cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+                        <LogOut className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold">{t('power_action_signout')}</div>
+                        <div className="text-[10px] text-slate-400/80 leading-normal">{t('power_action_signout_desc')}</div>
+                      </div>
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPowerMenuOpen(false);
-                          setPowerConfirmAction('signout');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform">
-                          <LogOut className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold">{t('power_action_signout')}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_signout_desc')}</div>
-                        </div>
-                      </button>
+                    <div className="h-px bg-white/5 my-1" />
 
-                      <div className="h-px bg-white/5 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPowerMenuOpen(false);
+                        setPowerConfirmAction('restart');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all group cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold">{t('power_action_restart')}</div>
+                        <div className="text-[10px] text-slate-400/80 leading-normal">{t('power_action_restart_desc')}</div>
+                      </div>
+                    </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPowerMenuOpen(false);
-                          setPowerConfirmAction('restart');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold">{t('power_action_restart')}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_restart_desc')}</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPowerMenuOpen(false);
-                          setPowerConfirmAction('shutdown');
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
-                          <Power className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-rose-300">{t('power_action_shutdown')}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{t('power_action_shutdown_desc')}</div>
-                        </div>
-                      </button>
-                    </div>
-                  </motion.div>
-                </>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPowerMenuOpen(false);
+                        setPowerConfirmAction('shutdown');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left flex items-center gap-3 text-slate-300 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all group cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Power className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-rose-300">{t('power_action_shutdown')}</div>
+                        <div className="text-[10px] text-slate-400/80 leading-normal">{t('power_action_shutdown_desc')}</div>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -12832,7 +12837,7 @@ export default function App() {
               {/* Countdown Progress Bar */}
               <div className="space-y-1.5 px-4">
                 <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                  <span className="uppercase tracking-wider">Auto-trigger in</span>
+                  <span className="uppercase tracking-wider">{t('power_confirm_countdown_label')}</span>
                   <span className="font-bold text-white font-digits text-xs tabular-nums">{powerCountdown}s</span>
                 </div>
                 <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
