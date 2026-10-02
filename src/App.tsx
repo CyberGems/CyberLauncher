@@ -17,7 +17,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command
+  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -3959,7 +3959,9 @@ export default function App() {
     const saved = localStorage.getItem('rightSidebarWidth');
     return saved ? parseInt(saved, 10) : 320;
   });
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(() => localStorage.getItem('leftSidebarCollapsed') === 'true');
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(() => localStorage.getItem('rightSidebarCollapsed') === 'true');
+  const LEFT_SIDEBAR_RAIL_WIDTH = 52;
   const RIGHT_SIDEBAR_RAIL_WIDTH = 52;
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
   const [isDraggingRight, setIsDraggingRight] = useState(false);
@@ -3977,6 +3979,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('rightSidebarWidth', rightSidebarWidth.toString());
   }, [rightSidebarWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('leftSidebarCollapsed', leftSidebarCollapsed.toString());
+  }, [leftSidebarCollapsed]);
 
   useEffect(() => {
     localStorage.setItem('rightSidebarCollapsed', rightSidebarCollapsed.toString());
@@ -4145,6 +4151,7 @@ export default function App() {
           if (source.hotspotCorners) setHotspotCorners(source.hotspotCorners);
           if (source.hotspotDelay !== undefined) setHotspotDelay(source.hotspotDelay);
           if (source.leftSidebarWidth !== undefined) setLeftSidebarWidth(source.leftSidebarWidth);
+          if (source.leftSidebarCollapsed !== undefined) setLeftSidebarCollapsed(!!source.leftSidebarCollapsed);
           if (source.rightSidebarWidth !== undefined) setRightSidebarWidth(source.rightSidebarWidth);
           if (source.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!source.rightSidebarCollapsed);
           if (source.showTaskbarIcon !== undefined) { setShowTaskbarIcon(source.showTaskbarIcon); if (isElectron) window.electronAPI!.setShowTaskbarIcon(source.showTaskbarIcon); }
@@ -4222,8 +4229,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4248,7 +4255,7 @@ export default function App() {
           bgGradient, glassIntensity, bgOpacity,
           startWithWindows, startMinimized, activationShortcut,
           hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen,
-          leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
+          leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
@@ -4276,7 +4283,7 @@ export default function App() {
     bgGradient, glassIntensity, bgOpacity,
     startWithWindows, startMinimized, activationShortcut,
     hotspotCorners, hotspotDelay,
-    leftSidebarWidth, rightSidebarWidth, rightSidebarCollapsed,
+    leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
     showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
@@ -4442,7 +4449,7 @@ export default function App() {
       'bgGradient', 'glassIntensity', 'bgOpacity',
       'startWithWindows', 'startMinimized', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
-      'leftSidebarWidth', 'rightSidebarWidth', 'rightSidebarCollapsed',
+      'leftSidebarWidth', 'leftSidebarCollapsed', 'rightSidebarWidth', 'rightSidebarCollapsed',
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
       'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
       'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast',
@@ -4589,6 +4596,10 @@ export default function App() {
       if (config.leftSidebarWidth !== undefined) {
         setLeftSidebarWidth(config.leftSidebarWidth);
         localStorage.setItem('leftSidebarWidth', config.leftSidebarWidth.toString());
+      }
+      if (config.leftSidebarCollapsed !== undefined) {
+        setLeftSidebarCollapsed(!!config.leftSidebarCollapsed);
+        localStorage.setItem('leftSidebarCollapsed', config.leftSidebarCollapsed.toString());
       }
       if (config.rightSidebarWidth !== undefined) {
         setRightSidebarWidth(config.rightSidebarWidth);
@@ -5087,6 +5098,7 @@ export default function App() {
         startWithWindows,
         startMinimized,
         leftSidebarWidth,
+        leftSidebarCollapsed,
         rightSidebarWidth,
         rightSidebarCollapsed,
         activationShortcut,
@@ -5146,6 +5158,7 @@ export default function App() {
         if (data.settings.startWithWindows !== undefined) setStartWithWindows(data.settings.startWithWindows);
         if (data.settings.startMinimized !== undefined) setStartMinimized(data.settings.startMinimized);
         if (data.settings.leftSidebarWidth !== undefined) setLeftSidebarWidth(data.settings.leftSidebarWidth);
+        if (data.settings.leftSidebarCollapsed !== undefined) setLeftSidebarCollapsed(!!data.settings.leftSidebarCollapsed);
         if (data.settings.rightSidebarWidth !== undefined) setRightSidebarWidth(data.settings.rightSidebarWidth);
         if (data.settings.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!data.settings.rightSidebarCollapsed);
         if (data.settings.activationShortcut !== undefined) setActivationShortcut(data.settings.activationShortcut);
@@ -5423,7 +5436,7 @@ export default function App() {
     const ro = new ResizeObserver(() => updateCategoryScrollState());
     ro.observe(el);
     return () => ro.disconnect();
-  }, [categoriesWithCount, sidebarStatsCollapsed, updateCategoryScrollState]);
+  }, [categoriesWithCount, sidebarStatsCollapsed, leftSidebarCollapsed, updateCategoryScrollState]);
 
   const categoryMaskClass = catScrollState.canScrollTop && catScrollState.canScrollBottom
     ? 'categories-fade-mask-both'
@@ -5519,6 +5532,28 @@ export default function App() {
         icon: <Terminal className="w-4 h-4 text-emerald-400" />,
         onSelect: () => {
           setIsTerminalOpen(true);
+        },
+      },
+      {
+        id: 'action-toggle-left-sidebar',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_toggle_left_sidebar'),
+        shortcut: 'Ctrl+Shift+B',
+        keywords: 'sidebar panel izquierdo categories categorias collapse expand alternar colapsar',
+        icon: <PanelLeft className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setLeftSidebarCollapsed(prev => !prev);
+        },
+      },
+      {
+        id: 'action-toggle-right-sidebar',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_toggle_right_sidebar'),
+        shortcut: 'Ctrl+B',
+        keywords: 'sidebar panel derecho shortcuts accesos recents most used collapse expand alternar colapsar',
+        icon: <PanelRight className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setRightSidebarCollapsed(prev => !prev);
         },
       },
 
@@ -6260,8 +6295,15 @@ export default function App() {
           return;
         }
 
+        // Ctrl+Shift+B -> Toggle left sidebar
+        if (key === 'b' && e.shiftKey) {
+          e.preventDefault();
+          setLeftSidebarCollapsed(prev => !prev);
+          return;
+        }
+
         // Ctrl+B -> Toggle right sidebar
-        if (key === 'b') {
+        if (key === 'b' && !e.shiftKey) {
           e.preventDefault();
           setIsMoreMenuOpen(false);
           setRightSidebarCollapsed(prev => !prev);
@@ -6824,57 +6866,117 @@ export default function App() {
             {/* --- LEFT SIDEBAR (Categories) --- */}
             <aside 
               ref={leftAsideRef}
-              className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-colors duration-200'}`}
-              style={{ ...getGlassStyle(0.8), width: leftSidebarWidth }}
+              className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-[width,background-color] duration-200'}`}
+              style={{ ...getGlassStyle(0.8), width: leftSidebarCollapsed ? LEFT_SIDEBAR_RAIL_WIDTH : leftSidebarWidth }}
             >
-        <div className="p-6 flex items-center gap-2.5 min-w-0">
-          <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="bottom">
-            <button 
-              onClick={() => setIsAboutOpen(true)}
-              className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer"
-            >
-              <span className="relative flex-shrink-0">
-                <CyberLogo className="w-8 h-8 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
-              </span>
-              <span className="font-cyber font-bold text-[15px] tracking-wide text-white truncate leading-none">
-                Cyber<span className="text-cyan-400">Launcher</span>
-              </span>
-            </button>
-          </Tooltip>
-        </div>
+        {!leftSidebarCollapsed ? (
+          <div className="pt-3 pb-2 px-3 flex items-center justify-between min-w-0">
+            <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="bottom">
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none"
+              >
+                <span className="relative flex-shrink-0">
+                  <CyberLogo className="w-7 h-7 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
+                </span>
+                <span className="font-cyber font-bold text-[14px] tracking-wide text-white truncate leading-none">
+                  Cyber<span className="text-cyan-400">Launcher</span>
+                </span>
+              </button>
+            </Tooltip>
+            <Tooltip label={withShortcut(t('tooltip_left_sidebar_collapse'), 'Ctrl+Shift+B')} placement="bottom">
+              <button
+                type="button"
+                onClick={() => setLeftSidebarCollapsed(true)}
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none shrink-0"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </button>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="pt-3 pb-1 flex flex-col items-center gap-1 shrink-0 px-1">
+            <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="right">
+              <button 
+                type="button"
+                onClick={() => setIsAboutOpen(true)}
+                className="group relative flex items-center justify-center w-7 h-7 cursor-pointer focus:outline-none"
+              >
+                <CyberLogo className="w-6 h-6 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
+              </button>
+            </Tooltip>
+            <Tooltip label={withShortcut(t('tooltip_left_sidebar_expand'), 'Ctrl+Shift+B')} placement="right">
+              <button
+                type="button"
+                onClick={() => setLeftSidebarCollapsed(false)}
+                className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none"
+              >
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </button>
+            </Tooltip>
+            <div className="w-5 h-px bg-white/10 my-0.5" />
+          </div>
+        )}
 
-        <div className="px-6 pb-2 flex items-center justify-between">
-          <span className="text-[11px] font-cyber font-semibold text-slate-400/80 tracking-wider">
-            {t('title_categories')}
-          </span>
-          <Tooltip 
-            label={
-              <span className="flex items-center gap-1.5">
-                <span>{t('tooltip_add_category')}</span>
-                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+Shift+N</kbd>
-              </span>
-            } 
-            placement="bottom"
-          >
-            <button 
-              onClick={() => {
-                setNewCategoryForm({ name: '', color: '#38bdf8' });
-                setIsAddingCategory(true);
-              }}
-              aria-label={`${t('tooltip_add_category')} (Ctrl+Shift+N)`}
-              aria-keyshortcuts="Control+Shift+N"
-              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        {!leftSidebarCollapsed ? (
+          <div className="px-3 pb-2 flex items-center justify-between">
+            <span className="text-[11px] font-cyber font-semibold text-slate-400/80 tracking-wider">
+              {t('title_categories')}
+            </span>
+            <Tooltip 
+              label={
+                <span className="flex items-center gap-1.5">
+                  <span>{t('tooltip_add_category')}</span>
+                  <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+Shift+N</kbd>
+                </span>
+              } 
+              placement="bottom"
             >
-              <Plus className="w-4 h-4" />
-            </button>
-          </Tooltip>
-        </div>
+              <button 
+                onClick={() => {
+                  setNewCategoryForm({ name: '', color: '#38bdf8' });
+                  setIsAddingCategory(true);
+                }}
+                aria-label={`${t('tooltip_add_category')} (Ctrl+Shift+N)`}
+                aria-keyshortcuts="Control+Shift+N"
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="pb-1.5 flex justify-center">
+            <Tooltip 
+              label={
+                <span className="flex items-center gap-1.5">
+                  <span>{t('tooltip_add_category')}</span>
+                  <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Ctrl+Shift+N</kbd>
+                </span>
+              } 
+              placement="right"
+            >
+              <button 
+                onClick={() => {
+                  setNewCategoryForm({ name: '', color: '#38bdf8' });
+                  setIsAddingCategory(true);
+                }}
+                aria-label={`${t('tooltip_add_category')} (Ctrl+Shift+N)`}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+        )}
 
         <div 
           ref={categoriesScrollRef}
           onScroll={updateCategoryScrollState}
           data-categories-scroll="true"
-          className={`flex-1 overflow-y-auto px-4 pt-2 pb-5 space-y-0.5 custom-scrollbar ${categoryMaskClass}`}
+          className={`flex-1 overflow-y-auto ${
+            leftSidebarCollapsed ? 'px-1 pt-1 pb-4 flex flex-col items-center gap-1.5' : 'px-4 pt-2 pb-5 space-y-0.5'
+          } custom-scrollbar ${categoryMaskClass}`}
         >
           {categoriesWithCount.map((cat, index) => {
             const isUncategorized = cat.id === UNCATEGORIZED_ID;
@@ -6883,6 +6985,69 @@ export default function App() {
             const isCatActive = activeCategory === cat.id;
             const hotkey = isUncategorized ? 'Alt+0' : (index < 9 ? `Alt+${index + 1}` : null);
             const displayName = t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name;
+
+            if (leftSidebarCollapsed) {
+              return (
+                <Tooltip
+                  key={cat.id}
+                  placement="right"
+                  label={
+                    <div className="flex items-center gap-2 font-medium text-xs">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color, boxShadow: `0 0 6px ${cat.color}` }} />
+                      <span>{displayName}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-cyan-200 tabular-nums font-mono font-semibold">
+                        {cat.count}
+                      </span>
+                      {hotkey && (
+                        <kbd className="px-1 py-0.5 text-[9px] font-mono bg-cyan-500/20 border border-cyan-400/40 rounded text-cyan-300 font-bold">
+                          {hotkey}
+                        </kbd>
+                      )}
+                    </div>
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory(cat.id)}
+                    onContextMenu={(e) => {
+                      if (isCanEditOrDelete) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setContextMenu(null);
+                        setSystemContextMenu(null);
+                        setCategoryContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          category: cat
+                        });
+                      }
+                    }}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer group relative ${
+                      isCatContextActive
+                        ? 'bg-blue-500/35 border border-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.5)] ring-1 ring-cyan-400/70'
+                        : isCatActive
+                        ? 'bg-blue-500/25 border border-blue-400/40 shadow-[0_0_8px_rgba(59,130,246,0.35)]'
+                        : 'border border-transparent hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    {cat.id === 'all' ? (
+                      <LayoutGrid className={`w-3.5 h-3.5 transition-colors ${isCatActive ? 'text-cyan-300' : 'text-slate-400 group-hover:text-white'}`} />
+                    ) : (
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-transform duration-150 group-hover:scale-125"
+                        style={{
+                          backgroundColor: cat.color,
+                          boxShadow: isCatActive || isCatContextActive ? `0 0 10px ${cat.color}` : `0 0 5px ${cat.color}60`
+                        }}
+                      />
+                    )}
+                    {isCatActive && (
+                      <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 rounded-r-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
+                    )}
+                  </button>
+                </Tooltip>
+              );
+            }
 
             const buttonEl = (
               <button
@@ -6975,80 +7140,84 @@ export default function App() {
           })}
         </div>
 
-        <div className="px-6 pt-4 pb-6">
-          <Tooltip label={sidebarStatsCollapsed ? t('tooltip_sidebar_stats_expand') : t('tooltip_sidebar_stats_collapse')} placement="right">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !sidebarStatsCollapsed;
-                setSidebarStatsCollapsed(next);
-                localStorage.setItem('sidebarStatsCollapsed', next.toString());
-              }}
-              className="flex items-center justify-center gap-2 w-full opacity-30 hover:opacity-60 transition-opacity cursor-pointer focus:outline-none group"
-            >
-              <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${sidebarStatsCollapsed ? 'rotate-180' : 'rotate-0'}`} />
-              <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
-            </button>
-          </Tooltip>
-
-          <AnimatePresence initial={false}>
-            {!sidebarStatsCollapsed && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                className="overflow-hidden"
+        {!leftSidebarCollapsed && (
+          <div className="px-6 pt-4 pb-6">
+            <Tooltip label={sidebarStatsCollapsed ? t('tooltip_sidebar_stats_expand') : t('tooltip_sidebar_stats_collapse')} placement="right">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !sidebarStatsCollapsed;
+                  setSidebarStatsCollapsed(next);
+                  localStorage.setItem('sidebarStatsCollapsed', next.toString());
+                }}
+                className="flex items-center justify-center gap-2 w-full opacity-30 hover:opacity-60 transition-opacity cursor-pointer focus:outline-none group"
               >
-                <div className="space-y-4 pt-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
-                      {t('title_apps')}
+                <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${sidebarStatsCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+                <div className="h-px bg-gradient-to-r from-transparent via-slate-400 to-transparent flex-1" />
+              </button>
+            </Tooltip>
+
+            <AnimatePresence initial={false}>
+              {!sidebarStatsCollapsed && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-4 pt-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
+                        {t('title_apps')}
+                      </div>
+                      <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
+                        <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                          {apps.length}
+                        </span>
+                      </Tooltip>
                     </div>
-                    <Tooltip label={t('tooltip_sidebar_apps')} placement="right">
-                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                        {apps.length}
-                      </span>
-                    </Tooltip>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
-                      {t('title_categories')}
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
+                        {t('title_categories')}
+                      </div>
+                      <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
+                        <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                          {categories.length - 1}
+                        </span>
+                      </Tooltip>
                     </div>
-                    <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
-                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                        {categories.length - 1}
-                      </span>
-                    </Tooltip>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
-                      {t('title_launches')}
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400/80 shrink-0 shadow-[0_0_4px_rgba(148,163,184,0.3)]" />
+                        {t('title_launches')}
+                      </div>
+                      <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
+                        <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
+                          {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
+                        </span>
+                      </Tooltip>
                     </div>
-                    <Tooltip label={t('tooltip_sidebar_launches')} placement="right">
-                      <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                        {apps.reduce((acc, app) => acc + (app.usage || 0), 0)}
-                      </span>
-                    </Tooltip>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </aside>
 
       {/* Resize Handle Left */}
-      <div 
-        data-no-hide
-        className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
-        style={getGlassStyle(0.6)}
-        onMouseDown={startResizingLeft}
-      />
+      {!leftSidebarCollapsed && (
+        <div 
+          data-no-hide
+          className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
+          style={getGlassStyle(0.6)}
+          onMouseDown={startResizingLeft}
+        />
+      )}
 
       {/* --- CENTER MAIN CONTENT --- */}
       <main 
