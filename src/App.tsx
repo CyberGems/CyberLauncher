@@ -5,6 +5,7 @@ import Tooltip from './Tooltip';
 import AboutModal, { UpdateStatus, peekReleaseNotes } from './AboutModal';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
+import CommandPalette, { type CommandPaletteItem } from './CommandPalette';
 import {
   Terminal, Globe, Lock, MousePointer2, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
@@ -16,7 +17,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database, Sparkles, FolderSearch, Moon, LogOut
+  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -2332,6 +2333,7 @@ export default function App() {
   powerForceCloseRef.current = powerForceClose;
   const powerMenuRef = useRef<HTMLDivElement>(null);
   const lastContextMenuDismissedRef = useRef(0);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -3271,6 +3273,11 @@ export default function App() {
     const handleOutsideClick = (e: MouseEvent | PointerEvent) => {
       if (powerMenuRef.current && !powerMenuRef.current.contains(e.target as Node)) {
         setIsPowerMenuOpen(false);
+        lastContextMenuDismissedRef.current = Date.now();
+        suppressDeadSpotHideRef.current = true;
+        setTimeout(() => {
+          suppressDeadSpotHideRef.current = false;
+        }, 300);
       }
     };
     document.addEventListener('pointerdown', handleOutsideClick, true);
@@ -5356,13 +5363,14 @@ export default function App() {
     fetchMonitors();
   }, []);
 
+  const getCatDisplayName = useCallback((cat: { id: string; name: string }) => {
+    const translationKey = `cat_${cat.id}` as TranslationKey;
+    const translated = t(translationKey);
+    return translated !== translationKey ? translated : cat.name;
+  }, [t]);
+
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
-    const getCatDisplayName = (cat: { id: string; name: string }) => {
-      const translationKey = `cat_${cat.id}` as TranslationKey;
-      const translated = t(translationKey);
-      return translated !== translationKey ? translated : cat.name;
-    };
 
     return categories.map(cat => ({
       ...cat,
@@ -5376,7 +5384,7 @@ export default function App() {
       const nameB = getCatDisplayName(b);
       return nameA.localeCompare(nameB, locale, { numeric: true, sensitivity: 'base' });
     });
-  }, [categories, apps, language, t]);
+  }, [categories, apps, language, getCatDisplayName]);
 
   const filteredApps = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
@@ -5410,7 +5418,352 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+
+  const paletteCommands = useMemo<CommandPaletteItem[]>(() => {
+    const items: CommandPaletteItem[] = [
+      // 1. Acciones Rápidas (Quick Actions)
+      {
+        id: 'action-add-app',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_add_app'),
+        description: t('cmd_palette_action_add_app_desc'),
+        shortcut: 'Ctrl+N',
+        keywords: 'new nuevo shortcut add agregar acceso directo app executable exe link',
+        icon: <Plus className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setOpenedViaDrop(false);
+          setEditForm(emptyEditForm());
+          setIsResolvingIcon(false);
+          setIsAddingApp(true);
+        },
+      },
+      {
+        id: 'action-add-cat',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_add_cat'),
+        description: t('cmd_palette_action_add_cat_desc'),
+        shortcut: 'Ctrl+Shift+N',
+        keywords: 'category categoria new nueva folder carpeta group grupo',
+        icon: <FolderPlus className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setNewCategoryForm({ name: '', color: '#38bdf8' });
+          setIsAddingCategory(true);
+        },
+      },
+      {
+        id: 'action-uwp',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_uwp'),
+        description: t('cmd_palette_action_uwp_desc'),
+        keywords: 'uwp store windows microsoft games scan escanear tienda',
+        icon: <ScanSearch className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setSettingsTab('uwp');
+          setIsSettingsOpen(true);
+        },
+      },
+      {
+        id: 'action-refresh-icons',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_refresh_icons'),
+        description: t('cmd_palette_action_refresh_icons_desc'),
+        keywords: 'icons iconos refresh actualizar reload cache extraer',
+        icon: <RefreshCw className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          void handleRefreshAllIcons();
+        },
+      },
+      {
+        id: 'action-terminal',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_terminal'),
+        description: t('cmd_palette_action_terminal_desc'),
+        shortcut: '>',
+        keywords: 'terminal console consola cmd powershell cli shell',
+        icon: <Terminal className="w-4 h-4 text-emerald-400" />,
+        onSelect: () => {
+          setIsTerminalOpen(true);
+        },
+      },
+
+      // 2. Navegación y Categorías (Navigation & Categories)
+      {
+        id: 'view-all',
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_all'),
+        keywords: 'all todas apps aplicaciones view ver',
+        icon: <LayoutGrid className="w-4 h-4 text-blue-400" />,
+        onSelect: () => {
+          setActiveCategory('all');
+          setSearchQuery('');
+        },
+      },
+      {
+        id: 'view-favorites',
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_favs'),
+        keywords: 'favorites favoritos stars estrellas pinned fijados',
+        icon: <Star className="w-4 h-4 text-amber-400" />,
+        onSelect: () => {
+          setActiveCategory('all');
+          setSearchQuery('');
+        },
+      },
+      {
+        id: 'view-most-used',
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_most_used'),
+        keywords: 'most used mas usadas frecuentes top',
+        icon: <Activity className="w-4 h-4 text-purple-400" />,
+        onSelect: () => {
+          setActiveCategory('all');
+        },
+      },
+      {
+        id: 'view-recents',
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_recents'),
+        keywords: 'recents recientes historial history launches',
+        icon: <History className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setActiveCategory('all');
+        },
+      },
+      {
+        id: 'view-uncategorized',
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_uncategorized'),
+        shortcut: 'Alt+0',
+        keywords: 'uncategorized sin categoria otros',
+        icon: <Tag className="w-4 h-4 text-slate-400" />,
+        onSelect: () => {
+          setActiveCategory(UNCATEGORIZED_ID);
+        },
+      },
+    ];
+
+    // Dynamic user categories
+    categoriesWithCount.forEach((cat, index) => {
+      if (cat.id === 'all' || cat.id === UNCATEGORIZED_ID) return;
+      const hotkey = index < 9 ? `Alt+${index + 1}` : undefined;
+      items.push({
+        id: `cat-${cat.id}`,
+        group: t('cmd_palette_group_views'),
+        label: t('cmd_palette_view_category', { name: getCatDisplayName(cat) }),
+        shortcut: hotkey,
+        keywords: `categoria category ${cat.name} ${getCatDisplayName(cat)}`,
+        icon: (
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: cat.color, boxShadow: `0 0 8px ${cat.color}` }}
+          />
+        ),
+        onSelect: () => {
+          setActiveCategory(cat.id);
+        },
+      });
+    });
+
+    // 3. Herramientas y HUDs (Tools & HUDs)
+    items.push(
+      {
+        id: 'tool-clock',
+        group: t('cmd_palette_group_tools'),
+        label: t('cmd_palette_tool_clock'),
+        description: t('cmd_palette_tool_clock_desc'),
+        shortcut: 'Ctrl+T',
+        keywords: 'clock reloj scheduler programador timer temporizador cron alarmas tareas',
+        icon: <Clock className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setIsClockHUDOpen(true);
+        },
+      },
+      {
+        id: 'tool-system',
+        group: t('cmd_palette_group_tools'),
+        label: t('cmd_palette_tool_system'),
+        description: t('cmd_palette_tool_system_desc'),
+        shortcut: 'Ctrl+H',
+        keywords: 'system sistema monitor cpu ram memory memoria hardware recursos metrics',
+        icon: <Cpu className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setIsSystemHUDOpen(true);
+        },
+      },
+      {
+        id: 'tool-storage',
+        group: t('cmd_palette_group_tools'),
+        label: t('cmd_palette_tool_storage'),
+        description: t('cmd_palette_tool_storage_desc'),
+        shortcut: 'Ctrl+D',
+        keywords: 'storage almacenamiento disco hard drive disk space espacio',
+        icon: <HardDrive className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setIsStorageHUDOpen(true);
+        },
+      },
+      {
+        id: 'tool-ext-terminal',
+        group: t('cmd_palette_group_tools'),
+        label: t('cmd_palette_tool_ext_terminal'),
+        description: t('cmd_palette_tool_ext_terminal_desc'),
+        keywords: 'wt windows terminal powershell external externa cmd consola',
+        icon: <ExternalLink className="w-4 h-4 text-slate-300" />,
+        onSelect: () => {
+          if (isElectron && window.electronAPI?.openExternalTerminal) {
+            window.electronAPI.openExternalTerminal(consoleCwd);
+          }
+        },
+      }
+    );
+
+    // 4. Configuración y Respaldos (Settings & Backups)
+    items.push(
+      {
+        id: 'setting-general',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_general'),
+        description: t('cmd_palette_setting_general_desc'),
+        shortcut: 'Ctrl+,',
+        keywords: 'settings configuracion opciones preferences tema background hotkeys',
+        icon: <Settings className="w-4 h-4 text-slate-300" />,
+        onSelect: () => {
+          setSettingsTab('general');
+          setIsSettingsOpen(true);
+        },
+      },
+      {
+        id: 'setting-backup-now',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_backup_now'),
+        description: t('cmd_palette_setting_backup_now_desc'),
+        keywords: 'backup respaldo snapshot copia seguridad ahora now',
+        icon: <Archive className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          void handleBackupNow();
+        },
+      },
+      {
+        id: 'setting-open-backups',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_open_backups'),
+        description: t('cmd_palette_setting_open_backups_desc'),
+        keywords: 'backups carpeta folder explorer abrir copias',
+        icon: <FolderOpen className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          handleOpenBackupsFolder();
+        },
+      },
+      {
+        id: 'setting-export',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_export'),
+        description: t('cmd_palette_setting_export_desc'),
+        keywords: 'export exportar json backup archivo guardar',
+        icon: <Download className="w-4 h-4 text-emerald-400" />,
+        onSelect: () => {
+          handleExport();
+        },
+      },
+      {
+        id: 'setting-import',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_import'),
+        description: t('cmd_palette_setting_import_desc'),
+        keywords: 'import importar json restaurar cargar load',
+        icon: <Upload className="w-4 h-4 text-purple-400" />,
+        onSelect: () => {
+          if (isElectron) {
+            handleImportNative();
+          }
+        },
+      },
+      {
+        id: 'setting-about',
+        group: t('cmd_palette_group_settings'),
+        label: t('cmd_palette_setting_about'),
+        description: t('cmd_palette_setting_about_desc'),
+        shortcut: 'F1',
+        keywords: 'about acerca version updates creditos ayuda docs wiki',
+        icon: <Info className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setIsAboutOpen(true);
+        },
+      }
+    );
+
+    // 5. Opciones de Energía (Power Actions)
+    items.push(
+      {
+        id: 'power-lock',
+        group: t('cmd_palette_group_power'),
+        label: t('power_action_lock'),
+        description: t('power_action_lock_desc'),
+        keywords: 'power energia lock bloquear sesion pantalla',
+        icon: <Lock className="w-4 h-4 text-amber-400" />,
+        onSelect: () => {
+          setPowerConfirmAction('lock');
+        },
+      },
+      {
+        id: 'power-sleep',
+        group: t('cmd_palette_group_power'),
+        label: t('power_action_sleep'),
+        description: t('power_action_sleep_desc'),
+        keywords: 'power energia sleep suspender reposo',
+        icon: <Moon className="w-4 h-4 text-indigo-400" />,
+        onSelect: () => {
+          setPowerConfirmAction('sleep');
+        },
+      },
+      {
+        id: 'power-signout',
+        group: t('cmd_palette_group_power'),
+        label: t('power_action_signout'),
+        description: t('power_action_signout_desc'),
+        keywords: 'power energia signout logout cerrar sesion usuario',
+        icon: <LogOut className="w-4 h-4 text-orange-400" />,
+        onSelect: () => {
+          setPowerConfirmAction('signout');
+        },
+      },
+      {
+        id: 'power-restart',
+        group: t('cmd_palette_group_power'),
+        label: t('power_action_restart'),
+        description: t('power_action_restart_desc'),
+        keywords: 'power energia restart reiniciar reboot windows',
+        icon: <RotateCcw className="w-4 h-4 text-emerald-400" />,
+        onSelect: () => {
+          setPowerConfirmAction('restart');
+        },
+      },
+      {
+        id: 'power-shutdown',
+        group: t('cmd_palette_group_power'),
+        label: t('power_action_shutdown'),
+        description: t('power_action_shutdown_desc'),
+        keywords: 'power energia shutdown apagar turn off pc equipo',
+        icon: <Power className="w-4 h-4 text-rose-400" />,
+        onSelect: () => {
+          setPowerConfirmAction('shutdown');
+        },
+      }
+    );
+
+    return items;
+  }, [
+    t,
+    categoriesWithCount,
+    getCatDisplayName,
+    handleRefreshAllIcons,
+    consoleCwd,
+    handleBackupNow,
+    handleOpenBackupsFolder,
+    handleExport,
+    handleImportNative,
+  ]);
 
   const getGridColumnCount = useCallback((): number => {
     if (!gridContainerRef.current) return 1;
@@ -5765,6 +6118,13 @@ export default function App() {
       if (e.defaultPrevented) return;
       if (isRecordingShortcut) return;
 
+      // Global Command Palette shortcut: Ctrl+K / Cmd+K
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+        return;
+      }
+
       if (e.key === 'Alt') {
         isAltHeldRef.current = true;
       }
@@ -6034,6 +6394,10 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
+        if (isCommandPaletteOpen) {
+          setIsCommandPaletteOpen(false);
+          return;
+        }
         if (powerConfirmAction) {
           setPowerConfirmAction(null);
         } else if (isPowerMenuOpen) {
@@ -6132,7 +6496,7 @@ export default function App() {
       if (altNumpadTimerRef.current) clearTimeout(altNumpadTimerRef.current);
     };
   }, [
-    isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
+    isCommandPaletteOpen, isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
     editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, confirmResetType,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav,
@@ -6741,6 +7105,14 @@ export default function App() {
                 }
               }}
               onKeyDown={async (e) => {
+                // Command Palette: Ctrl + K
+                if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsCommandPaletteOpen(prev => !prev);
+                  return;
+                }
+
                 // Hotkey para nuevo acceso: Ctrl + N (o Alt + +)
                 if (((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N') && !e.altKey && !e.shiftKey) ||
                     (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey)))) {
@@ -7202,29 +7574,57 @@ export default function App() {
                   </Tooltip>
                 </div>
               ) : (
-                <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                    }}
-                    className="flex items-center focus:outline-none cursor-pointer"
-                  >
-                    <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
-                      searchScope === 'system'
-                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
-                        : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
-                    }`}>
-                      {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
-                    </span>
-                  </button>
-                </Tooltip>
+                <>
+                  {!searchQuery && (
+                    <Tooltip label={t('cmd_palette_btn_tooltip')} placement="bottom">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCommandPaletteOpen(true);
+                        }}
+                        className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
+                        aria-label={t('cmd_palette_btn_tooltip')}
+                      >
+                        <Command className="w-3 h-3 text-cyan-400/80" />
+                        <span>Ctrl+K</span>
+                      </button>
+                    </Tooltip>
+                  )}
+                  <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
+                      }}
+                      className="flex items-center focus:outline-none cursor-pointer"
+                    >
+                      <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
+                        searchScope === 'system'
+                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
+                          : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
+                      }`}>
+                        {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
+                      </span>
+                    </button>
+                  </Tooltip>
+                </>
               )}
             </div>
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
+            <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement="bottom">
+              <button 
+                type="button"
+                onClick={() => setIsCommandPaletteOpen(prev => !prev)}
+                className="p-2 rounded-xl border border-white/10 bg-black/40 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                aria-label={t('cmd_palette_btn_tooltip')}
+              >
+                <Command className="w-4 h-4" />
+              </button>
+            </Tooltip>
             <Tooltip label={withShortcut(t('hud_system'), 'Ctrl+H')} placement="bottom">
               <button 
                 onClick={() => setIsSystemHUDOpen(prev => !prev)}
@@ -8936,7 +9336,7 @@ export default function App() {
 
           {/* System Power Menu */}
           <div className="relative" ref={powerMenuRef}>
-            <Tooltip label={t('tooltip_power_menu')} placement="top">
+            <Tooltip label={isPowerMenuOpen ? undefined : t('tooltip_power_menu')} placement="top">
               <button
                 type="button"
                 data-no-hide
@@ -13171,6 +13571,18 @@ export default function App() {
         preselectedAppId={schedulerPreselectedAppId}
         onClearPreselectedAppId={() => setSchedulerPreselectedAppId('')}
         t={t}
+      />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        commands={paletteCommands}
+        label={t('cmd_palette_title')}
+        placeholder={t('cmd_palette_placeholder')}
+        noResults={t('cmd_palette_no_results')}
+        navigateHint={t('cmd_palette_hint_navigate')}
+        executeHint={t('cmd_palette_hint_execute')}
+        closeHint={t('cmd_palette_hint_close')}
       />
 
       <style>{`
