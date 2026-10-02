@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
-import AboutModal, { UpdateStatus, peekReleaseNotes } from './AboutModal';
+import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import CommandPalette, { type CommandPaletteItem } from './CommandPalette';
@@ -12,7 +12,7 @@ import {
   Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
-  HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
+  HardDrive, Minimize2, Shrink, Download, SkipForward, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
@@ -4396,16 +4396,42 @@ export default function App() {
     return cleanup;
   }, []);
 
+  const handleSkipUpdateVersion = useCallback((version: string) => {
+    localStorage.setItem(SKIPPED_UPDATE_KEY, version);
+    setUpdateStatus((prev) => {
+      if (prev.state === 'available') {
+        return {
+          state: 'skipped',
+          version,
+          releaseNotes: prev.releaseNotes,
+          releaseUrl: prev.releaseUrl,
+        };
+      }
+      return prev;
+    });
+    setNotification(null);
+  }, []);
+
   // Update status: badge + toast (deduped per version/state)
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onUpdateStatus) return;
 
     const applyStatus = (status: UpdateStatus) => {
+      const skipped = localStorage.getItem(SKIPPED_UPDATE_KEY);
+      if (status.state === 'available' && isSkippedUpdateVersion(status.version, skipped)) {
+        setUpdateStatus({
+          state: 'skipped',
+          version: status.version,
+          releaseNotes: status.releaseNotes,
+          releaseUrl: status.releaseUrl,
+        });
+        return;
+      }
       setUpdateStatus(status);
       if (status.state === 'available' || status.state === 'downloaded') {
         const key = `${status.state}:${status.version}`;
         const seen = updateNotifSeenRef.current || localStorage.getItem('update_notif_seen') || '';
-        const detail = status.releaseNotes ? peekReleaseNotes(status.releaseNotes) : undefined;
+        const detail = status.releaseNotes ? peekReleaseNotes(status.releaseNotes, language) : undefined;
         const releaseUrl = status.releaseUrl;
         if (seen === key) {
           setNotification((prev) => {
@@ -4432,7 +4458,7 @@ export default function App() {
     window.electronAPI.getUpdateStatus?.().then((s) => { if (s) applyStatus(s); }).catch(() => {});
     const off = window.electronAPI.onUpdateStatus(applyStatus);
     return off;
-  }, [t]);
+  }, [t, language]);
 
   const handleAutoUpdateChange = useCallback((enabled: boolean) => {
     setAutoUpdate(enabled);
@@ -9734,6 +9760,7 @@ export default function App() {
             isElectron={isElectron}
             autoCheckSeq={aboutAutoCheckSeq}
             showSuiteRecommendations={showSuiteRecommendations}
+            onSkipUpdateVersion={handleSkipUpdateVersion}
           />
         )}
       </AnimatePresence>
@@ -13763,18 +13790,32 @@ export default function App() {
                     </button>
                   )}
                   {notification.action === 'open-about' && updateStatus.state === 'available' && (
-                    <button
-                      type="button"
-                      data-no-hide
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void window.electronAPI?.downloadUpdate?.();
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      {t('about_download_btn')}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        data-no-hide
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSkipUpdateVersion(updateStatus.version);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-600/40 bg-slate-700/30 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <SkipForward className="w-3 h-3 text-slate-400" />
+                        {t('about_skip_btn')}
+                      </button>
+                      <button
+                        type="button"
+                        data-no-hide
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void window.electronAPI?.downloadUpdate?.();
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3 h-3" />
+                        {t('about_download_btn')}
+                      </button>
+                    </>
                   )}
                 </div>
               )}
