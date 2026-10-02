@@ -50,13 +50,15 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 ### 🔍 Launch & Search
 - **Instant Launch**: Open any app, folder, file/document, shortcut (.lnk), or URL with a single click or Enter
 - **Fuzzy Search**: Start typing to instantly filter your app library (no exact match needed)
+- **Command Palette**: Press `Ctrl+K` for instant launcher command execution and quick navigation
 - **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
 - **UWP / Windows Store Support**: Natively scan, import, and launch UWP & MSIX apps via AUMID
 - **Console Mode**: Type `>` in search to execute shell commands directly
 
 ### 📂 Organization
 - **Custom Categories**: Organize apps into color-coded categories with inline editing
-- **Favorites & Drag-to-Reorder**: Pin most-used apps with drag & drop reordering
+- **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+B` or hover
+- **Favorites & Drag-to-Reorder**: Pin most-used apps with fluid live drag & drop reordering
 - **Taskbar**: Customizable bottom bar with pinned apps for quick access
 - **Resizable Panels**: Drag to resize the category sidebar and most-used panel
 
@@ -68,9 +70,11 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 
 ### 📊 System & Monitoring
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
+- **System Power Hub**: Fast access to Shutdown, Restart, Sleep, and Lock with a 10s safety confirmation modal
 - **Storage HUD**: View free space and status of all system drives
-- **Execution Scheduler**: Schedule app launches or console commands with a countdown timer
+- **Execution Scheduler**: Schedule app launches or console commands with standalone desktop alert countdowns
 - **Execution History**: Track and reopen everything you've launched, with clear-history option
+- **Scheduled Auto-Backups**: Automated recurring configuration backups with custom retention policies
 
 ### 🎨 Customization
 - **Theming**: Background images, gradients, solid colors, glass intensity, and opacity controls
@@ -78,6 +82,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Bilingual UI**: Full English and Spanish interface with instant language switcher
 
 ### ⚡ Power User
+- **Portable Mode**: Run CyberLauncher without installation, storing configuration beside the executable
 - **Run as Administrator**: Per-app option to request elevated privileges on launch
 - **Per-App Global Shortcuts**: Assign custom hotkeys to launch any app from anywhere
 - **Drag & Drop from Explorer**: Drag applications, folders, or files directly into the launcher to create instant shortcuts

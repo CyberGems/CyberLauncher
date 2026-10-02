@@ -50,13 +50,15 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 ### 🔍 Lanzamiento y búsqueda
 - **Lanzamiento instantáneo**: abre cualquier app, carpeta, archivo o documento, acceso directo (`.lnk`) o URL con un solo clic o Intro
 - **Búsqueda difusa**: empieza a escribir para filtrar al instante tu biblioteca de apps (sin necesidad de coincidencia exacta)
+- **Paleta de comandos**: presiona `Ctrl+K` para ejecutar comandos del lanzador y navegar al instante
 - **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y apps en todas las unidades
 - **Soporte UWP / Windows Store**: escanea, importa y lanza apps UWP y MSIX de forma nativa mediante AUMID
 - **Modo consola**: escribe `>` en la búsqueda para ejecutar comandos del shell directamente
 
 ### 📂 Organización
 - **Categorías personalizadas**: organiza apps en categorías con código de color y edición en línea
-- **Favoritos y reordenar con arrastrar**: fija tus apps más usadas y reordénalas con arrastrar y soltar
+- **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+B` o al pasar el cursor
+- **Favoritos y reordenar con arrastrar**: fija tus apps más usadas y reordénalas con arrastre fluido en tiempo real
 - **Barra de tareas**: barra inferior personalizable con apps ancladas de acceso rápido
 - **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usadas
 
@@ -68,9 +70,11 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 
 ### 📊 Sistema y monitorización
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior
+- **Centro de energía del sistema**: acceso rápido a Apagar, Reiniciar, Suspender y Bloquear con cuenta regresiva de seguridad de 10s
 - **HUD de almacenamiento**: espacio libre y estado de todas las unidades del sistema
-- **Programador de ejecuciones**: programa lanzamientos de apps o comandos de consola con temporizador de cuenta regresiva
+- **Programador de ejecuciones**: programa lanzamientos de apps o comandos con alertas flotantes independientes en el escritorio
 - **Historial de ejecución**: registra y reabre todo lo que has lanzado, con opción de limpiar el historial
+- **Copias de seguridad automáticas**: copias de seguridad recurrentes programables con políticas de retención
 
 ### 🎨 Personalización
 - **Temas**: imágenes de fondo, degradados, colores sólidos, intensidad del cristal y controles de opacidad
@@ -78,6 +82,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Interfaz bilingüe**: interfaz completa en inglés y español con selector de idioma instantáneo
 
 ### ⚡ Usuarios avanzados
+- **Modo portable**: ejecuta CyberLauncher sin instalación, almacenando la configuración junto al ejecutable
 - **Ejecutar como Administrador**: opción por app para solicitar privilegios elevados al iniciar
 - **Atajos globales por app**: asigna atajos personalizados para lanzar cualquier app desde cualquier lugar
 - **Arrastrar y soltar desde el Explorador**: arrastra aplicaciones, carpetas o cualquier archivo directamente al lanzador para agregarlos como accesos directos

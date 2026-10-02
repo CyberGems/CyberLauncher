@@ -61,13 +61,24 @@ jobs:
             "pending"
           }
 
+          $portable = Get-ChildItem -Path "release" -Filter "CyberLauncher-Portable-*.exe" |
+            Where-Object { $_.Name -notlike "*.blockmap*" } |
+            Select-Object -First 1
+          $portableHash = if ($portable) {
+            (Get-FileHash $portable.FullName -Algorithm SHA256).Hash.ToLower()
+          } else {
+            "pending"
+          }
+
           Write-Host "Installer: $($installer.FullName) [SHA256: $installerHash]"
+          Write-Host "Portable: $($portable.FullName) [SHA256: $portableHash]"
 
           $template = [System.IO.File]::ReadAllText(".github/release-template.md", [System.Text.Encoding]::UTF8)
           $notes = $template.
             Replace("{{VERSION_NUM}}", $versionNum).
             Replace("{{VERSION}}", $tag).
-            Replace("{{INSTALLER_HASH}}", $installerHash)
+            Replace("{{INSTALLER_HASH}}", $installerHash).
+            Replace("{{PORTABLE_HASH}}", $portableHash)
           $utf8 = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText("FINAL_RELEASE_NOTES.md", $notes, $utf8)
 
