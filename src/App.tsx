@@ -8222,7 +8222,7 @@ export default function App() {
                             setKeyboardNav(null);
                             handleLaunchApp(app);
                           }}
-                          className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-grab active:cursor-grabbing select-none ${app.color} ${
+                          className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-pointer active:cursor-grabbing select-none ${app.color} ${
                             isFavActive
                               ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 z-30'
                               : isBeingDragged
@@ -8455,13 +8455,13 @@ export default function App() {
                           />
                           <div className="w-full">
                             <h4 
-                              className="font-semibold text-slate-100 leading-tight mb-0.5 drop-shadow-sm truncate w-full"
+                              className="font-semibold text-slate-100 leading-tight mb-0.5 drop-shadow-sm truncate w-full cursor-pointer"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
                               {app.name}
                             </h4>
                             <p 
-                              className="text-slate-400 truncate w-full"
+                              className="text-slate-400 truncate w-full cursor-pointer"
                               style={{ fontSize: `${10 * (cardScale / 100)}px` }}
                             >
                               {getCategoryDisplayName(app.category, t)}
@@ -8481,13 +8481,13 @@ export default function App() {
                           />
                           <div className="flex flex-col justify-center min-w-0 pr-2">
                             <h4 
-                              className="font-medium text-slate-100 truncate"
+                              className="font-medium text-slate-100 truncate cursor-pointer"
                               style={{ fontSize: `${14 * (cardScale / 100)}px` }}
                             >
                               {app.name}
                             </h4>
                             <p 
-                              className="text-slate-400 truncate"
+                              className="text-slate-400 truncate cursor-pointer"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
                               {getCategoryDisplayName(app.category, t)}
@@ -9231,7 +9231,7 @@ export default function App() {
                         if (isTaskbarDraggingRef.current) return;
                         handleLaunchApp(app);
                       }}
-                      className={`group relative focus:outline-none p-1 cursor-grab active:cursor-grabbing select-none rounded-lg transition-[background-color,box-shadow,border-color] duration-150 ${
+                      className={`group relative focus:outline-none p-1 cursor-pointer active:cursor-grabbing select-none rounded-lg transition-[background-color,box-shadow,border-color] duration-150 ${
                         isTaskbarContextActive
                           ? 'bg-cyan-500/25 ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)]'
                           : isBeingDragged
