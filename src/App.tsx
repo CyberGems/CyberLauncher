@@ -3971,6 +3971,8 @@ export default function App() {
   const pendingRightWidth = useRef<number | null>(null);
   /** Suppress hide-on-dead-spot for the click that follows a column resize mouseup. */
   const suppressDeadSpotHideRef = useRef(false);
+  /** Tracks where mousedown initiated to distinguish genuine dead-spot clicks from cancelled drags/clicks. */
+  const deadSpotMouseDownRef = useRef<{ x: number; y: number; isDeadSpot: boolean }>({ x: 0, y: 0, isDeadSpot: false });
 
   useEffect(() => {
     localStorage.setItem('leftSidebarWidth', leftSidebarWidth.toString());
@@ -6806,12 +6808,35 @@ export default function App() {
       onDragOver={handleSystemDragOver}
       onDragLeave={handleSystemDragLeave}
       onDrop={handleSystemDrop}
+      onMouseDownCapture={(e) => {
+        if (e.button !== 0) {
+          deadSpotMouseDownRef.current = { x: e.clientX, y: e.clientY, isDeadSpot: false };
+          return;
+        }
+        const target = e.target as HTMLElement | null;
+        const isInteractive = !!target?.closest(
+          'button, a, input, select, textarea, label, [role="button"], [role="tab"], [role="menuitem"], [contenteditable], [data-no-hide], [data-app-card], [data-nav-app-index], [data-search-result-index], .cursor-pointer'
+        );
+        deadSpotMouseDownRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          isDeadSpot: !isInteractive,
+        };
+      }}
       onClick={(e) => {
         if (!hideOnClickDeadSpot || !isElectron) return;
         if (suppressDeadSpotHideRef.current || isDraggingFavRef.current || isTaskbarDraggingRef.current) return;
         if (isAnyModalOpen || isAnyContextMenuOpen || (Date.now() - lastContextMenuDismissedRef.current < 300)) return;
+        
+        // If mousedown didn't start on a dead spot, this was an aborted click from an interactive element (e.g. dragging off an app card)
+        if (!deadSpotMouseDownRef.current.isDeadSpot) return;
+
+        // If the mouse moved between mousedown and mouseup (e.g. dragging a scrollbar or drag-selecting), don't hide
+        const dragDist = Math.hypot(e.clientX - deadSpotMouseDownRef.current.x, e.clientY - deadSpotMouseDownRef.current.y);
+        if (dragDist > 8) return;
+
         const target = e.target as HTMLElement;
-        if (target.closest('button, a, input, select, textarea, label, [role="button"], [role="tab"], [contenteditable], [data-no-hide]')) return;
+        if (target.closest('button, a, input, select, textarea, label, [role="button"], [role="tab"], [role="menuitem"], [contenteditable], [data-no-hide], [data-app-card], [data-nav-app-index], [data-search-result-index], .cursor-pointer')) return;
         if (isAlwaysOnTop) {
           triggerPinFlash();
           return;
@@ -8611,11 +8636,23 @@ export default function App() {
                     {...motionProps}
                     key={`app-${viewMode}-${activeCategory}-${app.id}`}
                     data-app-card="true"
+                    data-no-hide="true"
                     data-nav-app-index={index}
+                    role="button"
+                    tabIndex={0}
                     onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, app)}
-                    onClick={() => {
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
                       setKeyboardNav(null);
                       handleLaunchApp(app);
+                    }}
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setKeyboardNav(null);
+                        handleLaunchApp(app);
+                      }
                     }}
                     style={{
                       padding: viewMode === 'grid' 
