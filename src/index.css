@@ -189,6 +189,20 @@ body[data-cl-drag] * {
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
+/* Fade masks for categories sidebar overflow */
+.categories-fade-mask-bottom {
+  mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+}
+.categories-fade-mask-both {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 32px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 32px), transparent 100%);
+}
+.categories-fade-mask-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black 100%);
+}
+
 /* Instantly suppress taskbar hover effects during wheel scroll until cursor moves */
 .taskbar-scrolling [data-taskbar-btn]:not([data-context-active="true"]) [data-taskbar-indicator] {
   opacity: 0 !important;

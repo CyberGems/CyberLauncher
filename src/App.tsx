@@ -5398,6 +5398,41 @@ export default function App() {
     });
   }, [apps, activeCategory, categories, searchQuery, language, appsSortOrder]);
 
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+  const [catScrollState, setCatScrollState] = useState<{ canScrollTop: boolean; canScrollBottom: boolean }>({
+    canScrollTop: false,
+    canScrollBottom: false,
+  });
+
+  const updateCategoryScrollState = useCallback(() => {
+    const el = categoriesScrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const canScrollBottom = scrollHeight - scrollTop - clientHeight > 4;
+    const canScrollTop = scrollTop > 4;
+    setCatScrollState(prev => {
+      if (prev.canScrollTop === canScrollTop && prev.canScrollBottom === canScrollBottom) return prev;
+      return { canScrollTop, canScrollBottom };
+    });
+  }, []);
+
+  useEffect(() => {
+    updateCategoryScrollState();
+    const el = categoriesScrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => updateCategoryScrollState());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [categoriesWithCount, sidebarStatsCollapsed, updateCategoryScrollState]);
+
+  const categoryMaskClass = catScrollState.canScrollTop && catScrollState.canScrollBottom
+    ? 'categories-fade-mask-both'
+    : catScrollState.canScrollBottom
+    ? 'categories-fade-mask-bottom'
+    : catScrollState.canScrollTop
+    ? 'categories-fade-mask-top'
+    : '';
+
   const appNameLetter = (name: string) => {
     const ch = (name || '').normalize('NFD').replace(/\p{M}/gu, '').charAt(0).toUpperCase();
     return /[A-Z0-9]/i.test(ch) ? ch : '#';
@@ -6835,7 +6870,12 @@ export default function App() {
           </Tooltip>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-0.5 custom-scrollbar">
+        <div 
+          ref={categoriesScrollRef}
+          onScroll={updateCategoryScrollState}
+          data-categories-scroll="true"
+          className={`flex-1 overflow-y-auto px-4 pt-2 pb-5 space-y-0.5 custom-scrollbar ${categoryMaskClass}`}
+        >
           {categoriesWithCount.map((cat, index) => {
             const isUncategorized = cat.id === UNCATEGORIZED_ID;
             const isCanEditOrDelete = cat.id !== 'all' && !isUncategorized;
@@ -8607,26 +8647,6 @@ export default function App() {
               </Tooltip>
             )}
 
-            <Tooltip label={withShortcut(isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on'), 'Ctrl+P')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
-              <button 
-                onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
-                className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none cursor-pointer ${
-                  isPinFlashing 
-                    ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
-                    : isAlwaysOnTop 
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.4)]' 
-                    : 'hover:bg-white/10 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Pin className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                  isPinFlashing 
-                    ? 'scale-125 text-red-400' 
-                    : isAlwaysOnTop 
-                    ? 'fill-cyan-400' 
-                    : 'rotate-45'
-                }`} />
-              </button>
-            </Tooltip>
             <Tooltip label={withShortcut(t('tooltip_settings'), 'Ctrl+,')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
@@ -8943,6 +8963,28 @@ export default function App() {
 
             {/* Titlebar Divider before Window Controls */}
             <div className={rightSidebarCollapsed ? 'w-5 h-px bg-white/10 my-0.5' : 'w-[1px] h-3.5 bg-white/10 mx-0.5'} />
+
+            <Tooltip label={withShortcut(isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on'), 'Ctrl+P')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+              <button 
+                onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
+                className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none cursor-pointer ${
+                  isPinFlashing 
+                    ? 'bg-red-500/30 text-red-400 border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.7)] animate-bounce' 
+                    : isAlwaysOnTop 
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.4)]' 
+                    : 'hover:bg-white/10 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Pin className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  isPinFlashing 
+                    ? 'scale-125 text-red-400' 
+                    : isAlwaysOnTop 
+                    ? 'fill-cyan-400' 
+                    : 'rotate-45'
+                }`} />
+              </button>
+            </Tooltip>
+
             <Tooltip label={withShortcut(t('tooltip_minimize'), 'Ctrl+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
@@ -13641,7 +13683,8 @@ export default function App() {
         }
 
         /* Sidebar narrower scrollbar */
-        .custom-scrollbar[class*="px-4"][class*="py-2"][class*="space-y-0"]::-webkit-scrollbar {
+        [data-categories-scroll]::-webkit-scrollbar,
+        .custom-scrollbar[class*="px-4"][class*="space-y-0"]::-webkit-scrollbar {
           width: 3px;
         }
       `}</style>
