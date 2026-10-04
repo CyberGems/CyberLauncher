@@ -3202,7 +3202,7 @@ async function buildSystemIndex() {
 // =====================================
 // IPC HANDLERS
 // =====================================
-async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<{ success: boolean; error?: string }> {
+async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<{ success: boolean; error?: string; code?: 'not-found' | 'launch-failed' }> {
   if (!appPath) return { success: false, error: 'No path provided' };
 
   try {
@@ -3251,7 +3251,25 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
       } else if (fs.existsSync(psCandidate)) {
         targetPath = psCandidate;
       } else {
-        return { success: false, error: `Ruta no encontrada: ${targetPath}` };
+        return { success: false, error: `Ruta no encontrada: ${targetPath}`, code: 'not-found' };
+      }
+    }
+
+    // A .lnk can exist while its destination has been moved or removed.
+    // Check absolute/path-like destinations so Windows does not report a broken link as a successful launch.
+    if (path.extname(targetPath).toLowerCase() === '.lnk') {
+      const shortcut = shell.readShortcutLink(targetPath);
+      const shortcutTarget = shortcut.target?.trim();
+      const targetIsUri = !!shortcutTarget && /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(shortcutTarget) && !/^[a-zA-Z]:[\\/]/.test(shortcutTarget);
+      const targetIsUwp = !!shortcutTarget && shortcutTarget.includes('!') && shortcutTarget.includes('_');
+      const targetLooksLikePath = !!shortcutTarget && (path.isAbsolute(shortcutTarget) || /[\\/]/.test(shortcutTarget));
+      if (shortcutTarget && !targetIsUri && !targetIsUwp && targetLooksLikePath) {
+        const resolvedShortcutTarget = path.isAbsolute(shortcutTarget)
+          ? path.normalize(shortcutTarget)
+          : path.resolve(shortcut.cwd || path.dirname(targetPath), shortcutTarget);
+        if (!fs.existsSync(resolvedShortcutTarget)) {
+          return { success: false, error: `Ruta no encontrada: ${resolvedShortcutTarget}`, code: 'not-found' };
+        }
       }
     }
 
@@ -3277,11 +3295,20 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
 
     const errorMessage = await shell.openPath(targetPath);
     if (errorMessage) {
-      exec(`"${targetPath}"`, (err) => {
-        if (err) {
-          console.error(`[LAUNCH] Error en fallback de ejecución para ${targetPath}:`, err);
+      const extension = path.extname(targetPath).toLowerCase();
+      if (extension === '.exe' || extension === '.com') {
+        const child = spawn(targetPath, [], { detached: true, stdio: 'ignore', windowsHide: true });
+        const spawnError = await new Promise<Error | null>((resolve) => {
+          child.once('spawn', () => resolve(null));
+          child.once('error', resolve);
+        });
+        if (spawnError) {
+          return { success: false, error: `${errorMessage} (${spawnError.message})`, code: 'launch-failed' };
         }
-      });
+        child.unref();
+      } else {
+        return { success: false, error: errorMessage, code: 'launch-failed' };
+      }
     }
     if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
       windowVisibilityState = 'hidden-intentional';
@@ -3289,7 +3316,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
     }
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación' };
+    return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación', code: 'launch-failed' };
   }
 }
 
@@ -3571,6 +3598,29 @@ function setupIpcHandlers() {
     const selectedPath = result.filePaths[0];
     const name = path.basename(selectedPath);
     return { name, path: selectedPath, iconPath: '' };
+  });
+
+  // --- Locate a moved app, file, shortcut, or folder ---
+  ipcMain.handle('locate-app-path', async (_event, previousPath?: string) => {
+    if (!mainWindow) return null;
+    isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
+    try {
+      const previousDirectory = previousPath ? path.dirname(previousPath) : '';
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile', 'openDirectory'],
+        title: isEn ? 'Find the app or shortcut in its new location' : 'Busca el acceso en su nueva ubicación',
+        ...(previousDirectory && fs.existsSync(previousDirectory) ? { defaultPath: previousDirectory } : {}),
+        filters: [
+          { name: isEn ? 'All files' : 'Todos los archivos', extensions: ['*'] },
+        ],
+      });
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0];
+    } finally {
+      isDialogOpen = false;
+      showMainWindow();
+    }
   });
 
   // --- Seleccionar imagen desde el explorador de Windows ---

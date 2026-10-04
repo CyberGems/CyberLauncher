@@ -17,7 +17,7 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
-  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight
+  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle
 } from 'lucide-react';
 import {
   parseBackupHours,
@@ -347,11 +347,12 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
 declare global {
   interface Window {
     electronAPI?: {
-      launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<{ success: boolean; error?: string }>;
+      launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<{ success: boolean; error?: string; code?: 'not-found' | 'launch-failed' }>;
       showNotification?: (options: { title: string; body: string }) => Promise<boolean>;
       getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectFolder: () => Promise<{ name: string; path: string; iconPath?: string } | null>;
+      locateAppPath: (previousPath?: string) => Promise<string | null>;
       selectImage: () => Promise<string | null>;
       getMonitors: () => Promise<Array<{ id: string; label: string; isPrimary: boolean; bounds: any; size: any }>>;
       setMonitor: (monitorId: string) => Promise<void>;
@@ -2414,6 +2415,9 @@ export default function App() {
     detail?: string;
     releaseUrl?: string;
   } | null>(null);
+  const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string } | null>(null);
+  const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
+  const launchingAppsRef = useRef(new Set<number>());
   const [toastPaused, setToastPaused] = useState(false);
 
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
@@ -3312,7 +3316,7 @@ export default function App() {
     }
   });
 
-  const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string) => {
+  const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string, preferProvidedPath = false) => {
     setLaunchHistory(prev => {
       const normPath = normalizeHistoryKey(path);
       const normName = normalizeHistoryKey(name);
@@ -3347,7 +3351,7 @@ export default function App() {
       const newItem: HistoryItem = {
         id: `${now}-${Math.random()}`,
         name: matchedApp?.name || name,
-        path: matchedApp?.path || path,
+        path: preferProvidedPath ? path : (matchedApp?.path || path),
         type: (matchedApp as any)?.type || type,
         timestamp: now,
         icon: (matchedApp as any)?.iconPath || (matchedApp as any)?.icon || icon || ''
@@ -4306,12 +4310,12 @@ export default function App() {
   // While Add/Edit App modal or HUD modals are open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
+    const open = !!(isAddingApp || editingApp || missingShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
+  }, [isAddingApp, editingApp, missingShortcut, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -4854,25 +4858,77 @@ export default function App() {
     return () => window.removeEventListener('click', handleGlobalClick);
   }, [contextMenu, systemContextMenu, categoryContextMenu, footerContextMenu]);
 
-  const handleLaunchApp = async (app: LauncherApp) => {
-    // Incrementar contadores de uso
-    setApps(prevApps => prevApps.map(a => a.id === app.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
-    record24hLaunch();
+  const handleLaunchApp = async (app: LauncherApp, replacementPath?: string) => {
+    if (launchingAppsRef.current.has(app.id)) return;
+    launchingAppsRef.current.add(app.id);
 
-    const appPath = (app as any).path || `mock://${app.name}`;
-    addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '');
-
-    // Si hay ruta definida y estamos en Electron, lanzar la aplicación
-    if ((app as any).path && isElectron) {
-      const result = await window.electronAPI!.launchApp((app as any).path, !!(app as any).isAdmin);
-      if (result.success) {
-        // Esconder a la bandeja tras lanzar con éxito solo si no está fijada (pinned)
-        if (!isAlwaysOnTop) {
-          window.electronAPI!.windowHideToTray();
+    const appPath = replacementPath ?? app.path ?? `mock://${app.name}`;
+    const isRelink = replacementPath !== undefined;
+    try {
+      if (app.path && isElectron) {
+        let result: Awaited<ReturnType<NonNullable<typeof window.electronAPI>['launchApp']>>;
+        try {
+          result = await window.electronAPI!.launchApp(appPath, !!app.isAdmin);
+        } catch (err: any) {
+          console.error(`Error al lanzar ${app.name}:`, err);
+          setNotification({
+            message: t('launch_failed_message', { name: app.name }),
+            detail: err?.message || String(err),
+            type: 'error',
+          });
+          return;
         }
-      } else {
-        console.warn(`Error al lanzar ${app.name}:`, result.error);
+
+        if (!result.success) {
+          if (result.code === 'not-found') {
+            setMissingShortcut({ app, path: appPath });
+          } else {
+            setNotification({
+              message: t('launch_failed_message', { name: app.name }),
+              detail: result.error || '',
+              type: 'error',
+            });
+          }
+          return;
+        }
       }
+
+      // Solo los lanzamientos aceptados cuentan en uso, historial y estadísticas.
+      setApps(prevApps => prevApps.map(a => a.id === app.id
+        ? { ...a, ...(isRelink ? { path: appPath } : {}), usage: (a.usage || 0) + 1 }
+        : a));
+      record24hLaunch();
+      addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '', isRelink);
+
+      if (app.path && isElectron && !isAlwaysOnTop) {
+        void window.electronAPI!.windowHideToTray();
+      }
+    } finally {
+      launchingAppsRef.current.delete(app.id);
+    }
+  };
+
+  const handleRelinkShortcut = async () => {
+    const missing = missingShortcut;
+    if (!missing || !isElectron || !window.electronAPI) return;
+
+    setIsRelinkingShortcut(true);
+    try {
+      const replacementPath = await window.electronAPI.locateAppPath(missing.path);
+      if (!replacementPath) return;
+      setApps(prevApps => prevApps.map(app => app.id === missing.app.id
+        ? { ...app, path: replacementPath }
+        : app));
+      setMissingShortcut(null);
+      await handleLaunchApp(missing.app, replacementPath);
+    } catch (err: any) {
+      setNotification({
+        message: t('launch_failed_message', { name: missing.app.name }),
+        detail: err?.message || String(err),
+        type: 'error',
+      });
+    } finally {
+      setIsRelinkingShortcut(false);
     }
   };
 
@@ -5494,7 +5550,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const paletteCommands = useMemo<CommandPaletteItem[]>(() => {
     const items: CommandPaletteItem[] = [
@@ -13647,6 +13703,87 @@ export default function App() {
                 </button>
               </Tooltip>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MISSING SHORTCUT RECOVERY --- */}
+      <AnimatePresence>
+        {missingShortcut && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-no-hide
+            className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+            onClick={() => { if (!isRelinkingShortcut) setMissingShortcut(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 12 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="missing-shortcut-title"
+              onClick={(e) => e.stopPropagation()}
+              data-no-hide
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/35 bg-[#070b13]/95 shadow-[0_0_35px_rgba(245,158,11,0.14)] backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/[0.07] px-5 py-4">
+                <h2 id="missing-shortcut-title" className="flex items-center gap-2.5 text-base font-semibold text-amber-300">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  {t('missing_shortcut_title')}
+                </h2>
+                <button
+                  type="button"
+                  aria-label={t('tooltip_close')}
+                  disabled={isRelinkingShortcut}
+                  onClick={() => setMissingShortcut(null)}
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <p className="text-sm leading-relaxed text-slate-300">
+                  {t('missing_shortcut_message', { name: missingShortcut.app.name })}
+                </p>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {t('missing_shortcut_path')}
+                  </span>
+                  <div className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-slate-300">
+                    {missingShortcut.path}
+                  </div>
+                </div>
+
+                <p className="text-xs leading-relaxed text-slate-500">
+                  {t('missing_shortcut_hint')}
+                </p>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    disabled={isRelinkingShortcut}
+                    onClick={() => setMissingShortcut(null)}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  >
+                    {t('missing_shortcut_cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isRelinkingShortcut}
+                    onClick={() => { void handleRelinkShortcut(); }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.1)] transition-colors hover:bg-cyan-500/25 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <FolderSearch className="h-4 w-4" />
+                    {isRelinkingShortcut ? t('missing_shortcut_locating') : t('missing_shortcut_locate')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -114,6 +114,16 @@ export const translations = {
     app_add_submit: "Agregar acceso",
     app_edit_submit: "Guardar Cambios",
 
+    // Missing shortcut recovery
+    missing_shortcut_title: "No se encontró el acceso",
+    missing_shortcut_message: "{name} no está disponible en la ruta guardada. Busca su ubicación actual para actualizar este acceso.",
+    missing_shortcut_path: "Ruta guardada",
+    missing_shortcut_hint: "Selecciona el archivo, acceso directo o carpeta que quieres usar. La ruta se actualizará y CyberLauncher intentará abrirla.",
+    missing_shortcut_locate: "Buscar nueva ubicación",
+    missing_shortcut_locating: "Buscando...",
+    missing_shortcut_cancel: "Ahora no",
+    launch_failed_message: "No se pudo abrir {name}.",
+
     // About & Updates
     about_title: "CyberLauncher",
     about_version: "Versión {version}",
@@ -845,6 +855,16 @@ export const translations = {
     app_cancel: "Cancel",
     app_add_submit: "Add shortcut",
     app_edit_submit: "Save Changes",
+
+    // Missing shortcut recovery
+    missing_shortcut_title: "Shortcut not found",
+    missing_shortcut_message: "{name} is unavailable at its saved location. Find its current location to update this shortcut.",
+    missing_shortcut_path: "Saved location",
+    missing_shortcut_hint: "Select the file, shortcut, or folder to use. The saved location will update and CyberLauncher will try to open it.",
+    missing_shortcut_locate: "Find new location",
+    missing_shortcut_locating: "Searching...",
+    missing_shortcut_cancel: "Not now",
+    launch_failed_message: "Could not open {name}.",
 
     // About & Updates
     about_title: "CyberLauncher",

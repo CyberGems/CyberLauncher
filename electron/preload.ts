@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>
     ipcRenderer.invoke('select-file', options),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
+  locateAppPath: (previousPath?: string) => ipcRenderer.invoke('locate-app-path', previousPath),
   selectImage: () => ipcRenderer.invoke('select-image'),
   getImageData: (filePath: string) => ipcRenderer.invoke('get-image-data', filePath),
 
