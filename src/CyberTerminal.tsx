@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Terminal as TerminalIcon, FolderOpen, Copy, Check, ClipboardPaste, ExternalLink, Trash2, X, RotateCcw, Square } from 'lucide-react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -29,6 +30,7 @@ export default function CyberTerminal({ shell, cwd, onShellChange, onCwdChange, 
   const [exitCode, setExitCode] = useState(0);
   const [restartKey, setRestartKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => { cwdRef.current = cwd; }, [cwd]);
   useEffect(() => { onCwdChangeRef.current = onCwdChange; }, [onCwdChange]);
@@ -197,8 +199,44 @@ export default function CyberTerminal({ shell, cwd, onShellChange, onCwdChange, 
     }
   };
 
+  const interrupt = () => { if (status === 'ready') { terminalRef.current?.input('\x03'); focus(); } };
+  const clear = () => { terminalRef.current?.clear(); focus(); };
+  const openFolder = () => { void window.electronAPI?.openPath?.(cwd); };
+  const openExternal = async () => {
+    setActionError('');
+    try {
+      const opened = await window.electronAPI?.openExternalTerminal?.(cwd);
+      if (!opened) setActionError(t('terminal_external_failed'));
+    } catch (cause) {
+      console.error('[TERMINAL] External terminal failed:', cause);
+      setActionError(t('terminal_external_failed'));
+    }
+  };
+  const restart = () => { if (status === 'exited' || status === 'error') setRestartKey(value => value + 1); };
+  const shortcut = (label: string, key: string) => `${label} · Alt+${key}`;
+  const handleHotkey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const actions: Record<string, () => void> = {
+      Digit1: () => onShellChange('powershell'),
+      Digit2: () => onShellChange('cmd'),
+      KeyO: openFolder,
+      KeyI: interrupt,
+      KeyC: () => { void copy(); },
+      KeyV: () => { if (status === 'ready') void paste(); },
+      KeyE: () => { void openExternal(); },
+      KeyL: clear,
+      KeyR: restart,
+      KeyQ: onClose,
+    };
+    const action = actions[event.code];
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  };
+
   return (
-    <div data-cyber-terminal className="flex-1 flex flex-col font-mono text-left bg-[#080b12]/95 border border-cyan-500/20 rounded-2xl p-4 shadow-2xl overflow-hidden relative min-h-[400px]">
+    <div data-cyber-terminal onKeyDownCapture={handleHotkey} className="flex-1 flex flex-col font-mono text-left bg-[#080b12]/95 border border-cyan-500/20 rounded-2xl p-4 shadow-2xl overflow-hidden relative min-h-[400px]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-3 mb-3 shrink-0 select-none">
         <div className="flex items-center gap-2.5 flex-wrap">
           <div className="flex items-center gap-2">
@@ -207,14 +245,16 @@ export default function CyberTerminal({ shell, cwd, onShellChange, onCwdChange, 
           </div>
           <div className="flex items-center bg-black/50 border border-emerald-500/20 rounded-lg p-0.5 text-[10px] font-cyber">
             {(['powershell', 'cmd'] as const).map(option => (
-              <button key={option} type="button" onClick={() => onShellChange(option)} aria-pressed={shell === option}
-                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${shell === option ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40' : 'text-slate-400 hover:text-slate-200'}`}>
-                {option === 'cmd' ? 'CMD' : 'PowerShell'}
-              </button>
+              <Tooltip key={option} label={shortcut(option === 'cmd' ? 'CMD' : 'PowerShell', option === 'cmd' ? '2' : '1')}>
+                <button type="button" onClick={() => onShellChange(option)} aria-pressed={shell === option} aria-keyshortcuts={option === 'cmd' ? 'Alt+2' : 'Alt+1'}
+                  className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${shell === option ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40' : 'text-slate-400 hover:text-slate-200'}`}>
+                  {option === 'cmd' ? 'CMD' : 'PowerShell'}
+                </button>
+              </Tooltip>
             ))}
           </div>
-          <Tooltip label={`${t('terminal_open_folder')}: ${cwd}`} placement="bottom">
-            <button type="button" onClick={() => window.electronAPI?.openPath?.(cwd)} aria-label={t('terminal_open_folder')}
+          <Tooltip label={`${shortcut(t('terminal_open_folder'), 'O')}: ${cwd}`} placement="bottom">
+            <button type="button" onClick={openFolder} aria-label={t('terminal_open_folder')} aria-keyshortcuts="Alt+O"
               className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-lg text-[11px] text-slate-300 hover:text-emerald-300 transition-colors max-w-[280px] cursor-pointer">
               <FolderOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span className="truncate font-mono">{cwd}</span>
@@ -227,18 +267,19 @@ export default function CyberTerminal({ shell, cwd, onShellChange, onCwdChange, 
             {status === 'ready' ? t('terminal_status_online') : status === 'starting' ? t('terminal_status_connecting') : t('terminal_status_closed')}
           </span>
           {status === 'ready' ? (
-            <Tooltip label={t('terminal_interrupt')}><button type="button" onClick={() => { terminalRef.current?.input('\x03'); focus(); }} aria-label={t('terminal_interrupt')} className="p-1.5 text-slate-400 hover:text-amber-300 rounded-lg hover:bg-white/10"><Square className="w-3.5 h-3.5" /></button></Tooltip>
+            <Tooltip label={shortcut(t('terminal_interrupt'), 'I')}><button type="button" onClick={interrupt} aria-label={t('terminal_interrupt')} aria-keyshortcuts="Alt+I" className="p-1.5 text-slate-400 hover:text-amber-300 rounded-lg hover:bg-white/10"><Square className="w-3.5 h-3.5" /></button></Tooltip>
           ) : (status === 'exited' || status === 'error') ? (
-            <Tooltip label={t('terminal_restart')}><button type="button" onClick={() => setRestartKey(value => value + 1)} aria-label={t('terminal_restart')} className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10"><RotateCcw className="w-3.5 h-3.5" /></button></Tooltip>
+            <Tooltip label={shortcut(t('terminal_restart'), 'R')}><button type="button" onClick={restart} aria-label={t('terminal_restart')} aria-keyshortcuts="Alt+R" className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10"><RotateCcw className="w-3.5 h-3.5" /></button></Tooltip>
           ) : null}
-          <Tooltip label={copied ? t('terminal_copied') : t('terminal_copy_output')}><button type="button" onClick={() => void copy()} aria-label={t('terminal_copy_output')} className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10">{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button></Tooltip>
-          <Tooltip label={t('terminal_paste')}><button type="button" onClick={() => void paste()} aria-label={t('terminal_paste')} disabled={status !== 'ready'} className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10 disabled:opacity-30"><ClipboardPaste className="w-3.5 h-3.5" /></button></Tooltip>
-          <Tooltip label={t('terminal_open_external')}><button type="button" onClick={() => void window.electronAPI?.openExternalTerminal?.(cwd)} aria-label={t('terminal_open_external')} className="p-1.5 text-slate-400 hover:text-cyan-300 rounded-lg hover:bg-white/10"><ExternalLink className="w-3.5 h-3.5" /></button></Tooltip>
-          <Tooltip label={t('terminal_clear')}><button type="button" onClick={() => { terminalRef.current?.clear(); focus(); }} aria-label={t('terminal_clear')} className="p-1.5 text-slate-400 hover:text-red-300 rounded-lg hover:bg-white/10"><Trash2 className="w-3.5 h-3.5" /></button></Tooltip>
-          <Tooltip label={t('terminal_close')}><button type="button" onClick={onClose} aria-label={t('terminal_close')} className="p-1.5 text-slate-400 hover:text-red-300 rounded-lg hover:bg-white/10"><X className="w-3.5 h-3.5" /></button></Tooltip>
+          <Tooltip label={shortcut(copied ? t('terminal_copied') : t('terminal_copy_output'), 'C')}><button type="button" onClick={() => void copy()} aria-label={t('terminal_copy_output')} aria-keyshortcuts="Alt+C" className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10">{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button></Tooltip>
+          <Tooltip label={shortcut(t('terminal_paste'), 'V')}><button type="button" onClick={() => void paste()} aria-label={t('terminal_paste')} aria-keyshortcuts="Alt+V" disabled={status !== 'ready'} className="p-1.5 text-slate-400 hover:text-emerald-300 rounded-lg hover:bg-white/10 disabled:opacity-30"><ClipboardPaste className="w-3.5 h-3.5" /></button></Tooltip>
+          <Tooltip label={shortcut(t('terminal_open_external'), 'E')}><button type="button" onClick={() => void openExternal()} aria-label={t('terminal_open_external')} aria-keyshortcuts="Alt+E" className="p-1.5 text-slate-400 hover:text-cyan-300 rounded-lg hover:bg-white/10"><ExternalLink className="w-3.5 h-3.5" /></button></Tooltip>
+          <Tooltip label={shortcut(t('terminal_clear'), 'L')}><button type="button" onClick={clear} aria-label={t('terminal_clear')} aria-keyshortcuts="Alt+L" className="p-1.5 text-slate-400 hover:text-red-300 rounded-lg hover:bg-white/10"><Trash2 className="w-3.5 h-3.5" /></button></Tooltip>
+          <Tooltip label={shortcut(t('terminal_close'), 'Q')}><button type="button" onClick={onClose} aria-label={t('terminal_close')} aria-keyshortcuts="Alt+Q" className="p-1.5 text-slate-400 hover:text-red-300 rounded-lg hover:bg-white/10"><X className="w-3.5 h-3.5" /></button></Tooltip>
         </div>
       </div>
       {error && <div role="alert" className="text-xs text-red-300 mb-2">{t('terminal_start_failed')}: {error}</div>}
+      {actionError && <div role="alert" className="text-xs text-red-300 mb-2">{actionError}</div>}
       {status === 'exited' && <div role="status" className="text-xs text-amber-300 mb-2">{t('terminal_process_exited')}: {exitCode}</div>}
       <div ref={containerRef} onClick={focus} aria-label={t('terminal_input_label')} className="flex-1 min-h-0 min-w-0 px-2 py-1 cursor-text" />
       <div className="mt-2 pt-2 border-t border-white/5 text-[10px] leading-relaxed text-slate-500 select-none">{t('terminal_hint')}</div>

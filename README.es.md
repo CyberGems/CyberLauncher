@@ -198,6 +198,11 @@ npm run lint
 | `>` (en la búsqueda) | Abrir Cyber Terminal |
 | `Intro` | Lanzar la app seleccionada / ejecutar el comando en el prompt |
 | `Ctrl+C` (en la terminal) | Interrumpir el comando activo |
+| `Alt+Q` (en la terminal) | Cerrar Cyber Terminal |
+| `Alt+1` / `Alt+2` (en la terminal) | Cambiar a PowerShell / CMD |
+| `Alt+I` / `Alt+C` / `Alt+V` (en la terminal) | Interrumpir / copiar / pegar |
+| `Alt+O` / `Alt+E` (en la terminal) | Abrir carpeta actual / terminal externa |
+| `Alt+L` / `Alt+R` (en la terminal) | Limpiar pantalla / reiniciar una sesión cerrada |
 | `Ctrl+Shift+C` / `Ctrl+Shift+V` (en la terminal) | Copiar selección / pegar |
 | `Escape` | Cerrar el menú / limpiar la búsqueda; en la terminal, enviar Escape a la shell |
 | `↑` `↓` | Navegar por los resultados de búsqueda |

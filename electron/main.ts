@@ -79,6 +79,7 @@ let hotspotCooldown = false;
 let lastHotspotActionTime = 0;
 let hasCursorExitedSinceLastAction = true;
 let hideOnBlurEnabled = true;
+let externalTerminalBlurGuardUntil = 0;
 let showTaskbarIcon = false;
 /** Ignore hide-on-blur during initial boot / first maximize (Windows steals focus briefly). */
 let bootBlurGuardUntil = 0;
@@ -848,6 +849,13 @@ function createWindow() {
     
     if (mainWindow.isAlwaysOnTop()) {
       mainWindow.webContents.send('always-on-top-blur-attempt');
+      return;
+    }
+
+    // The external terminal is a companion to this panel. Keep CyberLauncher
+    // visible behind it, then resume the normal hide-on-blur rule afterward.
+    if (Date.now() < externalTerminalBlurGuardUntil) {
+      externalTerminalBlurGuardUntil = 0;
       return;
     }
 
@@ -4540,19 +4548,32 @@ foreach (\$app in \$startApps) {
   });
 
   ipcMain.handle('open-external-terminal', async (_event, targetPath?: string) => {
-    const dir = (targetPath && fs.existsSync(targetPath)) ? targetPath : consoleCwd;
-    try {
-      // Attempt Windows Terminal first, fallback to PowerShell
-      exec(`start wt.exe -d "${dir}"`, (err) => {
-        if (err) {
-          exec(`start powershell.exe -NoExit -Command "Set-Location -LiteralPath '${dir.replace(/'/g, "''")}'"`);
-        }
-      });
-      return true;
-    } catch (err) {
-      console.error('[TERMINAL] Error launching external terminal:', err);
-      return false;
-    }
+    const isDirectory = (candidate: unknown): candidate is string => {
+      if (typeof candidate !== 'string') return false;
+      try { return fs.statSync(candidate).isDirectory(); }
+      catch { return false; }
+    };
+    const dir = path.resolve(isDirectory(targetPath) ? targetPath : isDirectory(consoleCwd) ? consoleCwd : os.homedir());
+    const launch = (executable: string, args: string[]) => new Promise<boolean>((resolve) => {
+      try {
+        const child = spawn(executable, args, { cwd: dir, detached: true, stdio: 'ignore', windowsHide: false });
+        child.once('spawn', () => { child.unref(); resolve(true); });
+        child.once('error', (error) => {
+          console.error(`[TERMINAL] Failed to start ${executable}:`, error);
+          resolve(false);
+        });
+      } catch (error) {
+        console.error(`[TERMINAL] Failed to start ${executable}:`, error);
+        resolve(false);
+      }
+    });
+
+    if (mainWindow?.isFocused()) externalTerminalBlurGuardUntil = Date.now() + 10000;
+    // Argument arrays preserve spaces and trailing backslashes in the folder.
+    if (await launch('wt.exe', ['-d', dir])) return true;
+    if (await launch('powershell.exe', ['-NoExit'])) return true;
+    externalTerminalBlurGuardUntil = 0;
+    return false;
   });
 
   ipcMain.handle('kill-shell-command', (_event, cmdId?: string) => {

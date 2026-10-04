@@ -6221,6 +6221,13 @@ export default function App() {
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement | null)?.closest?.('[data-cyber-terminal]')) return;
+      if (isTerminalOpen && !isAnyModalOpen && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === 'KeyQ') {
+        e.preventDefault();
+        setIsTerminalOpen(false);
+        setSearchQuery('');
+        window.setTimeout(() => searchInputRef.current?.focus(), 0);
+        return;
+      }
       if (e.defaultPrevented) return;
       if (isRecordingShortcut) return;
 
@@ -6612,7 +6619,7 @@ export default function App() {
     isCommandPaletteOpen, isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
     editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, confirmResetType,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
-    contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, handleCyberKeyboardNav,
+    contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
     submitAppForm
   ]);
@@ -7620,10 +7627,11 @@ export default function App() {
                   <span className="text-[9px] font-cyber font-bold text-emerald-400">
                     TERMINAL
                   </span>
-                  <Tooltip label={t('terminal_close')} placement="bottom">
+                  <Tooltip label={`${t('terminal_close')} · Alt+Q`} placement="bottom">
                     <button
                       type="button"
                       aria-label={t('terminal_close')}
+                      aria-keyshortcuts="Alt+Q"
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsTerminalOpen(false);

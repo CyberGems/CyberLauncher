@@ -200,6 +200,11 @@ npm run lint
 | `>` (in search) | Open Cyber Terminal |
 | `Enter` | Launch selected app / run the command at the terminal prompt |
 | `Ctrl+C` (in terminal) | Interrupt the foreground command |
+| `Alt+Q` (in terminal) | Close Cyber Terminal |
+| `Alt+1` / `Alt+2` (in terminal) | Switch to PowerShell / CMD |
+| `Alt+I` / `Alt+C` / `Alt+V` (in terminal) | Interrupt / copy / paste |
+| `Alt+O` / `Alt+E` (in terminal) | Open current folder / external terminal |
+| `Alt+L` / `Alt+R` (in terminal) | Clear screen / restart an exited session |
 | `Ctrl+Shift+C` / `Ctrl+Shift+V` (in terminal) | Copy selection / paste |
 | `Esc` | Close menu / clear search; in the terminal, send Escape to the shell |
 | `↑` `↓` | Navigate search results |
