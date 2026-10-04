@@ -245,7 +245,6 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     playCyberBeep?.();
 
     const tips = [
-      t('cyberbot_chat_click_1'),
       t('cyberbot_chat_click_2', { count: String(dailyLaunchCount) }),
       t('cyberbot_tip_tab'),
       t('cyberbot_tip_command_palette'),
