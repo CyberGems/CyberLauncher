@@ -18,8 +18,11 @@ import {
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
   MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
-  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle
+  Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
+  Bot, BotOff
 } from 'lucide-react';
+import { CyberBot } from './components/companion/CyberBot';
+import { useCyberBot } from './components/companion/useCyberBot';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -3325,6 +3328,42 @@ export default function App() {
     }
   });
 
+  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep });
+
+  // Route system notifications to CyberBot when companion is active
+  useEffect(() => {
+    if (!notification || !cyberBot.enabled) return;
+    let actionHandler: (() => void) | undefined;
+    let actionLabel = '';
+
+    if (notification.action === 'open-hud-system') {
+      actionLabel = t('toast_action_view_system');
+      actionHandler = () => { setIsSystemHUDOpen(true); setNotification(null); };
+    } else if (notification.action === 'open-hud-storage') {
+      actionLabel = t('toast_action_view_storage');
+      actionHandler = () => { setIsStorageHUDOpen(true); setNotification(null); };
+    } else if (notification.action === 'open-hud-clock') {
+      actionLabel = t('toast_action_view_clock');
+      actionHandler = () => { setIsClockHUDOpen(true); setNotification(null); };
+    } else if (notification.action === 'open-about') {
+      actionLabel = t('about_title');
+      actionHandler = () => { setIsAboutOpen(true); setNotification(null); };
+    }
+
+    cyberBot.say({
+      text: notification.message,
+      detail: notification.detail,
+      emotion: notification.type === 'error' || notification.type === 'warning' ? 'alert' : notification.type === 'success' ? 'success' : 'speaking',
+      tag: notification.brandTag || (notification.type === 'warning' || notification.type === 'error' ? t('hud_system_parameters') : t('cyberbot_tag_name')),
+      action: actionLabel && actionHandler ? {
+        label: actionLabel,
+        onClick: actionHandler,
+      } : undefined,
+      durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
+      priority: notification.type === 'error' || notification.type === 'warning' ? 'high' : 'normal',
+    });
+  }, [notification, cyberBot.enabled, t, cyberBot.say]);
+
   const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string, preferProvidedPath = false) => {
     setLaunchHistory(prev => {
       const normPath = normalizeHistoryKey(path);
@@ -4327,6 +4366,15 @@ export default function App() {
       setIsMoreMenuOpen(false);
       setIsHelpSubmenuOpen(false);
 
+      if (cyberBot.enabled && launchHistory.length > 0 && Math.random() < 0.4) {
+        cyberBot.say({
+          text: t('cyberbot_last_launch', { name: launchHistory[0].name }),
+          emotion: 'speaking',
+          durationMs: 4500,
+          priority: 'low',
+        });
+      }
+
       if (localStorage.getItem('resetOnLaunch') === 'false') return;
 
       setActiveCategory(prev => (prev === 'all' ? prev : 'all'));
@@ -4872,6 +4920,17 @@ export default function App() {
       record24hLaunch();
       addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '', isRelink);
 
+      if (cyberBot.enabled) {
+        cyberBot.say({
+          text: app.isAdmin
+            ? t('cyberbot_launching_admin', { name: app.name })
+            : t('cyberbot_launching_app', { name: app.name }),
+          emotion: 'happy',
+          durationMs: 4000,
+          priority: 'normal',
+        });
+      }
+
       if (app.path && isElectron && !isAlwaysOnTop) {
         void window.electronAPI!.windowHideToTray();
       }
@@ -5261,6 +5320,14 @@ export default function App() {
     if (!isElectron || !window.electronAPI?.onBackupCompleted) return;
     const cleanup = window.electronAPI.onBackupCompleted((data) => {
       setAutoBackupLast(data.at);
+      if (cyberBot.enabled) {
+        cyberBot.say({
+          text: t('cyberbot_backup_success'),
+          emotion: 'success',
+          priority: 'normal',
+          durationMs: 5000,
+        });
+      }
       if (settingsTab === 'backup') {
         window.electronAPI?.listBackups?.().then(list => setBackupsList(list || [])).catch(() => {});
       }
@@ -8511,6 +8578,29 @@ export default function App() {
               </Tooltip>
             )}
 
+            {/* CyberBot Companion Quick Toggle */}
+            <Tooltip
+              label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+              placement={rightSidebarCollapsed ? 'left' : 'bottom'}
+            >
+              <button
+                type="button"
+                onClick={cyberBot.toggleEnabled}
+                aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
+                  cyberBot.enabled
+                    ? 'text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.25)] hover:bg-cyan-500/25'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                {cyberBot.enabled ? (
+                  <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                ) : (
+                  <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+                )}
+              </button>
+            </Tooltip>
+
             <Tooltip label={withShortcut(t('tooltip_settings'), 'Ctrl+,')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
@@ -10814,6 +10904,52 @@ export default function App() {
                   </div>
                   
                   <div className="flex flex-col gap-2">
+                    {/* CyberBot Companion Card */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Bot className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={cyberBot.toggleEnabled}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {cyberBot.enabled && (
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 border-l-cyan-500/50 hover:border-white/10 transition-colors ml-4">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_chatter')}</h4>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('full')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${cyberBot.chatterLevel === 'full' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                          >
+                            {t('cyberbot_settings_chatter_full')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('minimal')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${cyberBot.chatterLevel === 'minimal' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                          >
+                            {t('cyberbot_settings_chatter_minimal')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                         <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
@@ -13379,7 +13515,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {!isElectron && notification && (
+        {!isElectron && !cyberBot.enabled && notification && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide
@@ -13560,6 +13696,16 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* --- CYBERBOT COMPANION --- */}
+      <CyberBot
+        enabled={cyberBot.enabled}
+        activeMessage={cyberBot.activeMessage}
+        onDismissMessage={cyberBot.dismissMessage}
+        onClickBot={cyberBot.handleClickBot}
+        position={cyberBot.position}
+        onPositionChange={cyberBot.updatePosition}
+      />
 
       {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}
 
