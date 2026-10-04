@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
 
 interface CyberBotAvatarProps {
@@ -135,241 +136,236 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           onClick?.();
         }
       }}
-      className={`relative inline-flex flex-col items-center justify-center cursor-pointer select-none transition-transform duration-300 group ${className}`}
+      className={`relative inline-flex flex-col items-center justify-center cursor-pointer select-none group ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* Bot SVG Avatar */}
-      <svg
-        viewBox="0 0 100 105"
-        width={size}
-        height={size}
-        className={`w-full h-full drop-shadow-[0_4px_16px_${glowColor}] transition-all duration-300 ${
-          isHovered ? 'scale-105' : 'hover:scale-105'
-        }`}
-        style={{
-          animation: 'cyberBotFloat 3s ease-in-out infinite',
+      {/* Bot SVG Avatar with Smooth Framer Motion Floating */}
+      <motion.div
+        animate={{
+          y: [0, -6, 0],
+          rotate: [0, 0.75, 0],
         }}
+        transition={{
+          duration: 3.2,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        className="w-full h-full flex flex-col items-center justify-center"
       >
-        <defs>
-          {/* Main Blue Body Gradient */}
-          <linearGradient id="cyberBotBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#38bdf8" />
-            <stop offset="35%" stopColor="#2563eb" />
-            <stop offset="100%" stopColor="#1e3a8a" />
-          </linearGradient>
+        <svg
+          viewBox="0 0 100 105"
+          width={size}
+          height={size}
+          className={`w-full h-full drop-shadow-[0_4px_16px_${glowColor}]`}
+        >
+          <defs>
+            {/* Main Blue Body Gradient */}
+            <linearGradient id="cyberBotBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="35%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#1e3a8a" />
+            </linearGradient>
 
-          {/* Screen Glass Gradient */}
-          <linearGradient id="cyberBotScreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#050b1a" />
-            <stop offset="100%" stopColor="#0a192f" />
-          </linearGradient>
+            {/* Screen Glass Gradient */}
+            <linearGradient id="cyberBotScreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#050b1a" />
+              <stop offset="100%" stopColor="#0a192f" />
+            </linearGradient>
 
-          {/* Highlight Gradient */}
-          <linearGradient id="cyberBotHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </linearGradient>
+            {/* Highlight Gradient */}
+            <linearGradient id="cyberBotHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </linearGradient>
 
-          {/* Eye Glow Filter */}
-          <filter id="cyberGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
+            {/* Eye Glow Filter */}
+            <filter id="cyberGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
-        {/* --- LEGS / FEET --- */}
-        <g id="legs">
-          {/* Left Foot */}
-          <rect
-            x="33"
-            y="88"
-            width="12"
-            height="11"
-            rx="5"
-            fill="#1e3a8a"
-            stroke="#38bdf8"
-            strokeWidth="1.5"
-          />
-          {/* Right Foot */}
-          <rect
-            x="55"
-            y="88"
-            width="12"
-            height="11"
-            rx="5"
-            fill="#1e3a8a"
-            stroke="#38bdf8"
-            strokeWidth="1.5"
-          />
-        </g>
-
-        {/* --- TORSO & ARMS --- */}
-        <g id="body">
-          {/* Torso */}
-          <rect
-            x="31"
-            y="66"
-            width="38"
-            height="26"
-            rx="8"
-            fill="url(#cyberBotBodyGrad)"
-            stroke="#38bdf8"
-            strokeWidth="1.8"
-          />
-          {/* Torso Detail Panel */}
-          <rect
-            x="38"
-            y="72"
-            width="24"
-            height="12"
-            rx="4"
-            fill="#0b172e"
-            stroke="#38bdf8"
-            strokeWidth="1"
-          />
-          <circle cx="44" cy="78" r="2" fill="#22d3ee" className="animate-pulse" />
-          <line x1="50" y1="78" x2="57" y2="78" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" />
-
-          {/* Left Arm */}
-          <rect
-            x="18"
-            y="69"
-            width="11"
-            height="16"
-            rx="5"
-            fill="#2563eb"
-            stroke="#38bdf8"
-            strokeWidth="1.5"
-            transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(-25 23 77)' : 'rotate(8 23 77)'}
-            className="transition-transform duration-300"
-          />
-          {/* Right Arm */}
-          <rect
-            x="71"
-            y="69"
-            width="11"
-            height="16"
-            rx="5"
-            fill="#2563eb"
-            stroke="#38bdf8"
-            strokeWidth="1.5"
-            transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(25 76 77)' : 'rotate(-8 76 77)'}
-            className="transition-transform duration-300"
-          />
-        </g>
-
-        {/* --- HEAD & EARS --- */}
-        <g id="head">
-          {/* Left Ear Antenna */}
-          <path
-            d="M 17 38 C 11 38 11 50 17 50 Z"
-            fill="#1e3a8a"
-            stroke="#38bdf8"
-            strokeWidth="1.8"
-          />
-          <circle cx="14" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
-
-          {/* Right Ear Antenna */}
-          <path
-            d="M 83 38 C 89 38 89 50 83 50 Z"
-            fill="#1e3a8a"
-            stroke="#38bdf8"
-            strokeWidth="1.8"
-          />
-          <circle cx="86" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
-
-          {/* Top Mini Crown Antenna */}
-          <path
-            d="M 46 16 C 46 11 54 11 54 16 L 52 20 L 48 20 Z"
-            fill="#38bdf8"
-          />
-          <circle
-            cx="50"
-            cy="11"
-            r="3"
-            fill={isAlert ? '#ef4444' : '#22d3ee'}
-            className="animate-pulse"
-          />
-
-          {/* Outer Head (Cloud-like rounded capsule) */}
-          <path
-            d="M 28 20 
-               C 35 15, 45 16, 50 16 
-               C 55 16, 65 15, 72 20 
-               C 85 24, 88 35, 87 45 
-               C 88 56, 84 66, 70 69 
-               C 62 71, 38 71, 30 69 
-               C 16 66, 12 56, 13 45 
-               C 12 35, 15 24, 28 20 Z"
-            fill="url(#cyberBotBodyGrad)"
-            stroke="#38bdf8"
-            strokeWidth="2.2"
-          />
-
-          {/* Subtle Head Gloss Highlight */}
-          <path
-            d="M 30 22 C 40 18, 60 18, 70 22 C 60 25, 40 25, 30 22 Z"
-            fill="url(#cyberBotHighlight)"
-          />
-
-          {/* OLED Screen Face (Visor) */}
-          <rect
-            x="22"
-            y="27"
-            width="56"
-            height="35"
-            rx="12"
-            fill="url(#cyberBotScreenGrad)"
-            stroke={isAlert ? '#f59e0b' : '#22d3ee'}
-            strokeWidth="1.8"
-            strokeOpacity="0.8"
-          />
-
-          {/* Screen Inner Glare / Reflection */}
-          <path
-            d="M 24 30 L 44 30 L 26 58 L 24 58 Z"
-            fill="#ffffff"
-            fillOpacity="0.05"
-          />
-
-          {/* Terminal Face Content */}
-          <g filter="url(#cyberGlowFilter)">
-            {renderFaceContent()}
+          {/* --- LEGS / FEET --- */}
+          <g id="legs">
+            {/* Left Foot */}
+            <rect
+              x="33"
+              y="88"
+              width="12"
+              height="11"
+              rx="5"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
+            {/* Right Foot */}
+            <rect
+              x="55"
+              y="88"
+              width="12"
+              height="11"
+              rx="5"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
           </g>
-        </g>
-      </svg>
 
-      {/* Dynamic Floating Shadow */}
-      <div
-        className="w-10 h-2 bg-cyan-500/25 rounded-full blur-[2px] transition-all duration-300"
-        style={{
-          animation: 'cyberBotShadow 3s ease-in-out infinite',
-        }}
-      />
+          {/* --- TORSO & ARMS --- */}
+          <g id="body">
+            {/* Torso */}
+            <rect
+              x="31"
+              y="66"
+              width="38"
+              height="26"
+              rx="8"
+              fill="url(#cyberBotBodyGrad)"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
+            />
+            {/* Torso Detail Panel */}
+            <rect
+              x="38"
+              y="72"
+              width="24"
+              height="12"
+              rx="4"
+              fill="#0b172e"
+              stroke="#38bdf8"
+              strokeWidth="1"
+            />
+            <circle cx="44" cy="78" r="2" fill="#22d3ee" className="animate-pulse" />
+            <line x1="50" y1="78" x2="57" y2="78" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" />
 
-      <style>{`
-        @keyframes cyberBotFloat {
-          0%, 100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-7px) rotate(1deg);
-          }
-        }
-        @keyframes cyberBotShadow {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.35;
-          }
-          50% {
-            transform: scale(0.75);
-            opacity: 0.15;
-          }
-        }
-      `}</style>
+            {/* Left Arm */}
+            <rect
+              x="18"
+              y="69"
+              width="11"
+              height="16"
+              rx="5"
+              fill="#2563eb"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+              transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(-25 23 77)' : 'rotate(8 23 77)'}
+              className="transition-transform duration-300"
+            />
+            {/* Right Arm */}
+            <rect
+              x="71"
+              y="69"
+              width="11"
+              height="16"
+              rx="5"
+              fill="#2563eb"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+              transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(25 76 77)' : 'rotate(-8 76 77)'}
+              className="transition-transform duration-300"
+            />
+          </g>
+
+          {/* --- HEAD & EARS --- */}
+          <g id="head">
+            {/* Left Ear Antenna */}
+            <path
+              d="M 17 38 C 11 38 11 50 17 50 Z"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
+            />
+            <circle cx="14" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
+
+            {/* Right Ear Antenna */}
+            <path
+              d="M 83 38 C 89 38 89 50 83 50 Z"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
+            />
+            <circle cx="86" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
+
+            {/* Top Mini Crown Antenna */}
+            <path
+              d="M 46 16 C 46 11 54 11 54 16 L 52 20 L 48 20 Z"
+              fill="#38bdf8"
+            />
+            <circle
+              cx="50"
+              cy="11"
+              r="3"
+              fill={isAlert ? '#ef4444' : '#22d3ee'}
+              className="animate-pulse"
+            />
+
+            {/* Outer Head (Cloud-like rounded capsule) */}
+            <path
+              d="M 28 20 
+                 C 35 15, 45 16, 50 16 
+                 C 55 16, 65 15, 72 20 
+                 C 85 24, 88 35, 87 45 
+                 C 88 56, 84 66, 70 69 
+                 C 62 71, 38 71, 30 69 
+                 C 16 66, 12 56, 13 45 
+                 C 12 35, 15 24, 28 20 Z"
+              fill="url(#cyberBotBodyGrad)"
+              stroke="#38bdf8"
+              strokeWidth="2.2"
+            />
+
+            {/* Subtle Head Gloss Highlight */}
+            <path
+              d="M 30 22 C 40 18, 60 18, 70 22 C 60 25, 40 25, 30 22 Z"
+              fill="url(#cyberBotHighlight)"
+            />
+
+            {/* OLED Screen Face (Visor) */}
+            <rect
+              x="22"
+              y="27"
+              width="56"
+              height="35"
+              rx="12"
+              fill="url(#cyberBotScreenGrad)"
+              stroke={isAlert ? '#f59e0b' : '#22d3ee'}
+              strokeWidth="1.8"
+              strokeOpacity="0.8"
+            />
+
+            {/* Screen Inner Glare / Reflection */}
+            <path
+              d="M 24 30 L 44 30 L 26 58 L 24 58 Z"
+              fill="#ffffff"
+              fillOpacity="0.05"
+            />
+
+            {/* Terminal Face Content */}
+            <g filter="url(#cyberGlowFilter)">
+              {renderFaceContent()}
+            </g>
+          </g>
+        </svg>
+
+        {/* Dynamic Floating Shadow */}
+        <motion.div
+          animate={{
+            scale: [1, 0.75, 1],
+            opacity: [0.35, 0.15, 0.35],
+          }}
+          transition={{
+            duration: 3.2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          className="w-10 h-2 bg-cyan-500/25 rounded-full blur-[2px] mt-1"
+        />
+      </motion.div>
     </div>
   );
 };

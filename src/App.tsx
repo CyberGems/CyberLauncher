@@ -11578,40 +11578,44 @@ export default function App() {
 
                       {/* Card 5: Posición inicial y arrastre */}
                       <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                        <div className="flex items-center justify-between gap-6">
-                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                            <div className="p-2.5 bg-teal-500/10 rounded-lg border border-teal-500/20 shrink-0">
-                              <SlidersHorizontal className="w-5 h-5 text-teal-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_pos_title')}</h4>
-                              <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_pos_desc')}</p>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-teal-500/10 rounded-lg border border-teal-500/20 shrink-0">
+                            <SlidersHorizontal className="w-5 h-5 text-teal-400" />
                           </div>
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => cyberBot.updatePosition('bottom-right')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${
-                                cyberBot.position === 'bottom-right'
-                                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]'
-                                  : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
-                              }`}
-                            >
-                              {t('cyberbot_pos_bottom_right')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cyberBot.updatePosition('bottom-left')}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${
-                                cyberBot.position === 'bottom-left'
-                                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]'
-                                  : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
-                              }`}
-                            >
-                              {t('cyberbot_pos_bottom_left')}
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_pos_title')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_pos_desc')}</p>
                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updatePosition('bottom-left')}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.position === 'bottom-left'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.position === 'bottom-left' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.position === 'bottom-left' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_pos_bottom_left')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updatePosition('bottom-right')}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.position === 'bottom-right'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.position === 'bottom-right' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.position === 'bottom-right' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_pos_bottom_right')}</span>
+                          </button>
                         </div>
                       </div>
                     </>)}
