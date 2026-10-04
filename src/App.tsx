@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
 import Tooltip from './Tooltip';
+import CyberTerminal from './CyberTerminal';
 import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
@@ -411,6 +412,12 @@ declare global {
       openPath?: (targetPath: string) => Promise<string>;
       openExternalTerminal?: (targetPath?: string) => Promise<boolean>;
       killShellCommand?: (cmdId?: string) => Promise<boolean>;
+      terminalStart?: (options: { id: string; shell: 'powershell' | 'cmd'; cwd: string; cols: number; rows: number }) => Promise<{ success: boolean; cwd?: string; error?: string }>;
+      terminalWrite?: (id: string, data: string) => void;
+      terminalResize?: (id: string, cols: number, rows: number) => void;
+      terminalClose?: (id: string) => Promise<boolean>;
+      onTerminalData?: (callback: (event: { id: string; data: string }) => void) => () => void;
+      onTerminalExit?: (callback: (event: { id: string; exitCode: number }) => void) => () => void;
       onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
       onShellExit: (callback: (data: { id: string; exitCode: number; cwd?: string }) => void) => () => void;
       onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
@@ -865,7 +872,7 @@ const RotatingSearchPlaceholder = React.memo(({
   mode,
   t,
 }: {
-  mode: 'console' | 'system' | 'normal';
+  mode: 'system' | 'normal';
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
 }) => {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -880,14 +887,12 @@ const RotatingSearchPlaceholder = React.memo(({
   }, [visible]);
 
   const text =
-    mode === 'console'
-      ? (placeholderIndex === 0 ? t('search_placeholder_console') : t('hint_console_enter'))
-      : mode === 'system'
+    mode === 'system'
       ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
 
   return (
-    <div className={`absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500/90 text-sm ${mode === 'console' ? 'font-mono' : 'font-sans'} select-none overflow-hidden`}>
+    <div className="absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -3735,79 +3740,14 @@ export default function App() {
     void window.electronAPI.setTrayRecents(payload);
   }, [launchHistory, apps]);
 
-  // Cyber Terminal Command Runner States
-  const [consoleLogs, setConsoleLogs] = useState<Array<{ type: 'input' | 'stdout' | 'stderr' | 'system'; text: string; id: string }>>([]);
-  const [activeCmdId, setActiveCmdId] = useState<string | null>(null);
-  const [isCommandRunning, setIsCommandRunning] = useState(false);
+  // Cyber Terminal retains its shell and last working directory between openings.
   const [consoleCwd, setConsoleCwd] = useState<string>('~');
-  const [consoleShell, setConsoleShell] = useState<'powershell' | 'cmd'>(() => {
-    return (localStorage.getItem('cyber_console_shell') as any) || 'powershell';
-  });
-  const [consoleHistory, setConsoleHistory] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('cyber_console_history') || '[]');
-    } catch {
-      return [];
-    }
-  });
-  const [historyIndex, setHistoryIndex] = useState<number>(-1);
-  const tempCommandRef = useRef<string>('');
-  const [copiedLogs, setCopiedLogs] = useState(false);
-  const consoleEndRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to bottom of console logs
+  const [consoleShell, setConsoleShell] = useState<'powershell' | 'cmd'>(() =>
+    localStorage.getItem('cyber_console_shell') === 'cmd' ? 'cmd' : 'powershell'
+  );
   useEffect(() => {
-    if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [consoleLogs]);
-
-  // Fetch initial CWD on mount
-  useEffect(() => {
-    if (isElectron && window.electronAPI?.getConsoleCwd) {
-      window.electronAPI.getConsoleCwd().then(cwd => {
-        if (cwd) setConsoleCwd(cwd);
-      }).catch(() => {});
-    }
-  }, []);
-
-  // IPC listeners for running shell commands in real time
-  useEffect(() => {
-    if (!isElectron || !window.electronAPI) return;
-
-    const unsubOutput = window.electronAPI.onShellOutput((data) => {
-      setConsoleLogs(prev => [
-        ...prev, 
-        { 
-          type: data.type === 'stdout' ? 'stdout' : 'stderr', 
-          text: data.text, 
-          id: `${data.id}-${Date.now()}-${Math.random()}` 
-        }
-      ]);
-    });
-
-    const unsubExit = window.electronAPI.onShellExit((data) => {
-      if (data.cwd) {
-        setConsoleCwd(data.cwd);
-      }
-      if (data.exitCode !== 0) {
-        setConsoleLogs(prev => [
-          ...prev,
-          { 
-            type: 'system', 
-            text: `\n[SISTEMA] El proceso terminó con el código de salida ${data.exitCode}\n`, 
-            id: `${data.id}-exit-${Date.now()}` 
-          }
-        ]);
-      }
-      setIsCommandRunning(false);
-      setActiveCmdId(null);
-    });
-
-    return () => {
-      unsubOutput();
-      unsubExit();
-    };
+    if (!isElectron || !window.electronAPI?.getConsoleCwd) return;
+    void window.electronAPI.getConsoleCwd().then(cwd => { if (cwd) setConsoleCwd(cwd); }).catch(console.error);
   }, []);
 
   const [bgType, setBgType] = useState<'image' | 'solid' | 'gradient'>(() => {
@@ -6280,6 +6220,7 @@ export default function App() {
   // Keyboard Shortcuts globales
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('[data-cyber-terminal]')) return;
       if (e.defaultPrevented) return;
       if (isRecordingShortcut) return;
 
@@ -7355,7 +7296,7 @@ export default function App() {
               if (isHoveringRightActionsRef.current) return;
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
               searchHoverTimeoutRef.current = setTimeout(() => {
-                if (!isHoveringRightActionsRef.current) {
+                if (!isTerminalOpen && !isHoveringRightActionsRef.current) {
                   triggerShowGuide();
                 }
               }, 500);
@@ -7377,9 +7318,7 @@ export default function App() {
               <div className="relative z-10">
                 <div className="text-[11px] font-cyber font-bold text-cyan-400 mb-1 tracking-wider uppercase">{t('search_guide_tooltip_title')}</div>
                 <div className="text-[13px] font-sans text-slate-300 leading-normal">
-                  {isTerminalOpen 
-                    ? `${t('search_placeholder_console')} — ${t('hint_console_enter')}`
-                    : searchScope === 'system'
+                  {searchScope === 'system'
                     ? `${t('search_placeholder_system')} — ${t('hint_system_tab')}`
                     : `${t('search_placeholder_normal')} — ${t('hint_normal_console')}`
                   }
@@ -7389,6 +7328,12 @@ export default function App() {
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 border-l border-t border-cyan-500/30 bg-[#070b13] rotate-45 -mb-1" />
             </div>
 
+            {isTerminalOpen ? (
+              <button type="button" onClick={() => (document.querySelector('[data-cyber-terminal] .xterm-helper-textarea') as HTMLTextAreaElement | null)?.focus()}
+                className="w-full min-w-0 bg-black/20 backdrop-blur-md text-emerald-300 rounded-xl pl-11 pr-24 py-3 text-sm text-left border border-emerald-500/30 font-mono">
+                {t('terminal_focus_hint')}
+              </button>
+            ) : (
             <input 
               ref={searchInputRef}
               type="text" 
@@ -7404,17 +7349,13 @@ export default function App() {
               }}
               onChange={(e) => {
                 const val = e.target.value;
-                if (!isTerminalOpen && (val === '>' || val.startsWith('>'))) {
+                if (val.startsWith('>')) {
                   setIsTerminalOpen(true);
-                  setSearchQuery(val.replace(/^>+\s*/, ''));
+                  setSearchQuery('');
                   setKeyboardNav(null);
                   setShowSearchGuide(false);
                   if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
                   if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
-                  return;
-                }
-                if (isTerminalOpen && val.startsWith('>')) {
-                  setSearchQuery(val.replace(/^>+\s*/, ''));
                   return;
                 }
                 setSearchQuery(val);
@@ -7621,223 +7562,17 @@ export default function App() {
                   return;
                 }
 
-                // Terminal Mode Navigation & Execution
-                if (isTerminalOpen) {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    setIsTerminalOpen(false);
-                    setSearchQuery('');
-                    setHistoryIndex(-1);
-                    return;
-                  }
-                  if (e.key === 'Backspace' && searchQuery === '') {
-                    e.preventDefault();
-                    setIsTerminalOpen(false);
-                    setHistoryIndex(-1);
-                    return;
-                  }
-                  if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (consoleHistory.length === 0) return;
-                    let nextIdx = historyIndex;
-                    if (historyIndex === -1) {
-                      tempCommandRef.current = searchQuery;
-                      nextIdx = consoleHistory.length - 1;
-                    } else if (historyIndex > 0) {
-                      nextIdx = historyIndex - 1;
-                    }
-                    setHistoryIndex(nextIdx);
-                    setSearchQuery(consoleHistory[nextIdx]);
-                    return;
-                  }
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (historyIndex === -1) return;
-                    if (historyIndex < consoleHistory.length - 1) {
-                      const nextIdx = historyIndex + 1;
-                      setHistoryIndex(nextIdx);
-                      setSearchQuery(consoleHistory[nextIdx]);
-                    } else {
-                      setHistoryIndex(-1);
-                      setSearchQuery(tempCommandRef.current);
-                    }
-                    return;
-                  }
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const rawCmd = searchQuery.trim().replace(/^>+\s*/, '');
-                    if (!rawCmd) {
-                      return;
-                    }
-
-                    // Save to history (avoid consecutive duplicates, up to 100 items)
-                    setConsoleHistory(prev => {
-                      const filtered = prev.filter(c => c !== rawCmd);
-                      const updated = [...filtered, rawCmd].slice(-100);
-                      try { localStorage.setItem('cyber_console_history', JSON.stringify(updated)); } catch {}
-                      return updated;
-                    });
-                    setHistoryIndex(-1);
-                    tempCommandRef.current = '';
-                    setSearchQuery('');
-
-                    // Add input trace to console logs
-                    const promptPrefix = consoleShell === 'powershell' ? 'PS' : 'CMD';
-                    const promptText = `${promptPrefix} ${consoleCwd}> ${rawCmd}`;
-                    const cmdId = `${Date.now()}`;
-                    setConsoleLogs(prev => [
-                      ...prev,
-                      { type: 'input', text: promptText, id: cmdId }
-                    ]);
-
-                    const lowerCmd = rawCmd.toLowerCase();
-
-                    // Built-in command: clear / cls
-                    if (lowerCmd === 'clear' || lowerCmd === 'cls') {
-                      setConsoleLogs([]);
-                      return;
-                    }
-
-                    // Built-in command: explorer / open
-                    if (/^(?:explorer|open)(?:\s+.*)?$/i.test(rawCmd)) {
-                      const match = /^(?:explorer|open)(?:\s+(.*))?$/i.exec(rawCmd);
-                      const targetArg = match?.[1]?.trim() || '.';
-                      const folderToOpen = targetArg === '.' ? consoleCwd : targetArg;
-                      if (isElectron) {
-                        window.electronAPI?.openPath(folderToOpen);
-                      }
-                      setConsoleLogs(prev => [
-                        ...prev,
-                        { type: 'system', text: `[EXPLORER] Abriendo: ${folderToOpen}\n`, id: `sys-${Date.now()}` }
-                      ]);
-                      return;
-                    }
-
-                    // Built-in command: wt / term / terminal
-                    if (/^(?:wt|term|terminal)$/i.test(rawCmd)) {
-                      if (isElectron && window.electronAPI?.openExternalTerminal) {
-                        window.electronAPI.openExternalTerminal(consoleCwd);
-                      }
-                      setConsoleLogs(prev => [
-                        ...prev,
-                        { type: 'system', text: `[TERMINAL] Lanzando terminal externa en: ${consoleCwd}\n`, id: `sys-${Date.now()}` }
-                      ]);
-                      return;
-                    }
-
-                    // Built-in command: sys / top
-                    if (/^(?:sys|top|system)$/i.test(rawCmd)) {
-                      if (isElectron && window.electronAPI?.getSystemInfo) {
-                        window.electronAPI.getSystemInfo().then(info => {
-                          const hours = Math.floor(info.uptime / 3600);
-                          const mins = Math.floor((info.uptime % 3600) / 60);
-                          const uptimeStr = `${hours}h ${mins}m`;
-                          const text = [
-                            `  SISTEMA & RECURSOS (HUD):`,
-                            `  ────────────────────────────────────────────────────────`,
-                            `  CPU       : ${info.cpu.model || 'Unknown'} (${info.cpu.cores} núcleos)`,
-                            `  Memoria   : ${info.memory.used} GB / ${info.memory.total} GB (${info.memory.percent}% en uso)`,
-                            `  Uptime    : ${uptimeStr}`,
-                            `  Directorio: ${consoleCwd}`,
-                            `  ────────────────────────────────────────────────────────\n`
-                          ].join('\n');
-                          setConsoleLogs(prev => [
-                            ...prev,
-                            { type: 'stdout', text, id: `sysinfo-${Date.now()}` }
-                          ]);
-                        }).catch(err => {
-                          setConsoleLogs(prev => [
-                            ...prev,
-                            { type: 'stderr', text: `Error: ${err?.message || err}\n`, id: `syserr-${Date.now()}` }
-                          ]);
-                        });
-                      }
-                      return;
-                    }
-
-                    // Built-in command: apps
-                    if (lowerCmd === 'apps') {
-                      const text = `[CYBERLAUNCHER] ${apps.length} accesos registrados | ${categories.length} categorías | ${favorites.length} favoritos.\n`;
-                      setConsoleLogs(prev => [
-                        ...prev,
-                        { type: 'stdout', text, id: `apps-${Date.now()}` }
-                      ]);
-                      return;
-                    }
-
-                    // Built-in command: help / ayuda
-                    if (lowerCmd === 'help' || lowerCmd === 'ayuda') {
-                      const isEs = language === 'es';
-                      const helpText = [
-                        isEs ? `  COMANDOS INTEGRADOS DE CYBER TERMINAL:` : `  CYBER TERMINAL BUILT-IN COMMANDS:`,
-                        `  ────────────────────────────────────────────────────────`,
-                        isEs ? `  clear, cls          : Limpiar la pantalla` : `  clear, cls          : Clear the terminal screen`,
-                        isEs ? `  cd <ruta>           : Cambiar de carpeta (ej. cd .., D:, ~)` : `  cd <path>           : Change directory (e.g. cd .., D:, ~)`,
-                        isEs ? `  explorer, open [.]  : Abrir Explorador de Windows` : `  explorer, open [.]  : Open Windows File Explorer`,
-                        isEs ? `  wt, terminal        : Lanzar terminal externa (wt/powershell)` : `  wt, terminal        : Open external terminal (wt/powershell)`,
-                        isEs ? `  sys, top            : Métricas de CPU, Memoria RAM y Uptime` : `  sys, top            : System metrics (CPU, RAM, Uptime)`,
-                        isEs ? `  apps                : Resumen de accesos configurados` : `  apps                : Shortcuts count & summary`,
-                        isEs ? `  help, ayuda         : Mostrar esta guía de comandos` : `  help, ayuda         : Show this interactive command guide`,
-                        `  ────────────────────────────────────────────────────────`,
-                        `  Shell: ${consoleShell.toUpperCase()} (UTF-8)`,
-                        isEs ? `  Navegación: [↑/↓] Historial  |  [Esc] o [Backspace] Salir` : `  Navigation: [↑/↓] History    |  [Esc] or [Backspace] Exit`,
-                        `  ────────────────────────────────────────────────────────\n`
-                      ].join('\n');
-                      setConsoleLogs(prev => [
-                        ...prev,
-                        { type: 'stdout', text: helpText, id: `help-${Date.now()}` }
-                      ]);
-                      return;
-                    }
-
-                    // Execute command on Electron Backend
-                    if (isElectron) {
-                      setIsCommandRunning(true);
-                      const res = await window.electronAPI!.runShellCommand(rawCmd, {
-                        shellType: consoleShell,
-                        cwd: consoleCwd
-                      });
-                      if (res.cwd) {
-                        setConsoleCwd(res.cwd);
-                      }
-                      if (res.success && res.cmdId) {
-                        setActiveCmdId(res.cmdId);
-                      } else {
-                        setConsoleLogs(prev => [
-                          ...prev,
-                          { type: 'stderr', text: res.error || (language === 'es' ? 'Error al ejecutar comando.' : 'Error executing command.'), id: `error-${Date.now()}` }
-                        ]);
-                        setIsCommandRunning(false);
-                      }
-                    } else {
-                      // Web simulator
-                      setIsCommandRunning(true);
-                      setConsoleLogs(prev => [
-                        ...prev,
-                        { type: 'stdout', text: `Simulando ejecución en [${consoleShell}]: "${rawCmd}"\n`, id: `sim-${Date.now()}` }
-                      ]);
-                      setTimeout(() => {
-                        setConsoleLogs(prev => [
-                          ...prev,
-                          { type: 'stdout', text: `Host local... Respuesta exitosa.\n`, id: `sim-ping-${Date.now()}` },
-                        ]);
-                        setIsCommandRunning(false);
-                      }, 1200);
-                    }
-                  }
-                }
               }}
               className={`w-full min-w-0 bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
-                isTerminalOpen
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] font-mono caret-emerald-400/80' 
-                  : searchScope === 'system'
+                searchScope === 'system'
                   ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] caret-emerald-400/80'
                   : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] caret-cyan-400/80'
               } placeholder:text-slate-500`}
             />
-            {searchQuery === '' && (
+            )}
+            {!isTerminalOpen && searchQuery === '' && (
               <RotatingSearchPlaceholder
-                mode={isTerminalOpen ? 'console' : searchScope === 'system' ? 'system' : 'normal'}
+                mode={searchScope === 'system' ? 'system' : 'normal'}
                 t={t}
               />
             )}
@@ -7864,7 +7599,7 @@ export default function App() {
                 isHoveringRightActionsRef.current = false;
               }}
             >
-              {searchQuery && (
+              {!isTerminalOpen && searchQuery && (
                 <Tooltip label={t('clear_search')} placement="bottom">
                   <button
                     type="button"
@@ -7888,11 +7623,12 @@ export default function App() {
                   <Tooltip label={t('terminal_close')} placement="bottom">
                     <button
                       type="button"
+                      aria-label={t('terminal_close')}
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsTerminalOpen(false);
                         setSearchQuery('');
-                        searchInputRef.current?.focus();
+                        window.setTimeout(() => searchInputRef.current?.focus(), 0);
                       }}
                       className="flex items-center justify-center text-emerald-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer"
                     >
@@ -8008,216 +7744,11 @@ export default function App() {
           }`}
         >
           {isTerminalOpen ? (
-            <div className="flex-1 flex flex-col font-mono text-left bg-black/45 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-4 shadow-2xl overflow-hidden relative min-h-[400px]">
-              {/* Terminal Scanline overlay */}
-              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,18,18,0)_98%,rgba(16,185,129,0.04)_98%)] bg-[size:100%_4px] rounded-2xl" />
-              
-              {/* Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-3 mb-3 shrink-0 select-none">
-                {/* Left: Terminal badge + Shell selector + CWD Pill */}
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-emerald-400/85 animate-caret-breathe" />
-                    <span className="text-xs font-cyber font-bold text-emerald-400 tracking-wider">
-                      {t('terminal_title')}
-                    </span>
-                  </div>
-
-                  {/* Shell Selector Toggle */}
-                  <div className="flex items-center bg-black/50 border border-emerald-500/20 rounded-lg p-0.5 text-[10px] font-cyber">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = 'powershell';
-                        setConsoleShell(next);
-                        localStorage.setItem('cyber_console_shell', next);
-                      }}
-                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                        consoleShell === 'powershell'
-                          ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      PowerShell
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = 'cmd';
-                        setConsoleShell(next);
-                        localStorage.setItem('cyber_console_shell', next);
-                      }}
-                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
-                        consoleShell === 'cmd'
-                          ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      CMD
-                    </button>
-                  </div>
-
-                  {/* CWD Breadcrumb Pill */}
-                  <Tooltip label={`${t('terminal_open_folder')}: ${consoleCwd}`} placement="bottom">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isElectron) window.electronAPI?.openPath(consoleCwd);
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-lg text-[11px] text-slate-300 hover:text-emerald-300 transition-all max-w-[280px] truncate group cursor-pointer"
-                    >
-                      <FolderOpen className="w-3.5 h-3.5 text-emerald-400/80 group-hover:text-emerald-300 shrink-0" />
-                      <span className="truncate font-mono">{consoleCwd}</span>
-                    </button>
-                  </Tooltip>
-                </div>
-
-                {/* Right: Status + Actions */}
-                <div className="flex items-center gap-2">
-                  {/* Running / Online status */}
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/40 border border-white/5 rounded-md">
-                    <span className={`w-2 h-2 rounded-full ${isCommandRunning ? 'bg-amber-400 animate-ping' : 'bg-emerald-500'}`} />
-                    <span className="text-[10px] text-slate-400 font-cyber">
-                      {isCommandRunning ? t('terminal_status_running') : t('terminal_status_online')}
-                    </span>
-                  </div>
-
-                  {/* Kill button if command running */}
-                  {isCommandRunning && (
-                    <Tooltip label={t('terminal_kill')} placement="bottom">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isElectron && window.electronAPI?.killShellCommand) {
-                            window.electronAPI.killShellCommand(activeCmdId || undefined);
-                          }
-                          setIsCommandRunning(false);
-                        }}
-                        className="flex items-center gap-1 px-2 py-0.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded text-[10px] font-cyber transition-all cursor-pointer"
-                      >
-                        <Square className="w-3 h-3 text-red-400 fill-current" />
-                        <span>STOP</span>
-                      </button>
-                    </Tooltip>
-                  )}
-
-                  {/* Copy Output Button */}
-                  {consoleLogs.length > 0 && (
-                    <Tooltip label={copiedLogs ? t('terminal_copied') : t('terminal_copy_output')} placement="bottom">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textToCopy = consoleLogs.map(l => l.text).join('\n');
-                          navigator.clipboard.writeText(textToCopy);
-                          setCopiedLogs(true);
-                          setTimeout(() => setCopiedLogs(false), 2000);
-                        }}
-                        className="flex items-center gap-1 p-1.5 hover:bg-white/10 text-slate-400 hover:text-emerald-300 rounded-lg transition-all cursor-pointer"
-                      >
-                        {copiedLogs ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </Tooltip>
-                  )}
-
-                  {/* Open External Terminal Button */}
-                  <Tooltip label={t('terminal_open_external')} placement="bottom">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isElectron && window.electronAPI?.openExternalTerminal) {
-                          window.electronAPI.openExternalTerminal(consoleCwd);
-                        }
-                      }}
-                      className="flex items-center gap-1 p-1.5 hover:bg-white/10 text-slate-400 hover:text-cyan-300 rounded-lg transition-all cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
-
-                  {/* Clear Screen Button */}
-                  {consoleLogs.length > 0 && (
-                    <Tooltip label={t('terminal_clear')} placement="bottom">
-                      <button
-                        type="button"
-                        onClick={() => setConsoleLogs([])}
-                        className="flex items-center gap-1 p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </Tooltip>
-                  )}
-
-                  {/* Close Terminal Button */}
-                  <Tooltip label={t('terminal_close')} placement="bottom">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsTerminalOpen(false);
-                        setSearchQuery('');
-                      }}
-                      className="flex items-center gap-1 p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
-                </div>
-              </div>
-
-              {/* Terminal Body */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 select-text selection:bg-emerald-500/30 selection:text-white">
-                {consoleLogs.length === 0 ? (
-                  <div className="flex flex-col items-start gap-1 py-3 text-xs text-slate-400 font-mono select-none">
-                    <div className="text-emerald-400 font-bold tracking-wide">
-                      CYBER TERMINAL [{consoleShell.toUpperCase()}]
-                    </div>
-                    <div className="text-slate-600">
-                      ────────────────────────────────────────────────────────
-                    </div>
-                    <div className="text-slate-300">
-                      Directorio: <span className="text-emerald-300 font-semibold">{consoleCwd}</span>
-                    </div>
-                    <div className="text-slate-400">
-                      {t('terminal_hint')}
-                    </div>
-                    <div className="text-slate-400">
-                      Escribe <span className="text-emerald-300 underline cursor-pointer hover:text-emerald-200" onClick={() => {
-                        setSearchQuery('help');
-                        searchInputRef.current?.focus();
-                      }}>'help'</span> para ver comandos integrados (cd, cls, sys, explorer, wt).
-                    </div>
-                    <div className="text-slate-600">
-                      ────────────────────────────────────────────────────────
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {consoleLogs.map((log) => (
-                      <div 
-                        key={log.id} 
-                        className={`text-xs break-words leading-relaxed whitespace-pre-wrap font-mono ${
-                          log.type === 'input' 
-                            ? 'text-cyan-300 font-bold' 
-                            : log.type === 'stderr' 
-                            ? 'text-red-400 font-bold' 
-                            : log.type === 'system' 
-                            ? 'text-cyan-400 font-bold border-y border-cyan-500/15 py-1 my-1.5 bg-cyan-500/5 px-2 rounded' 
-                            : 'text-emerald-400/90'
-                        }`}
-                      >
-                        {log.text}
-                      </div>
-                    ))}
-                  </>
-                )}
-                {isCommandRunning && (
-                  <div className="text-xs text-emerald-400/60 animate-pulse mt-1 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>&gt; Procesando stream de datos...</span>
-                  </div>
-                )}
-                <div ref={consoleEndRef} />
-              </div>
-            </div>
+            <CyberTerminal shell={consoleShell} cwd={consoleCwd}
+              onShellChange={next => { setConsoleShell(next); localStorage.setItem('cyber_console_shell', next); }}
+              onCwdChange={setConsoleCwd}
+              onClose={() => { setIsTerminalOpen(false); setSearchQuery(''); window.setTimeout(() => searchInputRef.current?.focus(), 0); }}
+              t={t} />
           ) : (searchScope === 'system' && searchQuery.trim() !== '') ? (
             <div className="flex-1 flex flex-col pt-4 select-none min-h-0 overflow-hidden">
               <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-4 shrink-0">
@@ -9065,9 +8596,9 @@ export default function App() {
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
-                        setIsTerminalOpen(prev => !prev);
+                        setIsTerminalOpen(!isTerminalOpen);
+                        if (isTerminalOpen) window.setTimeout(() => searchInputRef.current?.focus(), 0);
                         setSearchQuery('');
-                        setTimeout(() => searchInputRef.current?.focus(), 50);
                       }}
                       className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >

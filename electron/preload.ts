@@ -126,6 +126,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (targetPath: string) => ipcRenderer.invoke('open-path', targetPath),
   openExternalTerminal: (targetPath?: string) => ipcRenderer.invoke('open-external-terminal', targetPath),
   killShellCommand: (cmdId?: string) => ipcRenderer.invoke('kill-shell-command', cmdId),
+  terminalStart: (options: { id: string; shell: 'powershell' | 'cmd'; cwd: string; cols: number; rows: number }) =>
+    ipcRenderer.invoke('terminal-start', options),
+  terminalWrite: (id: string, data: string) => ipcRenderer.send('terminal-write', { id, data }),
+  terminalResize: (id: string, cols: number, rows: number) => ipcRenderer.send('terminal-resize', { id, cols, rows }),
+  terminalClose: (id: string) => ipcRenderer.invoke('terminal-close', id),
+  onTerminalData: (callback: (event: { id: string; data: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string; data: string }) => callback(data);
+    ipcRenderer.on('terminal-data', handler);
+    return () => ipcRenderer.removeListener('terminal-data', handler);
+  },
+  onTerminalExit: (callback: (event: { id: string; exitCode: number }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { id: string; exitCode: number }) => callback(data);
+    ipcRenderer.on('terminal-exit', handler);
+    return () => ipcRenderer.removeListener('terminal-exit', handler);
+  },
   onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => {
     const handler = (_event: any, data: { id: string; type: 'stdout' | 'stderr'; text: string }) => callback(data);
     ipcRenderer.on('shell-command-output', handler);

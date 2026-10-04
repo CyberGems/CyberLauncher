@@ -53,7 +53,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Paleta de comandos**: presiona `Ctrl+K` para ejecutar comandos del lanzador y navegar al instante
 - **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y apps en todas las unidades
 - **Soporte UWP / Windows Store**: escanea, importa y lanza apps UWP y MSIX de forma nativa mediante AUMID
-- **Modo consola**: escribe `>` en la búsqueda para ejecutar comandos del shell directamente
+- **Cyber Terminal**: escribe `>` en la búsqueda para abrir una sesión persistente e interactiva de PowerShell o CMD dentro del panel. Escribe en el prompt, usa el historial nativo y programas interactivos, y cambia de shell desde la barra.
 
 ### 📂 Organización
 - **Categorías personalizadas**: organiza apps en categorías con código de color y edición en línea
@@ -195,9 +195,11 @@ npm run lint
 | Tecla | Acción |
 |---|---|
 | `Alt+Shift+L` | Mostrar/ocultar CyberLauncher (personalizable) |
-| `>` (en la búsqueda) | Cambiar al modo consola (ejecutar comandos del shell) |
-| `Intro` | Lanzar la app seleccionada / ejecutar el comando de consola |
-| `Escape` | Cerrar el menú / limpiar la búsqueda |
+| `>` (en la búsqueda) | Abrir Cyber Terminal |
+| `Intro` | Lanzar la app seleccionada / ejecutar el comando en el prompt |
+| `Ctrl+C` (en la terminal) | Interrumpir el comando activo |
+| `Ctrl+Shift+C` / `Ctrl+Shift+V` (en la terminal) | Copiar selección / pegar |
+| `Escape` | Cerrar el menú / limpiar la búsqueda; en la terminal, enviar Escape a la shell |
 | `↑` `↓` | Navegar por los resultados de búsqueda |
 | `←` `→` | Navegar por el menú de la barra lateral |
 | `Ctrl+←` / `Ctrl+→` | Cambiar el filtro de búsqueda (Mixto / Apps / Carpetas / Archivos) |

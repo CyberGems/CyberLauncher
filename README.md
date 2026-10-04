@@ -53,7 +53,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Command Palette**: Press `Ctrl+K` for instant launcher command execution and quick navigation
 - **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
 - **UWP / Windows Store Support**: Natively scan, import, and launch UWP & MSIX apps via AUMID
-- **Console Mode**: Type `>` in search to execute shell commands directly
+- **Cyber Terminal**: Type `>` in search to open a persistent, interactive PowerShell or CMD session in the panel. Type at the shell prompt, use native history and interactive programs, and switch shells from the toolbar.
 
 ### 📂 Organization
 - **Custom Categories**: Organize apps into color-coded categories with inline editing
@@ -197,9 +197,11 @@ npm run lint
 | Key | Action |
 |---|---|
 | `Alt+Shift+L` | Show/hide CyberLauncher (customizable) |
-| `>` (in search) | Switch to console mode (execute shell commands) |
-| `Enter` | Launch selected app / execute console command |
-| `Esc` | Close menu / clear search |
+| `>` (in search) | Open Cyber Terminal |
+| `Enter` | Launch selected app / run the command at the terminal prompt |
+| `Ctrl+C` (in terminal) | Interrupt the foreground command |
+| `Ctrl+Shift+C` / `Ctrl+Shift+V` (in terminal) | Copy selection / paste |
+| `Esc` | Close menu / clear search; in the terminal, send Escape to the shell |
 | `↑` `↓` | Navigate search results |
 | `←` `→` | Navigate sidebar menu |
 | `Ctrl+←` / `Ctrl+→` | Cycle search filter (Mixed / Apps / Folders / Files) |

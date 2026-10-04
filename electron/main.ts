@@ -5,6 +5,7 @@ import { exec, execSync, spawn, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import * as pty from 'node-pty';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
@@ -4332,6 +4333,108 @@ foreach (\$app in \$startApps) {
   // --- Shell runner & Cyber Terminal engine ---
   const activeProcesses = new Map<string, any>();
   let consoleCwd = os.homedir();
+
+  // Cyber Terminal owns one persistent ConPTY session. The command runner below
+  // remains separate because scheduled tasks need finite, independent processes.
+  type TerminalSession = { id: string; process: pty.IPty; exited: boolean; closeTimer?: NodeJS.Timeout };
+  let terminalSession: TerminalSession | null = null;
+  const terminalSender = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+    mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents;
+  const terminalSize = (value: unknown, fallback: number, max: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.max(2, Math.min(max, Math.floor(value))) : fallback;
+  const stopTerminal = (session: TerminalSession) => {
+    if (session.exited || session.closeTimer) return;
+    try {
+      // Exit normally when possible. ConPTY's immediate kill can race its
+      // process-list helper before that helper has attached to the console.
+      session.process.write('\x03exit\r');
+    } catch (error) {
+      console.error('[TERMINAL] Graceful shutdown failed:', error);
+    }
+    session.closeTimer = setTimeout(() => {
+      if (session.exited) return;
+      try { session.process.kill(); }
+      catch (error) { console.error('[TERMINAL] Forced shutdown failed:', error); }
+    }, 2000);
+    session.closeTimer.unref();
+  };
+  app.on('before-quit', () => {
+    if (terminalSession) stopTerminal(terminalSession);
+  });
+
+  ipcMain.handle('terminal-start', (event, options: { id?: string; shell?: string; cwd?: string; cols?: number; rows?: number }) => {
+    if (!terminalSender(event)) return { success: false, error: 'Invalid terminal window' };
+    if (!options || typeof options.id !== 'string' || !/^[\w-]{1,80}$/.test(options.id) ||
+        (options.shell !== 'powershell' && options.shell !== 'cmd')) {
+      return { success: false, error: 'Invalid terminal options' };
+    }
+    const isDirectory = (candidate: unknown): candidate is string => {
+      if (typeof candidate !== 'string') return false;
+      try { return fs.statSync(candidate).isDirectory(); }
+      catch { return false; }
+    };
+    const cwd = isDirectory(options.cwd) ? options.cwd : isDirectory(consoleCwd) ? consoleCwd : os.homedir();
+    const cols = terminalSize(options.cols, 80, 500);
+    const rows = terminalSize(options.rows, 24, 200);
+    try {
+      if (terminalSession) stopTerminal(terminalSession);
+      terminalSession = null;
+      const env = { ...process.env };
+      let executable = 'powershell.exe';
+      let args: string[] = [];
+      if (options.shell === 'powershell') {
+        const historyDir = path.join(app.getPath('userData'), 'Terminal');
+        fs.mkdirSync(historyDir, { recursive: true });
+        env.CYBER_TERMINAL_HISTORY_PATH = path.join(historyDir, 'PowerShell_history.txt');
+        const prompt = '[Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8; if (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue) { Set-PSReadLineOption -HistorySavePath $env:CYBER_TERMINAL_HISTORY_PATH }; function global:prompt { $p=(Get-Location).ProviderPath; [Console]::Write([char]27 + "]0;CYBERCWD:" + $p + [char]7); "PS $p> " }';
+        args = ['-NoLogo', '-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', prompt];
+      } else {
+        executable = 'cmd.exe';
+        env.PROMPT = '\x1b]0;CYBERCWD:$P\x07$P$G';
+      }
+      const child = pty.spawn(executable, args, {
+        name: 'xterm-256color', cols, rows, cwd, env,
+      });
+      const session: TerminalSession = { id: options.id, process: child, exited: false };
+      terminalSession = session;
+      child.onData(data => {
+        if (terminalSession === session && !event.sender.isDestroyed()) {
+          event.sender.send('terminal-data', { id: session.id, data });
+        }
+      });
+      child.onExit(({ exitCode }) => {
+        session.exited = true;
+        if (session.closeTimer) clearTimeout(session.closeTimer);
+        if (terminalSession === session) {
+          terminalSession = null;
+          if (!event.sender.isDestroyed()) event.sender.send('terminal-exit', { id: session.id, exitCode });
+        }
+      });
+      return { success: true, cwd };
+    } catch (error) {
+      console.error('[TERMINAL] Start failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.on('terminal-write', (event, payload: { id?: string; data?: string }) => {
+    if (!terminalSender(event) || terminalSession?.id !== payload?.id ||
+        typeof payload.data !== 'string' || payload.data.length > 65536) return;
+    try { terminalSession.process.write(payload.data); }
+    catch (error) { console.error('[TERMINAL] Write failed:', error); }
+  });
+  ipcMain.on('terminal-resize', (event, payload: { id?: string; cols?: number; rows?: number }) => {
+    if (!terminalSender(event) || terminalSession?.id !== payload?.id) return;
+    try { terminalSession.process.resize(terminalSize(payload.cols, 80, 500), terminalSize(payload.rows, 24, 200)); }
+    catch (error) { console.error('[TERMINAL] Resize failed:', error); }
+  });
+  ipcMain.handle('terminal-close', (event, id: string) => {
+    if (!terminalSender(event) || terminalSession?.id !== id) return false;
+    const session = terminalSession;
+    terminalSession = null;
+    stopTerminal(session);
+    return true;
+  });
 
   function handleCdCommand(fullCommand: string): { handled: boolean; success: boolean; newCwd?: string; output?: string; error?: string } {
     const trimmed = fullCommand.trim();
