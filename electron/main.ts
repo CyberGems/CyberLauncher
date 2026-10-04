@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import * as pty from 'node-pty';
+import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
@@ -45,6 +46,8 @@ if (process.env.PORTABLE_EXECUTABLE_DIR) {
   app.setPath('userData', portableUserDataPath);
 }
 
+const displayDiagnostics = createDisplayDiagnostics(app.getPath('userData'));
+
 // Prevenir pantallas negras causadas por el cálculo erróneo de oclusión de Chromium en Windows
 // (especialmente con ventanas sin marco 'frame: false', maximizadas o en configuraciones multimonitor).
 if (process.platform === 'win32') {
@@ -55,6 +58,24 @@ if (process.platform === 'win32') {
 
 
 let mainWindow: BrowserWindow | null = null;
+
+function displayWindowState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return { window: 'missing' };
+  try {
+    const contents = mainWindow.webContents;
+    return {
+      window: 'available',
+      visible: mainWindow.isVisible(),
+      focused: mainWindow.isFocused(),
+      minimized: mainWindow.isMinimized(),
+      maximized: mainWindow.isMaximized(),
+      rendererCrashed: contents.isCrashed(),
+      backgroundThrottling: contents.getBackgroundThrottling(),
+    };
+  } catch {
+    return { window: 'unavailable' };
+  }
+}
 let tray: Tray | null = null;
 let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
@@ -293,6 +314,7 @@ function hideMainWindow() {
 
 /** Sleep Chromium while the launcher is in the tray; stay awake only if visible or a countdown is running. */
 let throttlingTimer: ReturnType<typeof setTimeout> | null = null;
+let lastLoggedBackgroundThrottling: boolean | null = null;
 function applyRendererThrottling() {
   if (throttlingTimer) clearTimeout(throttlingTimer);
   throttlingTimer = setTimeout(() => {
@@ -302,9 +324,14 @@ function applyRendererThrottling() {
     if (trayMenuOpen) return;
     const mustRun = keepRendererAwake || mainWindow.isVisible();
     try {
-      mainWindow.webContents.setBackgroundThrottling(!mustRun);
-    } catch {
-      /* ignore */
+      const allowed = !mustRun;
+      mainWindow.webContents.setBackgroundThrottling(allowed);
+      if (allowed !== lastLoggedBackgroundThrottling) {
+        lastLoggedBackgroundThrottling = allowed;
+        displayDiagnostics.write('background-throttling', { allowed, ...displayWindowState() });
+      }
+    } catch (error) {
+      displayDiagnostics.write('background-throttling-error', { error: error instanceof Error ? error.name : 'unknown' });
     }
   }, 80);
 }
@@ -761,6 +788,9 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
+  lastLoggedBackgroundThrottling = null;
+  displayDiagnostics.write('window-created', displayWindowState());
+
   try { mainWindow.setBackgroundColor('#0a0f18'); } catch { /* ignore */ }
 
   mainWindow.setResizable(true);
@@ -782,11 +812,25 @@ function createWindow() {
 
   // Supervisión del proceso de renderizado ante salidas o cuelgues inesperados
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    displayDiagnostics.write('renderer-gone', { reason: details.reason, exitCode: details.exitCode, ...displayWindowState() });
     console.error('[RENDERER] Proceso de renderizado terminado:', details.reason, 'código:', details.exitCode);
     if (details.reason !== 'clean-exit' && !isQuitting) {
       console.log('[RENDERER] Recuperando ventana tras caída inesperada del proceso de renderizado');
       mainWindow?.reload();
     }
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    displayDiagnostics.write('renderer-unresponsive', displayWindowState());
+  });
+  mainWindow.webContents.on('responsive', () => {
+    displayDiagnostics.write('renderer-responsive', displayWindowState());
+  });
+  mainWindow.webContents.on('did-finish-load', () => {
+    displayDiagnostics.write('renderer-loaded', displayWindowState());
+  });
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, _errorDescription, _url, isMainFrame) => {
+    if (isMainFrame) displayDiagnostics.write('renderer-load-failed', { errorCode, ...displayWindowState() });
   });
 
 
@@ -814,6 +858,7 @@ function createWindow() {
 
   // Vista al restaurar del tray (reset ligero) — no mezclar con reload-config
   mainWindow.on('show', () => {
+    displayDiagnostics.write('window-show', displayWindowState());
     console.log('[WM EVENT] show (inOwnShowCall=' + inOwnShowCall + ', state=' + windowVisibilityState + ')');
     if (inOwnShowCall === ownShowCallId) {
       inOwnShowCall = 0;
@@ -832,6 +877,7 @@ function createWindow() {
   });
 
   mainWindow.on('hide', () => {
+    displayDiagnostics.write('window-hide', displayWindowState());
     console.log('[WM EVENT] hide');
     syncHotspotLockAfterWindowChange();
     applyRendererThrottling();
@@ -844,6 +890,7 @@ function createWindow() {
   // La sync entre instancias sigue vía fs.watch → reload-config.
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    displayDiagnostics.write('window-blur', displayWindowState());
     lastHotspotCorner = '';
     hotspotEntryTime = 0;
     
@@ -893,7 +940,11 @@ function createWindow() {
     }, delay);
   });
 
+  mainWindow.on('focus', () => displayDiagnostics.write('window-focus', displayWindowState()));
+  mainWindow.on('minimize', () => displayDiagnostics.write('window-minimize', displayWindowState()));
+
   mainWindow.on('restore', () => {
+    displayDiagnostics.write('window-restore', displayWindowState());
     console.log('[WM EVENT] restore (inOwnRestoreCall=' + inOwnRestoreCall + ', state=' + windowVisibilityState + ')');
     if (inOwnRestoreCall === ownRestoreCallId) {
       inOwnRestoreCall = 0;
@@ -4323,6 +4374,17 @@ foreach (\$app in \$startApps) {
     return { success: true, awake: keepRendererAwake };
   });
 
+  ipcMain.on('display-diagnostic-heartbeat', (event, report: unknown) => {
+    if (event.sender !== mainWindow?.webContents || typeof report !== 'object' || report === null) return;
+    const data = report as Record<string, unknown>;
+    displayDiagnostics.write('renderer-heartbeat', {
+      visibility: data.visibility === 'visible' ? 'visible' : 'hidden',
+      rootMounted: data.rootMounted === true,
+      devicePixelRatio: typeof data.devicePixelRatio === 'number' && Number.isFinite(data.devicePixelRatio)
+        ? Math.round(data.devicePixelRatio * 100) / 100 : 0,
+    });
+  });
+
   // --- Window Pinning (Always-on-top) ---
   ipcMain.handle('set-always-on-top', (_event, enabled: boolean) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -4833,8 +4895,26 @@ process.on('unhandledRejection', (reason) => {
 
 // Supervisión de procesos secundarios (GPU, utilidades)
 app.on('child-process-gone', (_event, details) => {
+  displayDiagnostics.write('child-process-gone', {
+    type: details.type,
+    reason: details.reason,
+    exitCode: details.exitCode,
+    ...displayWindowState(),
+  });
   if (details.type === 'GPU') {
     console.warn('[GPU] Proceso secundario GPU terminado:', details.reason, 'código:', details.exitCode);
+  }
+});
+
+app.on('gpu-info-update', () => {
+  try {
+    const status = app.getGPUFeatureStatus();
+    displayDiagnostics.write('gpu-info', {
+      compositing: status.gpu_compositing,
+      rasterization: status.rasterization,
+    });
+  } catch (error) {
+    displayDiagnostics.write('gpu-info-error', { error: error instanceof Error ? error.name : 'unknown' });
   }
 });
 
@@ -4843,6 +4923,12 @@ app.on('child-process-gone', (_event, details) => {
 // =====================================
 
 app.whenReady().then(() => {
+  displayDiagnostics.write('session-start', {
+    appVersion: app.getVersion(),
+    electronVersion: process.versions.electron || 'unknown',
+    windowsVersion: os.release(),
+    portable: !!process.env.PORTABLE_EXECUTABLE_DIR,
+  });
   // Limpiar cualquier clave residual de desarrollo en el registro de inicio de Windows
   if (process.platform === 'win32') {
     try {
@@ -4935,14 +5021,34 @@ app.whenReady().then(() => {
   createTray();
   ensureDesktopToastWin();
 
+  const displayHeartbeat = setInterval(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+      displayDiagnostics.write('main-heartbeat', displayWindowState());
+    }
+  }, 30_000);
+  displayHeartbeat.unref();
+
   // Initialize display cache and listen for changes
   updateCachedDisplays();
   screen.on('display-added', updateCachedDisplays);
   screen.on('display-removed', updateCachedDisplays);
   screen.on('display-metrics-changed', updateCachedDisplays);
+  screen.on('display-added', (_event, display) => {
+    displayDiagnostics.write('display-added', { scaleFactor: display.scaleFactor });
+  });
+  screen.on('display-removed', () => {
+    displayDiagnostics.write('display-removed', { displayCount: screen.getAllDisplays().length });
+  });
+  screen.on('display-metrics-changed', (_event, display, metrics) => {
+    displayDiagnostics.write('display-metrics-changed', {
+      scaleFactor: display.scaleFactor,
+      metrics: metrics.join(','),
+    });
+  });
 
   // Listen for session lock / suspend to guard hotspots
   powerMonitor.on('lock-screen', () => {
+    displayDiagnostics.write('screen-locked', displayWindowState());
     console.log('[POWER] Screen locked — pausing hotspots');
     pauseHotspots();
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && hideOnBlurEnabled) {
@@ -4951,14 +5057,17 @@ app.whenReady().then(() => {
     }
   });
   powerMonitor.on('unlock-screen', () => {
+    displayDiagnostics.write('screen-unlocked', displayWindowState());
     console.log('[POWER] Screen unlocked — resuming hotspots');
     resumeHotspotsAfterUAC(1000);
   });
   powerMonitor.on('suspend', () => {
+    displayDiagnostics.write('system-suspended', displayWindowState());
     console.log('[POWER] System suspended — pausing hotspots');
     pauseHotspots();
   });
   powerMonitor.on('resume', () => {
+    displayDiagnostics.write('system-resumed', displayWindowState());
     console.log('[POWER] System resumed — resuming hotspots');
     resumeHotspotsAfterUAC(1500);
   });
@@ -5063,6 +5172,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  displayDiagnostics.write('session-quit', displayWindowState());
   isQuitting = true;
 });
 

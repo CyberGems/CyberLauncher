@@ -404,6 +404,7 @@ declare global {
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
+      reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; devicePixelRatio: number }) => void;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
       onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => () => void;
       runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) => Promise<{ success: boolean; cmdId?: string; cwd?: string; error?: string }>;
@@ -4341,6 +4342,24 @@ export default function App() {
       }
     });
     return cleanup;
+  }, []);
+
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.reportDisplayHeartbeat) return;
+    const report = () => window.electronAPI?.reportDisplayHeartbeat?.({
+      visibility: document.visibilityState === 'visible' ? 'visible' : 'hidden',
+      rootMounted: rootRef.current !== null,
+      devicePixelRatio: window.devicePixelRatio,
+    });
+    report();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') report();
+    }, 30_000);
+    document.addEventListener('visibilitychange', report);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', report);
+    };
   }, []);
 
   const handleSkipUpdateVersion = useCallback((version: string) => {
