@@ -7340,14 +7340,15 @@ export default function App() {
             }`}>
               {/* Tech grid bg overlay inside tooltip */}
               <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%),linear-gradient(90deg,rgba(18,18,18,0)_95%,rgba(34,211,238,0.03)_95%)] bg-[size:10px_10px] pointer-events-none rounded-xl" />
-              <div className="relative z-10">
-                <div className="text-[11px] font-cyber font-bold text-cyan-400 mb-1 tracking-wider uppercase">{t('search_guide_tooltip_title')}</div>
-                <div className="text-[13px] font-sans text-slate-300 leading-normal">
-                  {searchScope === 'system'
-                    ? `${t('search_placeholder_system')} — ${t('hint_system_tab')}`
-                    : `${t('search_placeholder_normal')} — ${t('hint_normal_tab')}`
-                  }
-                </div>
+              <div className="relative z-10 flex flex-col gap-1 text-[13px] font-sans leading-normal">
+                <span className="font-semibold text-slate-100">
+                  {t(searchScope === 'system' ? 'search_guide_system' : 'search_guide_launcher')}
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-300">
+                  <span>{t('search_guide_press')}</span>
+                  <kbd className="tooltip-shortcut">Tab</kbd>
+                  <span>{t(searchScope === 'system' ? 'search_guide_switch_to_launcher' : 'search_guide_switch_to_system')}</span>
+                </span>
               </div>
               {/* Sleek triangle pointing up */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 border-l border-t border-cyan-500/30 bg-[#070b13] rotate-45 -mb-1" />
@@ -7621,7 +7622,7 @@ export default function App() {
                 </Tooltip>
               )}
 
-              <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
+              <Tooltip label={withShortcut(t('tooltip_search_scope_toggle'), 'Tab')} placement="bottom">
                 <button
                   type="button"
                   onClick={(e) => {
