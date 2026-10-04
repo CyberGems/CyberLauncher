@@ -231,6 +231,7 @@ export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 100
 const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
 
 const DEFAULT_BG_IMAGE = 'bg_default.jpg';
+const APPEARANCE_PREVIEW_IDLE_MS = 3000;
 
 /** Packaged presets only — relative names so they survive install on any PC. */
 const PRESET_IMAGES = [
@@ -3860,50 +3861,26 @@ export default function App() {
   });
   // (CyberTray state removed)
 
-  // Peeking: Temporarily hide blur when adjusting background sliders or changing background image/colors (CyberFeeds pattern)
+  // Temporarily reveal the launcher background after an appearance setting changes.
   const [isPeeking, setIsPeeking] = useState(false);
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const startPeeking = useCallback(() => {
-    setIsPeeking(true);
-    if (peekTimer.current) clearTimeout(peekTimer.current);
-
-    // Safety timeout in case pointer events are interrupted
-    peekTimer.current = setTimeout(() => {
-      setIsPeeking(false);
-    }, 2500);
-
-    const stopPeeking = (): void => {
-      if (peekTimer.current) clearTimeout(peekTimer.current);
-      peekTimer.current = setTimeout(() => {
-        setIsPeeking(false);
-      }, 250);
-      window.removeEventListener('pointerup', stopPeeking);
-      window.removeEventListener('mouseup', stopPeeking);
-      window.removeEventListener('touchend', stopPeeking);
-      window.removeEventListener('pointercancel', stopPeeking);
-    };
-
-    window.addEventListener('pointerup', stopPeeking);
-    window.addEventListener('mouseup', stopPeeking);
-    window.addEventListener('touchend', stopPeeking);
-    window.addEventListener('pointercancel', stopPeeking);
-  }, []);
-
-  const triggerPeek = useCallback((duration = 1200) => {
+  const triggerPeek = useCallback(() => {
     setIsPeeking(true);
     if (peekTimer.current) clearTimeout(peekTimer.current);
     peekTimer.current = setTimeout(() => {
       setIsPeeking(false);
-    }, duration);
+      peekTimer.current = null;
+    }, APPEARANCE_PREVIEW_IDLE_MS);
   }, []);
 
   useEffect(() => {
-    if (!isSettingsOpen) {
+    if (!isSettingsOpen || settingsTab !== 'appearance') {
       if (peekTimer.current) clearTimeout(peekTimer.current);
+      peekTimer.current = null;
       setIsPeeking(false);
     }
-  }, [isSettingsOpen]);
+  }, [isSettingsOpen, settingsTab]);
 
   useEffect(() => {
     return () => {
@@ -10229,9 +10206,9 @@ export default function App() {
             exit={{ opacity: 0 }}
             data-no-hide
             className={`fixed inset-0 z-50 transition-all duration-200 ${
-              isPeeking || settingsTab === 'appearance' ? 'bg-transparent backdrop-blur-none pointer-events-auto' : 'bg-black/60 backdrop-blur-sm'
+              isPeeking ? 'bg-transparent backdrop-blur-none pointer-events-auto' : 'bg-black/60 backdrop-blur-sm'
             }`}
-            style={isPeeking || settingsTab === 'appearance' ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
+            style={isPeeking ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
             onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
           />
             <motion.div 
@@ -10242,7 +10219,7 @@ export default function App() {
               data-no-hide
               onClick={(e) => e.stopPropagation()}
               className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
-                isPeeking || settingsTab === 'appearance' ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
+                isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
               }`}
             >
               <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
@@ -10509,7 +10486,7 @@ export default function App() {
                         key={type.id}
                         onClick={() => {
                           setBgType(type.id as any);
-                          triggerPeek(1200);
+                          triggerPeek();
                         }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
                           bgType === type.id 
@@ -10540,7 +10517,7 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 setBgImage(img);
-                                triggerPeek(1200);
+                                triggerPeek();
                               }}
                               className={`h-24 rounded-xl bg-cover bg-center border-2 transition-all overflow-hidden relative cursor-pointer ${
                                 bgImage === img ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20'
@@ -10576,7 +10553,7 @@ export default function App() {
                                   type="button"
                                   onClick={() => {
                                     setBgImage(customSlotImage);
-                                    triggerPeek(1200);
+                                    triggerPeek();
                                   }}
                                   className="absolute inset-0 bg-cover bg-center cursor-pointer z-0"
                                   style={{ backgroundImage: `url("${customSlotDataUrl || toThumbnailUrl(customSlotImage)}")` }}
@@ -10598,7 +10575,7 @@ export default function App() {
                                       setCustomSlotImage('');
                                       if (wasActive) {
                                         setBgImage(DEFAULT_BG_IMAGE);
-                                        triggerPeek(1200);
+                                        triggerPeek();
                                       }
                                     }}
                                     className="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-black/75 hover:bg-red-500 text-slate-300 hover:text-white border border-white/20 hover:border-red-400 shadow-md flex items-center justify-center transition-all cursor-pointer group/clear"
@@ -10619,7 +10596,7 @@ export default function App() {
                                       if (path) {
                                         setCustomSlotImage(path);
                                         setBgImage(path);
-                                        triggerPeek(1500);
+                                        triggerPeek();
                                       }
                                     }}
                                     className="flex items-center gap-1.5 bg-blue-600/90 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-blue-500/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
@@ -10638,7 +10615,7 @@ export default function App() {
                                   if (path) {
                                     setCustomSlotImage(path);
                                     setBgImage(path);
-                                    triggerPeek(1500);
+                                    triggerPeek();
                                   }
                                 }}
                                 className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
@@ -10668,7 +10645,7 @@ export default function App() {
                                  setCustomSlotImage(customImageUrl);
                                  setBgImage(customImageUrl);
                                  setCustomImageUrl('');
-                                 triggerPeek(1500);
+                                 triggerPeek();
                                }
                              }}
                              className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
@@ -10689,16 +10666,11 @@ export default function App() {
                           type="range" 
                           min="0" max="100" 
                           value={glassIntensity}
-                          onPointerDown={startPeeking}
-                          onMouseDown={startPeeking}
-                          onTouchStart={startPeeking}
-                          onInput={startPeeking}
-                          onKeyDown={(e) => {
-                            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
-                              startPeeking();
-                            }
+                          onInput={triggerPeek}
+                          onChange={(e) => {
+                            setGlassIntensity(Number(e.target.value));
+                            triggerPeek();
                           }}
-                          onChange={(e) => setGlassIntensity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
                         />
                         <p className="text-xs text-slate-500">
@@ -10717,16 +10689,11 @@ export default function App() {
                           type="range" 
                           min="0" max="100" 
                           value={bgOpacity}
-                          onPointerDown={startPeeking}
-                          onMouseDown={startPeeking}
-                          onTouchStart={startPeeking}
-                          onInput={startPeeking}
-                          onKeyDown={(e) => {
-                            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
-                              startPeeking();
-                            }
+                          onInput={triggerPeek}
+                          onChange={(e) => {
+                            setBgOpacity(Number(e.target.value));
+                            triggerPeek();
                           }}
-                          onChange={(e) => setBgOpacity(Number(e.target.value))}
                           className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
                         />
                         <p className="text-xs text-slate-500">
@@ -10749,7 +10716,7 @@ export default function App() {
                             key={i}
                             onClick={() => {
                               setBgGradient(grad);
-                              triggerPeek(1200);
+                              triggerPeek();
                             }}
                             className={`h-20 rounded-xl border-2 transition-all cursor-pointer ${
                               bgGradient === grad ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-white/20'
@@ -10772,7 +10739,7 @@ export default function App() {
                             key={i}
                             onClick={() => {
                               setBgColor(color);
-                              triggerPeek(1200);
+                              triggerPeek();
                             }}
                             className={`w-14 h-14 rounded-xl border-2 transition-all cursor-pointer ${
                               bgColor === color ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20 shadow-inner'
@@ -10784,15 +10751,13 @@ export default function App() {
                           <input 
                             type="color" 
                             value={bgColor}
-                            onPointerDown={startPeeking}
-                            onMouseDown={startPeeking}
                             onInput={(e) => {
                               setBgColor(e.currentTarget.value);
-                              startPeeking();
+                              triggerPeek();
                             }}
                             onChange={(e) => {
                               setBgColor(e.target.value);
-                              triggerPeek(1000);
+                              triggerPeek();
                             }}
                             className="absolute inset-[-10px] w-20 h-20 opacity-0 cursor-pointer"
                           />
