@@ -795,7 +795,7 @@ const CyberAnalogClock = () => {
 
 /** Isolated digital clock — ticks without re-rendering the full App tree. */
 /** Isolated digital clock — ticks without re-rendering the full App tree. */
-const HeaderClock = React.memo(({ onClick, title, activeTasksCount = 0 }: { onClick: () => void; title: string; activeTasksCount?: number }) => {
+const HeaderClock = React.memo(({ onClick, title, ariaLabel, activeTasksCount = 0 }: { onClick: () => void; title: ReactNode; ariaLabel: string; activeTasksCount?: number }) => {
   const [time, setTime] = useState(() => new Date());
   const visible = useDocumentVisible();
 
@@ -811,6 +811,8 @@ const HeaderClock = React.memo(({ onClick, title, activeTasksCount = 0 }: { onCl
       <button
         onClick={onClick}
         type="button"
+        aria-label={ariaLabel}
+        aria-keyshortcuts="Control+T"
         className="focus:outline-none flex items-center gap-1.5 text-cyan-400 font-digits font-bold text-[13px] sm:text-[14px] xl:text-[16px] tracking-wider drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-0.5 pr-1 group"
       >
         <Clock className="w-3.5 h-3.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
@@ -889,10 +891,10 @@ const RotatingSearchPlaceholder = React.memo(({
   const text =
     mode === 'system'
       ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
-      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_console'));
+      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_tab'));
 
   return (
-    <div className="absolute inset-y-0 left-11 right-24 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
+    <div className="absolute inset-y-0 left-11 right-16 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -5503,6 +5505,20 @@ export default function App() {
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
   const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
+  const openTerminal = useCallback(() => {
+    searchInputRef.current?.blur();
+    setSearchQuery('');
+    setKeyboardNav(null);
+    setShowSearchGuide(false);
+    setIsTerminalOpen(true);
+  }, []);
+
+  const closeTerminal = useCallback(() => {
+    setIsTerminalOpen(false);
+    setSearchQuery('');
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, []);
+
   const paletteCommands = useMemo<CommandPaletteItem[]>(() => {
     const items: CommandPaletteItem[] = [
       // 1. Acciones Rápidas (Quick Actions)
@@ -5562,12 +5578,10 @@ export default function App() {
         group: t('cmd_palette_group_actions'),
         label: t('cmd_palette_action_terminal'),
         description: t('cmd_palette_action_terminal_desc'),
-        shortcut: '>',
+        shortcut: 'Ctrl+J',
         keywords: 'terminal console consola cmd powershell cli shell',
         icon: <Terminal className="w-4 h-4 text-emerald-400" />,
-        onSelect: () => {
-          setIsTerminalOpen(true);
-        },
+        onSelect: openTerminal,
       },
       {
         id: 'action-toggle-left-sidebar',
@@ -5868,6 +5882,7 @@ export default function App() {
     handleOpenBackupsFolder,
     handleExport,
     handleImportNative,
+    openTerminal,
   ]);
 
   const getGridColumnCount = useCallback((): number => {
@@ -6220,16 +6235,19 @@ export default function App() {
   // Keyboard Shortcuts globales
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || isRecordingShortcut) return;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyJ' && !isAnyModalOpen) {
+        e.preventDefault();
+        if (isTerminalOpen) closeTerminal();
+        else openTerminal();
+        return;
+      }
       if ((e.target as HTMLElement | null)?.closest?.('[data-cyber-terminal]')) return;
       if (isTerminalOpen && !isAnyModalOpen && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === 'KeyQ') {
         e.preventDefault();
-        setIsTerminalOpen(false);
-        setSearchQuery('');
-        window.setTimeout(() => searchInputRef.current?.focus(), 0);
+        closeTerminal();
         return;
       }
-      if (e.defaultPrevented) return;
-      if (isRecordingShortcut) return;
 
       // Global Command Palette shortcut: Ctrl+K / Cmd+K
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
@@ -6621,7 +6639,7 @@ export default function App() {
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
-    submitAppForm
+    submitAppForm, openTerminal, closeTerminal
   ]);
 
   const getBackgroundStyle = () => {
@@ -7303,7 +7321,7 @@ export default function App() {
               if (isHoveringRightActionsRef.current) return;
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
               searchHoverTimeoutRef.current = setTimeout(() => {
-                if (!isTerminalOpen && !isHoveringRightActionsRef.current) {
+                if (!isHoveringRightActionsRef.current) {
                   triggerShowGuide();
                 }
               }, 500);
@@ -7327,7 +7345,7 @@ export default function App() {
                 <div className="text-[13px] font-sans text-slate-300 leading-normal">
                   {searchScope === 'system'
                     ? `${t('search_placeholder_system')} — ${t('hint_system_tab')}`
-                    : `${t('search_placeholder_normal')} — ${t('hint_normal_console')}`
+                    : `${t('search_placeholder_normal')} — ${t('hint_normal_tab')}`
                   }
                 </div>
               </div>
@@ -7335,12 +7353,6 @@ export default function App() {
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 border-l border-t border-cyan-500/30 bg-[#070b13] rotate-45 -mb-1" />
             </div>
 
-            {isTerminalOpen ? (
-              <button type="button" onClick={() => (document.querySelector('[data-cyber-terminal] .xterm-helper-textarea') as HTMLTextAreaElement | null)?.focus()}
-                className="w-full min-w-0 bg-black/20 backdrop-blur-md text-emerald-300 rounded-xl pl-11 pr-24 py-3 text-sm text-left border border-emerald-500/30 font-mono">
-                {t('terminal_focus_hint')}
-              </button>
-            ) : (
             <input 
               ref={searchInputRef}
               type="text" 
@@ -7348,6 +7360,7 @@ export default function App() {
               value={searchQuery}
               onFocus={() => {
                 setKeyboardNav(null);
+                if (isTerminalOpen) setIsTerminalOpen(false);
               }}
               onBlur={() => {
                 setShowSearchGuide(false);
@@ -7356,15 +7369,6 @@ export default function App() {
               }}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val.startsWith('>')) {
-                  setIsTerminalOpen(true);
-                  setSearchQuery('');
-                  setKeyboardNav(null);
-                  setShowSearchGuide(false);
-                  if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
-                  if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
-                  return;
-                }
                 setSearchQuery(val);
                 setKeyboardNav(null);
                 if (val.length > 0) {
@@ -7448,9 +7452,7 @@ export default function App() {
 
                 if (e.key === 'Tab') {
                   e.preventDefault();
-                  if (!isTerminalOpen) {
-                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                  }
+                  setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
                   return;
                 }
 
@@ -7510,7 +7512,6 @@ export default function App() {
                 const inSystemResults =
                   searchScope === 'system' &&
                   searchQuery.trim() !== '' &&
-                  !isTerminalOpen &&
                   displayedResults.length > 0;
 
                 if (inSystemResults) {
@@ -7549,7 +7550,7 @@ export default function App() {
                     }
                     return;
                   }
-                  if (e.key === 'Enter' && !isTerminalOpen) {
+                  if (e.key === 'Enter') {
                     e.preventDefault();
                     const item = displayedResults[systemSearchSelectedIndex];
                     if (item) {
@@ -7570,23 +7571,20 @@ export default function App() {
                 }
 
               }}
-              className={`w-full min-w-0 bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-32' : 'pr-24'} ${
+              className={`w-full min-w-0 bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-24' : 'pr-16'} ${
                 searchScope === 'system'
                   ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] caret-emerald-400/80'
                   : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] caret-cyan-400/80'
               } placeholder:text-slate-500`}
             />
-            )}
-            {!isTerminalOpen && searchQuery === '' && (
+            {searchQuery === '' && (
               <RotatingSearchPlaceholder
                 mode={searchScope === 'system' ? 'system' : 'normal'}
                 t={t}
               />
             )}
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              {isTerminalOpen ? (
-                <Terminal className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
-              ) : searchScope === 'system' ? (
+              {searchScope === 'system' ? (
                 <Search className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
               ) : (
                 <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm shrink-0" />
@@ -7606,10 +7604,11 @@ export default function App() {
                 isHoveringRightActionsRef.current = false;
               }}
             >
-              {!isTerminalOpen && searchQuery && (
+              {searchQuery && (
                 <Tooltip label={t('clear_search')} placement="bottom">
                   <button
                     type="button"
+                    aria-label={t('clear_search')}
                     onClick={(e) => {
                       e.stopPropagation();
                       setSearchQuery('');
@@ -7622,80 +7621,29 @@ export default function App() {
                 </Tooltip>
               )}
 
-              {isTerminalOpen ? (
-                <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
-                  <span className="text-[9px] font-cyber font-bold text-emerald-400">
-                    TERMINAL
+              <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
+                    if (isTerminalOpen) closeTerminal();
+                  }}
+                  className="flex items-center focus:outline-none cursor-pointer"
+                >
+                  <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
+                    searchScope === 'system'
+                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
+                      : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
+                  }`}>
+                    {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
                   </span>
-                  <Tooltip label={`${t('terminal_close')} · Alt+Q`} placement="bottom">
-                    <button
-                      type="button"
-                      aria-label={t('terminal_close')}
-                      aria-keyshortcuts="Alt+Q"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsTerminalOpen(false);
-                        setSearchQuery('');
-                        window.setTimeout(() => searchInputRef.current?.focus(), 0);
-                      }}
-                      className="flex items-center justify-center text-emerald-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Tooltip>
-                </div>
-              ) : (
-                <>
-                  {!searchQuery && (
-                    <Tooltip label={t('cmd_palette_btn_tooltip')} placement="bottom">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsCommandPaletteOpen(true);
-                        }}
-                        className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-400 hover:text-cyan-300 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
-                        aria-label={t('cmd_palette_btn_tooltip')}
-                      >
-                        <Command className="w-3 h-3 text-cyan-400/80" />
-                        <span>Ctrl+K</span>
-                      </button>
-                    </Tooltip>
-                  )}
-                  <Tooltip label={t('tooltip_search_scope_toggle')} placement="bottom">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                      }}
-                      className="flex items-center focus:outline-none cursor-pointer"
-                    >
-                      <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
-                        searchScope === 'system'
-                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
-                          : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
-                      }`}>
-                        {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
-                      </span>
-                    </button>
-                  </Tooltip>
-                </>
-              )}
+                </button>
+              </Tooltip>
             </div>
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement="bottom">
-              <button 
-                type="button"
-                onClick={() => setIsCommandPaletteOpen(prev => !prev)}
-                className="p-2 rounded-xl border border-white/10 bg-black/40 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-                aria-label={t('cmd_palette_btn_tooltip')}
-              >
-                <Command className="w-4 h-4" />
-              </button>
-            </Tooltip>
             <Tooltip label={withShortcut(t('hud_system'), 'Ctrl+H')} placement="bottom">
               <button 
                 onClick={() => setIsSystemHUDOpen(prev => !prev)}
@@ -7712,34 +7660,65 @@ export default function App() {
                 <DiskMonitor />
               </button>
             </Tooltip>
-            
-            {showHeaderClock ? (
-              <HeaderClock
-                onClick={() => setIsClockHUDOpen(prev => !prev)}
-                title={withShortcut(t('hud_clock'), 'Ctrl+T')}
-                activeTasksCount={scheduledTasks.length}
-              />
-            ) : (
-              <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement="bottom">
-                <button 
+
+            <div className="flex items-center gap-1.5 sm:gap-2 border-l border-white/10 pl-2">
+              <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement="bottom">
+                <button
                   type="button"
-                  onClick={() => setIsClockHUDOpen(prev => !prev)}
-                  className={`relative p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                    scheduledTasks.length > 0 
-                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]' 
-                      : 'bg-black/40 border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
-                  }`}
-                  aria-label={t('hud_clock')}
+                  onClick={() => setIsCommandPaletteOpen(prev => !prev)}
+                  className="p-2 rounded-xl border border-white/10 bg-black/40 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                  aria-label={t('cmd_palette_title')}
+                  aria-keyshortcuts="Control+K"
                 >
-                  <Timer className={`w-4 h-4 ${scheduledTasks.length > 0 ? 'text-cyan-300 animate-pulse' : ''}`} />
-                  {scheduledTasks.length > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
-                      {scheduledTasks.length}
-                    </span>
-                  )}
+                  <Command className="w-4 h-4" />
                 </button>
               </Tooltip>
-            )}
+              <Tooltip label={withShortcut(t('cmd_palette_action_terminal'), 'Ctrl+J')} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => isTerminalOpen ? closeTerminal() : openTerminal()}
+                  className={`p-2 rounded-xl border active:scale-95 transition-all cursor-pointer flex items-center justify-center ${
+                    isTerminalOpen
+                      ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.16)]'
+                      : 'border-white/10 bg-black/40 text-slate-400 hover:text-emerald-300 hover:border-emerald-500/30 hover:bg-emerald-500/10'
+                  }`}
+                  aria-label={t('cmd_palette_action_terminal')}
+                  aria-pressed={isTerminalOpen}
+                  aria-keyshortcuts="Control+J"
+                >
+                  <TerminalSquare className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              {showHeaderClock ? (
+                <HeaderClock
+                  onClick={() => setIsClockHUDOpen(prev => !prev)}
+                  title={withShortcut(t('hud_clock'), 'Ctrl+T')}
+                  ariaLabel={t('hud_clock')}
+                  activeTasksCount={scheduledTasks.length}
+                />
+              ) : (
+                <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setIsClockHUDOpen(prev => !prev)}
+                    className={`relative p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                      scheduledTasks.length > 0
+                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]'
+                        : 'bg-black/40 border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
+                    }`}
+                    aria-label={t('hud_clock')}
+                    aria-keyshortcuts="Control+T"
+                  >
+                    <Timer className={`w-4 h-4 ${scheduledTasks.length > 0 ? 'text-cyan-300 animate-pulse' : ''}`} />
+                    {scheduledTasks.length > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
+                        {scheduledTasks.length}
+                      </span>
+                    )}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </header>
 
@@ -7755,7 +7734,7 @@ export default function App() {
             <CyberTerminal shell={consoleShell} cwd={consoleCwd}
               onShellChange={next => { setConsoleShell(next); localStorage.setItem('cyber_console_shell', next); }}
               onCwdChange={setConsoleCwd}
-              onClose={() => { setIsTerminalOpen(false); setSearchQuery(''); window.setTimeout(() => searchInputRef.current?.focus(), 0); }}
+              onClose={closeTerminal}
               t={t} />
           ) : (searchScope === 'system' && searchQuery.trim() !== '') ? (
             <div className="flex-1 flex flex-col pt-4 select-none min-h-0 overflow-hidden">
@@ -8604,9 +8583,8 @@ export default function App() {
                       onClick={() => {
                         setIsMoreMenuOpen(false);
                         setIsHelpSubmenuOpen(false);
-                        setIsTerminalOpen(!isTerminalOpen);
-                        if (isTerminalOpen) window.setTimeout(() => searchInputRef.current?.focus(), 0);
-                        setSearchQuery('');
+                        if (isTerminalOpen) closeTerminal();
+                        else openTerminal();
                       }}
                       className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >

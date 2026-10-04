@@ -195,7 +195,7 @@ npm run lint
 | Tecla | Acción |
 |---|---|
 | `Alt+Shift+L` | Mostrar/ocultar CyberLauncher (personalizable) |
-| `>` (en la búsqueda) | Abrir Cyber Terminal |
+| `Ctrl+J` | Abrir/cerrar Cyber Terminal |
 | `Intro` | Lanzar la app seleccionada / ejecutar el comando en el prompt |
 | `Ctrl+C` (en la terminal) | Interrumpir el comando activo |
 | `Alt+Q` (en la terminal) | Cerrar Cyber Terminal |

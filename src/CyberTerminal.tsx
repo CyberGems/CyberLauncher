@@ -215,6 +215,12 @@ export default function CyberTerminal({ shell, cwd, onShellChange, onCwdChange, 
   const restart = () => { if (status === 'exited' || status === 'error') setRestartKey(value => value + 1); };
   const shortcut = (label: string, key: string) => `${label} · Alt+${key}`;
   const handleHotkey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyJ') {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
     if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const actions: Record<string, () => void> = {
       Digit1: () => onShellChange('powershell'),

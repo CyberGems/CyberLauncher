@@ -358,7 +358,7 @@ export const translations = {
     
     // Placeholder Info Text below input
     hint_system_tab: "[Tab] Volver a Launcher",
-    hint_normal_console: "'>' Terminal  •  [Tab] Sistema",
+    hint_normal_tab: "[Tab] Buscar en el sistema",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexando unidad entera {drive}...",
@@ -649,7 +649,6 @@ export const translations = {
     terminal_interrupt: "Interrumpir comando (Ctrl+C)",
     terminal_paste: "Pegar texto",
     terminal_input_label: "Área interactiva de Cyber Terminal",
-    terminal_focus_hint: "Escribe directamente en Cyber Terminal ↓",
     terminal_clear: "Limpiar pantalla",
     terminal_copy_output: "Copiar selección o salida",
     terminal_copied: "¡Copiado!",
@@ -698,7 +697,6 @@ export const translations = {
     cmd_palette_group_tools: "Herramientas y HUDs",
     cmd_palette_group_settings: "Configuración y Respaldos",
     cmd_palette_group_power: "Opciones de Energía",
-    cmd_palette_btn_tooltip: "Paleta de comandos (Ctrl+K)",
     cmd_palette_view_category: "Ir a categoría: {name}",
     cmd_palette_action_add_app: "Agregar nuevo acceso directo",
     cmd_palette_action_add_app_desc: "Añade un nuevo ejecutable, script o URL",
@@ -1100,7 +1098,7 @@ export const translations = {
     
     // Placeholder Info Text below input
     hint_system_tab: "[Tab] Return to Launcher",
-    hint_normal_console: "'>' Terminal  •  [Tab] System",
+    hint_normal_tab: "[Tab] Search system",
     
     // Notifications & Toasts
     notif_drive_linked: "Indexing full drive {drive}...",
@@ -1391,7 +1389,6 @@ export const translations = {
     terminal_interrupt: "Interrupt command (Ctrl+C)",
     terminal_paste: "Paste text",
     terminal_input_label: "Interactive Cyber Terminal area",
-    terminal_focus_hint: "Type directly in Cyber Terminal ↓",
     terminal_clear: "Clear screen",
     terminal_copy_output: "Copy selection or output",
     terminal_copied: "Copied!",
@@ -1440,7 +1437,6 @@ export const translations = {
     cmd_palette_group_tools: "Tools & HUDs",
     cmd_palette_group_settings: "Settings & Backups",
     cmd_palette_group_power: "Power Options",
-    cmd_palette_btn_tooltip: "Command Palette (Ctrl+K)",
     cmd_palette_view_category: "Jump to category: {name}",
     cmd_palette_action_add_app: "Add new shortcut",
     cmd_palette_action_add_app_desc: "Add a new executable, script, or URL",
