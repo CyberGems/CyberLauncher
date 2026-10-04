@@ -6020,11 +6020,7 @@ export default function App() {
         label: app.name,
         description: app.category ? categories.find(c => c.id === app.category)?.name : undefined,
         keywords: `${app.name} ${app.path || ''} ${app.arguments || ''}`,
-        icon: app.icon ? (
-          <img src={app.icon} alt={app.name} className="w-4 h-4 rounded object-contain shrink-0" />
-        ) : (
-          <Package className="w-4 h-4 text-cyan-400 shrink-0" />
-        ),
+        icon: <AppIcon app={app} className="w-5 h-5 rounded object-contain shrink-0" />,
         onSelect: () => {
           handleLaunchApp(app);
         },

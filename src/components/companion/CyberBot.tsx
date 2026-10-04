@@ -99,10 +99,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   // Coordinate classes based on currentPos
   const positionClasses =
     currentPos === 'bottom-left'
-      ? 'bottom-10 left-20'
+      ? 'bottom-14 left-20'
       : currentPos === 'top-right'
       ? 'top-20 right-8'
-      : 'bottom-10 right-8';
+      : 'bottom-14 right-8';
 
   return (
     <motion.aside
