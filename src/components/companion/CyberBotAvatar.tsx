@@ -193,29 +193,33 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       className={`relative inline-flex flex-col items-center justify-center cursor-pointer select-none group ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* Bot SVG Avatar with Smooth Framer Motion Floating */}
+      {/* Outer Interaction Layer: Handles Hover Elevation & Scale via Spring Physics */}
       <motion.div
-        animate={
-          isHovered
-            ? {
-                y: [-2, -8, -2],
-                rotate: [-2, 2.5, -1.5, 2, 0],
-                scale: [1.06, 1.09, 1.06],
-              }
-            : {
-                y: [0, -6, 0],
-                rotate: [0, 0.75, 0],
-                scale: 1,
-              }
-        }
+        animate={{
+          y: isHovered ? -5 : 0,
+          scale: isHovered ? 1.08 : 1,
+        }}
         transition={{
-          duration: isHovered ? 1.5 : 3.2,
-          repeat: Infinity,
-          ease: 'easeInOut',
+          type: 'spring',
+          stiffness: 260,
+          damping: 20,
         }}
         whileTap={{ scale: 0.95 }}
         className="w-full h-full flex flex-col items-center justify-center"
       >
+        {/* Inner Ambient Layer: Handles Continuous Smooth Sinusoidal Floating */}
+        <motion.div
+          animate={{
+            y: [0, -5, 0],
+            rotate: isHovered ? [-1.5, 1.5, -1.5] : [0, 0.75, 0],
+          }}
+          transition={{
+            duration: isHovered ? 1.4 : 3.2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          className="w-full h-full flex flex-col items-center justify-center"
+        >
         <svg
           viewBox="0 0 100 105"
           width={size}
@@ -429,16 +433,17 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         {/* Dynamic Floating Shadow */}
         <motion.div
           animate={{
-            scale: isHovered ? [1.1, 0.7, 1.1] : [1, 0.75, 1],
-            opacity: isHovered ? [0.45, 0.2, 0.45] : [0.35, 0.15, 0.35],
+            scale: isHovered ? [0.95, 0.75, 0.95] : [1, 0.8, 1],
+            opacity: isHovered ? [0.4, 0.2, 0.4] : [0.3, 0.15, 0.3],
           }}
           transition={{
-            duration: isHovered ? 1.5 : 3.2,
+            duration: isHovered ? 1.4 : 3.2,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
           className="w-10 h-2 bg-cyan-500/25 rounded-full blur-[2px] mt-1"
         />
+        </motion.div>
       </motion.div>
     </div>
   );

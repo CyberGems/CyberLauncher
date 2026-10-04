@@ -4412,8 +4412,9 @@ export default function App() {
       setKeyboardNav(null);
       setIsMoreMenuOpen(false);
       setIsHelpSubmenuOpen(false);
+      setIsCommandPaletteOpen(false);
 
-      if (cyberBot.enabled && launchHistory.length > 0 && Math.random() < 0.4) {
+      if (cyberBot.enabled && !isAnyModalOpen && launchHistory.length > 0 && Math.random() < 0.4) {
         cyberBot.say({
           text: t('cyberbot_last_launch', { name: launchHistory[0].name }),
           emotion: 'speaking',
@@ -6011,9 +6012,30 @@ export default function App() {
       }
     );
 
+    // 6. Aplicaciones (Applications)
+    for (const app of apps) {
+      items.push({
+        id: `app-${app.id}`,
+        group: t('cmd_palette_group_apps'),
+        label: app.name,
+        description: app.category ? categories.find(c => c.id === app.category)?.name : undefined,
+        keywords: `${app.name} ${app.path || ''} ${app.arguments || ''}`,
+        icon: app.icon ? (
+          <img src={app.icon} alt={app.name} className="w-4 h-4 rounded object-contain shrink-0" />
+        ) : (
+          <Package className="w-4 h-4 text-cyan-400 shrink-0" />
+        ),
+        onSelect: () => {
+          handleLaunchApp(app);
+        },
+      });
+    }
+
     return items;
   }, [
     t,
+    apps,
+    categories,
     categoriesWithCount,
     getCatDisplayName,
     handleRefreshAllIcons,
@@ -6023,6 +6045,7 @@ export default function App() {
     handleExport,
     handleImportNative,
     openTerminal,
+    handleLaunchApp,
   ]);
 
   const getGridColumnCount = useCallback((): number => {
