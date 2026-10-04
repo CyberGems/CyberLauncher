@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
 
 interface CyberBotAvatarProps {
@@ -7,7 +7,6 @@ interface CyberBotAvatarProps {
   isHovered?: boolean;
   size?: number;
   className?: string;
-  onClick?: () => void;
 }
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
@@ -15,14 +14,14 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   isHovered = false,
   size = 76,
   className = '',
-  onClick,
 }) => {
+  const reducedMotion = useReducedMotion();
   const [isBlinking, setIsBlinking] = useState(false);
   const [hoverReactionIndex, setHoverReactionIndex] = useState(0);
 
   // Cycle hover reactions every 1400ms while cursor is over CyberBot
   useEffect(() => {
-    if (!isHovered) {
+    if (!isHovered || reducedMotion) {
       setHoverReactionIndex(0);
       return;
     }
@@ -30,10 +29,11 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       setHoverReactionIndex(prev => (prev + 1) % 4);
     }, 1400);
     return () => window.clearInterval(interval);
-  }, [isHovered]);
+  }, [isHovered, reducedMotion]);
 
   // Natural blinking effect every 3.5 to 6 seconds
   useEffect(() => {
+    if (reducedMotion) return;
     let blinkTimer: number;
     let endBlinkTimer: number;
 
@@ -53,7 +53,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       window.clearTimeout(blinkTimer);
       window.clearTimeout(endBlinkTimer);
     };
-  }, []);
+  }, [reducedMotion]);
 
   // Face expression terminal characters
   const renderFaceContent = () => {
@@ -171,7 +171,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g className="select-none font-mono text-[15px] font-black tracking-widest" fill="#22d3ee">
             <text x="40" y="48" textAnchor="middle">&gt;</text>
-            <text x="60" y="48" textAnchor="middle" className="animate-pulse" fill="#38bdf8">_</text>
+            <text x="60" y="48" textAnchor="middle" className="motion-safe:animate-pulse" fill="#38bdf8">_</text>
           </g>
         );
     }
@@ -182,38 +182,31 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   return (
     <div
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onClick?.();
-        }
-      }}
-      className={`relative inline-flex flex-col items-center justify-center cursor-pointer select-none group ${className}`}
+      aria-hidden="true"
+      className={`relative inline-flex flex-col items-center justify-center select-none group ${className}`}
       style={{ width: size, height: size }}
     >
       {/* Outer Interaction Layer: Handles Hover Elevation & Scale via Spring Physics */}
       <motion.div
         animate={{
-          y: isHovered ? -5 : 0,
-          scale: isHovered ? 1.08 : 1,
+          y: isHovered && !reducedMotion ? -5 : 0,
+          scale: isHovered && !reducedMotion ? 1.08 : 1,
         }}
-        transition={{
+        transition={reducedMotion ? { duration: 0 } : {
           type: 'spring',
           stiffness: 260,
           damping: 20,
         }}
-        whileTap={{ scale: 0.95 }}
+        whileTap={reducedMotion ? undefined : { scale: 0.95 }}
         className="w-full h-full flex flex-col items-center justify-center"
       >
         {/* Inner Ambient Layer: Handles Continuous Smooth Sinusoidal Floating */}
         <motion.div
-          animate={{
+          animate={reducedMotion ? { y: 0, rotate: 0 } : {
             y: [0, -5, 0],
             rotate: isHovered ? [-1.5, 1.5, -1.5] : [0, 0.75, 0],
           }}
-          transition={{
+          transition={reducedMotion ? { duration: 0 } : {
             duration: isHovered ? 1.4 : 3.2,
             repeat: Infinity,
             ease: 'easeInOut',
@@ -306,7 +299,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               stroke="#38bdf8"
               strokeWidth="1"
             />
-            <circle cx="44" cy="78" r="2" fill="#22d3ee" className="animate-pulse" />
+            <circle cx="44" cy="78" r="2" fill="#22d3ee" className="motion-safe:animate-pulse" />
             <line x1="50" y1="78" x2="57" y2="78" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" />
 
             {/* Left Arm */}
@@ -326,7 +319,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                   ? 'rotate(-25 23 77)'
                   : 'rotate(8 23 77)'
               }
-              className="transition-transform duration-300"
+              className="motion-safe:transition-transform motion-safe:duration-300"
             />
             {/* Right Arm */}
             <rect
@@ -345,7 +338,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                   ? 'rotate(25 76 77)'
                   : 'rotate(-8 76 77)'
               }
-              className="transition-transform duration-300"
+              className="motion-safe:transition-transform motion-safe:duration-300"
             />
           </g>
 
@@ -379,7 +372,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               cy="11"
               r={isHovered ? 4 : 3}
               fill={isHovered ? '#38bdf8' : isAlert ? '#ef4444' : '#22d3ee'}
-              className="animate-pulse"
+              className="motion-safe:animate-pulse"
             />
 
             {/* Outer Head (Cloud-like rounded capsule) */}
@@ -432,11 +425,11 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
         {/* Dynamic Floating Shadow */}
         <motion.div
-          animate={{
+          animate={reducedMotion ? { scale: 1, opacity: 0.3 } : {
             scale: isHovered ? [0.95, 0.75, 0.95] : [1, 0.8, 1],
             opacity: isHovered ? [0.4, 0.2, 0.4] : [0.3, 0.15, 0.3],
           }}
-          transition={{
+          transition={reducedMotion ? { duration: 0 } : {
             duration: isHovered ? 1.4 : 3.2,
             repeat: Infinity,
             ease: 'easeInOut',

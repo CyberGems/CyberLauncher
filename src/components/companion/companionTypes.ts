@@ -18,6 +18,14 @@ export interface CyberBotQuietHoursConfig {
   to: string;   // e.g. "07:00"
 }
 
+export interface CyberBotSettings {
+  enabled: boolean;
+  position: CyberBotPosition;
+  dodgeEnabled: boolean;
+  chatterLevel: CyberBotChatterLevel;
+  quietHours: CyberBotQuietHoursConfig;
+}
+
 export interface CyberBotMessage {
   id: string;
   text: string;

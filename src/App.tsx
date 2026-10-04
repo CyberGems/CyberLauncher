@@ -3362,7 +3362,7 @@ export default function App() {
         onClick: actionHandler,
       } : undefined,
       durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
-      priority: notification.type === 'error' || notification.type === 'warning' ? 'high' : 'normal',
+      priority: notification.type === 'error' || notification.level === 'critical' ? 'high' : 'normal',
     });
   }, [notification, cyberBot.enabled, t, cyberBot.say]);
 
@@ -4213,6 +4213,7 @@ export default function App() {
           if (source.autoBackupLast !== undefined) setAutoBackupLast(typeof source.autoBackupLast === 'string' ? source.autoBackupLast : null);
           if (source.showTrayRecents !== undefined) setShowTrayRecents(source.showTrayRecents !== false);
           if (source.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(source.showSuiteRecommendations !== false);
+          if (source.cyberBotSettings) cyberBot.restoreSettings(source.cyberBotSettings);
           if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
@@ -4265,8 +4266,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4297,7 +4298,7 @@ export default function App() {
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
           autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
-          showTrayRecents, showSuiteRecommendations
+          showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -4325,7 +4326,7 @@ export default function App() {
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
     autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
-    showTrayRecents, showSuiteRecommendations,
+    showTrayRecents, showSuiteRecommendations, cyberBot.settings,
     isConfigLoaded
   ]);
 
@@ -4401,6 +4402,13 @@ export default function App() {
   }, [isConfigLoaded]);
 
   // Al mostrar el launcher: reset ligero de vista (sin releer config del disco)
+  const launcherShownContextRef = useRef<{
+    enabled: boolean;
+    say: typeof cyberBot.say;
+    translate: typeof t;
+    latestLaunchName?: string;
+    modalOpen: boolean;
+  } | null>(null);
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onLauncherShown) return;
     const cleanup = window.electronAPI.onLauncherShown(() => {
@@ -4414,9 +4422,10 @@ export default function App() {
       setIsHelpSubmenuOpen(false);
       setIsCommandPaletteOpen(false);
 
-      if (cyberBot.enabled && !isAnyModalOpen && launchHistory.length > 0 && Math.random() < 0.4) {
-        cyberBot.say({
-          text: t('cyberbot_last_launch', { name: launchHistory[0].name }),
+      const context = launcherShownContextRef.current;
+      if (context?.enabled && !context.modalOpen && context.latestLaunchName && Math.random() < 0.4) {
+        context.say({
+          text: context.translate('cyberbot_last_launch', { name: context.latestLaunchName }),
           emotion: 'speaking',
           durationMs: 4500,
           priority: 'low',
@@ -4550,7 +4559,7 @@ export default function App() {
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
       'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
       'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast',
-      'showTrayRecents', 'showSuiteRecommendations'
+      'showTrayRecents', 'showSuiteRecommendations', 'cyberBotSettings'
     ] as const;
 
     const cleanup = window.electronAPI!.onReloadConfig(async () => {
@@ -4580,6 +4589,7 @@ export default function App() {
       const current = configRef.current;
       let hasChanges = false;
       for (const key of stateKeys) {
+        if (key === 'cyberBotSettings' && config[key] === undefined) continue;
         if (JSON.stringify(current[key]) !== JSON.stringify(config[key])) {
           hasChanges = true;
           break;
@@ -4758,6 +4768,7 @@ export default function App() {
       if (config.autoBackupLast !== undefined) {
         setAutoBackupLast(typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null);
       }
+      if (config.cyberBotSettings) cyberBot.restoreSettings(config.cyberBotSettings);
       if (config.showTrayRecents !== undefined) {
         setShowTrayRecents(config.showTrayRecents !== false);
         localStorage.setItem('showTrayRecents', (config.showTrayRecents !== false).toString());
@@ -4810,7 +4821,7 @@ export default function App() {
       cleanupToast?.();
       cleanupAction?.();
     };
-  }, []);
+  }, [t]);
 
   const startResizingLeft = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -5274,7 +5285,8 @@ export default function App() {
         activationShortcut,
         hotspotCorners,
         hotspotDelay,
-        hotspotsDisableInFullscreen
+        hotspotsDisableInFullscreen,
+        cyberBot: cyberBot.settings
       }
     };
     
@@ -5307,8 +5319,10 @@ export default function App() {
       if (data.taskbarAppIds) setTaskbarAppIds(data.taskbarAppIds);
       if (data.viewMode) setViewMode(data.viewMode);
       if (data.cardScale !== undefined) setCardScale(data.cardScale);
+      if (data.cyberBotSettings) cyberBot.restoreSettings(data.cyberBotSettings);
       
       if (data.settings) {
+        if (data.settings.cyberBot) cyberBot.restoreSettings(data.settings.cyberBot);
         if (data.settings.bgType !== undefined) setBgType(data.settings.bgType);
         if (data.settings.bgImage !== undefined) setBgImage(normalizeBgImage(data.settings.bgImage));
         if (data.settings.customImageUrl !== undefined) setCustomImageUrl(data.settings.customImageUrl);
@@ -5381,7 +5395,7 @@ export default function App() {
       }
     });
     return cleanup;
-  }, [isElectron, settingsTab]);
+  }, [isElectron, settingsTab, cyberBot.enabled, cyberBot.say, t]);
 
   useEffect(() => {
     if (settingsTab === 'backup' && isElectron && window.electronAPI?.listBackups) {
@@ -5645,6 +5659,13 @@ export default function App() {
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
   const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  launcherShownContextRef.current = {
+    enabled: cyberBot.enabled,
+    say: cyberBot.say,
+    translate: t,
+    latestLaunchName: launchHistory[0]?.name,
+    modalOpen: isAnyModalOpen,
+  };
 
   const openTerminal = useCallback(() => {
     searchInputRef.current?.blur();
@@ -6754,6 +6775,7 @@ export default function App() {
       // Si el foco no está en un input/textarea:
       const activeEl = document.activeElement as HTMLElement | null;
       const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+      if (activeEl?.closest('[data-cyberbot-control]')) return;
 
       if (!isInputFocused && !isAnyModalOpen) {
         if (handleCyberKeyboardNav(e)) {
@@ -8653,6 +8675,7 @@ export default function App() {
                 type="button"
                 onClick={cyberBot.toggleEnabled}
                 aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                aria-pressed={cyberBot.enabled}
                 className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
                   cyberBot.enabled
                     ? 'text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.25)] hover:bg-cyan-500/25'
@@ -11492,6 +11515,9 @@ export default function App() {
                       <button 
                         type="button"
                         onClick={cyberBot.toggleEnabled}
+                        role="switch"
+                        aria-checked={cyberBot.enabled}
+                        aria-label={t('cyberbot_settings_enable')}
                         className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
                       >
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
@@ -11515,6 +11541,9 @@ export default function App() {
                         <button 
                           type="button"
                           onClick={() => cyberBot.updateDodgeEnabled(!cyberBot.dodgeEnabled)}
+                          role="switch"
+                          aria-checked={cyberBot.dodgeEnabled}
+                          aria-label={t('cyberbot_dodge_title')}
                           className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${cyberBot.dodgeEnabled ? 'bg-sky-500' : 'bg-slate-700'}`}
                         >
                           <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.dodgeEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
@@ -11538,6 +11567,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => cyberBot.updateChatterLevel('full')}
+                            aria-pressed={cyberBot.chatterLevel === 'full'}
                             className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
                               cyberBot.chatterLevel === 'full'
                                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
@@ -11552,6 +11582,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => cyberBot.updateChatterLevel('minimal')}
+                            aria-pressed={cyberBot.chatterLevel === 'minimal'}
                             className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
                               cyberBot.chatterLevel === 'minimal'
                                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
@@ -11581,6 +11612,9 @@ export default function App() {
                           <button 
                             type="button"
                             onClick={() => cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled })}
+                            role="switch"
+                            aria-checked={cyberBot.quietHours.enabled}
+                            aria-label={t('cyberbot_quiet_hours_title')}
                             className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer ${cyberBot.quietHours.enabled ? 'bg-purple-500' : 'bg-slate-700'}`}
                           >
                             <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.quietHours.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
@@ -11604,6 +11638,7 @@ export default function App() {
                                 <select
                                   value={cyberBot.quietHours.from}
                                   onChange={(e) => cyberBot.updateQuietHours({ from: e.target.value })}
+                                  aria-label={t('cyberbot_quiet_from')}
                                   className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
                                 >
                                   {Array.from({ length: 24 }).map((_, i) => {
@@ -11617,6 +11652,7 @@ export default function App() {
                                 <select
                                   value={cyberBot.quietHours.to}
                                   onChange={(e) => cyberBot.updateQuietHours({ to: e.target.value })}
+                                  aria-label={t('cyberbot_quiet_to')}
                                   className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
                                 >
                                   {Array.from({ length: 24 }).map((_, i) => {
@@ -11645,6 +11681,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => cyberBot.updatePosition('bottom-left')}
+                            aria-pressed={cyberBot.position === 'bottom-left'}
                             className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
                               cyberBot.position === 'bottom-left'
                                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
@@ -11659,6 +11696,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => cyberBot.updatePosition('bottom-right')}
+                            aria-pressed={cyberBot.position === 'bottom-right'}
                             className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
                               cyberBot.position === 'bottom-right'
                                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
@@ -13932,6 +13970,9 @@ export default function App() {
         position={cyberBot.position}
         onPositionChange={cyberBot.updatePosition}
         dodgeEnabled={cyberBot.dodgeEnabled}
+        dragBoundsRef={rootRef}
+        interactLabel={t('cyberbot_interact')}
+        closeLabel={t('cyberbot_close_message')}
       />
 
       {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}

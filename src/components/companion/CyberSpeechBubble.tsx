@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { X, Sparkles, AlertTriangle, ArrowRight } from 'lucide-react';
 import type { CyberBotMessage } from './companionTypes';
 
@@ -7,13 +7,16 @@ interface CyberSpeechBubbleProps {
   message: CyberBotMessage;
   onClose: () => void;
   position?: 'bottom-right' | 'bottom-left' | 'top-right';
+  closeLabel: string;
 }
 
 export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   message,
   onClose,
   position = 'bottom-right',
+  closeLabel,
 }) => {
+  const reducedMotion = useReducedMotion();
   const isAlert = message.emotion === 'alert';
   const isSuccess = message.emotion === 'success';
 
@@ -34,11 +37,12 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.92 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 10, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 8, scale: 0.92 }}
-      transition={{ duration: 0.22, ease: 'easeOut' }}
-      role="alert"
+      exit={reducedMotion ? undefined : { opacity: 0, y: 8, scale: 0.92 }}
+      transition={reducedMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+      role={message.priority === 'high' ? 'alert' : 'status'}
+      data-no-hide
       className={`relative min-w-[200px] max-w-xs sm:max-w-sm rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3.5 text-slate-200 select-none z-50`}
     >
       {/* Header Tag & Close button */}
@@ -54,6 +58,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
 
         <button
           type="button"
+          aria-label={closeLabel}
           onClick={(e) => {
             e.stopPropagation();
             onClose();

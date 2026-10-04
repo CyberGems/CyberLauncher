@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { 
   CyberBotMessage, 
   CyberBotPosition, 
   CyberBotChatterLevel, 
   CyberBotEmotion,
-  CyberBotQuietHoursConfig
+  CyberBotQuietHoursConfig,
+  CyberBotSettings
 } from './companionTypes';
 
 export function isInQuietHours(from: string, to: string, now = new Date()): boolean {
@@ -23,6 +24,14 @@ export function isInQuietHours(from: string, to: string, now = new Date()): bool
   }
 }
 
+export function canReplaceCyberBotMessage(
+  current: CyberBotMessage | null,
+  nextPriority: NonNullable<CyberBotMessage['priority']>
+): boolean {
+  const ranks = { low: 0, normal: 1, high: 2 };
+  return !current || ranks[nextPriority] >= ranks[current.priority || 'normal'];
+}
+
 interface UseCyberBotProps {
   t: (key: any, params?: Record<string, string>) => string;
   dailyLaunchCount?: number;
@@ -37,7 +46,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
 
   const [position, setPosition] = useState<CyberBotPosition>(() => {
     const saved = localStorage.getItem('cyberbot_position');
-    return (saved as CyberBotPosition) || 'bottom-right';
+    return saved === 'bottom-left' || saved === 'top-right' ? saved : 'bottom-right';
   });
 
   const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
@@ -47,7 +56,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
 
   const [chatterLevel, setChatterLevel] = useState<CyberBotChatterLevel>(() => {
     const saved = localStorage.getItem('cyberbot_chatter');
-    return (saved as CyberBotChatterLevel) || 'full';
+    return saved === 'minimal' ? 'minimal' : 'full';
   });
 
   const [quietHours, setQuietHours] = useState<CyberBotQuietHoursConfig>(() => {
@@ -56,10 +65,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
       try {
         const parsed = JSON.parse(saved);
         if (typeof parsed === 'object' && parsed !== null) {
+          const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
           return {
             enabled: !!parsed.enabled,
-            from: parsed.from || '22:00',
-            to: parsed.to || '07:00',
+            from: typeof parsed.from === 'string' && timePattern.test(parsed.from) ? parsed.from : '22:00',
+            to: typeof parsed.to === 'string' && timePattern.test(parsed.to) ? parsed.to : '07:00',
           };
         }
       } catch {}
@@ -72,6 +82,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
   });
 
   const [activeMessage, setActiveMessage] = useState<CyberBotMessage | null>(null);
+  const activeMessageRef = useRef<CyberBotMessage | null>(null);
   const dismissTimerRef = useRef<number | null>(null);
   const clickIndexRef = useRef(0);
 
@@ -107,12 +118,44 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     });
   }, []);
 
+  // Disk configuration and imported backups take precedence over the local fallback.
+  const restoreSettings = useCallback((settings: Partial<CyberBotSettings>) => {
+    if (!settings || typeof settings !== 'object') return;
+    if (typeof settings.enabled === 'boolean') {
+      setEnabled(settings.enabled);
+      localStorage.setItem('cyberbot_enabled', String(settings.enabled));
+    }
+    if (settings.position === 'bottom-left' || settings.position === 'bottom-right' || settings.position === 'top-right') {
+      updatePosition(settings.position);
+    }
+    if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
+    if (settings.chatterLevel === 'full' || settings.chatterLevel === 'minimal') updateChatterLevel(settings.chatterLevel);
+    if (settings.quietHours && typeof settings.quietHours === 'object') {
+      const { enabled, from, to } = settings.quietHours;
+      const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+      updateQuietHours({
+        ...(typeof enabled === 'boolean' ? { enabled } : {}),
+        ...(typeof from === 'string' && timePattern.test(from) ? { from } : {}),
+        ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
+      });
+    }
+  }, [updatePosition, updateDodgeEnabled, updateChatterLevel, updateQuietHours]);
+
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
       window.clearTimeout(dismissTimerRef.current);
       dismissTimerRef.current = null;
     }
+    activeMessageRef.current = null;
     setActiveMessage(null);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) dismissMessage();
+  }, [enabled, dismissMessage]);
+
+  useEffect(() => () => {
+    if (dismissTimerRef.current !== null) window.clearTimeout(dismissTimerRef.current);
   }, []);
 
   const say = useCallback((msg: {
@@ -125,18 +168,20 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     priority?: 'low' | 'normal' | 'high';
   }) => {
     if (!enabled) return;
+    const priority = msg.priority || 'normal';
 
-    // Check quiet hours: only allow high priority or alerts
+    // Quiet and minimal modes reserve speech for critical messages.
     if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) {
-      if (msg.priority !== 'high' && msg.emotion !== 'alert') {
+      if (priority !== 'high') {
         return;
       }
     }
 
-    // In minimal mode, only display high priority or alert messages
-    if (chatterLevel === 'minimal' && msg.priority !== 'high' && msg.emotion !== 'alert') {
+    if (chatterLevel === 'minimal' && priority !== 'high') {
       return;
     }
+
+    if (!canReplaceCyberBotMessage(activeMessageRef.current, priority)) return;
 
     if (dismissTimerRef.current) {
       window.clearTimeout(dismissTimerRef.current);
@@ -154,13 +199,17 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
       action: msg.action,
       durationMs: duration,
       timestamp: Date.now(),
-      priority: msg.priority || 'normal',
+      priority,
     };
 
+    activeMessageRef.current = newMessage;
     setActiveMessage(newMessage);
 
     if (duration > 0) {
       dismissTimerRef.current = window.setTimeout(() => {
+        if (activeMessageRef.current?.id !== newMessage.id) return;
+        activeMessageRef.current = null;
+        dismissTimerRef.current = null;
         setActiveMessage(null);
       }, duration);
     }
@@ -215,6 +264,10 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     });
   }, [dailyLaunchCount, playCyberBeep, say, t]);
 
+  const settings = useMemo<CyberBotSettings>(() => (
+    { enabled, position, dodgeEnabled, chatterLevel, quietHours }
+  ), [enabled, position, dodgeEnabled, chatterLevel, quietHours]);
+
   return {
     enabled,
     toggleEnabled,
@@ -226,6 +279,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     updateChatterLevel,
     quietHours,
     updateQuietHours,
+    settings,
+    restoreSettings,
     activeMessage,
     say,
     dismissMessage,
