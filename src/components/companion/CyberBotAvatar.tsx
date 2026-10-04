@@ -21,7 +21,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   // Cycle hover reactions every 1400ms while cursor is over CyberBot
   useEffect(() => {
-    if (!isHovered || reducedMotion) {
+    if (!isHovered || emotion !== 'idle' || reducedMotion) {
       setHoverReactionIndex(0);
       return;
     }
@@ -29,11 +29,14 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       setHoverReactionIndex(prev => (prev + 1) % 4);
     }, 1400);
     return () => window.clearInterval(interval);
-  }, [isHovered, reducedMotion]);
+  }, [isHovered, emotion, reducedMotion]);
 
   // Natural blinking effect every 3.5 to 6 seconds
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      setIsBlinking(false);
+      return;
+    }
     let blinkTimer: number;
     let endBlinkTimer: number;
 
@@ -57,8 +60,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   // Face expression terminal characters
   const renderFaceContent = () => {
-    // Continuous lively reactions while hovered (if not in alert mode)
-    if (isHovered && emotion !== 'alert') {
+    // Ambient reactions leave message expressions visible.
+    if (isHovered && emotion === 'idle') {
       switch (hoverReactionIndex) {
         case 0: // Delighted blush smile
           return (
@@ -99,7 +102,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     }
 
     // If blinking and not sleeping or scared, show closed eyes
-    if (isBlinking && emotion !== 'sleeping' && emotion !== 'scared') {
+    if (isBlinking && emotion !== 'sleeping' && emotion !== 'scared' && emotion !== 'alert') {
       return (
         <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
           <text x="33" y="47" textAnchor="middle">-</text>

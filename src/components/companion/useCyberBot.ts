@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import type { TranslationKey } from '../../locales';
+import { createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from './cyberBotPhrases';
 import type { 
   CyberBotMessage, 
   CyberBotPosition, 
@@ -33,12 +35,19 @@ export function canReplaceCyberBotMessage(
 }
 
 interface UseCyberBotProps {
-  t: (key: any, params?: Record<string, string>) => string;
+  t: (key: TranslationKey, params?: Record<string, string>) => string;
   dailyLaunchCount?: number;
   playCyberBeep?: () => void;
+  ready?: boolean;
 }
 
-export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyberBotProps) {
+interface CyberBotPhraseOptions {
+  params?: Record<string, string>;
+  durationMs?: number;
+  priority?: CyberBotMessage['priority'];
+}
+
+export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = true }: UseCyberBotProps) {
   const [enabled, setEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('cyberbot_enabled');
     return saved === null ? true : saved === 'true';
@@ -84,7 +93,9 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
   const [activeMessage, setActiveMessage] = useState<CyberBotMessage | null>(null);
   const activeMessageRef = useRef<CyberBotMessage | null>(null);
   const dismissTimerRef = useRef<number | null>(null);
-  const clickIndexRef = useRef(0);
+  const phraseDeckRef = useRef<ReturnType<typeof createCyberBotPhraseDeck> | null>(null);
+  if (!phraseDeckRef.current) phraseDeckRef.current = createCyberBotPhraseDeck();
+  const greetedRef = useRef(false);
 
   // Persist settings
   const toggleEnabled = useCallback(() => {
@@ -167,21 +178,21 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     durationMs?: number;
     priority?: 'low' | 'normal' | 'high';
   }) => {
-    if (!enabled) return;
+    if (!enabled) return false;
     const priority = msg.priority || 'normal';
 
     // Quiet and minimal modes reserve speech for critical messages.
     if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) {
       if (priority !== 'high') {
-        return;
+        return false;
       }
     }
 
     if (chatterLevel === 'minimal' && priority !== 'high') {
-      return;
+      return false;
     }
 
-    if (!canReplaceCyberBotMessage(activeMessageRef.current, priority)) return;
+    if (!canReplaceCyberBotMessage(activeMessageRef.current, priority)) return false;
 
     if (dismissTimerRef.current) {
       window.clearTimeout(dismissTimerRef.current);
@@ -213,55 +224,46 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
         setActiveMessage(null);
       }, duration);
     }
+    return true;
   }, [enabled, chatterLevel, quietHours, t]);
 
-  // Initial greeting upon startup
+  const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
+    return phraseDeckRef.current!.tryNext(topic, phrase => say({
+      text: t(phrase.key, options.params),
+      emotion: phrase.emotion,
+      priority: options.priority ?? 'low',
+      durationMs: options.durationMs,
+    }));
+  }, [say, t]);
+
+  // Greet once per activation, after disk settings load. Language/settings changes are not new arrivals.
   useEffect(() => {
-    if (!enabled || chatterLevel === 'minimal') return;
+    if (!enabled) {
+      greetedRef.current = false;
+      return;
+    }
+    if (!ready || greetedRef.current || chatterLevel === 'minimal') return;
     if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) return;
 
     const timer = window.setTimeout(() => {
-      const hour = new Date().getHours();
-      let greeting = t('cyberbot_greeting_afternoon');
-      if (hour >= 5 && hour < 12) {
-        greeting = t('cyberbot_greeting_morning');
-      } else if (hour >= 20 || hour < 5) {
-        greeting = t('cyberbot_greeting_evening');
-      }
-
-      say({
-        text: greeting,
-        emotion: 'happy',
-        priority: 'low',
+      greetedRef.current = sayPhrase(getCyberBotGreetingTopic(), {
         durationMs: 6000,
       });
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [enabled, chatterLevel, quietHours, t, say]);
+  }, [enabled, ready, chatterLevel, quietHours, sayPhrase]);
 
   // Handle direct click on CyberBot
   const handleClickBot = useCallback(() => {
     playCyberBeep?.();
 
-    const tips = [
-      t('cyberbot_chat_click_2', { count: String(dailyLaunchCount) }),
-      t('cyberbot_tip_tab'),
-      t('cyberbot_tip_command_palette'),
-      t('cyberbot_tip_resources'),
-      t('cyberbot_chat_click_3'),
-    ];
-
-    const chosenTip = tips[clickIndexRef.current % tips.length];
-    clickIndexRef.current += 1;
-
-    say({
-      text: chosenTip,
-      emotion: 'wink',
+    sayPhrase('interaction', {
+      params: { count: String(dailyLaunchCount) },
       durationMs: 6500,
       priority: 'normal',
     });
-  }, [dailyLaunchCount, playCyberBeep, say, t]);
+  }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
     { enabled, position, dodgeEnabled, chatterLevel, quietHours }
@@ -282,6 +284,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     restoreSettings,
     activeMessage,
     say,
+    sayPhrase,
     dismissMessage,
     handleClickBot,
   };

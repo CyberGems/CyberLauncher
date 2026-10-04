@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { useCyberBot } from './components/companion/useCyberBot';
-import type { CyberBotEmotion } from './components/companion/companionTypes';
+import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -3330,7 +3330,7 @@ export default function App() {
     }
   });
 
-  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep });
+  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
 
   // Route system notifications to CyberBot when companion is active
   useEffect(() => {
@@ -3372,39 +3372,25 @@ export default function App() {
   useEffect(() => {
     if (!cyberBot.enabled) return;
 
-    let targetTopic = '';
-    let targetText = '';
-    let targetEmotion: CyberBotEmotion = 'happy';
+    let targetTopic: CyberBotTopic | null = null;
 
     if (isSettingsOpen) {
       if (settingsTab === 'cyberbot') {
         targetTopic = 'settings_cyberbot';
-        targetText = t('cyberbot_context_settings_cyberbot');
-        targetEmotion = 'wink';
       } else if (settingsTab === 'backup') {
         targetTopic = 'settings_backup';
-        targetText = t('cyberbot_context_settings_backup');
-        targetEmotion = 'happy';
       } else {
         targetTopic = 'settings_general';
-        targetText = t('cyberbot_context_settings');
-        targetEmotion = 'happy';
       }
     } else if (isSystemHUDOpen) {
       targetTopic = 'hud_system';
-      targetText = t('cyberbot_context_hud_system');
-      targetEmotion = 'speaking';
     } else if (isStorageHUDOpen) {
       targetTopic = 'hud_storage';
-      targetText = t('cyberbot_context_hud_storage');
-      targetEmotion = 'speaking';
     } else if (isCommandPaletteOpen) {
       targetTopic = 'command_palette';
-      targetText = t('cyberbot_context_cmd_palette');
-      targetEmotion = 'speaking';
     }
 
-    if (!targetTopic || !targetText) return;
+    if (!targetTopic) return;
 
     // Snappy debounce (160ms): fast and fluid when navigating, prevents flicker on sub-frame clicks
     const timer = window.setTimeout(() => {
@@ -3414,13 +3400,11 @@ export default function App() {
       // Switching between DIFFERENT panels triggers immediately!
       if (now - lastSpoken < 18000) return;
 
-      topicCooldownsRef.current[targetTopic] = now;
-      cyberBot.say({
-        text: targetText,
-        emotion: targetEmotion,
+      const shown = cyberBot.sayPhrase(targetTopic, {
         priority: 'low',
         durationMs: 5000,
       });
+      if (shown) topicCooldownsRef.current[targetTopic] = now;
     }, 160);
 
     return () => window.clearTimeout(timer);
@@ -3431,8 +3415,7 @@ export default function App() {
     isStorageHUDOpen,
     isCommandPaletteOpen,
     cyberBot.enabled,
-    cyberBot.say,
-    t,
+    cyberBot.sayPhrase,
   ]);
 
   const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string, preferProvidedPath = false) => {
@@ -4404,8 +4387,7 @@ export default function App() {
   // Al mostrar el launcher: reset ligero de vista (sin releer config del disco)
   const launcherShownContextRef = useRef<{
     enabled: boolean;
-    say: typeof cyberBot.say;
-    translate: typeof t;
+    sayPhrase: typeof cyberBot.sayPhrase;
     latestLaunchName?: string;
     modalOpen: boolean;
   } | null>(null);
@@ -4424,9 +4406,8 @@ export default function App() {
 
       const context = launcherShownContextRef.current;
       if (context?.enabled && !context.modalOpen && context.latestLaunchName && Math.random() < 0.4) {
-        context.say({
-          text: context.translate('cyberbot_last_launch', { name: context.latestLaunchName }),
-          emotion: 'speaking',
+        context.sayPhrase('last_launch', {
+          params: { name: context.latestLaunchName },
           durationMs: 4500,
           priority: 'low',
         });
@@ -4980,11 +4961,8 @@ export default function App() {
       addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '', isRelink);
 
       if (cyberBot.enabled) {
-        cyberBot.say({
-          text: app.isAdmin
-            ? t('cyberbot_launching_admin', { name: app.name })
-            : t('cyberbot_launching_app', { name: app.name }),
-          emotion: 'happy',
+        cyberBot.sayPhrase(app.isAdmin ? 'launch_admin' : 'launch', {
+          params: { name: app.name },
           durationMs: 4000,
           priority: 'normal',
         });
@@ -5383,9 +5361,7 @@ export default function App() {
     const cleanup = window.electronAPI.onBackupCompleted((data) => {
       setAutoBackupLast(data.at);
       if (cyberBot.enabled) {
-        cyberBot.say({
-          text: t('cyberbot_backup_success'),
-          emotion: 'success',
+        cyberBot.sayPhrase('backup_success', {
           priority: 'normal',
           durationMs: 5000,
         });
@@ -5395,7 +5371,7 @@ export default function App() {
       }
     });
     return cleanup;
-  }, [isElectron, settingsTab, cyberBot.enabled, cyberBot.say, t]);
+  }, [isElectron, settingsTab, cyberBot.enabled, cyberBot.sayPhrase]);
 
   useEffect(() => {
     if (settingsTab === 'backup' && isElectron && window.electronAPI?.listBackups) {
@@ -5661,8 +5637,7 @@ export default function App() {
   const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
-    say: cyberBot.say,
-    translate: t,
+    sayPhrase: cyberBot.sayPhrase,
     latestLaunchName: launchHistory[0]?.name,
     modalOpen: isAnyModalOpen,
   };

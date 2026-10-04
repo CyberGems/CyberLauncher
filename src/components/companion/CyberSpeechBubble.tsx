@@ -70,7 +70,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       </div>
 
       {/* Main Text Message */}
-      <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed">
+      <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words">
         {message.text}
       </div>
 

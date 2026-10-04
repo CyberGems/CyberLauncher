@@ -94,9 +94,9 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     };
   }, []);
 
-  // Determine current emotion
+  // A visible message owns the expression, especially while showing an alert.
   const currentEmotion: CyberBotEmotion =
-    temporaryEmotion || activeMessage?.emotion || 'idle';
+    activeMessage?.emotion || temporaryEmotion || 'idle';
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
@@ -138,12 +138,9 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     e.stopPropagation();
     if (isDraggingRef.current) return;
 
-    // User clicked CyberBot directly
-    setTemporaryEmotion('wink');
+    // Let the selected phrase choose the expression.
+    setTemporaryEmotion(null);
     onClickBot?.();
-    window.setTimeout(() => {
-      setTemporaryEmotion(null);
-    }, 1500);
   };
 
   if (!enabled) return null;
