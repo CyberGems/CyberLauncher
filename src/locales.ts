@@ -783,6 +783,12 @@ export const translations = {
     cyberbot_pos_desc: "Ubicación inicial de CyberBot. También puedes arrastrarlo libremente con el ratón a donde prefieras.",
     cyberbot_pos_bottom_right: "Abajo a la derecha",
     cyberbot_pos_bottom_left: "Abajo a la izquierda",
+    cyberbot_context_settings: "Tus ajustes se guardan de inmediato. Todo sincronizado.",
+    cyberbot_context_settings_cyberbot: "¡Vaya, estás en mis circuitos! Prometo portarme bien.",
+    cyberbot_context_settings_backup: "Tus datos son oro. Mantener un respaldo al día te ahorrará dolores de cabeza.",
+    cyberbot_context_hud_system: "Monitoreando el pulso del sistema. Todo operando con normalidad.",
+    cyberbot_context_hud_storage: "Examinando el almacenamiento y espacio en disco.",
+    cyberbot_context_cmd_palette: "Escribe para buscar cualquier aplicación o comando al instante.",
   },
   en: {
     // Top Bar & General Placeholders
@@ -1568,6 +1574,12 @@ export const translations = {
     cyberbot_pos_desc: "CyberBot initial location. You can also drag it freely anywhere on screen.",
     cyberbot_pos_bottom_right: "Bottom right",
     cyberbot_pos_bottom_left: "Bottom left",
+    cyberbot_context_settings: "Your settings save automatically. Everything is in sync.",
+    cyberbot_context_settings_cyberbot: "Whoa, inside my circuits! I promise to behave.",
+    cyberbot_context_settings_backup: "Your data is gold. Keeping a fresh backup saves future headaches.",
+    cyberbot_context_hud_system: "Monitoring system vitals. All systems running smoothly.",
+    cyberbot_context_hud_storage: "Checking storage drives and available disk space.",
+    cyberbot_context_cmd_palette: "Type to quickly search and launch apps or run commands.",
   }
 };
 

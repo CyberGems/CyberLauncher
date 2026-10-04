@@ -31,7 +31,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         endBlinkTimer = window.setTimeout(() => {
           setIsBlinking(false);
           scheduleNextBlink();
-        }, 180);
+        }, 380);
       }, delay);
     };
 

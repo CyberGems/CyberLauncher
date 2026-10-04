@@ -126,10 +126,14 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       }}
       layout={!isDragging}
       transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-      className={`fixed ${positionClasses} z-[180] flex flex-col items-center pointer-events-none select-none`}
+      className={`fixed ${positionClasses} z-[180] w-[94px] h-[94px] pointer-events-none select-none`}
     >
-      {/* Speech Bubble Area */}
-      <div className="mb-2 pointer-events-auto">
+      {/* Speech Bubble Area (Anchored directly above CyberBot without shifting layout) */}
+      <div
+        className={`absolute bottom-full mb-3 pointer-events-auto ${
+          currentPos === 'bottom-left' ? 'left-0' : 'right-0'
+        }`}
+      >
         <AnimatePresence mode="wait">
           {activeMessage && (
             <CyberSpeechBubble
@@ -147,7 +151,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         onMouseEnter={handleMouseEnter}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
-        className="pointer-events-auto p-2 rounded-full cursor-grab active:cursor-grabbing"
+        className="pointer-events-auto w-[94px] h-[94px] flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing"
       >
         <CyberBotAvatar
           emotion={currentEmotion}

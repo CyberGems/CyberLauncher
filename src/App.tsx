@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { useCyberBot } from './components/companion/useCyberBot';
+import type { CyberBotEmotion } from './components/companion/companionTypes';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -3364,6 +3365,75 @@ export default function App() {
       priority: notification.type === 'error' || notification.type === 'warning' ? 'high' : 'normal',
     });
   }, [notification, cyberBot.enabled, t, cyberBot.say]);
+
+  // Contextual CyberBot commentary on panel opening & settings navigation
+  const lastContextCommentRef = useRef<{ topic: string; timestamp: number }>({ topic: '', timestamp: 0 });
+
+  useEffect(() => {
+    if (!cyberBot.enabled) return;
+
+    let targetTopic = '';
+    let targetText = '';
+    let targetEmotion: CyberBotEmotion = 'happy';
+
+    if (isSettingsOpen) {
+      if (settingsTab === 'cyberbot') {
+        targetTopic = 'settings_cyberbot';
+        targetText = t('cyberbot_context_settings_cyberbot');
+        targetEmotion = 'wink';
+      } else if (settingsTab === 'backup') {
+        targetTopic = 'settings_backup';
+        targetText = t('cyberbot_context_settings_backup');
+        targetEmotion = 'happy';
+      } else {
+        targetTopic = 'settings_general';
+        targetText = t('cyberbot_context_settings');
+        targetEmotion = 'happy';
+      }
+    } else if (isSystemHUDOpen) {
+      targetTopic = 'hud_system';
+      targetText = t('cyberbot_context_hud_system');
+      targetEmotion = 'speaking';
+    } else if (isStorageHUDOpen) {
+      targetTopic = 'hud_storage';
+      targetText = t('cyberbot_context_hud_storage');
+      targetEmotion = 'speaking';
+    } else if (isCommandPaletteOpen) {
+      targetTopic = 'command_palette';
+      targetText = t('cyberbot_context_cmd_palette');
+      targetEmotion = 'speaking';
+    }
+
+    if (!targetTopic || !targetText) return;
+
+    // Debounce to allow user interaction to settle without firing during rapid clicks
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      const last = lastContextCommentRef.current;
+      // 45s cooldown for identical topic, 12s cooldown across any context commentary
+      if (last.topic === targetTopic && now - last.timestamp < 45000) return;
+      if (now - last.timestamp < 12000) return;
+
+      lastContextCommentRef.current = { topic: targetTopic, timestamp: now };
+      cyberBot.say({
+        text: targetText,
+        emotion: targetEmotion,
+        priority: 'low',
+        durationMs: 5500,
+      });
+    }, 650);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    isSettingsOpen,
+    settingsTab,
+    isSystemHUDOpen,
+    isStorageHUDOpen,
+    isCommandPaletteOpen,
+    cyberBot.enabled,
+    cyberBot.say,
+    t,
+  ]);
 
   const addToHistory = useCallback((name: string, path: string, type: 'app' | 'file' | 'folder' | 'uwp', icon?: string, preferProvidedPath = false) => {
     setLaunchHistory(prev => {
