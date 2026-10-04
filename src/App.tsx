@@ -16,7 +16,7 @@ import {
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp,
+  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle
 } from 'lucide-react';
 import {
@@ -2418,6 +2418,7 @@ export default function App() {
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string } | null>(null);
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
   const launchingAppsRef = useRef(new Set<number>());
+  const [launchingAppIds, setLaunchingAppIds] = useState<Set<number>>(() => new Set());
   const [toastPaused, setToastPaused] = useState(false);
 
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
@@ -4861,6 +4862,9 @@ export default function App() {
   const handleLaunchApp = async (app: LauncherApp, replacementPath?: string) => {
     if (launchingAppsRef.current.has(app.id)) return;
     launchingAppsRef.current.add(app.id);
+    const launchIndicatorTimer = window.setTimeout(() => {
+      setLaunchingAppIds(prev => new Set(prev).add(app.id));
+    }, 150);
 
     const appPath = replacementPath ?? app.path ?? `mock://${app.name}`;
     const isRelink = replacementPath !== undefined;
@@ -4904,6 +4908,13 @@ export default function App() {
         void window.electronAPI!.windowHideToTray();
       }
     } finally {
+      window.clearTimeout(launchIndicatorTimer);
+      setLaunchingAppIds(prev => {
+        if (!prev.has(app.id)) return prev;
+        const next = new Set(prev);
+        next.delete(app.id);
+        return next;
+      });
       launchingAppsRef.current.delete(app.id);
     }
   };
@@ -8476,11 +8487,12 @@ export default function App() {
                   const isFavContextActive = contextMenu?.app?.id === app.id;
                   const isFavActive = isFavSelected || isFavContextActive;
                   const isBeingDragged = draggedFavId === app.id;
+                  const isFavLaunching = launchingAppIds.has(app.id);
                   return (
                     <motion.div
                       key={`fav-${app.id}`}
                       layout
-                      drag
+                      drag={!isFavLaunching}
                       dragSnapToOrigin
                       whileHover={{ scale: 1.05, y: -2 }}
                       whileDrag={{
@@ -8530,15 +8542,17 @@ export default function App() {
                         <div
                           role="button"
                           tabIndex={0}
+                          aria-busy={isFavLaunching}
+                          aria-disabled={isFavLaunching}
                           data-no-hide
                           data-nav-fav-index={favIdx}
                           onContextMenu={(e: any) => handleContextMenu(e, app, 'favorites')}
                           onClick={() => {
-                            if (isDraggingFavRef.current) return;
+                            if (isDraggingFavRef.current || isFavLaunching) return;
                             setKeyboardNav(null);
                             handleLaunchApp(app);
                           }}
-                          className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg cursor-pointer active:cursor-grabbing select-none ${app.color} ${
+                          className={`group relative flex items-center justify-center w-[52px] h-[52px] bg-black/40 backdrop-blur-md border rounded-2xl shadow-lg ${isFavLaunching ? 'cursor-wait' : 'cursor-pointer active:cursor-grabbing'} select-none ${app.color} ${
                             isFavActive
                               ? 'border-cyan-400 bg-white/[0.14] shadow-[0_0_18px_rgba(34,211,238,0.5)] ring-2 ring-cyan-400/80 z-30'
                               : isBeingDragged
@@ -8547,7 +8561,12 @@ export default function App() {
                           } transition-[border-color,background-color,box-shadow,opacity] duration-150 ease-out`}
                         >
                           <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
-                          <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
+                          <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavLaunching ? 'opacity-40' : ''} ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
+                          {isFavLaunching && (
+                            <span role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/30 pointer-events-none">
+                              <LoaderCircle className="w-4 h-4 animate-spin text-cyan-300" />
+                            </span>
+                          )}
                         </div>
                       </Tooltip>
                     </motion.div>
@@ -8678,6 +8697,7 @@ export default function App() {
                 const isAppSelected = keyboardNav?.section === 'apps' && keyboardNav.index === index;
                 const isAppContextActive = contextMenu?.app?.id === app.id;
                 const isAppHighlighted = isAppSelected || isAppContextActive;
+                const isAppLaunching = launchingAppIds.has(app.id);
                 const elements = [];
                 const CardShell: any = animateAppCards ? motion.div : 'div';
                 const motionProps = animateAppCards
@@ -8721,19 +8741,21 @@ export default function App() {
                     data-no-hide="true"
                     data-nav-app-index={index}
                     role="button"
+                    aria-busy={isAppLaunching}
+                    aria-disabled={isAppLaunching}
                     tabIndex={0}
                     onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, app)}
                     onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       setKeyboardNav(null);
-                      handleLaunchApp(app);
+                      if (!isAppLaunching) handleLaunchApp(app);
                     }}
                     onKeyDown={(e: React.KeyboardEvent) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         e.stopPropagation();
                         setKeyboardNav(null);
-                        handleLaunchApp(app);
+                        if (!isAppLaunching) handleLaunchApp(app);
                       }
                     }}
                     style={{
@@ -8774,13 +8796,19 @@ export default function App() {
                           className="flex flex-col items-center justify-center text-center h-full relative z-10"
                           style={{ gap: `${8 * (cardScale / 100)}px` }}
                         >
-                          <AppIcon app={app}
-                            className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${
-                              isAppContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''
-                            } ${app.color}`}
-                            style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
-                            strokeWidth={1.5} 
-                          />
+                          {isAppLaunching ? (
+                            <span role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="flex items-center justify-center shrink-0 text-cyan-300" style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}>
+                              <LoaderCircle className="w-4 h-4 animate-spin" />
+                            </span>
+                          ) : (
+                            <AppIcon app={app}
+                              className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${
+                                isAppContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''
+                              } ${app.color}`}
+                              style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
+                              strokeWidth={1.5} 
+                            />
+                          )}
                           <div className="w-full">
                             <h4 
                               className="font-semibold text-slate-100 leading-tight mb-0.5 drop-shadow-sm truncate w-full cursor-pointer"
@@ -8800,13 +8828,19 @@ export default function App() {
                     ) : (
                       <>
                         <div className="flex items-center" style={{ gap: `${16 * (cardScale / 100)}px` }}>
-                          <AppIcon app={app}
-                            className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${
-                              isAppContextActive ? 'scale-105' : ''
-                            } ${app.color}`}
-                            style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
-                            strokeWidth={1.5}
-                          />
+                          {isAppLaunching ? (
+                            <span role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="flex items-center justify-center flex-shrink-0 text-cyan-300" style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }}>
+                              <LoaderCircle className="w-4 h-4 animate-spin" />
+                            </span>
+                          ) : (
+                            <AppIcon app={app}
+                              className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${
+                                isAppContextActive ? 'scale-105' : ''
+                              } ${app.color}`}
+                              style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
+                              strokeWidth={1.5}
+                            />
+                          )}
                           <div className="flex flex-col justify-center min-w-0 pr-2">
                             <h4 
                               className="font-medium text-slate-100 truncate cursor-pointer"
@@ -9337,13 +9371,16 @@ export default function App() {
                     return <div key={`most-used-slot-${index}`} className="flex-1 min-h-0" aria-hidden />;
                   }
                   const isMostUsedContextActive = !!(contextMenu?.app?.id === app.id && contextMenu?.source === 'most-used');
+                  const isMostUsedLaunching = launchingAppIds.has(app.id);
                   return (
                     <button
                       key={`most-used-${app.id}`}
                       type="button"
+                      disabled={isMostUsedLaunching}
+                      aria-busy={isMostUsedLaunching}
                       onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
-                      onClick={() => handleLaunchApp(app)}
-                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors cursor-pointer ${
+                      onClick={() => { if (!isMostUsedLaunching) handleLaunchApp(app); }}
+                      className={`w-full flex-1 min-h-0 flex items-center justify-between px-1.5 rounded-lg border transition-colors ${isMostUsedLaunching ? 'cursor-wait' : 'cursor-pointer'} ${
                         isMostUsedContextActive
                           ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_10px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
                           : 'border-transparent hover:bg-white/5 hover:border-white/10 group'
@@ -9353,7 +9390,11 @@ export default function App() {
                         <span className="text-[9px] md:text-[10px] text-slate-500 font-mono w-3 lg:w-3.5 text-right group-hover:text-slate-300 shrink-0">
                           {index + 1}.
                         </span>
-                        <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                        {isMostUsedLaunching ? (
+                          <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-cyan-300 animate-spin shrink-0" />
+                        ) : (
+                          <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                        )}
                         <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
                           {app.name}
                         </span>
@@ -9520,6 +9561,7 @@ export default function App() {
               if (!app) return null;
               const isTaskbarContextActive = contextMenu?.app?.id === app.id;
               const isBeingDragged = draggedTaskbarId === app.id;
+              const isTaskbarLaunching = launchingAppIds.has(app.id);
               return (
                 <Reorder.Item
                   as="div"
@@ -9555,13 +9597,15 @@ export default function App() {
                     <button 
                       type="button"
                       data-taskbar-btn
+                      aria-busy={isTaskbarLaunching}
+                      aria-disabled={isTaskbarLaunching}
                       data-context-active={isTaskbarContextActive ? "true" : "false"}
                       onContextMenu={(e) => handleContextMenu(e, app, 'taskbar')}
                       onClick={() => {
-                        if (isTaskbarDraggingRef.current) return;
+                        if (isTaskbarDraggingRef.current || isTaskbarLaunching) return;
                         handleLaunchApp(app);
                       }}
-                      className={`group relative focus:outline-none p-1 cursor-pointer active:cursor-grabbing select-none rounded-lg transition-[background-color,box-shadow,border-color] duration-150 ${
+                      className={`group relative focus:outline-none p-1 ${isTaskbarLaunching ? 'cursor-wait' : 'cursor-pointer active:cursor-grabbing'} select-none rounded-lg transition-[background-color,box-shadow,border-color] duration-150 ${
                         isTaskbarContextActive
                           ? 'bg-cyan-500/25 ring-2 ring-cyan-400/80 shadow-[0_0_12px_rgba(34,211,238,0.6)]'
                           : isBeingDragged
@@ -9573,7 +9617,11 @@ export default function App() {
                         data-taskbar-icon
                         className={`w-8 h-8 rounded-lg bg-transparent border border-transparent flex items-center justify-center ${app.color} group-hover:bg-white/10 transition-all`}
                       >
-                        <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
+                        {isTaskbarLaunching ? (
+                          <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-4 h-4 animate-spin text-cyan-300" />
+                        ) : (
+                          <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
+                        )}
                       </div>
                       <div
                         data-taskbar-indicator

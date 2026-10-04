@@ -122,6 +122,7 @@ export const translations = {
     missing_shortcut_locate: "Examinar ubicación",
     missing_shortcut_locating: "Buscando...",
     missing_shortcut_cancel: "Ahora no",
+    launch_starting: "Iniciando...",
     launch_failed_message: "No se pudo abrir {name}.",
 
     // About & Updates
@@ -864,6 +865,7 @@ export const translations = {
     missing_shortcut_locate: "Browse location",
     missing_shortcut_locating: "Searching...",
     missing_shortcut_cancel: "Not now",
+    launch_starting: "Starting...",
     launch_failed_message: "Could not open {name}.",
 
     // About & Updates
