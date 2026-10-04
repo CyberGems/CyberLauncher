@@ -8771,13 +8771,13 @@ export default function App() {
                     className={viewMode === 'grid'
                       ? `relative group bg-black/20 backdrop-blur-xl border ${
                           isAppHighlighted
-                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.45),0_8px_20px_rgba(0,0,0,0.5)] bg-white/[0.14] scale-[1.03] -translate-y-0.5 z-20"
-                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.03] hover:-translate-y-0.5 hover:z-10"
+                            ? "border-cyan-300/75 ring-1 ring-cyan-300/55 shadow-[0_4px_14px_rgba(0,0,0,0.35)] bg-white/[0.11] scale-[1.01] -translate-y-0.5 z-20"
+                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01] hover:-translate-y-0.5 hover:z-10"
                         } active:scale-[0.98] transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-xl shadow-black/30 cursor-pointer overflow-hidden`
                       : `flex items-center justify-between bg-black/20 backdrop-blur-xl border ${
                           isAppHighlighted
-                            ? "border-cyan-400/90 ring-2 ring-cyan-400/80 shadow-[0_0_16px_rgba(34,211,238,0.4),0_6px_16px_rgba(0,0,0,0.45)] bg-white/[0.14] scale-[1.01] z-20"
-                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.01]"
+                            ? "border-cyan-300/75 ring-1 ring-cyan-300/55 shadow-[0_4px_14px_rgba(0,0,0,0.35)] bg-white/[0.11] scale-[1.005] z-20"
+                            : "border-white/5 hover:bg-white/[0.07] hover:border-white/25 hover:shadow-[0_4px_14px_rgba(0,0,0,0.35)] hover:scale-[1.005] hover:-translate-y-0.5"
                         } active:scale-[0.99] group cursor-pointer transition-[transform,border-color,background-color,box-shadow] duration-100 ease-out shadow-md overflow-hidden`
                     }
                   >
@@ -8802,9 +8802,7 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
-                              className={`group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_currentColor] drop-shadow-lg transition-[transform,filter] duration-100 ease-out ${
-                                isAppContextActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''
-                              } ${app.color}`}
+                              className={app.color}
                               style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
                               strokeWidth={1.5} 
                             />
@@ -8834,9 +8832,7 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
-                              className={`flex-shrink-0 drop-shadow-lg transition-transform duration-100 ease-out group-hover:scale-105 ${
-                                isAppContextActive ? 'scale-105' : ''
-                              } ${app.color}`}
+                              className={`flex-shrink-0 ${app.color}`}
                               style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
                               strokeWidth={1.5}
                             />
