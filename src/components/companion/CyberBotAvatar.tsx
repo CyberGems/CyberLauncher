@@ -18,6 +18,19 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   onClick,
 }) => {
   const [isBlinking, setIsBlinking] = useState(false);
+  const [hoverReactionIndex, setHoverReactionIndex] = useState(0);
+
+  // Cycle hover reactions every 1400ms while cursor is over CyberBot
+  useEffect(() => {
+    if (!isHovered) {
+      setHoverReactionIndex(0);
+      return;
+    }
+    const interval = window.setInterval(() => {
+      setHoverReactionIndex(prev => (prev + 1) % 4);
+    }, 1400);
+    return () => window.clearInterval(interval);
+  }, [isHovered]);
 
   // Natural blinking effect every 3.5 to 6 seconds
   useEffect(() => {
@@ -44,6 +57,47 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   // Face expression terminal characters
   const renderFaceContent = () => {
+    // Continuous lively reactions while hovered (if not in alert mode)
+    if (isHovered && emotion !== 'alert') {
+      switch (hoverReactionIndex) {
+        case 0: // Delighted blush smile
+          return (
+            <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
+              <circle cx="28" cy="54" r="3" fill="#f43f5e" fillOpacity="0.75" />
+              <circle cx="72" cy="54" r="3" fill="#f43f5e" fillOpacity="0.75" />
+              <text x="32" y="47" textAnchor="middle">^</text>
+              <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
+              <text x="68" y="47" textAnchor="middle">^</text>
+            </g>
+          );
+        case 1: // Starry sparkle eyes
+          return (
+            <g className="select-none font-mono text-[13px] font-black" fill="#38bdf8">
+              <text x="32" y="47" textAnchor="middle" fill="#38bdf8">✦</text>
+              <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#22d3ee">‿</text>
+              <text x="68" y="47" textAnchor="middle" fill="#38bdf8">✦</text>
+            </g>
+          );
+        case 2: // Playful wink
+          return (
+            <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
+              <circle cx="28" cy="54" r="2.5" fill="#f43f5e" fillOpacity="0.6" />
+              <text x="32" y="47" textAnchor="middle">^</text>
+              <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
+              <text x="68" y="47" textAnchor="middle">~</text>
+            </g>
+          );
+        case 3: // Loving heart eyes
+          return (
+            <g className="select-none font-mono text-[13px] font-black" fill="#f43f5e">
+              <text x="32" y="47" textAnchor="middle" fill="#f43f5e">♥</text>
+              <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
+              <text x="68" y="47" textAnchor="middle" fill="#f43f5e">♥</text>
+            </g>
+          );
+      }
+    }
+
     // If blinking and not sleeping or scared, show closed eyes
     if (isBlinking && emotion !== 'sleeping' && emotion !== 'scared') {
       return (
@@ -141,17 +195,25 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     >
       {/* Bot SVG Avatar with Smooth Framer Motion Floating */}
       <motion.div
-        animate={{
-          y: [0, -6, 0],
-          rotate: [0, 0.75, 0],
-        }}
+        animate={
+          isHovered
+            ? {
+                y: [-2, -8, -2],
+                rotate: [-2, 2.5, -1.5, 2, 0],
+                scale: [1.06, 1.09, 1.06],
+              }
+            : {
+                y: [0, -6, 0],
+                rotate: [0, 0.75, 0],
+                scale: 1,
+              }
+        }
         transition={{
-          duration: 3.2,
+          duration: isHovered ? 1.5 : 3.2,
           repeat: Infinity,
           ease: 'easeInOut',
         }}
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.96 }}
+        whileTap={{ scale: 0.95 }}
         className="w-full h-full flex flex-col items-center justify-center"
       >
         <svg
@@ -253,7 +315,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               fill="#2563eb"
               stroke="#38bdf8"
               strokeWidth="1.5"
-              transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(-25 23 77)' : 'rotate(8 23 77)'}
+              transform={
+                isHovered
+                  ? 'rotate(-32 23 77)'
+                  : emotion === 'happy' || emotion === 'wink'
+                  ? 'rotate(-25 23 77)'
+                  : 'rotate(8 23 77)'
+              }
               className="transition-transform duration-300"
             />
             {/* Right Arm */}
@@ -266,7 +334,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               fill="#2563eb"
               stroke="#38bdf8"
               strokeWidth="1.5"
-              transform={emotion === 'happy' || emotion === 'wink' ? 'rotate(25 76 77)' : 'rotate(-8 76 77)'}
+              transform={
+                isHovered
+                  ? 'rotate(32 76 77)'
+                  : emotion === 'happy' || emotion === 'wink'
+                  ? 'rotate(25 76 77)'
+                  : 'rotate(-8 76 77)'
+              }
               className="transition-transform duration-300"
             />
           </g>
@@ -299,8 +373,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             <circle
               cx="50"
               cy="11"
-              r="3"
-              fill={isAlert ? '#ef4444' : '#22d3ee'}
+              r={isHovered ? 4 : 3}
+              fill={isHovered ? '#38bdf8' : isAlert ? '#ef4444' : '#22d3ee'}
               className="animate-pulse"
             />
 
@@ -355,11 +429,11 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         {/* Dynamic Floating Shadow */}
         <motion.div
           animate={{
-            scale: [1, 0.75, 1],
-            opacity: [0.35, 0.15, 0.35],
+            scale: isHovered ? [1.1, 0.7, 1.1] : [1, 0.75, 1],
+            opacity: isHovered ? [0.45, 0.2, 0.45] : [0.35, 0.15, 0.35],
           }}
           transition={{
-            duration: 3.2,
+            duration: isHovered ? 1.5 : 3.2,
             repeat: Infinity,
             ease: 'easeInOut',
           }}

@@ -3367,7 +3367,7 @@ export default function App() {
   }, [notification, cyberBot.enabled, t, cyberBot.say]);
 
   // Contextual CyberBot commentary on panel opening & settings navigation
-  const lastContextCommentRef = useRef<{ topic: string; timestamp: number }>({ topic: '', timestamp: 0 });
+  const topicCooldownsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!cyberBot.enabled) return;
@@ -3406,22 +3406,22 @@ export default function App() {
 
     if (!targetTopic || !targetText) return;
 
-    // Debounce to allow user interaction to settle without firing during rapid clicks
+    // Snappy debounce (160ms): fast and fluid when navigating, prevents flicker on sub-frame clicks
     const timer = window.setTimeout(() => {
       const now = Date.now();
-      const last = lastContextCommentRef.current;
-      // 45s cooldown for identical topic, 12s cooldown across any context commentary
-      if (last.topic === targetTopic && now - last.timestamp < 45000) return;
-      if (now - last.timestamp < 12000) return;
+      const lastSpoken = topicCooldownsRef.current[targetTopic] || 0;
+      // Per-topic cooldown (18s) to avoid repeating the exact same message if user toggles the same panel
+      // Switching between DIFFERENT panels triggers immediately!
+      if (now - lastSpoken < 18000) return;
 
-      lastContextCommentRef.current = { topic: targetTopic, timestamp: now };
+      topicCooldownsRef.current[targetTopic] = now;
       cyberBot.say({
         text: targetText,
         emotion: targetEmotion,
         priority: 'low',
-        durationMs: 5500,
+        durationMs: 5000,
       });
-    }, 650);
+    }, 160);
 
     return () => window.clearTimeout(timer);
   }, [

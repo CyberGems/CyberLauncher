@@ -26,6 +26,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [currentPos, setCurrentPos] = useState<CyberBotPosition>(position);
   const [temporaryEmotion, setTemporaryEmotion] = useState<CyberBotEmotion | null>(null);
   const [isDodgeCooldown, setIsDodgeCooldown] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dodgeTimerRef = useRef<number | null>(null);
   const dodgeExecutionTimerRef = useRef<number | null>(null);
@@ -148,13 +149,27 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
       {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
       <div
-        onMouseEnter={handleMouseEnter}
+        onMouseEnter={() => {
+          setIsHovered(true);
+          handleMouseEnter();
+        }}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          if (dodgeExecutionTimerRef.current) {
+            window.clearTimeout(dodgeExecutionTimerRef.current);
+            dodgeExecutionTimerRef.current = null;
+          }
+          if (!isDodgeCooldown) {
+            setTemporaryEmotion(null);
+          }
+        }}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
         className="pointer-events-auto w-[94px] h-[94px] flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing"
       >
         <CyberBotAvatar
           emotion={currentEmotion}
+          isHovered={isHovered}
           size={78}
         />
       </div>
