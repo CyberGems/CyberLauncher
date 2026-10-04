@@ -3,8 +3,25 @@ import type {
   CyberBotMessage, 
   CyberBotPosition, 
   CyberBotChatterLevel, 
-  CyberBotEmotion 
+  CyberBotEmotion,
+  CyberBotQuietHoursConfig
 } from './companionTypes';
+
+export function isInQuietHours(from: string, to: string, now = new Date()): boolean {
+  if (!from || !to) return false;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [fromH, fromM] = from.split(':').map(Number);
+  const [toH, toM] = to.split(':').map(Number);
+  const fromMinutes = (fromH || 0) * 60 + (fromM || 0);
+  const toMinutes = (toH || 0) * 60 + (toM || 0);
+
+  if (fromMinutes <= toMinutes) {
+    return currentMinutes >= fromMinutes && currentMinutes < toMinutes;
+  } else {
+    // Spans midnight, e.g. 22:00 to 07:00
+    return currentMinutes >= fromMinutes || currentMinutes < toMinutes;
+  }
+}
 
 interface UseCyberBotProps {
   t: (key: any, params?: Record<string, string>) => string;
@@ -23,9 +40,35 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     return (saved as CyberBotPosition) || 'bottom-right';
   });
 
+  const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('cyberbot_dodge');
+    return saved === null ? true : saved === 'true';
+  });
+
   const [chatterLevel, setChatterLevel] = useState<CyberBotChatterLevel>(() => {
     const saved = localStorage.getItem('cyberbot_chatter');
     return (saved as CyberBotChatterLevel) || 'full';
+  });
+
+  const [quietHours, setQuietHours] = useState<CyberBotQuietHoursConfig>(() => {
+    const saved = localStorage.getItem('cyberbot_quiet_hours');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return {
+            enabled: !!parsed.enabled,
+            from: parsed.from || '22:00',
+            to: parsed.to || '07:00',
+          };
+        }
+      } catch {}
+    }
+    return {
+      enabled: false,
+      from: '22:00',
+      to: '07:00',
+    };
   });
 
   const [activeMessage, setActiveMessage] = useState<CyberBotMessage | null>(null);
@@ -46,9 +89,22 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     localStorage.setItem('cyberbot_position', newPos);
   }, []);
 
+  const updateDodgeEnabled = useCallback((newDodge: boolean) => {
+    setDodgeEnabled(newDodge);
+    localStorage.setItem('cyberbot_dodge', String(newDodge));
+  }, []);
+
   const updateChatterLevel = useCallback((level: CyberBotChatterLevel) => {
     setChatterLevel(level);
     localStorage.setItem('cyberbot_chatter', level);
+  }, []);
+
+  const updateQuietHours = useCallback((patch: Partial<CyberBotQuietHoursConfig>) => {
+    setQuietHours(prev => {
+      const updated = { ...prev, ...patch };
+      localStorage.setItem('cyberbot_quiet_hours', JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const dismissMessage = useCallback(() => {
@@ -69,6 +125,13 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     priority?: 'low' | 'normal' | 'high';
   }) => {
     if (!enabled) return;
+
+    // Check quiet hours: only allow high priority or alerts
+    if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) {
+      if (msg.priority !== 'high' && msg.emotion !== 'alert') {
+        return;
+      }
+    }
 
     // In minimal mode, only display high priority or alert messages
     if (chatterLevel === 'minimal' && msg.priority !== 'high' && msg.emotion !== 'alert') {
@@ -101,11 +164,12 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
         setActiveMessage(null);
       }, duration);
     }
-  }, [enabled, chatterLevel, t]);
+  }, [enabled, chatterLevel, quietHours, t]);
 
   // Initial greeting upon startup
   useEffect(() => {
     if (!enabled || chatterLevel === 'minimal') return;
+    if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) return;
 
     const timer = window.setTimeout(() => {
       const hour = new Date().getHours();
@@ -125,7 +189,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [enabled, chatterLevel, t, say]);
+  }, [enabled, chatterLevel, quietHours, t, say]);
 
   // Handle direct click on CyberBot
   const handleClickBot = useCallback(() => {
@@ -156,8 +220,12 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep }: UseCyber
     toggleEnabled,
     position,
     updatePosition,
+    dodgeEnabled,
+    updateDodgeEnabled,
     chatterLevel,
     updateChatterLevel,
+    quietHours,
+    updateQuietHours,
     activeMessage,
     say,
     dismissMessage,

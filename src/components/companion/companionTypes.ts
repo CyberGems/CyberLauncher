@@ -12,6 +12,12 @@ export type CyberBotPosition = 'bottom-right' | 'bottom-left' | 'top-right';
 
 export type CyberBotChatterLevel = 'full' | 'minimal';
 
+export interface CyberBotQuietHoursConfig {
+  enabled: boolean;
+  from: string; // e.g. "22:00"
+  to: string;   // e.g. "07:00"
+}
+
 export interface CyberBotMessage {
   id: string;
   text: string;

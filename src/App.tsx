@@ -2395,7 +2395,7 @@ export default function App() {
     return text;
   }, [language]);
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'backup' | 'cybertray' | 'uwp' | 'indexer'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'cybertray' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
@@ -10266,6 +10266,7 @@ export default function App() {
                       ['general', t('tab_general'), Keyboard],
                       ['appearance', t('tab_appearance'), Palette],
                       ['system', t('tab_system'), Settings],
+                      ['cyberbot', t('tab_cyberbot'), Bot],
                       ['backup', t('tab_backup'), HardDrive],
                       ['indexer', t('tab_indexer'), Search],
                       ['uwp', t('tab_uwp'), ScanSearch]
@@ -10904,52 +10905,6 @@ export default function App() {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    {/* CyberBot Companion Card */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <Bot className="w-4 h-4 text-cyan-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_desc')}</p>
-                        </div>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={cyberBot.toggleEnabled}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
-                    </div>
-
-                    {cyberBot.enabled && (
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 border-l-cyan-500/50 hover:border-white/10 transition-colors ml-4">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_chatter')}</h4>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => cyberBot.updateChatterLevel('full')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${cyberBot.chatterLevel === 'full' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                          >
-                            {t('cyberbot_settings_chatter_full')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => cyberBot.updateChatterLevel('minimal')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${cyberBot.chatterLevel === 'minimal' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-white/5 text-slate-400 hover:text-white'}`}
-                          >
-                            {t('cyberbot_settings_chatter_minimal')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                         <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
@@ -11449,6 +11404,219 @@ export default function App() {
                     </div>
                   </div>
 
+                </>)}
+
+                {settingsTab === 'cyberbot' && (<>
+                {/* CyberBot Companion Section */}
+                <div className="space-y-6 pb-2">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('cyberbot_tab_title')}</h3>
+                      <p className="text-[10px] text-slate-500">
+                        {language === 'es'
+                          ? 'Personaliza el comportamiento, evasión, horario silencioso e interacciones de tu asistente.'
+                          : 'Customize companion behavior, evasion, quiet hours, and assistant interactions.'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3">
+                    {/* Card 1: Activar CyberBot */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Bot className="w-5 h-5 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={cyberBot.toggleEnabled}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {cyberBot.enabled && (<>
+                      {/* Card 2: Evasión del cursor (Dodge) */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2.5 bg-sky-500/10 rounded-lg border border-sky-500/20 shrink-0">
+                            <MousePointer2 className="w-5 h-5 text-sky-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_dodge_title')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_dodge_desc')}</p>
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => cyberBot.updateDodgeEnabled(!cyberBot.dodgeEnabled)}
+                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${cyberBot.dodgeEnabled ? 'bg-sky-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.dodgeEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${cyberBot.dodgeEnabled ? 'bg-sky-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Card 3: Nivel de interactividad */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
+                            <Sparkles className="w-5 h-5 text-indigo-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-0.5">{t('cyberbot_settings_chatter')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_chatter_desc')}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('full')}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.chatterLevel === 'full'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.chatterLevel === 'full' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.chatterLevel === 'full' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_settings_chatter_full')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('minimal')}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.chatterLevel === 'minimal'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.chatterLevel === 'minimal' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.chatterLevel === 'minimal' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_settings_chatter_minimal')}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Horario silencioso (Captura 3 style) */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                              <Moon className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_quiet_hours_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_quiet_hours_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled })}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer ${cyberBot.quietHours.enabled ? 'bg-purple-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.quietHours.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                              <div className={`w-2 h-2 rounded-full ${cyberBot.quietHours.enabled ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {cyberBot.quietHours.enabled && (
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-white/5">
+                            <div className="flex items-center gap-2.5 text-slate-400 text-xs">
+                              <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+                              <div>
+                                <span className="font-semibold text-slate-300 block">{t('cyberbot_quiet_schedule_title')}</span>
+                                <span className="text-[11px] text-slate-500">{t('cyberbot_quiet_schedule_desc')}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400">{t('cyberbot_quiet_from')}</span>
+                                <select
+                                  value={cyberBot.quietHours.from}
+                                  onChange={(e) => cyberBot.updateQuietHours({ from: e.target.value })}
+                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
+                                >
+                                  {Array.from({ length: 24 }).map((_, i) => {
+                                    const h = String(i).padStart(2, '0') + ':00';
+                                    return <option key={h} value={h}>{h}</option>;
+                                  })}
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400">{t('cyberbot_quiet_to')}</span>
+                                <select
+                                  value={cyberBot.quietHours.to}
+                                  onChange={(e) => cyberBot.updateQuietHours({ to: e.target.value })}
+                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
+                                >
+                                  {Array.from({ length: 24 }).map((_, i) => {
+                                    const h = String(i).padStart(2, '0') + ':00';
+                                    return <option key={h} value={h}>{h}</option>;
+                                  })}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card 5: Posición inicial y arrastre */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2.5 bg-teal-500/10 rounded-lg border border-teal-500/20 shrink-0">
+                              <SlidersHorizontal className="w-5 h-5 text-teal-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_pos_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_pos_desc')}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => cyberBot.updatePosition('bottom-right')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${
+                                cyberBot.position === 'bottom-right'
+                                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]'
+                                  : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+                              }`}
+                            >
+                              {t('cyberbot_pos_bottom_right')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cyberBot.updatePosition('bottom-left')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-cyber transition-all cursor-pointer ${
+                                cyberBot.position === 'bottom-left'
+                                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(34,211,238,0.3)]'
+                                  : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+                              }`}
+                            >
+                              {t('cyberbot_pos_bottom_left')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>)}
+                  </div>
+                </div>
                 </>)}
 
                 {settingsTab === 'backup' && (<>
@@ -13705,6 +13873,7 @@ export default function App() {
         onClickBot={cyberBot.handleClickBot}
         position={cyberBot.position}
         onPositionChange={cyberBot.updatePosition}
+        dodgeEnabled={cyberBot.dodgeEnabled}
       />
 
       {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}

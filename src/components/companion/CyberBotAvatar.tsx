@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CyberBotEmotion } from './companionTypes';
 
 interface CyberBotAvatarProps {
@@ -16,8 +16,44 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   className = '',
   onClick,
 }) => {
+  const [isBlinking, setIsBlinking] = useState(false);
+
+  // Natural blinking effect every 3.5 to 6 seconds
+  useEffect(() => {
+    let blinkTimer: number;
+    let endBlinkTimer: number;
+
+    const scheduleNextBlink = () => {
+      const delay = Math.random() * 2500 + 3500;
+      blinkTimer = window.setTimeout(() => {
+        setIsBlinking(true);
+        endBlinkTimer = window.setTimeout(() => {
+          setIsBlinking(false);
+          scheduleNextBlink();
+        }, 180);
+      }, delay);
+    };
+
+    scheduleNextBlink();
+    return () => {
+      window.clearTimeout(blinkTimer);
+      window.clearTimeout(endBlinkTimer);
+    };
+  }, []);
+
   // Face expression terminal characters
   const renderFaceContent = () => {
+    // If blinking and not sleeping or scared, show closed eyes
+    if (isBlinking && emotion !== 'sleeping' && emotion !== 'scared') {
+      return (
+        <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
+          <text x="33" y="47" textAnchor="middle">-</text>
+          <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
+          <text x="67" y="47" textAnchor="middle">-</text>
+        </g>
+      );
+    }
+
     switch (emotion) {
       case 'happy':
         return (

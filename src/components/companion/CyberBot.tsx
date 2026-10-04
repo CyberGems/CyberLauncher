@@ -11,6 +11,7 @@ interface CyberBotProps {
   onClickBot?: () => void;
   position?: CyberBotPosition;
   onPositionChange?: (newPosition: CyberBotPosition) => void;
+  dodgeEnabled?: boolean;
 }
 
 export const CyberBot: React.FC<CyberBotProps> = ({
@@ -20,47 +21,73 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   onClickBot,
   position = 'bottom-right',
   onPositionChange,
+  dodgeEnabled = true,
 }) => {
   const [currentPos, setCurrentPos] = useState<CyberBotPosition>(position);
   const [temporaryEmotion, setTemporaryEmotion] = useState<CyberBotEmotion | null>(null);
   const [isDodgeCooldown, setIsDodgeCooldown] = useState(false);
   const dodgeTimerRef = useRef<number | null>(null);
+  const dodgeExecutionTimerRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartPosRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     setCurrentPos(position);
   }, [position]);
 
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
+      if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
+    };
+  }, []);
+
   // Determine current emotion
   const currentEmotion: CyberBotEmotion =
     temporaryEmotion || activeMessage?.emotion || 'idle';
 
-  // Handle evasive dodge when mouse approaches
+  // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
-    if (isDodgeCooldown) return;
+    if (!dodgeEnabled || isDodgeCooldown || isDraggingRef.current) return;
 
-    // Trigger scared face and dodge to opposite side
+    // Show surprised/scared reaction first
     setTemporaryEmotion('scared');
-    setIsDodgeCooldown(true);
 
-    const nextPos: CyberBotPosition =
-      currentPos === 'bottom-right' ? 'bottom-left' : 'bottom-right';
+    // Slight delay (260ms) before physically jumping:
+    // This allows intentional clicking and feels much more playful/human!
+    dodgeExecutionTimerRef.current = window.setTimeout(() => {
+      setIsDodgeCooldown(true);
 
-    setCurrentPos(nextPos);
-    onPositionChange?.(nextPos);
+      const nextPos: CyberBotPosition =
+        currentPos === 'bottom-right' ? 'bottom-left' : 'bottom-right';
 
-    if (dodgeTimerRef.current) {
-      window.clearTimeout(dodgeTimerRef.current);
-    }
+      setCurrentPos(nextPos);
+      onPositionChange?.(nextPos);
 
-    // Reset scared emotion after dodge
-    dodgeTimerRef.current = window.setTimeout(() => {
-      setTemporaryEmotion(null);
-      setIsDodgeCooldown(false);
-    }, 700);
+      // Reset emotion after dodge finishes
+      dodgeTimerRef.current = window.setTimeout(() => {
+        setTemporaryEmotion(null);
+        setIsDodgeCooldown(false);
+      }, 700);
+    }, 260);
   };
 
-  const handleClick = () => {
-    // If not dodging, user clicked CyberBot directly
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // If the user actively clicks or grabs the bot, cancel the dodge jump!
+    if (dodgeExecutionTimerRef.current) {
+      window.clearTimeout(dodgeExecutionTimerRef.current);
+      dodgeExecutionTimerRef.current = null;
+    }
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = false;
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDraggingRef.current) return;
+
+    // User clicked CyberBot directly!
     setTemporaryEmotion('wink');
     onClickBot?.();
     window.setTimeout(() => {
@@ -81,6 +108,26 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   return (
     <motion.aside
       aria-label="CyberBot"
+      drag
+      dragMomentum={false}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+        if (dodgeExecutionTimerRef.current) {
+          window.clearTimeout(dodgeExecutionTimerRef.current);
+          dodgeExecutionTimerRef.current = null;
+        }
+      }}
+      onDragEnd={(_event, info) => {
+        const dist = Math.hypot(info.offset.x, info.offset.y);
+        // Only mark as dragged if dragged more than 5 pixels
+        if (dist > 5) {
+          setTimeout(() => {
+            isDraggingRef.current = false;
+          }, 120);
+        } else {
+          isDraggingRef.current = false;
+        }
+      }}
       layout
       transition={{ type: 'spring', stiffness: 350, damping: 28 }}
       className={`fixed ${positionClasses} z-[180] flex flex-col items-center pointer-events-none select-none`}
@@ -99,14 +146,15 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Interactive Avatar Area with Dodge Hitbox */}
+      {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
       <div
         onMouseEnter={handleMouseEnter}
-        className="pointer-events-auto p-2 rounded-full cursor-pointer transition-transform active:scale-95"
+        onPointerDown={handlePointerDown}
+        onClick={handleClick}
+        className="pointer-events-auto p-2 rounded-full cursor-grab active:cursor-grabbing transition-transform active:scale-95"
       >
         <CyberBotAvatar
           emotion={currentEmotion}
-          onClick={handleClick}
           size={78}
         />
       </div>
