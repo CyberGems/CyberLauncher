@@ -76,6 +76,22 @@ function displayWindowState() {
     return { window: 'unavailable' };
   }
 }
+
+function requestVisibleRepaint(trigger: 'show' | 'periodic') {
+  const window = mainWindow;
+  if (!window || window.isDestroyed() || !window.isVisible() || window.isMinimized()) return;
+  try {
+    // A live renderer can stop presenting its surface after a long idle on Windows.
+    // Ask Chromium to paint the existing page again without resetting UI state.
+    window.webContents.invalidate();
+    displayDiagnostics.write('repaint-requested', { trigger });
+  } catch (error) {
+    displayDiagnostics.write('repaint-error', {
+      trigger,
+      error: error instanceof Error ? error.name : 'unknown',
+    });
+  }
+}
 let tray: Tray | null = null;
 let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
@@ -873,6 +889,7 @@ function createWindow() {
       mainWindow.webContents.send('launcher-shown');
     }
     applyRendererThrottling();
+    setTimeout(() => requestVisibleRepaint('show'), 150);
     rebuildTrayMenu();
   });
 
@@ -4380,6 +4397,11 @@ foreach (\$app in \$startApps) {
     displayDiagnostics.write('renderer-heartbeat', {
       visibility: data.visibility === 'visible' ? 'visible' : 'hidden',
       rootMounted: data.rootMounted === true,
+      surfaceMounted: data.surfaceMounted === true,
+      surfaceChildren: typeof data.surfaceChildren === 'number' && Number.isInteger(data.surfaceChildren) && data.surfaceChildren >= 0
+        ? Math.min(data.surfaceChildren, 1000) : 0,
+      surfaceOpacity: typeof data.surfaceOpacity === 'number' && Number.isFinite(data.surfaceOpacity)
+        ? Math.max(0, Math.min(1, data.surfaceOpacity)) : null,
       devicePixelRatio: typeof data.devicePixelRatio === 'number' && Number.isFinite(data.devicePixelRatio)
         ? Math.round(data.devicePixelRatio * 100) / 100 : 0,
     });
@@ -5024,6 +5046,7 @@ app.whenReady().then(() => {
   const displayHeartbeat = setInterval(() => {
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
       displayDiagnostics.write('main-heartbeat', displayWindowState());
+      requestVisibleRepaint('periodic');
     }
   }, 30_000);
   displayHeartbeat.unref();

@@ -404,7 +404,7 @@ declare global {
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
-      reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; devicePixelRatio: number }) => void;
+      reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; surfaceMounted: boolean; surfaceChildren: number; surfaceOpacity: number | null; devicePixelRatio: number }) => void;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
       onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => () => void;
       runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) => Promise<{ success: boolean; cmdId?: string; cwd?: string; error?: string }>;
@@ -4346,11 +4346,18 @@ export default function App() {
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.reportDisplayHeartbeat) return;
-    const report = () => window.electronAPI?.reportDisplayHeartbeat?.({
-      visibility: document.visibilityState === 'visible' ? 'visible' : 'hidden',
-      rootMounted: rootRef.current !== null,
-      devicePixelRatio: window.devicePixelRatio,
-    });
+    const report = () => {
+      const surface = rootRef.current?.querySelector<HTMLElement>('[data-cl-main-surface]');
+      const opacity = surface ? Number.parseFloat(window.getComputedStyle(surface).opacity) : NaN;
+      window.electronAPI?.reportDisplayHeartbeat?.({
+        visibility: document.visibilityState === 'visible' ? 'visible' : 'hidden',
+        rootMounted: rootRef.current !== null,
+        surfaceMounted: !!surface,
+        surfaceChildren: surface?.childElementCount ?? 0,
+        surfaceOpacity: Number.isFinite(opacity) ? Math.round(opacity * 100) / 100 : null,
+        devicePixelRatio: window.devicePixelRatio,
+      });
+    };
     report();
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') report();
@@ -6960,6 +6967,7 @@ export default function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.12, ease: 'easeOut' }}
+        data-cl-main-surface
         className="flex flex-col w-full h-full relative z-10"
       >
         <div 
