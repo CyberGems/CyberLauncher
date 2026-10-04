@@ -328,7 +328,7 @@ function hideMainWindow() {
   }
 }
 
-/** Sleep Chromium while the launcher is in the tray; stay awake only if visible or a countdown is running. */
+/** Keep Chromium's normal visibility throttling unless a scheduled countdown must run while hidden. */
 let throttlingTimer: ReturnType<typeof setTimeout> | null = null;
 let lastLoggedBackgroundThrottling: boolean | null = null;
 function applyRendererThrottling() {
@@ -338,13 +338,15 @@ function applyRendererThrottling() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     // Native tray menus crash on Windows if Chromium is put to sleep mid-popup.
     if (trayMenuOpen) return;
-    const mustRun = keepRendererAwake || mainWindow.isVisible();
     try {
-      const allowed = !mustRun;
-      mainWindow.webContents.setBackgroundThrottling(allowed);
+      // A visible window runs normally with throttling enabled. Toggling this
+      // setting on every hide/show can leave Chromium's frame visibility stale.
+      const allowed = !keepRendererAwake;
+      const current = mainWindow.webContents.getBackgroundThrottling();
+      if (current !== allowed) mainWindow.webContents.setBackgroundThrottling(allowed);
       if (allowed !== lastLoggedBackgroundThrottling) {
         lastLoggedBackgroundThrottling = allowed;
-        displayDiagnostics.write('background-throttling', { allowed, ...displayWindowState() });
+        displayDiagnostics.write('background-throttling', { allowed, changed: current !== allowed, ...displayWindowState() });
       }
     } catch (error) {
       displayDiagnostics.write('background-throttling-error', { error: error instanceof Error ? error.name : 'unknown' });
@@ -796,9 +798,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       spellcheck: false,
-      // Default: throttle while hidden. applyRendererThrottling() wakes Chromium on show
-      // (and while scheduled tasks need a 1 Hz tick). A permanent `false` keeps the
-      // renderer + GPU compositing at full rate in the tray (~10% idle CPU).
+      // Visible windows run at full speed with the default setting. Only scheduled
+      // countdowns temporarily disable throttling while the window is hidden.
       backgroundThrottling: true,
     },
     autoHideMenuBar: true,
