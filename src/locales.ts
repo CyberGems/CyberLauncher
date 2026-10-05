@@ -430,6 +430,10 @@ export const translations = {
     hud_system_launches_value: "{count}",
     hud_system_shortcut_label: "Atajo de activación",
     hud_system_platform_label: "Plataforma",
+    hud_manager_description: "Identifica qué procesos consumen recursos y adminístralos con el gestor de tareas de la suite.",
+    hud_manager_learn_more: "Conocer CyberManager",
+    hud_manager_dismiss: "Ocultar sugerencia de CyberManager",
+    hud_manager_restore: "Ver sugerencia de CyberManager",
 
     // Storage HUD
     hud_storage_title: "ALMACENAMIENTO",
@@ -525,7 +529,7 @@ export const translations = {
     sys_tray_recents_title: "Accesos recientes en el menú de la bandeja",
     sys_tray_recents_desc: "Muestra accesos rápidos directos a las aplicaciones lanzadas recientemente en el menú del tray.",
     sys_suite_recommendations_title: "Recomendaciones de la suite",
-    sys_suite_recommendations_desc: "Muestra la sección 'Más de CyberGems' en el menú de la bandeja y en la ventana Acerca de.",
+    sys_suite_recommendations_desc: "Muestra recomendaciones en el menú de la bandeja, la ventana Acerca de y Recursos del sistema.",
 
     // System Health Alerts
     sys_alerts_title: "ALERTAS DE SALUD DEL SISTEMA",
@@ -1291,6 +1295,10 @@ export const translations = {
     hud_system_launches_value: "{count}",
     hud_system_shortcut_label: "Activation shortcut",
     hud_system_platform_label: "Platform",
+    hud_manager_description: "See which processes use resources and manage them with the suite's task manager.",
+    hud_manager_learn_more: "Explore CyberManager",
+    hud_manager_dismiss: "Hide CyberManager suggestion",
+    hud_manager_restore: "Show CyberManager suggestion",
 
     // Storage HUD
     hud_storage_title: "STORAGE",
@@ -1386,7 +1394,7 @@ export const translations = {
     sys_tray_recents_title: "Recent shortcuts in tray menu",
     sys_tray_recents_desc: "Show direct quick shortcuts to recently launched applications in the tray menu.",
     sys_suite_recommendations_title: "Suite recommendations",
-    sys_suite_recommendations_desc: "Show 'More from CyberGems' in the tray menu and About dialog.",
+    sys_suite_recommendations_desc: "Show recommendations in the tray menu, About dialog, and System Resources panel.",
 
     // System Health Alerts
     sys_alerts_title: "SYSTEM HEALTH ALERTS",

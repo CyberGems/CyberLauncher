@@ -17,6 +17,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test:cyberbot": "node --import tsx --test tests/cyberbot.test.ts",
+    "test:cybermanager": "node --import tsx --test tests/cybermanager-recommendation.test.ts",
     "icons": "node scripts/generate-icons.mjs",
     "installer-graphics": "node scripts/generate-installer-graphics.mjs"
   },
