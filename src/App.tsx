@@ -25,6 +25,7 @@ import { CyberBot } from './components/companion/CyberBot';
 import { CyberManagerRecommendation } from './components/CyberManagerRecommendation';
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
+import { isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from './components/companion/cyberBotSetup';
 import { chooseNotificationChannel } from './notificationRouting';
 import {
   chooseLaunchSpeechChannel,
@@ -240,6 +241,8 @@ export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 100
 
 /** Default Windows apps populated for clean installs (user removable). */
 const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
+const DEFAULT_SETUP_APP_IDS = new Set(INITIAL_APPS.map(app => app.id));
+const DEFAULT_SETUP_CATEGORY_IDS = new Set(INITIAL_CATEGORIES.map(category => category.id));
 
 const DEFAULT_BG_IMAGE = 'bg_default.jpg';
 const APPEARANCE_PREVIEW_IDLE_MS = 3000;
@@ -3466,6 +3469,10 @@ export default function App() {
       targetTopic = 'hud_storage';
     } else if (isCommandPaletteOpen) {
       targetTopic = 'command_palette';
+    } else if (isAddingApp) {
+      targetTopic = openedViaDrop ? 'add_app_drop' : 'add_app';
+    } else if (isAddingCategory) {
+      targetTopic = 'add_category';
     }
 
     if (!targetTopic) return;
@@ -3493,6 +3500,9 @@ export default function App() {
     isSystemHUDOpen,
     isStorageHUDOpen,
     isCommandPaletteOpen,
+    isAddingApp,
+    openedViaDrop,
+    isAddingCategory,
     cyberBot.enabled,
     cyberBot.sayPhrase,
   ]);
@@ -5828,6 +5838,72 @@ export default function App() {
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
   const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
+  const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
+    try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
+    catch { return 0; }
+  });
+  const setupInviteShownThisSessionRef = useRef(false);
+  const setupInviteDue = isCyberBotDefaultSetup(apps, categories, DEFAULT_SETUP_APP_IDS, DEFAULT_SETUP_CATEGORY_IDS)
+    && !setupInviteShownThisSessionRef.current
+    && isCyberBotSetupInviteDue(setupInviteLastShownAt);
+
+  useEffect(() => {
+    if (!setupInviteDue || !isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full'
+      || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage) return;
+    if (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)) return;
+
+    let disposed = false;
+    let timer: number;
+    const offer = async () => {
+      if (isElectron && window.electronAPI?.isTrayPinTipVisible) {
+        try {
+          if (await window.electronAPI.isTrayPinTipVisible()) {
+            if (!disposed) timer = window.setTimeout(offer, 3000);
+            return;
+          }
+        } catch {
+          if (!disposed) timer = window.setTimeout(offer, 5000);
+          return;
+        }
+      }
+      if (disposed) return;
+      const shown = cyberBot.say({
+        id: 'cyberbot_setup_invitation',
+        text: t('cyberbot_setup_invite'),
+        emotion: 'launcher',
+        priority: 'low',
+        durationMs: 12000,
+        action: {
+          label: t('cyberbot_setup_add_app'),
+          onClick: () => {
+            setOpenedViaDrop(false);
+            setEditForm(emptyEditForm());
+            setIsResolvingIcon(false);
+            setIsAddingApp(true);
+          },
+        },
+        secondaryAction: {
+          label: t('cyberbot_setup_add_category'),
+          onClick: () => {
+            setNewCategoryForm({ name: '', color: '#38bdf8' });
+            setIsAddingCategory(true);
+          },
+        },
+      });
+      if (shown) {
+        setupInviteShownThisSessionRef.current = true;
+        const now = Date.now();
+        setSetupInviteLastShownAt(now);
+        try { localStorage.setItem('cyberbot_setup_invite_at', String(now)); } catch {}
+      } else {
+        timer = window.setTimeout(offer, 15000);
+      }
+    };
+    timer = window.setTimeout(offer, 8000);
+    return () => { disposed = true; window.clearTimeout(timer); };
+  }, [setupInviteDue, isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours,
+    cyberBot.activeMessage, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, t]);
+
   const [namePromptCheckTick, setNamePromptCheckTick] = useState(0);
   useEffect(() => {
     if (!cyberBot.enabled || cyberBot.preferredName || cyberBot.namePromptState === 'completed' || cyberBot.namePromptState === 'dismissed') return;
@@ -5836,7 +5912,7 @@ export default function App() {
   }, [cyberBot.enabled, cyberBot.preferredName, cyberBot.namePromptState]);
 
   useEffect(() => {
-    if (!isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full' || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage) return;
+    if (!isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full' || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage || setupInviteDue) return;
     if (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)) return;
     if (!isCyberBotNamePromptDue(cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter)) return;
 
@@ -5880,7 +5956,7 @@ export default function App() {
 
     timer = window.setTimeout(offer, 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.completeNamePrompt, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, namePromptCheckTick, t]);
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.completeNamePrompt, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, setupInviteDue, namePromptCheckTick, t]);
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,

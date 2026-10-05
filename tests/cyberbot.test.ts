@@ -13,6 +13,7 @@ import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours }
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
+import { CYBERBOT_SETUP_REMIND_MS, isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from '../src/components/companion/cyberBotSetup';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
 import {
@@ -39,6 +40,35 @@ test('the optional name invitation is offered at most twice', () => {
   assert.equal(isCyberBotNamePromptDue('', 'deferred', now + CYBERBOT_NAME_REMIND_MS, now + CYBERBOT_NAME_REMIND_MS), true);
   assert.equal(isCyberBotNamePromptDue('', 'dismissed', 0, now), false);
   assert.equal(isCyberBotNamePromptDue('Ana', 'unseen', 0, now), false);
+});
+
+test('setup invitation targets only untouched default apps and categories, with a repeat cooldown', () => {
+  const defaultApps = new Set([1001, 1002]);
+  const defaultCategories = new Set(['all', 'uncategorized', 'utils']);
+  const apps = [{ id: 1001 }, { id: 1002 }];
+  const categories = [{ id: 'all' }, { id: 'uncategorized' }, { id: 'utils' }];
+  assert.equal(isCyberBotDefaultSetup(apps, categories, defaultApps, defaultCategories), true);
+  assert.equal(isCyberBotDefaultSetup([...apps, { id: 9999 }], categories, defaultApps, defaultCategories), false);
+  assert.equal(isCyberBotDefaultSetup(apps, [...categories, { id: 'cat-custom' }], defaultApps, defaultCategories), false);
+  assert.equal(isCyberBotDefaultSetup([{ id: 1002 }], categories, defaultApps, defaultCategories), true);
+
+  const now = new Date(2026, 9, 5).getTime();
+  assert.equal(isCyberBotSetupInviteDue(0, now), true);
+  assert.equal(isCyberBotSetupInviteDue(now, now), false);
+  assert.equal(isCyberBotSetupInviteDue(now, now + CYBERBOT_SETUP_REMIND_MS - 1), false);
+  assert.equal(isCyberBotSetupInviteDue(now, now + CYBERBOT_SETUP_REMIND_MS), true);
+});
+
+test('setup and add-app guidance is available in Spanish and English', () => {
+  for (const language of ['es', 'en'] as const) {
+    for (const key of ['cyberbot_setup_invite', 'cyberbot_setup_add_app', 'cyberbot_setup_add_category'] as const) {
+      assert.ok(translations[language][key]?.trim());
+    }
+    for (const topic of ['add_app', 'add_app_drop', 'add_category'] as const) {
+      assert.ok(cyberBotPhrases[topic].length >= 2);
+      for (const phrase of cyberBotPhrases[topic]) assert.ok(translations[language][phrase.key]?.trim());
+    }
+  }
 });
 
 test('only selected phrases use the preferred name and both languages have neutral fallbacks', () => {

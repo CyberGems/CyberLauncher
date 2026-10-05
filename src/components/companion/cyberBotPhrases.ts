@@ -74,6 +74,19 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_context_cmd_palette_2', emotion: 'happy' },
     { key: 'cyberbot_context_cmd_palette_3', emotion: 'speaking' },
   ],
+  add_app: [
+    { key: 'cyberbot_context_add_app', emotion: 'speaking' },
+    { key: 'cyberbot_context_add_app_2', emotion: 'launcher' },
+    { key: 'cyberbot_context_add_app_3', emotion: 'speaking' },
+  ],
+  add_app_drop: [
+    { key: 'cyberbot_context_add_app_drop', emotion: 'speaking' },
+    { key: 'cyberbot_context_add_app_drop_2', emotion: 'launcher' },
+  ],
+  add_category: [
+    { key: 'cyberbot_context_add_category', emotion: 'speaking' },
+    { key: 'cyberbot_context_add_category_2', emotion: 'launcher' },
+  ],
   about: [
     { key: 'cyberbot_context_about', emotion: 'launcher' },
     { key: 'cyberbot_context_about_2', emotion: 'delighted' },
