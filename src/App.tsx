@@ -7255,7 +7255,7 @@ export default function App() {
                 className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none"
               >
                 <span className="relative flex-shrink-0">
-                  <CyberLogo className="w-7 h-7 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
+                  <CyberLogo className="w-[26.6px] h-[26.6px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
                 </span>
                 <span className="font-cyber font-bold text-[14px] tracking-wide text-white truncate leading-none">
                   Cyber<span className="text-cyan-400">Launcher</span>
@@ -7280,7 +7280,7 @@ export default function App() {
                 onClick={() => setIsAboutOpen(true)}
                 className="group relative flex items-center justify-center w-7 h-7 cursor-pointer focus:outline-none"
               >
-                <CyberLogo className="w-6 h-6 drop-shadow-[0_0_6px_rgba(34,211,238,0.28)]" />
+                <CyberLogo className="w-[22.8px] h-[22.8px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
               </button>
             </Tooltip>
             <Tooltip label={withShortcut(t('tooltip_left_sidebar_expand'), 'Ctrl+Shift+B')} placement="right">
@@ -12967,7 +12967,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    {t('ctx_pin_taskbar')} <Plus className="w-4 h-4 ml-2 text-blue-400" />
+                    {t('ctx_pin_taskbar')} <Plus className="w-4 h-4 ml-2 text-slate-400" />
                   </button>
                 )}
 
@@ -12989,7 +12989,7 @@ export default function App() {
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                   >
-                    {t('ctx_add_fav')} <Star className="w-4 h-4 ml-2 fill-blue-500 text-blue-400" />
+                    {t('ctx_add_fav')} <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
                   </button>
                 )}
 
@@ -13018,7 +13018,7 @@ export default function App() {
                     className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 disabled:opacity-50"
                   >
                     {refreshingAppId === contextMenu.app.id ? t('ctx_refreshing_icon') : t('ctx_refresh_icon')}
-                    <RotateCcw className={`w-4 h-4 ml-2 text-cyan-400 ${refreshingAppId === contextMenu.app.id ? 'animate-spin' : ''}`} />
+                    <RotateCcw className={`w-4 h-4 ml-2 text-slate-400 ${refreshingAppId === contextMenu.app.id ? 'animate-spin' : ''}`} />
                   </button>
                 )}
 
@@ -13031,8 +13031,10 @@ export default function App() {
                   }}
                   className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                 >
-                  {t('ctx_schedule_launch')} <Timer className="w-4 h-4 ml-2 text-cyan-400" />
+                  {t('ctx_schedule_launch')} <Timer className="w-4 h-4 ml-2 text-slate-400" />
                 </button>
+
+                <div className="h-px bg-white/10 my-1 mx-2" />
                 
                 <button
                    onClick={() => {
