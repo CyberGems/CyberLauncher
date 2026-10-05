@@ -282,6 +282,13 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
 });
 
+test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar', () => {
+  const css = readFileSync(new URL('../public/tray/toast-window.css', import.meta.url), 'utf8');
+  assert.match(css, /\.cyberbot-card\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;/s);
+  assert.match(css, /\.cyberbot-avatar\s*\{[^}]*flex:\s*0 0 84px;[^}]*width:\s*84px;/s);
+  assert.match(css, /\.cyberbot-bubble\s*\{[^}]*flex:\s*0 1 auto;[^}]*width:\s*max-content;[^}]*max-width:\s*382px;/s);
+});
+
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({
   id: 'critical',
   text: 'Critical alert',

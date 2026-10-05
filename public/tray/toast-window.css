@@ -66,12 +66,14 @@ html, body {
 
 .cyberbot-card {
   pointer-events: auto;
-  width: 100%;
-  max-width: 474px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
   height: 130px;
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  margin-left: auto;
   animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
@@ -79,9 +81,9 @@ html, body {
 .cyberbot-card.hidden, .cyberbot-card .hidden { display: none !important; }
 .cyberbot-card.exiting { opacity: 0; transform: translateY(12px) scale(0.96); }
 .cyberbot-avatar {
-  flex: 0 0 96px;
-  width: 96px;
-  height: 101px;
+  flex: 0 0 84px;
+  width: 84px;
+  height: 88px;
   align-self: flex-end;
   filter: drop-shadow(0 4px 12px rgba(34, 211, 238, 0.4));
   animation: botFloat 3.2s ease-in-out infinite;
@@ -93,8 +95,10 @@ html, body {
 .cyberbot-bubble {
   position: relative;
   align-self: flex-start;
-  flex: 1;
-  min-width: 0;
+  flex: 0 1 auto;
+  width: max-content;
+  min-width: 220px;
+  max-width: 382px;
   max-height: 130px;
   overflow: visible;
   padding: 11px 13px;
@@ -118,7 +122,7 @@ html, body {
 .cyberbot-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .cyberbot-brand { color: #22d3ee; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 #cyberbotBrandTag { color: #94a3b8; margin-left: 5px; }
-.cyberbot-title { color: #fff; font-weight: 750; font-size: 13px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cyberbot-title { color: #fff; font-weight: 750; font-size: 13px; line-height: 1.25; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .cyberbot-detail { color: #a5cbd6; font-size: 11px; line-height: 1.2; margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cyberbot-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
 .cyberbot-actions button { cursor: pointer; font: inherit; font-size: 10px; font-weight: 700; border-radius: 7px; padding: 3px 8px; }
