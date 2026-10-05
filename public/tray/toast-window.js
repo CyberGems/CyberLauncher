@@ -2,6 +2,16 @@
 
 let currentTaskId = null;
 let currentActionTarget = null;
+let currentReleaseUrl = null;
+
+const cyberbotCard = document.getElementById('cyberbotCard');
+const cyberbotTitle = document.getElementById('cyberbotTitle');
+const cyberbotDetail = document.getElementById('cyberbotDetail');
+const cyberbotBrandTag = document.getElementById('cyberbotBrandTag');
+const cyberbotActions = document.getElementById('cyberbotActions');
+const cyberbotActionBtn = document.getElementById('cyberbotActionBtn');
+const cyberbotSecondaryBtn = document.getElementById('cyberbotSecondaryBtn');
+const cyberbotDismissBtn = document.getElementById('cyberbotDismissBtn');
 
 const imminentCard = document.getElementById('imminentCard');
 const imminentSeconds = document.getElementById('imminentSeconds');
@@ -19,6 +29,7 @@ const standardTitle = document.getElementById('standardTitle');
 const standardDetail = document.getElementById('standardDetail');
 const standardActionBtn = document.getElementById('standardActionBtn');
 const standardActionLabel = document.getElementById('standardActionLabel');
+const standardReleaseBtn = document.getElementById('standardReleaseBtn');
 const brandMetaTag = document.getElementById('brandMetaTag');
 const dismissToastBtn = document.getElementById('dismissToastBtn');
 
@@ -43,6 +54,13 @@ standardActionBtn.addEventListener('click', (e) => {
   }
 });
 
+standardReleaseBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (window.desktopToast && currentReleaseUrl) {
+    window.desktopToast.action('open-release', { url: currentReleaseUrl });
+  }
+});
+
 standardCard.addEventListener('click', (e) => {
   if (e.target.closest('#dismissToastBtn')) return;
   if (e.target.closest('#standardActionBtn')) return;
@@ -58,6 +76,18 @@ dismissToastBtn.addEventListener('click', (e) => {
   }
 });
 
+function runBotAction(kind) {
+  if (!window.desktopToast) return;
+  if (kind === 'launch' && currentTaskId) window.desktopToast.action('launch-now', { taskId: currentTaskId });
+  if (kind === 'cancel' && currentTaskId) window.desktopToast.action('cancel-task', { taskId: currentTaskId });
+  if (kind === 'hud' && currentActionTarget) window.desktopToast.action('open-hud', { target: currentActionTarget });
+  if (kind === 'release' && currentReleaseUrl) window.desktopToast.action('open-release', { url: currentReleaseUrl });
+}
+
+cyberbotActionBtn.addEventListener('click', (e) => { e.stopPropagation(); runBotAction(cyberbotActionBtn.dataset.kind); });
+cyberbotSecondaryBtn.addEventListener('click', (e) => { e.stopPropagation(); runBotAction(cyberbotSecondaryBtn.dataset.kind); });
+cyberbotDismissBtn.addEventListener('click', (e) => { e.stopPropagation(); window.desktopToast?.hide(); });
+
 if (window.desktopToast) {
   window.desktopToast.onData((data) => {
     if (!data) return;
@@ -65,14 +95,60 @@ if (window.desktopToast) {
     if (data.type === 'hide') {
       imminentCard.classList.add('exiting');
       standardCard.classList.add('exiting');
+      cyberbotCard.classList.add('exiting');
       return;
     }
 
     imminentCard.classList.remove('exiting');
     standardCard.classList.remove('exiting');
+    cyberbotCard.classList.remove('exiting');
+    currentTaskId = data.taskId || null;
+    currentActionTarget = data.action || null;
+    currentReleaseUrl = data.releaseUrl || null;
+    if (data.dismissLabel) {
+      dismissToastBtn.setAttribute('aria-label', data.dismissLabel);
+      cyberbotDismissBtn.setAttribute('aria-label', data.dismissLabel);
+    }
+
+    if (data.presentation === 'bot') {
+      imminentCard.classList.add('hidden');
+      standardCard.classList.add('hidden');
+      cyberbotCard.classList.remove('hidden');
+      cyberbotCard.classList.toggle('alert', data.type === 'warning' || data.type === 'error' || data.type === 'imminent');
+      cyberbotTitle.textContent = data.title || '';
+      cyberbotDetail.textContent = data.detail || '';
+      cyberbotDetail.classList.toggle('hidden', !data.detail);
+      cyberbotBrandTag.textContent = data.brandTag ? `/ ${data.brandTag}` : '';
+
+      cyberbotActionBtn.classList.add('hidden');
+      cyberbotSecondaryBtn.classList.add('hidden');
+      if (data.type === 'imminent') {
+        cyberbotActionBtn.textContent = data.actionLabelLaunch || '';
+        cyberbotActionBtn.dataset.kind = 'launch';
+        cyberbotActionBtn.classList.remove('hidden');
+        cyberbotSecondaryBtn.textContent = data.actionLabelCancel || '';
+        cyberbotSecondaryBtn.dataset.kind = 'cancel';
+        cyberbotSecondaryBtn.classList.remove('hidden');
+      } else {
+        if (data.action && data.actionLabel) {
+          cyberbotActionBtn.textContent = data.actionLabel;
+          cyberbotActionBtn.dataset.kind = 'hud';
+          cyberbotActionBtn.classList.remove('hidden');
+        }
+        if (data.releaseUrl && data.releaseLabel) {
+          const button = data.action ? cyberbotSecondaryBtn : cyberbotActionBtn;
+          button.textContent = data.releaseLabel;
+          button.dataset.kind = 'release';
+          button.classList.remove('hidden');
+        }
+      }
+      cyberbotActions.classList.toggle('hidden', cyberbotActionBtn.classList.contains('hidden') && cyberbotSecondaryBtn.classList.contains('hidden'));
+      return;
+    }
+
+    cyberbotCard.classList.add('hidden');
 
     if (data.type === 'imminent') {
-      currentTaskId = data.taskId || null;
       standardCard.classList.add('hidden');
       imminentCard.classList.remove('hidden');
 
@@ -88,7 +164,6 @@ if (window.desktopToast) {
       if (data.actionLabelLaunch) launchNowLabel.textContent = data.actionLabelLaunch;
       if (data.actionLabelCancel) cancelLaunchLabel.textContent = data.actionLabelCancel;
     } else {
-      currentActionTarget = data.action || null;
       imminentCard.classList.add('hidden');
       standardCard.classList.remove('hidden');
 
@@ -128,6 +203,8 @@ if (window.desktopToast) {
       } else {
         standardActionBtn.classList.add('hidden');
       }
+      standardReleaseBtn.classList.toggle('hidden', !data.releaseUrl || !data.releaseLabel);
+      if (data.releaseUrl && data.releaseLabel) standardReleaseBtn.textContent = data.releaseLabel;
 
       if (brandMetaTag) {
         if (data.brandTag) {

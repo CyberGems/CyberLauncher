@@ -68,6 +68,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     return saved === null ? true : saved === 'true';
   });
 
+  const [bannersEnabled, setBannersEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('cyberbot_banners_enabled');
+    return saved === null ? true : saved === 'true';
+  });
+
   const [chatterLevel, setChatterLevel] = useState<CyberBotChatterLevel>(() => {
     const saved = localStorage.getItem('cyberbot_chatter');
     return saved === 'minimal' ? 'minimal' : 'full';
@@ -126,6 +131,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     localStorage.setItem('cyberbot_hover_assist', String(newValue));
   }, []);
 
+  const updateBannersEnabled = useCallback((newValue: boolean) => {
+    setBannersEnabled(newValue);
+    localStorage.setItem('cyberbot_banners_enabled', String(newValue));
+  }, []);
+
   const updateChatterLevel = useCallback((level: CyberBotChatterLevel) => {
     setChatterLevel(level);
     localStorage.setItem('cyberbot_chatter', level);
@@ -151,6 +161,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     }
     if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
     if (typeof settings.hoverAssistEnabled === 'boolean') updateHoverAssistEnabled(settings.hoverAssistEnabled);
+    if (typeof settings.bannersEnabled === 'boolean') updateBannersEnabled(settings.bannersEnabled);
     if (settings.chatterLevel === 'full' || settings.chatterLevel === 'minimal') updateChatterLevel(settings.chatterLevel);
     if (settings.quietHours && typeof settings.quietHours === 'object') {
       const { enabled, from, to } = settings.quietHours;
@@ -161,7 +172,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
       });
     }
-  }, [updatePosition, updateDodgeEnabled, updateHoverAssistEnabled, updateChatterLevel, updateQuietHours]);
+  }, [updatePosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, updateChatterLevel, updateQuietHours]);
 
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
@@ -181,25 +192,28 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, []);
 
   const say = useCallback((msg: {
+    id?: string;
     text: string;
     detail?: string;
     emotion?: CyberBotEmotion;
     tag?: string;
     action?: { label: string; onClick: () => void };
+    secondaryAction?: { label: string; onClick: () => void };
     durationMs?: number;
     priority?: 'low' | 'normal' | 'high';
+    essential?: boolean;
   }) => {
     if (!enabled) return false;
     const priority = msg.priority || 'normal';
 
     // Quiet and minimal modes reserve speech for critical messages.
     if (quietHours.enabled && isInQuietHours(quietHours.from, quietHours.to)) {
-      if (priority !== 'high') {
+      if (priority !== 'high' && !msg.essential) {
         return false;
       }
     }
 
-    if (chatterLevel === 'minimal' && priority !== 'high') {
+    if (chatterLevel === 'minimal' && priority !== 'high' && !msg.essential) {
       return false;
     }
 
@@ -213,12 +227,13 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     const duration = msg.durationMs !== undefined ? msg.durationMs : 6500;
 
     const newMessage: CyberBotMessage = {
-      id: `bot_msg_${Date.now()}_${Math.random()}`,
+      id: msg.id || `bot_msg_${Date.now()}_${Math.random()}`,
       text: msg.text,
       detail: msg.detail,
       emotion: msg.emotion || 'speaking',
       tag: msg.tag || t('cyberbot_tag_name'),
       action: msg.action,
+      secondaryAction: msg.secondaryAction,
       durationMs: duration,
       timestamp: Date.now(),
       priority,
@@ -277,8 +292,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
-    { enabled, position, dodgeEnabled, hoverAssistEnabled, chatterLevel, quietHours }
-  ), [enabled, position, dodgeEnabled, hoverAssistEnabled, chatterLevel, quietHours]);
+    { enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, chatterLevel, quietHours }
+  ), [enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, chatterLevel, quietHours]);
 
   return {
     enabled,
@@ -289,6 +304,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     updateDodgeEnabled,
     hoverAssistEnabled,
     updateHoverAssistEnabled,
+    bannersEnabled,
+    updateBannersEnabled,
     chatterLevel,
     updateChatterLevel,
     quietHours,

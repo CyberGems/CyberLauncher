@@ -209,6 +209,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('show-notification', options),
   showDesktopToast: (payload: any) =>
     ipcRenderer.invoke('show-desktop-toast', payload),
+  setToastPreferences: (settings: any) =>
+    ipcRenderer.invoke('set-toast-preferences', settings),
   hideDesktopToast: () =>
     ipcRenderer.invoke('hide-desktop-toast'),
   onCancelScheduledTask: (callback: (taskId: string) => void) => {

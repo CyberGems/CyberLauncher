@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { useCyberBot } from './components/companion/useCyberBot';
+import { chooseNotificationChannel } from './notificationRouting';
 import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
   parseBackupHours,
@@ -458,6 +459,16 @@ declare global {
         actionLabel?: string;
         actionLabelLaunch?: string;
         actionLabelCancel?: string;
+        botUnavailable?: boolean;
+        releaseUrl?: string;
+        releaseLabel?: string;
+        dismissLabel?: string;
+      }) => Promise<boolean>;
+      setToastPreferences?: (settings: {
+        botEnabled: boolean;
+        bannersEnabled: boolean;
+        chatterLevel: 'full' | 'minimal';
+        quietHours: { enabled: boolean; from: string; to: string };
       }) => Promise<boolean>;
       hideDesktopToast?: () => Promise<boolean>;
       onCancelScheduledTask?: (callback: (taskId: string) => void) => () => void;
@@ -2430,6 +2441,7 @@ export default function App() {
     action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock';
     detail?: string;
     releaseUrl?: string;
+    source?: 'system-alert';
   } | null>(null);
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string } | null>(null);
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
@@ -3335,40 +3347,12 @@ export default function App() {
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
   const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
-
-  // Route system notifications to CyberBot when companion is active
+  const [isWindowVisible, setIsWindowVisible] = useState(() => !document.hidden);
   useEffect(() => {
-    if (!notification || !cyberBot.enabled) return;
-    let actionHandler: (() => void) | undefined;
-    let actionLabel = '';
-
-    if (notification.action === 'open-hud-system') {
-      actionLabel = t('toast_action_view_system');
-      actionHandler = () => { setIsSystemHUDOpen(true); setNotification(null); };
-    } else if (notification.action === 'open-hud-storage') {
-      actionLabel = t('toast_action_view_storage');
-      actionHandler = () => { setIsStorageHUDOpen(true); setNotification(null); };
-    } else if (notification.action === 'open-hud-clock') {
-      actionLabel = t('toast_action_view_clock');
-      actionHandler = () => { setIsClockHUDOpen(true); setNotification(null); };
-    } else if (notification.action === 'open-about') {
-      actionLabel = t('about_title');
-      actionHandler = () => { setIsAboutOpen(true); setNotification(null); };
-    }
-
-    cyberBot.say({
-      text: notification.message,
-      detail: notification.detail,
-      emotion: notification.type === 'error' || notification.type === 'warning' ? 'alert' : notification.type === 'success' ? 'success' : 'speaking',
-      tag: notification.brandTag || (notification.type === 'warning' || notification.type === 'error' ? t('hud_system_parameters') : t('cyberbot_tag_name')),
-      action: actionLabel && actionHandler ? {
-        label: actionLabel,
-        onClick: actionHandler,
-      } : undefined,
-      durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
-      priority: notification.type === 'error' || notification.level === 'critical' ? 'high' : 'normal',
-    });
-  }, [notification, cyberBot.enabled, t, cyberBot.say]);
+    const updateVisibility = () => setIsWindowVisible(!document.hidden);
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
 
   // Contextual CyberBot commentary on panel opening & settings navigation
   const topicCooldownsRef = useRef<Record<string, number>>({});
@@ -3489,10 +3473,6 @@ export default function App() {
             if (task.type === 'app' && task.targetPath) {
               if (isElectron) {
                 window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
-                window.electronAPI?.showNotification?.({
-                  title: t('notif_scheduled_app_launched'),
-                  body: t('notif_scheduled_app_launched_detail', { name: task.name })
-                });
               } else {
                 console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
               }
@@ -3506,10 +3486,6 @@ export default function App() {
             } else if (task.type === 'command' && task.command) {
               if (isElectron) {
                 window.electronAPI!.runShellCommand(task.command);
-                window.electronAPI?.showNotification?.({
-                  title: t('notif_scheduled_cmd_executed'),
-                  body: task.command
-                });
               } else {
                 console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
               }
@@ -3528,12 +3504,6 @@ export default function App() {
           // Pre-launch imminent alert at 10s (or at start if duration < 10)
           if (task.remainingSeconds === 10 || (task.totalSeconds < 10 && task.remainingSeconds === task.totalSeconds)) {
             playCyberBeep();
-            if (isElectron) {
-              window.electronAPI?.showNotification?.({
-                title: t('notif_scheduled_imminent', { seconds: task.remainingSeconds.toString() }),
-                body: `${task.name} — ${t('notif_action_cancel_launch')}`
-              });
-            }
           }
 
           return { ...task, remainingSeconds: task.remainingSeconds - 1 };
@@ -3577,10 +3547,6 @@ export default function App() {
     if (task.type === 'app' && task.targetPath) {
       if (isElectron) {
         window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
-        window.electronAPI?.showNotification?.({
-          title: t('notif_scheduled_app_launched'),
-          body: t('notif_scheduled_app_launched_detail', { name: task.name })
-        });
       } else {
         console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
       }
@@ -3594,10 +3560,6 @@ export default function App() {
     } else if (task.type === 'command' && task.command) {
       if (isElectron) {
         window.electronAPI!.runShellCommand(task.command);
-        window.electronAPI?.showNotification?.({
-          title: t('notif_scheduled_cmd_executed'),
-          body: task.command
-        });
       } else {
         console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
       }
@@ -3619,12 +3581,50 @@ export default function App() {
     }
   }, [scheduledTasks, handleLaunchImminentNow]);
 
-  // Synchronize desktop toast window for imminent countdown and system/launcher notifications
   useEffect(() => {
-    if (!isElectron || !window.electronAPI?.showDesktopToast) return;
+    if (!isElectron || !isConfigLoaded) return;
+    void window.electronAPI?.setToastPreferences?.({
+      botEnabled: cyberBot.enabled,
+      bannersEnabled: cyberBot.bannersEnabled,
+      chatterLevel: cyberBot.chatterLevel,
+      quietHours: cyberBot.quietHours,
+    });
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours]);
+
+  // A single delivery path chooses speech in the launcher or a floating presentation outside it.
+  useEffect(() => {
+    const deliverySettings = {
+      botEnabled: cyberBot.enabled,
+      bannersEnabled: cyberBot.bannersEnabled,
+      chatterLevel: cyberBot.chatterLevel,
+      quietHours: cyberBot.quietHours,
+    };
+    const botAvailable = isWindowVisible && isCyberBotSpeechVisible;
+    const showFloating = isElectron && window.electronAPI?.showDesktopToast;
 
     if (imminentTask) {
-      void window.electronAPI.showDesktopToast({
+      let countdownSpoken = false;
+      if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: false, essential: true }) === 'bot') {
+        countdownSpoken = cyberBot.say({
+          id: `scheduled_countdown_${imminentTask.id}`,
+          text: t('notif_scheduled_imminent', { seconds: imminentTask.remainingSeconds.toString() }),
+          detail: imminentTask.name,
+          emotion: 'alert',
+          tag: t('toast_brand_timer'),
+          action: {
+            label: t('notif_action_launch_now'),
+            onClick: () => handleLaunchImminentNow(imminentTask),
+          },
+          secondaryAction: {
+            label: t('notif_action_cancel_launch'),
+            onClick: () => handleCancelImminentTask(imminentTask.id, imminentTask.name),
+          },
+          durationMs: 1200,
+          priority: 'normal',
+          essential: true,
+        });
+      }
+      if (showFloating) void window.electronAPI!.showDesktopToast!({
         type: 'imminent',
         taskId: imminentTask.id,
         countdownSeconds: imminentTask.remainingSeconds,
@@ -3633,6 +3633,8 @@ export default function App() {
         actionLabelLaunch: t('notif_action_launch_now'),
         actionLabelCancel: t('notif_action_cancel_launch'),
         brandTag: t('toast_brand_timer') || 'TIMER',
+        botUnavailable: !isCyberBotSpeechVisible || (botAvailable && !countdownSpoken),
+        dismissLabel: t('cyberbot_close_message'),
       });
       return;
     }
@@ -3654,7 +3656,33 @@ export default function App() {
         if (!brandTag) brandTag = t('toast_brand_system');
       }
 
-      void window.electronAPI.showDesktopToast({
+      const actionHandler = notification.action === 'open-hud-system'
+        ? () => setIsSystemHUDOpen(true)
+        : notification.action === 'open-hud-storage'
+        ? () => setIsStorageHUDOpen(true)
+        : notification.action === 'open-hud-clock'
+        ? () => setIsClockHUDOpen(true)
+        : notification.action === 'open-about'
+        ? () => setIsAboutOpen(true)
+        : undefined;
+      if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical' }) === 'bot') {
+        cyberBot.say({
+          text: notification.message,
+          detail: notification.detail,
+          emotion: notification.type === 'error' || notification.type === 'warning' ? 'alert' : notification.type === 'success' ? 'success' : 'speaking',
+          tag: brandTag || t('cyberbot_tag_name'),
+          action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
+            ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
+            : undefined,
+          secondaryAction: actionHandler && notification.releaseUrl
+            ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
+            : undefined,
+          durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
+          priority: notification.level === 'critical' ? 'high' : 'normal',
+        });
+      }
+
+      if (showFloating && (notification.source !== 'system-alert' || isWindowVisible)) void window.electronAPI!.showDesktopToast!({
         type: notification.type,
         level: notification.level,
         title: notification.message,
@@ -3662,12 +3690,16 @@ export default function App() {
         action: notification.action,
         actionLabel,
         brandTag: brandTag || t('toast_brand_system') || 'SISTEMA',
+        botUnavailable: !isCyberBotSpeechVisible,
+        releaseUrl: notification.releaseUrl,
+        releaseLabel: notification.releaseUrl ? t('about_view_release') : undefined,
+        dismissLabel: t('cyberbot_close_message'),
       });
       return;
     }
 
-    void window.electronAPI.hideDesktopToast?.();
-  }, [imminentTask, notification, t]);
+    if (isElectron) void window.electronAPI?.hideDesktopToast?.();
+  }, [imminentTask, notification, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl]);
 
   // Register desktop toast IPC action listeners (Cancel, Launch now, Open HUD)
   useEffect(() => {
@@ -4794,6 +4826,7 @@ export default function App() {
         level: data.level,
         brandTag: data.type === 'disk' ? (t('toast_brand_storage') || 'DISCO') : (t('toast_brand_memory') || 'MEMORIA'),
         action: data.type === 'disk' ? 'open-hud-storage' : 'open-hud-system',
+        source: 'system-alert',
       });
     });
 
@@ -11511,6 +11544,30 @@ export default function App() {
                       </button>
                     </div>
 
+                  <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                      <div className="p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                        <Info className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_banners_title')}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_banners_desc')}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => cyberBot.updateBannersEnabled(!cyberBot.bannersEnabled)}
+                      role="switch"
+                      aria-checked={cyberBot.bannersEnabled}
+                      aria-label={t('cyberbot_banners_title')}
+                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.bannersEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+
                     {cyberBot.enabled && (<>
                       {/* Card 2: Evasión del cursor (Dodge) */}
                       <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -13650,7 +13707,7 @@ export default function App() {
 
       {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
       <AnimatePresence>
-        {!isElectron && imminentTask && (
+        {!isElectron && imminentTask && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: false, essential: true, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
           <motion.div
             key={imminentTask.id}
             data-no-hide
@@ -13797,7 +13854,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {!isElectron && (!cyberBot.enabled || !isCyberBotSpeechVisible) && notification && (
+        {!isElectron && notification && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
@@ -9,6 +11,96 @@ import { canReplaceCyberBotMessage, isInQuietHours } from '../src/components/com
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
 import { translations } from '../src/locales';
+import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
+
+test('announcement routing gives CyberBot priority with a banner fallback', () => {
+  const settings: NotificationDeliverySettings = {
+    botEnabled: true,
+    bannersEnabled: true,
+    chatterLevel: 'full',
+    quietHours: { enabled: false, from: '22:00', to: '07:00' },
+  };
+  assert.equal(chooseNotificationChannel(settings, { critical: false }), 'bot');
+  assert.equal(chooseNotificationChannel(settings, { critical: false, botAvailable: false }), 'banner');
+  assert.equal(chooseNotificationChannel({ ...settings, botEnabled: false }, { critical: false }), 'banner');
+  assert.equal(chooseNotificationChannel({ ...settings, botEnabled: false, bannersEnabled: false }, { critical: false }), 'none');
+  assert.equal(chooseNotificationChannel({ ...settings, bannersEnabled: false }, { critical: false, botAvailable: false }), 'none');
+});
+
+test('minimal chatter and quiet hours mute ordinary notices without muting critical alerts', () => {
+  const settings: NotificationDeliverySettings = {
+    botEnabled: true,
+    bannersEnabled: true,
+    chatterLevel: 'minimal',
+    quietHours: { enabled: false, from: '22:00', to: '07:00' },
+  };
+  assert.equal(chooseNotificationChannel(settings, { critical: false }), 'none');
+  assert.equal(chooseNotificationChannel(settings, { critical: true }), 'bot');
+  assert.equal(chooseNotificationChannel(settings, { critical: false, essential: true }), 'bot');
+  const quiet = { ...settings, chatterLevel: 'full' as const, quietHours: { enabled: true, from: '22:00', to: '07:00' } };
+  assert.equal(chooseNotificationChannel(quiet, { critical: false, now: new Date(2026, 9, 4, 23, 0) }), 'none');
+  assert.equal(chooseNotificationChannel(quiet, { critical: true, now: new Date(2026, 9, 4, 23, 0) }), 'bot');
+  assert.equal(chooseNotificationChannel(quiet, { critical: false, essential: true, now: new Date(2026, 9, 4, 23, 0) }), 'bot');
+  assert.equal(chooseNotificationChannel(quiet, { critical: false, now: new Date(2026, 9, 4, 8, 0) }), 'bot');
+});
+
+test('floating CyberBot keeps scheduled actions and release links usable', () => {
+  const html = readFileSync(new URL('../public/tray/toast-window.html', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../public/tray/toast-window.js', import.meta.url), 'utf8');
+  const ids = [...source.matchAll(/getElementById\('([^']+)'\)/g)].map(match => match[1]);
+  for (const id of ids) assert.ok(html.includes(`id="${id}"`), `Missing toast element ${id}`);
+
+  const elements = new Map<string, {
+    classList: { add: (...names: string[]) => void; remove: (...names: string[]) => void; toggle: (name: string, force?: boolean) => void; contains: (name: string) => boolean };
+    dataset: Record<string, string>;
+    textContent: string;
+    listeners: Record<string, (event: { stopPropagation: () => void }) => void>;
+    addEventListener: (event: string, handler: (event: { stopPropagation: () => void }) => void) => void;
+    setAttribute: (name: string, value: string) => void;
+  }>();
+  const element = (id: string) => {
+    if (!elements.has(id)) {
+      const classes = new Set<string>(['hidden']);
+      const listeners: Record<string, (event: { stopPropagation: () => void }) => void> = {};
+      elements.set(id, {
+        classList: {
+          add: (...names) => names.forEach(name => classes.add(name)),
+          remove: (...names) => names.forEach(name => classes.delete(name)),
+          toggle: (name, force) => { if (force === undefined ? !classes.has(name) : force) classes.add(name); else classes.delete(name); },
+          contains: name => classes.has(name),
+        },
+        dataset: {}, textContent: '', listeners,
+        addEventListener: (event, handler) => { listeners[event] = handler; },
+        setAttribute: () => {},
+      });
+    }
+    return elements.get(id)!;
+  };
+  const actions: Array<[string, unknown]> = [];
+  let receive: (data: Record<string, unknown>) => void = () => {};
+  runInNewContext(source, {
+    document: { getElementById: element },
+    window: { desktopToast: {
+      onData: (callback: typeof receive) => { receive = callback; },
+      action: (name: string, payload: unknown) => actions.push([name, payload]),
+      hide: () => {},
+    } },
+  });
+  const click = (id: string) => element(id).listeners.click({ stopPropagation: () => {} });
+
+  receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 9s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
+  assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
+  assert.equal(element('standardCard').classList.contains('hidden'), true);
+  assert.equal(element('cyberbotTitle').textContent, 'Launching in 9s');
+  click('cyberbotActionBtn');
+  click('cyberbotSecondaryBtn');
+  assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task']);
+
+  receive({ presentation: 'bot', type: 'info', title: 'Update available', action: 'open-about', actionLabel: 'About', releaseUrl: 'https://example.com/release', releaseLabel: 'Release notes' });
+  click('cyberbotActionBtn');
+  click('cyberbotSecondaryBtn');
+  assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task', 'open-hud', 'open-release']);
+});
 
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({
   id: 'critical',

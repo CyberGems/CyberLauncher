@@ -9,6 +9,36 @@
 </head>
 <body>
   <div id="toastRoot" class="toast-shell">
+    <div id="cyberbotCard" class="cyberbot-card hidden" role="status" aria-live="polite">
+      <svg class="cyberbot-avatar" viewBox="0 0 100 105" aria-hidden="true">
+        <defs>
+          <linearGradient id="botBody" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#38bdf8"/><stop offset="0.35" stop-color="#2563eb"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>
+          <linearGradient id="botScreen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#050b1a"/><stop offset="1" stop-color="#0a192f"/></linearGradient>
+        </defs>
+        <rect x="33" y="88" width="12" height="11" rx="5" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.5"/>
+        <rect x="55" y="88" width="12" height="11" rx="5" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.5"/>
+        <rect x="18" y="69" width="11" height="16" rx="5" fill="#2563eb" stroke="#38bdf8" stroke-width="1.5" transform="rotate(8 23 77)"/>
+        <rect x="71" y="69" width="11" height="16" rx="5" fill="#2563eb" stroke="#38bdf8" stroke-width="1.5" transform="rotate(-8 76 77)"/>
+        <rect x="31" y="66" width="38" height="26" rx="8" fill="url(#botBody)" stroke="#38bdf8" stroke-width="1.8"/>
+        <rect x="38" y="72" width="24" height="12" rx="4" fill="#0b172e" stroke="#38bdf8"/>
+        <circle cx="44" cy="78" r="2" fill="#22d3ee"/><path d="M50 78h7" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M17 38c-6 0-6 12 0 12z M83 38c6 0 6 12 0 12z" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.8"/>
+        <path d="M46 16c0-5 8-5 8 0l-2 4h-4z" fill="#38bdf8"/><circle cx="50" cy="11" r="3" fill="#22d3ee"/>
+        <path d="M28 20C35 15 45 16 50 16c5 0 15-1 22 4 13 4 16 15 15 25 1 11-3 21-17 24-8 2-32 2-40 0-14-3-18-13-17-24-1-10 2-21 15-25z" fill="url(#botBody)" stroke="#38bdf8" stroke-width="2.2"/>
+        <rect x="22" y="27" width="56" height="35" rx="12" fill="url(#botScreen)" stroke="#22d3ee" stroke-width="1.8"/>
+        <g class="bot-face-logo" fill="#22d3ee"><rect x="29" y="39" width="10" height="10" rx="3.5"/><path d="M64 38h4v4h4v4h-4v4h-4v-4h-4v-4h4z"/></g>
+        <g class="bot-face-alert" fill="#fbbf24"><circle cx="33" cy="44" r="3"/><circle cx="67" cy="44" r="3"/><path d="M45 53h10" stroke="#fbbf24" stroke-width="2"/></g>
+      </svg>
+      <div class="cyberbot-bubble">
+        <div class="cyberbot-header"><span class="cyberbot-brand">✧ CYBERBOT <span id="cyberbotBrandTag"></span></span><button type="button" id="cyberbotDismissBtn" class="close-btn" aria-label="Dismiss">×</button></div>
+        <div id="cyberbotTitle" class="cyberbot-title"></div>
+        <div id="cyberbotDetail" class="cyberbot-detail hidden"></div>
+        <div id="cyberbotActions" class="cyberbot-actions hidden">
+          <button type="button" id="cyberbotSecondaryBtn" class="cyberbot-secondary hidden"></button>
+          <button type="button" id="cyberbotActionBtn" class="cyberbot-primary hidden"></button>
+        </div>
+      </div>
+    </div>
     <!-- Imminent countdown card -->
     <div id="imminentCard" class="toast-card card-imminent hidden">
       <div class="countdown-badge">
@@ -66,6 +96,7 @@
             <svg class="icon-svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span id="standardActionLabel">Ver programador</span>
           </button>
+          <button type="button" id="standardReleaseBtn" class="btn-link hidden"></button>
         </div>
       </div>
     </div>

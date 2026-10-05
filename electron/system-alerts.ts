@@ -69,6 +69,7 @@ function sendAlertNotification(options: {
       brandTag: options.type === 'disk'
         ? (isEs ? 'DISCO' : 'STORAGE')
         : (isEs ? 'MEMORIA' : 'MEMORY'),
+      dismissLabel: isEs ? 'Cerrar aviso' : 'Dismiss notice',
     });
   }
 
@@ -82,8 +83,8 @@ function sendAlertNotification(options: {
     });
   }
 
-  // 3. Send native desktop notification via Electron
-  if (Notification.isSupported()) {
+  // Critical alerts remain visible in Windows even when both visual channels are disabled.
+  if (options.level === 'critical' && Notification.isSupported()) {
     try {
       const notif = new Notification({
         title: options.title,

@@ -29,6 +29,7 @@ export interface CyberBotSettings {
   position: CyberBotPosition;
   dodgeEnabled: boolean;
   hoverAssistEnabled: boolean;
+  bannersEnabled: boolean;
   chatterLevel: CyberBotChatterLevel;
   quietHours: CyberBotQuietHoursConfig;
 }
@@ -40,6 +41,10 @@ export interface CyberBotMessage {
   emotion?: CyberBotEmotion;
   tag?: string;
   action?: {
+    label: string;
+    onClick: () => void;
+  };
+  secondaryAction?: {
     label: string;
     onClick: () => void;
   };

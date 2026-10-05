@@ -10,6 +10,7 @@ import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
+import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -293,6 +294,7 @@ function showMainWindow() {
       bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + 1500);
       syncHotspotLockAfterWindowChange();
       mainWindow.show();
+      hideDesktopToastInternal();
       const pinned = mainWindow.isAlwaysOnTop();
       if (!pinned) {
         mainWindow.setAlwaysOnTop(true);
@@ -1889,6 +1891,30 @@ function hideTrayPinTip() {
 let desktopToastWin: BrowserWindow | null = null;
 let desktopToastAutoDismissTimer: NodeJS.Timeout | null = null;
 let latestToastPayload: any = null;
+let desktopToastVisibilityVersion = 0;
+let toastDeliverySettings: NotificationDeliverySettings = {
+  botEnabled: true,
+  bannersEnabled: true,
+  chatterLevel: 'full',
+  quietHours: { enabled: false, from: '22:00', to: '07:00' },
+};
+
+function updateToastDeliverySettings(value: unknown) {
+  if (!value || typeof value !== 'object') return;
+  const settings = value as Partial<NotificationDeliverySettings>;
+  if (typeof settings.botEnabled === 'boolean') toastDeliverySettings.botEnabled = settings.botEnabled;
+  if (typeof settings.bannersEnabled === 'boolean') toastDeliverySettings.bannersEnabled = settings.bannersEnabled;
+  if (settings.chatterLevel === 'full' || settings.chatterLevel === 'minimal') toastDeliverySettings.chatterLevel = settings.chatterLevel;
+  if (settings.quietHours && typeof settings.quietHours === 'object') {
+    const hours = settings.quietHours;
+    const validTime = (value: unknown) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+    toastDeliverySettings.quietHours = {
+      enabled: typeof hours.enabled === 'boolean' ? hours.enabled : toastDeliverySettings.quietHours.enabled,
+      from: validTime(hours.from) ? hours.from : toastDeliverySettings.quietHours.from,
+      to: validTime(hours.to) ? hours.to : toastDeliverySettings.quietHours.to,
+    };
+  }
+}
 
 function getToastWindowHtmlPath(): string {
   const isDev = Boolean(VITE_DEV_SERVER_URL);
@@ -1953,7 +1979,19 @@ function ensureDesktopToastWin(): BrowserWindow {
 }
 
 function showDesktopToastInternal(payload: any) {
-  latestToastPayload = payload;
+  const launcherVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  if (payload.source === 'system-alert' && launcherVisible) return;
+  const channel = chooseNotificationChannel(toastDeliverySettings, {
+    critical: payload.level === 'critical',
+    essential: payload.type === 'imminent',
+    botAvailable: !launcherVisible || !payload.botUnavailable,
+  });
+  if (channel === 'none' || (channel === 'bot' && launcherVisible)) {
+    hideDesktopToastInternal();
+    return;
+  }
+  desktopToastVisibilityVersion++;
+  latestToastPayload = { ...payload, presentation: channel };
   const win = ensureDesktopToastWin();
 
   let targetDisplay: any;
@@ -1983,7 +2021,7 @@ function showDesktopToastInternal(payload: any) {
   }
 
   if (!win.webContents.isLoading()) {
-    win.webContents.send('desktop-toast-data', payload);
+    win.webContents.send('desktop-toast-data', latestToastPayload);
   }
 
   if (payload.type !== 'imminent') {
@@ -1995,6 +2033,8 @@ function showDesktopToastInternal(payload: any) {
 }
 
 function hideDesktopToastInternal() {
+  const version = ++desktopToastVisibilityVersion;
+  latestToastPayload = null;
   if (desktopToastAutoDismissTimer) {
     clearTimeout(desktopToastAutoDismissTimer);
     desktopToastAutoDismissTimer = null;
@@ -2002,7 +2042,7 @@ function hideDesktopToastInternal() {
   if (desktopToastWin && !desktopToastWin.isDestroyed()) {
     desktopToastWin.webContents.send('desktop-toast-data', { type: 'hide' });
     setTimeout(() => {
-      if (desktopToastWin && !desktopToastWin.isDestroyed()) {
+      if (desktopToastVisibilityVersion === version && desktopToastWin && !desktopToastWin.isDestroyed()) {
         desktopToastWin.hide();
       }
     }, 220);
@@ -3772,6 +3812,11 @@ function setupIpcHandlers() {
     return true;
   });
 
+  ipcMain.handle('set-toast-preferences', (_event, settings: unknown) => {
+    updateToastDeliverySettings(settings);
+    return true;
+  });
+
   ipcMain.handle('hide-desktop-toast', () => {
     hideDesktopToastInternal();
     return true;
@@ -3793,6 +3838,12 @@ function setupIpcHandlers() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('open-hud-action', payload?.target);
       }
+      hideDesktopToastInternal();
+    } else if (action === 'open-release' && typeof payload?.url === 'string') {
+      try {
+        const url = new URL(payload.url);
+        if (url.protocol === 'https:') void shell.openExternal(url.toString());
+      } catch { /* Ignore malformed release URLs. */ }
       hideDesktopToastInternal();
     }
   });
@@ -5111,6 +5162,14 @@ app.whenReady().then(() => {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      if (cfg.cyberBotSettings && typeof cfg.cyberBotSettings === 'object') {
+        updateToastDeliverySettings({
+          botEnabled: cfg.cyberBotSettings.enabled,
+          bannersEnabled: cfg.cyberBotSettings.bannersEnabled,
+          chatterLevel: cfg.cyberBotSettings.chatterLevel,
+          quietHours: cfg.cyberBotSettings.quietHours,
+        });
+      }
       bootAlertsConfig = {
         systemAlertsEnabled: cfg.systemAlertsEnabled,
         diskAlertsEnabled: cfg.diskAlertsEnabled,
@@ -5126,7 +5185,7 @@ app.whenReady().then(() => {
     () => getAppIconPath(),
     () => showMainWindow(),
     bootAlertsConfig,
-    (payload) => showDesktopToastInternal(payload)
+    (payload) => showDesktopToastInternal({ ...payload, source: 'system-alert' })
   );
 
   // Iniciar vigilante de respaldo automático programado
