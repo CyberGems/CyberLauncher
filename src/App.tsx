@@ -521,6 +521,7 @@ const playCyberBeep = () => {
 };
 
 const RESOURCE_ALERT_THRESHOLD = 85;
+const RESOURCE_CRITICAL_THRESHOLD = 95;
 
 const SystemMonitor = React.memo(() => {
   const [memPercent, setMemPercent] = useState<number>(0);
@@ -557,14 +558,17 @@ const SystemMonitor = React.memo(() => {
     return () => clearInterval(interval);
   }, [visible]);
 
+  const isCritical = memPercent >= RESOURCE_CRITICAL_THRESHOLD;
   const isAlert = memPercent >= RESOURCE_ALERT_THRESHOLD;
 
   return (
     <div 
       className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group ${
-        isAlert
-          ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
-          : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
+        isCritical
+          ? 'bg-rose-500/90 hover:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.35)] hover:shadow-[0_0_18px_rgba(244,63,94,0.7)] hover:border-rose-200/50'
+          : isAlert
+            ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
+            : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
       }`}
     >
       <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
