@@ -2358,6 +2358,7 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [newlyAddedAppId, setNewlyAddedAppId] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const isAltHeldRef = useRef(false);
   const altNumpadBlockedRef = useRef(false);
@@ -3153,6 +3154,10 @@ export default function App() {
       };
       // @ts-ignore
       setApps(prev => [...prev, newApp]);
+      setActiveCategory('all');
+      setSearchQuery('');
+      setSearchScope('cyber');
+      setNewlyAddedAppId(newId);
       if (editForm.pinToFavorites) {
         setFavoriteIds(prev => [...prev, newId]);
       }
@@ -5623,6 +5628,22 @@ export default function App() {
       return appsSortOrder === 'asc' ? cmp : -cmp;
     });
   }, [apps, activeCategory, categories, searchQuery, language, appsSortOrder]);
+
+  useEffect(() => {
+    if (newlyAddedAppId === null) return;
+
+    const appIndex = filteredApps.findIndex(app => app.id === newlyAddedAppId);
+    if (appIndex === -1) return;
+
+    const appCard = gridContainerRef.current?.querySelector<HTMLElement>(`[data-app-id="${newlyAddedAppId}"]`);
+    appCard?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+
+    const timeout = window.setTimeout(() => {
+      setNewlyAddedAppId(current => current === newlyAddedAppId ? null : current);
+    }, 2800);
+
+    return () => window.clearTimeout(timeout);
+  }, [filteredApps, newlyAddedAppId]);
 
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
   const [catScrollState, setCatScrollState] = useState<{ canScrollTop: boolean; canScrollBottom: boolean }>({
@@ -8473,7 +8494,7 @@ export default function App() {
               {filteredApps.flatMap((app, index) => {
                 const isAppSelected = keyboardNav?.section === 'apps' && keyboardNav.index === index;
                 const isAppContextActive = contextMenu?.app?.id === app.id;
-                const isAppHighlighted = isAppSelected || isAppContextActive;
+                const isAppHighlighted = isAppSelected || isAppContextActive || app.id === newlyAddedAppId;
                 const isAppLaunching = launchingAppIds.has(app.id);
                 const elements = [];
                 const CardShell: any = animateAppCards ? motion.div : 'div';
@@ -8515,6 +8536,7 @@ export default function App() {
                     {...motionProps}
                     key={`app-${viewMode}-${activeCategory}-${app.id}`}
                     data-app-card="true"
+                    data-app-id={app.id}
                     data-no-hide="true"
                     data-nav-app-index={index}
                     role="button"
