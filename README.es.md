@@ -70,7 +70,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 
 ### 🤖 Compañero CyberBot
 - **Compañero animado**: CyberBot comparte comentarios contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos desde el lanzador.
-- **Personaliza la experiencia**: Elige un nombre, mueve a CyberBot, ajusta su nivel de interacción y define un horario silencioso. Descansa tras 90 segundos sin actividad en el lanzador y despierta cuando vuelves.
+- **Personaliza la experiencia**: Elige cómo te llama CyberBot, muévelo, ajusta su nivel de interacción y define un horario silencioso. Descansa tras 90 segundos sin actividad en el lanzador y despierta cuando vuelves.
 - **No es un chatbot**: CyberBot usa mensajes contextuales integrados. Puedes desactivarlo en `Ajustes → CyberBot`; los banners de respaldo pueden mostrar avisos en su lugar.
 
 ### 📊 Sistema y monitorización

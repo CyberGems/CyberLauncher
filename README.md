@@ -70,7 +70,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 
 ### 🤖 CyberBot Companion
 - **Animated desktop companion**: CyberBot shares contextual launch feedback, system notices, scheduled-task countdowns, and tips from the launcher.
-- **Personalize the experience**: Choose a name, move CyberBot, set an interaction level, and schedule quiet hours. It rests after 90 seconds without launcher activity and wakes when you return.
+- **Personalize the experience**: Set the name CyberBot uses for you, move it, set an interaction level, and schedule quiet hours. It rests after 90 seconds without launcher activity and wakes when you return.
 - **Not a chatbot**: CyberBot uses built-in contextual messages. You can turn it off in `Settings → CyberBot`; backup banners can show notices in its place.
 
 ### 📊 System & Monitoring

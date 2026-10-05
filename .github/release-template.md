@@ -8,7 +8,7 @@
 
 <!-- Maintainer: Rewrite the marked paragraph for every release. Use 25-45 words, lead with user-facing changes, and do not repeat the app name or version. -->
 <!-- changelog-summary:start -->
-Meet CyberBot, an animated companion that shares launch feedback, system notices, and practical tips; personalize its name, position, quiet hours, and interaction level. This release also adds an interactive PowerShell or CMD terminal, improves app launch guidance, and refines monitoring and scheduled-task alerts.
+Meet CyberBot, an animated companion that shares launch feedback, system notices, and practical tips; set the name CyberBot uses for you, choose its position, quiet hours, and interaction level. This release also adds an interactive PowerShell or CMD terminal, improves app launch guidance, and refines monitoring and scheduled-task alerts.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
@@ -19,7 +19,7 @@ Meet CyberBot, an animated companion that shares launch feedback, system notices
 
 - 🤖 **CyberBot Companion**:
   - Animated expressions and contextual messages for launches, system notices, scheduled-task countdowns, and tips.
-  - Personalize its name and position, set quiet hours or minimal interaction, or disable the companion and use backup banners.
+  - Choose what CyberBot calls you and set its position, quiet hours, and interaction level, or disable the companion and use backup banners.
 
 - 💻 **Interactive Cyber Terminal**:
   - Open a persistent PowerShell or CMD session from the search field with `>`; use shell history and interactive programs, and switch shells from the toolbar.
@@ -37,7 +37,7 @@ Meet CyberBot, an animated companion that shares launch feedback, system notices
 
 ### 🚀 Novedades de esta versión
 
-Conoce a CyberBot, un compañero animado que comparte avisos al abrir apps, novedades del sistema y consejos; personaliza su nombre, posición, horario silencioso e interacción. Esta versión también incorpora una terminal interactiva de PowerShell o CMD, mejora la guía para abrir apps y refina la monitorización y las alertas de tareas programadas.
+Conoce a CyberBot, un compañero animado que comparte avisos al abrir apps, novedades del sistema y consejos; elige cómo te llama, su posición, horario silencioso e interacción. Esta versión también incorpora una terminal interactiva de PowerShell o CMD, mejora la guía para abrir apps y refina la monitorización y las alertas de tareas programadas.
 
 ---
 
@@ -45,7 +45,7 @@ Conoce a CyberBot, un compañero animado que comparte avisos al abrir apps, nove
 
 - 🤖 **Compañero CyberBot**:
   - Gestos animados y mensajes contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos.
-  - Personaliza su nombre y posición, define un horario silencioso o interacción mínima, o desactiva el compañero y usa banners de respaldo.
+  - Elige cómo te llama CyberBot y define su posición, horario silencioso e interacción, o desactiva el compañero y usa banners de respaldo.
 
 - 💻 **Cyber Terminal interactiva**:
   - Abre una sesión persistente de PowerShell o CMD desde el buscador con `>`; usa el historial y programas interactivos, y cambia de consola desde la barra.
