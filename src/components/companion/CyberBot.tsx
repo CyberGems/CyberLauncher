@@ -15,7 +15,6 @@ interface CyberBotProps {
   onDismissMessage: () => void;
   onClickBot?: () => void;
   position?: CyberBotPosition;
-  onPositionChange?: (newPosition: CyberBotPosition) => void;
   dodgeEnabled?: boolean;
   hoverAssistEnabled?: boolean;
   chatterLevel?: CyberBotChatterLevel;
@@ -33,7 +32,6 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   onDismissMessage,
   onClickBot,
   position = 'bottom-right',
-  onPositionChange,
   dodgeEnabled = false,
   hoverAssistEnabled = true,
   chatterLevel = 'full',
@@ -157,7 +155,6 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       y.set(0);
       setManualOffset({ x: 0, y: 0 });
       setCurrentPos(nextPos);
-      onPositionChange?.(nextPos);
 
       // Reset emotion after dodge finishes
       dodgeTimerRef.current = window.setTimeout(() => {

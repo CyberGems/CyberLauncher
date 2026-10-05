@@ -9,7 +9,7 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
 import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
-import { canReplaceCyberBotMessage, isInQuietHours } from '../src/components/companion/useCyberBot';
+import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
@@ -62,6 +62,20 @@ test('the name invitation exposes its three explicit choices', () => {
   assert.match(html, /Choose a name/);
   assert.match(html, /Not now/);
   assert.match(html, /Don&#x27;t ask again/);
+});
+
+test('everyday speech uses a quiet visual mark while informative tags remain', () => {
+  const base = { id: 'greeting', text: 'Good morning', timestamp: 0 };
+  const ordinary = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
+    message: base, onClose: () => {}, closeLabel: 'Dismiss',
+  }));
+  assert.doesNotMatch(ordinary, /CYBERBOT/);
+  assert.match(ordinary, /Good morning/);
+
+  const scheduled = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
+    message: { ...base, tag: 'TIMER', emotion: 'alert' }, onClose: () => {}, closeLabel: 'Dismiss',
+  }));
+  assert.match(scheduled, /TIMER/);
 });
 
 test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', () => {
@@ -199,6 +213,22 @@ test('the avatar and speech remain inside the viewport after dragging to an edge
     assert.ok(layout.top - 132 >= 12 && layout.top + 94 <= 588);
     const speechLeft = layout.align === 'right' ? layout.left + 94 - layout.bubbleWidth : layout.left;
     assert.ok(speechLeft >= 12 && speechLeft + layout.bubbleWidth <= 788);
+  }
+});
+
+test('an unconfigured CyberBot starts at the right, including in a narrow window', () => {
+  assert.equal(getCyberBotInitialPosition(null), 'bottom-right');
+  assert.equal(getCyberBotInitialPosition('invalid'), 'bottom-right');
+  assert.equal(getCyberBotInitialPosition('bottom-left'), 'bottom-left');
+  assert.equal(getCyberBotInitialPosition('top-right'), 'top-right');
+
+  for (const width of [451, 800]) {
+    const layout = getCyberBotLayout({
+      width, height: 600, preferred: { left: width - 126, top: 450 },
+      align: 'right', bubbleHeight: 140, obstacles: [],
+    });
+    assert.equal(layout.left, width - 126);
+    assert.equal(layout.align, 'right');
   }
 });
 

@@ -3699,7 +3699,7 @@ export default function App() {
           text: notification.message,
           detail: notification.detail,
           emotion: notification.type === 'error' || notification.type === 'warning' ? 'alert' : notification.type === 'success' ? 'success' : 'speaking',
-          tag: brandTag || t('cyberbot_tag_name'),
+          tag: brandTag,
           action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
             ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
             : undefined,
@@ -14170,7 +14170,6 @@ export default function App() {
         onDismissMessage={cyberBot.dismissMessage}
         onClickBot={cyberBot.handleClickBot}
         position={cyberBot.position}
-        onPositionChange={cyberBot.updatePosition}
         dodgeEnabled={cyberBot.dodgeEnabled}
         hoverAssistEnabled={cyberBot.hoverAssistEnabled}
         chatterLevel={cyberBot.chatterLevel}

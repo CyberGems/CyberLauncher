@@ -35,6 +35,10 @@ export function canReplaceCyberBotMessage(
   return !current || ranks[nextPriority] >= ranks[current.priority || 'normal'];
 }
 
+export function getCyberBotInitialPosition(saved: string | null): CyberBotPosition {
+  return saved === 'bottom-left' || saved === 'top-right' ? saved : 'bottom-right';
+}
+
 interface UseCyberBotProps {
   t: (key: TranslationKey, params?: Record<string, string>) => string;
   dailyLaunchCount?: number;
@@ -55,8 +59,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   });
 
   const [position, setPosition] = useState<CyberBotPosition>(() => {
-    const saved = localStorage.getItem('cyberbot_position');
-    return saved === 'bottom-left' || saved === 'top-right' ? saved : 'bottom-right';
+    return getCyberBotInitialPosition(localStorage.getItem('cyberbot_position'));
   });
 
   const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
@@ -298,7 +301,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       text: msg.text,
       detail: msg.detail,
       emotion: msg.emotion || 'speaking',
-      tag: msg.tag || t('cyberbot_tag_name'),
+      tag: msg.tag,
       action: msg.action,
       secondaryAction: msg.secondaryAction,
       tertiaryAction: msg.tertiaryAction,

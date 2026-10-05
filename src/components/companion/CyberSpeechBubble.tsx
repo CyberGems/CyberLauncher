@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Sparkles, AlertTriangle, ArrowRight } from 'lucide-react';
+import { X, Sparkles, AlertTriangle, CircleCheck, ArrowRight } from 'lucide-react';
 import type { CyberBotMessage } from './companionTypes';
 
 interface CyberSpeechBubbleProps {
@@ -32,6 +32,12 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
     ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
     : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30';
 
+  const statusIcon = isAlert
+    ? <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+    : isSuccess
+    ? <CircleCheck className="w-3.5 h-3.5 text-emerald-400" />
+    : <Sparkles className="w-3.5 h-3.5 text-cyan-400" />;
+
   const tailPositionClass =
     position === 'bottom-left' ? 'left-[40px]' : 'right-[40px]';
 
@@ -45,16 +51,18 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       data-no-hide
       className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3.5 text-slate-200 select-none z-50`}
     >
-      {/* Header Tag & Close button */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>
-          {isAlert ? (
-            <AlertTriangle className="w-3 h-3 text-amber-400" />
-          ) : (
-            <Sparkles className="w-3 h-3 text-cyan-400" />
-          )}
-          <span>{message.tag || 'CYBERBOT'}</span>
-        </div>
+      {/* A compact status mark identifies everyday speech; contextual tags stay visible when informative. */}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        {message.tag ? (
+          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>
+            {statusIcon}
+            <span>{message.tag}</span>
+          </div>
+        ) : (
+          <span aria-hidden="true" className="inline-flex items-center justify-center w-5 h-5 opacity-75">
+            {statusIcon}
+          </span>
+        )}
 
         <button
           type="button"
