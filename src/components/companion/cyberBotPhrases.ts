@@ -89,6 +89,20 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_launching_admin_2', emotion: 'speaking' },
     { key: 'cyberbot_launching_admin_3', emotion: 'happy' },
   ],
+  launch_pinned: [
+    { key: 'cyberbot_launching_pinned', emotion: 'speaking' },
+    { key: 'cyberbot_launching_pinned_2', emotion: 'launcher' },
+    { key: 'cyberbot_launching_pinned_3', emotion: 'speaking' },
+  ],
+  launch_admin_pinned: [
+    { key: 'cyberbot_launching_admin_pinned', emotion: 'speaking' },
+    { key: 'cyberbot_launching_admin_pinned_2', emotion: 'launcher' },
+  ],
+  pin_blur: [
+    { key: 'cyberbot_pin_blur', emotion: 'speaking' },
+    { key: 'cyberbot_pin_blur_2', emotion: 'launcher' },
+    { key: 'cyberbot_pin_blur_3', emotion: 'speaking' },
+  ],
   last_launch: [
     { key: 'cyberbot_last_launch', emotion: 'speaking' },
     { key: 'cyberbot_last_launch_2', emotion: 'happy' },

@@ -114,7 +114,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Dynamic shortcuts ---
   registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) =>
     ipcRenderer.invoke('register-app-shortcuts', shortcuts),
-  onAppLaunchedViaHotkey: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; success?: boolean; error?: string; code?: 'not-found' | 'launch-failed' }) => void) => {
+  onAppLaunchedViaHotkey: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; pinned?: boolean; success?: boolean; error?: string; code?: 'not-found' | 'launch-failed' }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('app-launched-via-hotkey', handler);
     return () => { ipcRenderer.removeListener('app-launched-via-hotkey', handler); };
@@ -153,8 +153,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('shell-command-exit', handler);
     return () => { ipcRenderer.removeListener('shell-command-exit', handler); };
   },
-  onAlwaysOnTopBlurAttempt: (callback: () => void) => {
-    const handler = () => callback();
+  onAlwaysOnTopBlurAttempt: (callback: (reason: 'blur' | 'hide-attempt') => void) => {
+    const handler = (_event: any, reason: 'blur' | 'hide-attempt') => callback(reason);
     ipcRenderer.on('always-on-top-blur-attempt', handler);
     return () => { ipcRenderer.removeListener('always-on-top-blur-attempt', handler); };
   },

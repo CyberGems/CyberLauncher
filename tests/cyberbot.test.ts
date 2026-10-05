@@ -15,7 +15,16 @@ import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, g
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
-import { chooseLaunchSpeechChannel, shouldClearToastForRendererCleanup, shouldHideLauncherAfterLaunch } from '../src/launchFlow';
+import {
+  chooseLaunchSpeechChannel,
+  PIN_BLUR_REMINDER_COOLDOWN_MS,
+  PIN_LAUNCH_BLUR_GUARD_MS,
+  PIN_LAUNCH_HINT_COOLDOWN_MS,
+  shouldClearToastForRendererCleanup,
+  shouldHideLauncherAfterLaunch,
+  shouldMentionPinOnLaunch,
+  shouldRemindPinOnBlur,
+} from '../src/launchFlow';
 
 test('preferred names are optional, cleaned, and bounded', () => {
   assert.equal(normalizeCyberBotName('  Ana\n María  '), 'Ana María');
@@ -167,6 +176,17 @@ test('launch speech follows actual visibility and never falls back to a banner',
   for (const language of ['es', 'en'] as const) {
     assert.ok(translations[language].launch_missing_path_detail.trim());
   }
+});
+
+test('PIN guidance pauses after a launch and does not repeat on every outside click', () => {
+  const start = 100_000;
+  assert.equal(shouldMentionPinOnLaunch(start, 0), true);
+  assert.equal(shouldMentionPinOnLaunch(start + PIN_LAUNCH_HINT_COOLDOWN_MS - 1, start), false);
+  assert.equal(shouldMentionPinOnLaunch(start + PIN_LAUNCH_HINT_COOLDOWN_MS, start), true);
+  assert.equal(shouldRemindPinOnBlur(start + PIN_LAUNCH_BLUR_GUARD_MS - 1, start, 0), false);
+  assert.equal(shouldRemindPinOnBlur(start + PIN_LAUNCH_BLUR_GUARD_MS, start, 0), true);
+  assert.equal(shouldRemindPinOnBlur(start + PIN_BLUR_REMINDER_COOLDOWN_MS - 1, 0, start), false);
+  assert.equal(shouldRemindPinOnBlur(start + PIN_BLUR_REMINDER_COOLDOWN_MS, 0, start), true);
 });
 
 test('floating CyberBot keeps scheduled actions and release links usable', () => {
@@ -519,11 +539,16 @@ test('hover assistance labels and countdown are translated in both languages', (
 });
 
 test('launch and return variants retain the application name in both languages', () => {
-  for (const topic of ['launch', 'launch_admin', 'last_launch'] as const) {
+  for (const topic of ['launch', 'launch_admin', 'launch_pinned', 'launch_admin_pinned', 'last_launch'] as const) {
     for (const { key } of cyberBotPhrases[topic]) {
       for (const language of ['es', 'en'] as const) {
         assert.ok(translations[language][key].includes('{name}'), `${language}: ${key}`);
       }
+    }
+  }
+  for (const { key } of cyberBotPhrases.pin_blur) {
+    for (const language of ['es', 'en'] as const) {
+      assert.ok(translations[language][key].includes('PIN'), `${language}: ${key}`);
     }
   }
 });

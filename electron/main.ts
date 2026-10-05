@@ -227,6 +227,7 @@ function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
               icon: item.icon,
               isAdmin: item.isAdmin,
               windowHidden: result.windowHidden,
+              pinned: result.pinned,
               success: true,
             });
           }
@@ -923,7 +924,7 @@ function createWindow() {
     hotspotEntryTime = 0;
     
     if (mainWindow.isAlwaysOnTop()) {
-      mainWindow.webContents.send('always-on-top-blur-attempt');
+      mainWindow.webContents.send('always-on-top-blur-attempt', 'blur');
       return;
     }
 
@@ -2238,6 +2239,7 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
           name: payload.name,
           isAdmin: payload.isAdmin,
           windowHidden: res.windowHidden,
+          pinned: res.pinned,
           success: true,
         });
       }
@@ -2364,7 +2366,7 @@ function toggleWindow(forceShow = false) {
   if (mainWindow.isVisible()) {
     // Si la ventana está anclada (Always on Top), no ocultar y alertar al frontend para destellar el Pin
     if (mainWindow.isAlwaysOnTop()) {
-      mainWindow.webContents.send('always-on-top-blur-attempt');
+      mainWindow.webContents.send('always-on-top-blur-attempt', 'hide-attempt');
       return;
     }
     if (trayMenuOpen) {
@@ -2569,7 +2571,7 @@ function startHotspotPolling() {
       if (mainWindow.isVisible()) {
         console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
         if (mainWindow.isAlwaysOnTop()) {
-          mainWindow.webContents.send('always-on-top-blur-attempt');
+          mainWindow.webContents.send('always-on-top-blur-attempt', 'hide-attempt');
         } else {
           hideMainWindow();
         }
@@ -3359,7 +3361,11 @@ function finishSuccessfulLaunch(keepWindowOpen?: boolean): LaunchResult {
     windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
   }
-  return { success: true, windowHidden: !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible() };
+  return {
+    success: true,
+    windowHidden: !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible(),
+    pinned: Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isAlwaysOnTop()),
+  };
 }
 
 async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<LaunchResult> {
@@ -4083,7 +4089,7 @@ foreach (\$app in \$startApps) {
 
   ipcMain.handle('window-hide-to-tray', () => {
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isAlwaysOnTop()) {
-      mainWindow.webContents.send('always-on-top-blur-attempt');
+      mainWindow.webContents.send('always-on-top-blur-attempt', 'hide-attempt');
       return;
     }
     windowVisibilityState = 'hidden-intentional';

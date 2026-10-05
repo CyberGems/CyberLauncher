@@ -26,7 +26,13 @@ import { CyberManagerRecommendation } from './components/CyberManagerRecommendat
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { chooseNotificationChannel } from './notificationRouting';
-import { chooseLaunchSpeechChannel, type LaunchResult } from './launchFlow';
+import {
+  chooseLaunchSpeechChannel,
+  PIN_BLUR_REMINDER_DELAY_MS,
+  shouldMentionPinOnLaunch,
+  shouldRemindPinOnBlur,
+  type LaunchResult,
+} from './launchFlow';
 import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
   parseBackupHours,
@@ -416,7 +422,7 @@ declare global {
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
       reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; surfaceMounted: boolean; surfaceChildren: number; surfaceOpacity: number | null; devicePixelRatio: number }) => void;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
-      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; success?: boolean; error?: string; code?: LaunchResult['code'] }) => void) => () => void;
+      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; pinned?: boolean; success?: boolean; error?: string; code?: LaunchResult['code'] }) => void) => () => void;
       runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) => Promise<{ success: boolean; cmdId?: string; cwd?: string; error?: string }>;
       getConsoleCwd?: () => Promise<string>;
       setConsoleCwd?: (targetPath: string) => Promise<{ success: boolean; cwd: string; error?: string }>;
@@ -431,7 +437,7 @@ declare global {
       onTerminalExit?: (callback: (event: { id: string; exitCode: number }) => void) => () => void;
       onShellOutput: (callback: (data: { id: string; type: 'stdout' | 'stderr'; text: string }) => void) => () => void;
       onShellExit: (callback: (data: { id: string; exitCode: number; cwd?: string }) => void) => () => void;
-      onAlwaysOnTopBlurAttempt: (callback: () => void) => () => void;
+      onAlwaysOnTopBlurAttempt: (callback: (reason: 'blur' | 'hide-attempt') => void) => () => void;
       onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
@@ -3382,16 +3388,43 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', updateVisibility);
   }, []);
 
-  const announceSuccessfulLaunch = useCallback((name: string, isAdmin: boolean, windowHidden: boolean) => {
+  const lastPinnedLaunchAtRef = useRef(0);
+  const lastPinnedLaunchHintAtRef = useRef(0);
+  const lastPinBlurReminderAtRef = useRef(0);
+  const pendingPinBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingPinBlurReminder = useCallback(() => {
+    if (pendingPinBlurTimerRef.current === null) return;
+    window.clearTimeout(pendingPinBlurTimerRef.current);
+    pendingPinBlurTimerRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (isAlwaysOnTop) return;
+    cancelPendingPinBlurReminder();
+    lastPinnedLaunchAtRef.current = 0;
+    lastPinnedLaunchHintAtRef.current = 0;
+    lastPinBlurReminderAtRef.current = 0;
+  }, [isAlwaysOnTop, cancelPendingPinBlurReminder]);
+
+  const announceSuccessfulLaunch = useCallback((name: string, isAdmin: boolean, windowHidden: boolean, pinned: boolean) => {
+    const now = Date.now();
+    if (pinned && !windowHidden) {
+      lastPinnedLaunchAtRef.current = now;
+      cancelPendingPinBlurReminder();
+    }
     const channel = chooseLaunchSpeechChannel({
       botEnabled: cyberBot.enabled,
       bannersEnabled: cyberBot.bannersEnabled,
       chatterLevel: cyberBot.chatterLevel,
       quietHours: cyberBot.quietHours,
     }, windowHidden, isCyberBotSpeechVisible, !!window.electronAPI?.showDesktopToast);
-    const topic = isAdmin ? 'launch_admin' : 'launch';
+    const pinHintDue = pinned && !windowHidden && shouldMentionPinOnLaunch(now, lastPinnedLaunchHintAtRef.current);
+    const topic = pinHintDue
+      ? (isAdmin ? 'launch_admin_pinned' : 'launch_pinned')
+      : (isAdmin ? 'launch_admin' : 'launch');
     if (channel === 'inline') {
-      cyberBot.sayPhrase(topic, { params: { name }, durationMs: 4000, priority: 'normal' });
+      const shown = cyberBot.sayPhrase(topic, { params: { name }, durationMs: pinHintDue ? 6500 : 4000, priority: 'normal' });
+      if (shown && pinHintDue) lastPinnedLaunchHintAtRef.current = now;
     } else if (channel === 'floating') {
       cyberBot.deliverPhrase(topic, { name }, text => {
         void window.electronAPI!.showDesktopToast!({
@@ -3403,7 +3436,7 @@ export default function App() {
         return true;
       });
     }
-  }, [cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.sayPhrase, cyberBot.deliverPhrase, isCyberBotSpeechVisible, t]);
+  }, [cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.sayPhrase, cyberBot.deliverPhrase, isCyberBotSpeechVisible, cancelPendingPinBlurReminder, t]);
 
   const reportLaunchFailure = useCallback((name: string, detail: string, action?: 'open-hud-clock', code?: LaunchResult['code']) => {
     setNotification({ message: t('launch_failed_message', { name }), detail: code === 'not-found' ? t('launch_missing_path_detail') : detail, type: 'error', essential: true, action });
@@ -3837,14 +3870,37 @@ export default function App() {
   }, [isAlwaysOnTop]);
 
   // Listen to always-on-top blur attempts
+  const pinAssistContextRef = useRef({
+    pinned: isAlwaysOnTop,
+    windowVisible: isWindowVisible,
+    speechVisible: isCyberBotSpeechVisible,
+    sayPhrase: cyberBot.sayPhrase,
+  });
+  pinAssistContextRef.current = {
+    pinned: isAlwaysOnTop,
+    windowVisible: isWindowVisible,
+    speechVisible: isCyberBotSpeechVisible,
+    sayPhrase: cyberBot.sayPhrase,
+  };
   useEffect(() => {
     if (isElectron && window.electronAPI.onAlwaysOnTopBlurAttempt) {
-      const unsub = window.electronAPI.onAlwaysOnTopBlurAttempt(() => {
+      const unsub = window.electronAPI.onAlwaysOnTopBlurAttempt(reason => {
         triggerPinFlash();
+        if (reason !== 'blur' || !pinAssistContextRef.current.pinned) return;
+        cancelPendingPinBlurReminder();
+        pendingPinBlurTimerRef.current = window.setTimeout(() => {
+          pendingPinBlurTimerRef.current = null;
+          const now = Date.now();
+          const context = pinAssistContextRef.current;
+          if (!context.pinned || !context.windowVisible || !context.speechVisible) return;
+          if (!shouldRemindPinOnBlur(now, lastPinnedLaunchAtRef.current, lastPinBlurReminderAtRef.current)) return;
+          const shown = context.sayPhrase('pin_blur', { durationMs: 6000, priority: 'low' });
+          if (shown) lastPinBlurReminderAtRef.current = now;
+        }, PIN_BLUR_REMINDER_DELAY_MS);
       });
-      return unsub;
+      return () => { unsub(); cancelPendingPinBlurReminder(); };
     }
-  }, [triggerPinFlash]);
+  }, [triggerPinFlash, cancelPendingPinBlurReminder]);
 
   // Listen to tray Nuevo acceso / Configuración / Acerca de
   useEffect(() => {
@@ -3919,10 +3975,10 @@ export default function App() {
         record24hLaunch();
         addToHistory(data.name || 'App', data.path, 'app', data.icon || '');
       }
-      announceSuccessfulLaunch(targetApp?.name || data.name || 'App', !!data.isAdmin, !!data.windowHidden);
+      announceSuccessfulLaunch(targetApp?.name || data.name || 'App', !!data.isAdmin, !!data.windowHidden, data.pinned ?? isAlwaysOnTop);
     });
     return unsub;
-  }, [apps, addToHistory, record24hLaunch, announceSuccessfulLaunch, reportLaunchFailure]);
+  }, [apps, addToHistory, record24hLaunch, announceSuccessfulLaunch, reportLaunchFailure, isAlwaysOnTop]);
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.setTrayRecents) return;
@@ -5030,7 +5086,9 @@ export default function App() {
     const appPath = replacementPath ?? app.path ?? `mock://${app.name}`;
     const isRelink = replacementPath !== undefined;
     try {
+      if (isAlwaysOnTop) lastPinnedLaunchAtRef.current = Date.now();
       let windowHidden = false;
+      let pinned = isAlwaysOnTop;
       if (isElectron) {
         if (!app.path && !replacementPath) {
           reportLaunchFailure(app.name, t('launch_missing_path_detail'));
@@ -5054,6 +5112,7 @@ export default function App() {
           return;
         }
         windowHidden = !!result.windowHidden;
+        pinned = result.pinned ?? isAlwaysOnTop;
       }
 
       // Solo los lanzamientos aceptados cuentan en uso, historial y estadísticas.
@@ -5063,7 +5122,7 @@ export default function App() {
       record24hLaunch();
       addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '', isRelink);
 
-      announceSuccessfulLaunch(app.name, !!app.isAdmin, windowHidden);
+      announceSuccessfulLaunch(app.name, !!app.isAdmin, windowHidden, pinned);
     } finally {
       window.clearTimeout(launchIndicatorTimer);
       setLaunchingAppIds(prev => {
@@ -5100,7 +5159,9 @@ export default function App() {
     item: Pick<HistoryItem, 'name' | 'path' | 'type' | 'icon'>,
     isAdmin = false,
   ) => {
+    if (isAlwaysOnTop) lastPinnedLaunchAtRef.current = Date.now();
     let windowHidden = false;
+    let pinned = isAlwaysOnTop;
     if (isElectron) {
       try {
         const result = await window.electronAPI!.launchApp(item.path, isAdmin, isAlwaysOnTop);
@@ -5109,6 +5170,7 @@ export default function App() {
           return;
         }
         windowHidden = !!result.windowHidden;
+        pinned = result.pinned ?? isAlwaysOnTop;
       } catch (err: any) {
         reportLaunchFailure(item.name, err?.message || String(err));
         return;
@@ -5121,7 +5183,7 @@ export default function App() {
     }
     record24hLaunch();
     addToHistory(item.name, item.path, item.type, item.icon);
-    announceSuccessfulLaunch(item.name, isAdmin, windowHidden);
+    announceSuccessfulLaunch(item.name, isAdmin, windowHidden, pinned);
   };
 
   const handleLaunchHistoryItem = async (item: HistoryItem) => {
