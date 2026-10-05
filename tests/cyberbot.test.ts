@@ -158,6 +158,32 @@ test('speech adds a finite facial signal without replacing the logo expression',
   assert.match(speaking, /M 64 38 H 68 V 42 H 72/);
 });
 
+test('speaking replaces each expression’s mouth instead of drawing a second one', () => {
+  const mouths = [
+    ['curious', 'M 46 51 Q 50 53 55 49'],
+    ['delighted', 'M 44 51 Q 51 55 58 49'],
+    ['sparkle', 'M 45 51 Q 51 54 57 50'],
+    ['affectionate', 'M 45 51 Q 51 54 57 50'],
+    ['happy', 'M 45 51 Q 51 54 57 50'],
+    ['wink', 'M 45 51 Q 52 55 58 49'],
+    ['alert', '▱'],
+    ['scared', '>o</text>'],
+    ['success', '‿'],
+    ['speaking', '‿'],
+    ['terminal', '>_</text>'],
+  ] as const;
+  for (const [emotion, mouth] of mouths) {
+    const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion }));
+    const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, speechKey: `test:${emotion}` }));
+    assert.ok(silent.includes(mouth), `${emotion} should retain its resting mouth`);
+    assert.ok(!talking.includes(mouth), `${emotion} should hide its resting mouth while speaking`);
+    assert.match(talking, /data-cyberbot-speech-wave="true"/);
+  }
+  const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', speechKey: 'test:sleep' }));
+  assert.match(sleeping, /data-cyberbot-speaking="false"/);
+  assert.doesNotMatch(sleeping, /data-cyberbot-speech-wave/);
+});
+
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
   const settings: NotificationDeliverySettings = {
     botEnabled: true,
@@ -316,6 +342,8 @@ test('floating speech cue is finite and disabled under reduced motion', () => {
   assert.match(html, /class="bot-antenna-signal"/);
   assert.match(css, /\.cyberbot-card\.speaking \.bot-head \{ animation: botSpeechNod 1\.8s/);
   assert.match(css, /@keyframes botSpeechSignal \{[^}]*100% \{ opacity: 0; \}/);
+  assert.match(css, /\.cyberbot-card\.alert\.speaking \.bot-face-alert path \{ animation: botSpeechMouth 1\.8s/);
+  assert.match(css, /@keyframes botSpeechMouth \{ 0%, 99% \{ opacity: 0; \} 100% \{ opacity: 1; \} \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.cyberbot-card\.speaking \.bot-speech-wave line,[\s\S]*animation: none;/);
 });

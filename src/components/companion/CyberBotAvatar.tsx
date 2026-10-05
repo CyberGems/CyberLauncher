@@ -11,6 +11,8 @@ interface CyberBotAvatarProps {
   className?: string;
 }
 
+const SPEECH_CUE_MS = 1800;
+
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
   isHovered = false,
@@ -19,8 +21,10 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   className = '',
 }) => {
   const reducedMotion = useReducedMotion();
+  const isSleeping = emotion === 'sleeping';
   const [isBlinking, setIsBlinking] = useState(false);
   const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
+  const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
 
   // Brief expressions separated by irregular resting pauses, with or without hover.
@@ -71,7 +75,18 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     };
   }, [reducedMotion, emotion === 'sleeping']);
 
+  useEffect(() => {
+    if (!speechKey || isSleeping || reducedMotion) {
+      setSpeechActive(false);
+      return;
+    }
+    setSpeechActive(true);
+    const timer = window.setTimeout(() => setSpeechActive(false), SPEECH_CUE_MS);
+    return () => window.clearTimeout(timer);
+  }, [speechKey, isSleeping, reducedMotion]);
+
   const faceEmotion = emotion === 'idle' ? idleExpression : emotion;
+  const speaking = speechActive && !!speechKey && !isSleeping && !reducedMotion;
 
   // Face expression terminal characters
   const renderFaceContent = () => {
@@ -80,7 +95,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       return (
         <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
           <path d="M 29 43 H 37 M 63 43 H 71" />
-          <path d="M 46 51 Q 51 53 56 51" stroke="#38bdf8" strokeWidth="1.6" />
+          {!speaking && <path d="M 46 51 Q 51 53 56 51" stroke="#38bdf8" strokeWidth="1.6" />}
         </g>
       );
     }
@@ -99,15 +114,15 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             <path d="M 27 35 Q 32 31 37 35" />
             <ellipse cx="33" cy="43" rx="3.5" ry="4.5" fill="#22d3ee" stroke="none" />
             <circle cx="66" cy="43" r="2.5" fill="#22d3ee" stroke="none" />
-            <path d="M 46 51 Q 50 53 55 49" />
+            {!speaking && <path d="M 46 51 Q 50 53 55 49" />}
           </g>
         );
       case 'delighted':
         return (
           <g fill="none" stroke="#22d3ee" strokeLinecap="round" strokeLinejoin="round">
             <path d="M 28 42 Q 33 39 38 41 M 62 41 Q 67 39 72 42" strokeWidth="2.2" />
-            <path d="M 44 51 Q 51 55 58 49" stroke="#38bdf8" strokeWidth="1.8" />
-            <path d="M 58 49 L 60 47" stroke="#38bdf8" strokeWidth="1.4" />
+            {!speaking && <path d="M 44 51 Q 51 55 58 49" stroke="#38bdf8" strokeWidth="1.8" />}
+            {!speaking && <path d="M 58 49 L 60 47" stroke="#38bdf8" strokeWidth="1.4" />}
           </g>
         );
       case 'sparkle':
@@ -115,7 +130,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           <g fill="none" stroke="#38bdf8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M 33 38 L 34.5 42 L 38 43.5 L 34.5 45 L 33 49 L 31.5 45 L 28 43.5 L 31.5 42 Z" fill="#22d3ee" stroke="none" />
             <path d="M 63 42 Q 68 40 72 42" strokeWidth="2" />
-            <path d="M 45 51 Q 51 54 57 50" stroke="#22d3ee" strokeWidth="1.7" />
+            {!speaking && <path d="M 45 51 Q 51 54 57 50" stroke="#22d3ee" strokeWidth="1.7" />}
           </g>
         );
       case 'affectionate':
@@ -123,21 +138,21 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           <g fill="#22d3ee">
             <rect x="29" y="40" width="7" height="5" rx="2.5" />
             <rect x="64" y="40" width="7" height="5" rx="2.5" />
-            <path d="M 45 51 Q 51 54 57 50" fill="none" stroke="#38bdf8" strokeWidth="1.7" strokeLinecap="round" />
+            {!speaking && <path d="M 45 51 Q 51 54 57 50" fill="none" stroke="#38bdf8" strokeWidth="1.7" strokeLinecap="round" />}
           </g>
         );
       case 'happy':
         return (
           <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
             <path d="M 28 43 Q 33 39 38 43 M 62 43 Q 67 39 72 43" />
-            <path d="M 45 51 Q 51 54 57 50" stroke="#38bdf8" strokeWidth="1.7" />
+            {!speaking && <path d="M 45 51 Q 51 54 57 50" stroke="#38bdf8" strokeWidth="1.7" />}
           </g>
         );
       case 'alert':
         return (
           <g className="select-none font-mono text-[15px] font-black" fill="#f59e0b">
             <text x="33" y="48" textAnchor="middle">!</text>
-            <text x="50" y="48" textAnchor="middle" fontSize="12" fill="#fbbf24">▱</text>
+            {!speaking && <text x="50" y="48" textAnchor="middle" fontSize="12" fill="#fbbf24">▱</text>}
             <text x="67" y="48" textAnchor="middle">!</text>
           </g>
         );
@@ -145,7 +160,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g className="select-none font-mono text-[14px] font-black" fill="#38bdf8">
             <text x="33" y="47" textAnchor="middle">&gt;</text>
-            <text x="50" y="50" textAnchor="middle" fontSize="12" fill="#a5f3fc">o</text>
+            {!speaking && <text x="50" y="50" textAnchor="middle" fontSize="12" fill="#a5f3fc">o</text>}
             <text x="67" y="47" textAnchor="middle">&lt;</text>
           </g>
         );
@@ -154,7 +169,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           <g fill="none" stroke="#22d3ee" strokeLinecap="round">
             <rect x="30" y="40" width="7" height="6" rx="3" fill="#22d3ee" stroke="none" />
             <path d="M 63 43 Q 67 41 71 43" strokeWidth="2" />
-            <path d="M 45 51 Q 52 55 58 49" stroke="#38bdf8" strokeWidth="1.7" />
+            {!speaking && <path d="M 45 51 Q 52 55 58 49" stroke="#38bdf8" strokeWidth="1.7" />}
           </g>
         );
       case 'sleeping':
@@ -168,7 +183,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g className="select-none font-mono text-[14px] font-black" fill="#10b981">
             <text x="33" y="48" textAnchor="middle">✓</text>
-            <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#34d399">‿</text>
+            {!speaking && <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#34d399">‿</text>}
             <text x="67" y="48" textAnchor="middle">✓</text>
           </g>
         );
@@ -176,7 +191,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
             <text x="33" y="47" textAnchor="middle">•</text>
-            <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
+            {!speaking && <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>}
             <text x="67" y="47" textAnchor="middle">•</text>
           </g>
         );
@@ -185,15 +200,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g className="select-none font-mono text-[15px] font-black tracking-widest" fill="#22d3ee">
             <text x="40" y="48" textAnchor="middle">&gt;</text>
-            <text x="60" y="48" textAnchor="middle" className="motion-safe:animate-pulse" fill="#38bdf8">_</text>
+            {!speaking && <text x="60" y="48" textAnchor="middle" className="motion-safe:animate-pulse" fill="#38bdf8">_</text>}
           </g>
         );
     }
   };
 
   const isAlert = emotion === 'alert';
-  const isSleeping = emotion === 'sleeping';
-  const speaking = !!speechKey && !isSleeping && !reducedMotion;
   const glowColor = isAlert ? 'rgba(245, 158, 11, 0.45)' : isSleeping ? 'rgba(34, 211, 238, 0.12)' : 'rgba(34, 211, 238, 0.45)';
 
   return (
@@ -367,7 +380,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             key={speechKey || 'silent'}
             initial={false}
             animate={speaking ? { y: [0, -1.2, 0, 0.6, 0] } : { y: 0 }}
-            transition={{ duration: speaking ? 1.8 : 0, ease: 'easeInOut' }}
+            transition={{ duration: speaking ? SPEECH_CUE_MS / 1000 : 0, ease: 'easeInOut' }}
           >
             {/* Left Ear Antenna */}
             <path
@@ -407,7 +420,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 strokeWidth="1.2"
                 initial={{ r: 3, opacity: 0 }}
                 animate={{ r: [3, 5.5, 3, 6, 3], opacity: [0, 0.7, 0, 0.55, 0] }}
-                transition={{ duration: 1.8, ease: 'easeInOut' }}
+                transition={{ duration: SPEECH_CUE_MS / 1000, ease: 'easeInOut' }}
               />
             )}
 
@@ -475,14 +488,14 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 strokeLinecap="round"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: [0, 0.9, 0.9, 0] }}
-                transition={{ duration: 1.8, times: [0, 0.08, 0.76, 1] }}
+                transition={{ duration: SPEECH_CUE_MS / 1000, times: [0, 0.08, 0.76, 1] }}
               >
                 {[46, 50, 54].map((x, index) => (
                   <motion.line
                     key={x}
-                    x1={x} x2={x} y1="59"
-                    initial={{ y2: 58 }}
-                    animate={{ y2: index === 1 ? [58, 54, 57, 53, 58] : [58, 56, 54, 57, 58] }}
+                    x1={x} x2={x} y1="56"
+                    initial={{ y2: 55 }}
+                    animate={{ y2: index === 1 ? [55, 51, 53, 49, 55] : [55, 53, 50, 54, 55] }}
                     transition={{ duration: 0.45 + index * 0.08, repeat: 2, ease: 'easeInOut' }}
                   />
                 ))}
