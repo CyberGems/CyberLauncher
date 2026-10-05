@@ -442,9 +442,6 @@ export const translations = {
     hud_storage_free: "Libre: {free} GB",
     hud_storage_total: "Total: {total} GB",
     hud_storage_scanning: "Escaneando unidades...",
-    hud_storage_config_params: "CONFIGURACIÓN",
-    hud_storage_config_path: "Carpeta de datos",
-    hud_storage_open_folder: "Abrir carpeta",
 
     // Clock HUD
     hud_clock_title: "PROGRAMADOR",
@@ -1307,9 +1304,6 @@ export const translations = {
     hud_storage_free: "Free: {free} GB",
     hud_storage_total: "Total: {total} GB",
     hud_storage_scanning: "Scanning drives...",
-    hud_storage_config_params: "CONFIGURATION",
-    hud_storage_config_path: "Data folder",
-    hud_storage_open_folder: "Open folder",
 
     // Clock HUD
     hud_clock_title: "SCHEDULER",

@@ -1878,7 +1878,6 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, show
 
 const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => void, t: (key: any, variables?: any) => string }) => {
   const [disksList, setDisksList] = useState<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>([]);
-  const [configPath, setConfigPath] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1899,21 +1898,7 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
       }
     };
 
-    const fetchStatic = async () => {
-      try {
-        if (isElectron) {
-          const path = await window.electronAPI!.getConfigPath();
-          setConfigPath(path);
-        } else {
-          setConfigPath('C:\\Users\\Mock\\AppData\\Roaming\\CyberLauncher\\config.json');
-        }
-      } catch (err) {
-        console.error('Error fetching static config path:', err);
-      }
-    };
-
     fetchStats();
-    fetchStatic();
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [isOpen]);
@@ -1989,26 +1974,6 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
                 </div>
               </div>
 
-              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-xl p-4 space-y-3">
-                <h3 className="text-xs font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2">
-                  <FolderOpen className="w-3.5 h-3.5" /> {t('hud_storage_config_params')}
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-mono text-slate-500">{t('hud_storage_config_path')}</span>
-                    <button
-                      type="button"
-                      onClick={() => window.electronAPI?.openDataFolder()}
-                      className="text-[10px] font-cyber font-bold tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors focus:outline-none"
-                    >
-                      {t('hud_storage_open_folder')}
-                    </button>
-                  </div>
-                  <div className="text-[10px] font-mono text-slate-400 break-all select-all bg-slate-950/60 px-3 py-2.5 rounded-lg border border-cyan-500/10">
-                    {configPath || '—'}
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="px-5 py-4 border-t border-cyan-500/20 shrink-0">
