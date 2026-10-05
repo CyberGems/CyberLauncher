@@ -17,6 +17,7 @@ export type CyberBotEmotion =
 export type CyberBotPosition = 'bottom-right' | 'bottom-left' | 'top-right';
 
 export type CyberBotChatterLevel = 'full' | 'minimal';
+export type CyberBotNamePromptState = 'unseen' | 'deferred' | 'dismissed' | 'completed';
 
 export interface CyberBotQuietHoursConfig {
   enabled: boolean;
@@ -30,6 +31,9 @@ export interface CyberBotSettings {
   dodgeEnabled: boolean;
   hoverAssistEnabled: boolean;
   bannersEnabled: boolean;
+  preferredName: string;
+  namePromptState: CyberBotNamePromptState;
+  namePromptAfter: number;
   chatterLevel: CyberBotChatterLevel;
   quietHours: CyberBotQuietHoursConfig;
 }
@@ -45,6 +49,10 @@ export interface CyberBotMessage {
     onClick: () => void;
   };
   secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  tertiaryAction?: {
     label: string;
     onClick: () => void;
   };

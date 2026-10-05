@@ -82,8 +82,19 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       )}
 
       {/* Contextual Action Button */}
-      {(message.action || message.secondaryAction) && (
+      {(message.action || message.secondaryAction || message.tertiaryAction) && (
         <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap justify-end gap-2">
+          {message.tertiaryAction && <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              message.tertiaryAction?.onClick();
+              onClose();
+            }}
+            className="inline-flex items-center px-1.5 py-1 text-slate-400 hover:text-slate-200 text-[10px] font-cyber cursor-pointer"
+          >
+            {message.tertiaryAction.label}
+          </button>}
           {message.secondaryAction && <button
             type="button"
             onClick={(e) => {

@@ -22,7 +22,8 @@ import {
   Bot, BotOff
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
-import { useCyberBot } from './components/companion/useCyberBot';
+import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
+import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { chooseNotificationChannel } from './notificationRouting';
 import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
@@ -392,6 +393,7 @@ declare global {
       systemPowerAction?: (action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout', force?: boolean) => Promise<{ success: boolean; error?: string }>;
       showTrayPinTip?: () => Promise<{ success: boolean }>;
       getSeenTrayPinTip?: () => Promise<boolean>;
+      isTrayPinTipVisible?: () => Promise<boolean>;
       exportConfig: (jsonData: string) => Promise<string | null>;
       importConfig: () => Promise<string | null>;
       backupNow?: () => Promise<{ ok: boolean; file?: string; error?: string }>;
@@ -3346,6 +3348,33 @@ export default function App() {
   });
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
+  const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
+  const cyberBotNameInputRef = useRef<HTMLInputElement>(null);
+  const focusCyberBotNameRef = useRef(false);
+  useEffect(() => {
+    setCyberBotNameDraft(cyberBot.preferredName);
+  }, [cyberBot.preferredName]);
+  useEffect(() => {
+    if (!isSettingsOpen || settingsTab !== 'cyberbot' || !focusCyberBotNameRef.current) return;
+    const timer = window.setTimeout(() => {
+      cyberBotNameInputRef.current?.focus();
+      cyberBotNameInputRef.current?.select();
+      focusCyberBotNameRef.current = false;
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [isSettingsOpen, settingsTab]);
+  const saveCyberBotName = () => {
+    const name = normalizeCyberBotName(cyberBotNameDraft);
+    if (name === cyberBot.preferredName) return;
+    cyberBot.updatePreferredName(name);
+    setCyberBotNameDraft(name);
+    if (name) cyberBot.say({
+      text: t('cyberbot_name_confirmed', { userName: name }),
+      emotion: 'happy',
+      priority: 'normal',
+      durationMs: 5000,
+    });
+  };
   const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
   const [isWindowVisible, setIsWindowVisible] = useState(() => !document.hidden);
   useEffect(() => {
@@ -5675,6 +5704,61 @@ export default function App() {
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
   const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+
+  const [namePromptCheckTick, setNamePromptCheckTick] = useState(0);
+  useEffect(() => {
+    if (!cyberBot.enabled || cyberBot.preferredName || cyberBot.namePromptState === 'completed' || cyberBot.namePromptState === 'dismissed') return;
+    const timer = window.setInterval(() => setNamePromptCheckTick(value => value + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, [cyberBot.enabled, cyberBot.preferredName, cyberBot.namePromptState]);
+
+  useEffect(() => {
+    if (!isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full' || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage) return;
+    if (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)) return;
+    if (!isCyberBotNamePromptDue(cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter)) return;
+
+    let disposed = false;
+    let timer: number;
+    const offer = async () => {
+      if (isElectron && window.electronAPI?.isTrayPinTipVisible) {
+        try {
+          if (await window.electronAPI.isTrayPinTipVisible()) {
+            if (!disposed) timer = window.setTimeout(offer, 3000);
+            return;
+          }
+        } catch {
+          if (!disposed) timer = window.setTimeout(offer, 5000);
+          return;
+        }
+      }
+      if (disposed) return;
+      const shown = cyberBot.say({
+        id: 'cyberbot_name_invitation',
+        text: t('cyberbot_name_invite'),
+        detail: t('cyberbot_name_invite_detail'),
+        emotion: 'curious',
+        priority: 'low',
+        durationMs: 10000,
+        action: {
+          label: t('cyberbot_name_invite_set'),
+          onClick: () => {
+            focusCyberBotNameRef.current = true;
+            cyberBot.completeNamePrompt();
+            setSettingsTab('cyberbot');
+            setIsSettingsOpen(true);
+          },
+        },
+        secondaryAction: { label: t('cyberbot_name_invite_later'), onClick: () => {} },
+        tertiaryAction: { label: t('cyberbot_name_invite_never'), onClick: cyberBot.dismissNamePromptForever },
+      });
+      if (shown) cyberBot.advanceNamePrompt();
+      else timer = window.setTimeout(offer, 15000);
+    };
+
+    timer = window.setTimeout(offer, 8000);
+    return () => { disposed = true; window.clearTimeout(timer); };
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.completeNamePrompt, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, namePromptCheckTick, t]);
+
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
     sayPhrase: cyberBot.sayPhrase,
@@ -11511,9 +11595,7 @@ export default function App() {
                     <div className="text-left">
                       <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('cyberbot_tab_title')}</h3>
                       <p className="text-[10px] text-slate-500">
-                        {language === 'es'
-                          ? 'Personaliza el comportamiento, evasión, horario silencioso e interacciones de tu asistente.'
-                          : 'Customize companion behavior, evasion, quiet hours, and assistant interactions.'}
+                        {t('cyberbot_tab_desc')}
                       </p>
                     </div>
                   </div>
@@ -11542,6 +11624,51 @@ export default function App() {
                           <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
+                    </div>
+
+                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-rose-500/10 rounded-lg border border-rose-500/20 shrink-0">
+                          <Heart className="w-5 h-5 text-rose-300" />
+                        </div>
+                        <div className="min-w-0">
+                          <label htmlFor="cyberbot-preferred-name" className="text-sm font-medium text-slate-200 leading-tight mb-1 block">{t('cyberbot_name_title')}</label>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_name_desc')}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 sm:pl-[52px]">
+                        <input
+                          ref={cyberBotNameInputRef}
+                          id="cyberbot-preferred-name"
+                          type="text"
+                          autoComplete="off"
+                          maxLength={CYBERBOT_NAME_MAX_LENGTH}
+                          value={cyberBotNameDraft}
+                          onChange={(event) => setCyberBotNameDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); saveCyberBotName(); }
+                            if (event.key === 'Escape') { event.stopPropagation(); setCyberBotNameDraft(cyberBot.preferredName); }
+                          }}
+                          placeholder={t('cyberbot_name_placeholder')}
+                          className="min-w-0 flex-1 basis-48 bg-[#0f172a] text-slate-100 text-sm rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-400/60 focus:outline-none select-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={saveCyberBotName}
+                          disabled={normalizeCyberBotName(cyberBotNameDraft) === cyberBot.preferredName}
+                          className="px-3 py-2 rounded-lg border border-cyan-400/40 bg-cyan-500/15 text-cyan-200 text-xs font-semibold hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {t('cyberbot_name_save')}
+                        </button>
+                        {cyberBot.preferredName && <button
+                          type="button"
+                          onClick={() => { setCyberBotNameDraft(''); cyberBot.updatePreferredName(''); }}
+                          className="px-2 py-2 text-slate-400 hover:text-rose-300 text-xs cursor-pointer"
+                        >
+                          {t('cyberbot_name_remove')}
+                        </button>}
+                      </div>
+                      <p className="text-[11px] text-slate-500 sm:pl-[52px]">{t('cyberbot_name_limit')}</p>
                     </div>
 
                   <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">

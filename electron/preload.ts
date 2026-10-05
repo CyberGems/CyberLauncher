@@ -179,6 +179,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('tray:update-settings', settings),
   showTrayPinTip: () => ipcRenderer.invoke('show-tray-pin-tip'),
   getSeenTrayPinTip: () => ipcRenderer.invoke('get-seen-tray-pin-tip'),
+  isTrayPinTipVisible: () => ipcRenderer.invoke('is-tray-pin-tip-visible'),
 
   // --- App versions / updates (CyberFeeds model) ---
   getAppVersions: () => ipcRenderer.invoke('app:get-versions'),

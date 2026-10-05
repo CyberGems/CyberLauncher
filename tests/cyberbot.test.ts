@@ -5,13 +5,63 @@ import { runInNewContext } from 'node:vm';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
+import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
 import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
+import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
+
+test('preferred names are optional, cleaned, and bounded', () => {
+  assert.equal(normalizeCyberBotName('  Ana\n María  '), 'Ana María');
+  assert.equal(normalizeCyberBotName('   '), '');
+  assert.equal(Array.from(normalizeCyberBotName('Á'.repeat(50))).length, CYBERBOT_NAME_MAX_LENGTH);
+});
+
+test('the optional name invitation is offered at most twice', () => {
+  const now = new Date(2026, 9, 5).getTime();
+  assert.equal(isCyberBotNamePromptDue('', 'unseen', 0, now), true);
+  assert.equal(isCyberBotNamePromptDue('', 'deferred', now + CYBERBOT_NAME_REMIND_MS, now), false);
+  assert.equal(isCyberBotNamePromptDue('', 'deferred', now + CYBERBOT_NAME_REMIND_MS, now + CYBERBOT_NAME_REMIND_MS), true);
+  assert.equal(isCyberBotNamePromptDue('', 'dismissed', 0, now), false);
+  assert.equal(isCyberBotNamePromptDue('Ana', 'unseen', 0, now), false);
+});
+
+test('only selected phrases use the preferred name and both languages have neutral fallbacks', () => {
+  for (const key of ['cyberbot_greeting_morning', 'cyberbot_greeting_afternoon', 'cyberbot_greeting_evening', 'cyberbot_reaction_beep', 'cyberbot_last_launch_2'] as const) {
+    const namedKey = cyberBotPhraseKeyWithName(key, 'Ana');
+    assert.notEqual(namedKey, key);
+    assert.equal(cyberBotPhraseKeyWithName(key, ''), key);
+    for (const language of ['es', 'en'] as const) {
+      assert.ok(translations[language][namedKey].includes('{userName}'));
+      assert.ok(!translations[language][key].includes('{userName}'));
+    }
+  }
+  assert.equal(cyberBotPhraseKeyWithName('cyberbot_greeting_morning_2', 'Ana'), 'cyberbot_greeting_morning_2');
+  for (const language of ['es', 'en'] as const) {
+    for (const key of ['cyberbot_name_title', 'cyberbot_name_invite', 'cyberbot_name_invite_set', 'cyberbot_name_invite_later', 'cyberbot_name_invite_never'] as const) {
+      assert.ok(translations[language][key]?.trim());
+    }
+  }
+});
+
+test('the name invitation exposes its three explicit choices', () => {
+  const html = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
+    message: {
+      id: 'name-invite', text: 'What should I call you?', timestamp: 0,
+      action: { label: 'Choose a name', onClick: () => {} },
+      secondaryAction: { label: 'Not now', onClick: () => {} },
+      tertiaryAction: { label: "Don't ask again", onClick: () => {} },
+    },
+    onClose: () => {}, closeLabel: 'Dismiss',
+  }));
+  assert.match(html, /Choose a name/);
+  assert.match(html, /Not now/);
+  assert.match(html, /Don&#x27;t ask again/);
+});
 
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
   const settings: NotificationDeliverySettings = {

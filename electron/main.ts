@@ -2310,6 +2310,10 @@ ipcMain.handle('get-seen-tray-pin-tip', () => {
   return hasSeenTrayPinTip();
 });
 
+ipcMain.handle('is-tray-pin-tip-visible', () => {
+  return Boolean(trayPinTipWin && !trayPinTipWin.isDestroyed() && trayPinTipWin.isVisible());
+});
+
 // =====================================
 // TOGGLE WINDOW (Mostrar / Ocultar)
 // =====================================

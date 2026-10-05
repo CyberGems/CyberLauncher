@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TranslationKey } from '../../locales';
 import { createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from './cyberBotPhrases';
+import { CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, normalizeCyberBotName } from './cyberBotName';
 import type { 
   CyberBotMessage, 
   CyberBotPosition, 
@@ -73,6 +74,17 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     return saved === null ? true : saved === 'true';
   });
 
+  const [preferredName, setPreferredName] = useState(() => normalizeCyberBotName(localStorage.getItem('cyberbot_preferred_name') || ''));
+  const [namePromptState, setNamePromptState] = useState<CyberBotSettings['namePromptState']>(() => {
+    if (normalizeCyberBotName(localStorage.getItem('cyberbot_preferred_name') || '')) return 'completed';
+    const saved = localStorage.getItem('cyberbot_name_prompt_state');
+    return saved === 'deferred' || saved === 'dismissed' || saved === 'completed' ? saved : 'unseen';
+  });
+  const [namePromptAfter, setNamePromptAfter] = useState(() => {
+    const value = Number(localStorage.getItem('cyberbot_name_prompt_after'));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  });
+
   const [chatterLevel, setChatterLevel] = useState<CyberBotChatterLevel>(() => {
     const saved = localStorage.getItem('cyberbot_chatter');
     return saved === 'minimal' ? 'minimal' : 'full';
@@ -136,6 +148,47 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     localStorage.setItem('cyberbot_banners_enabled', String(newValue));
   }, []);
 
+  const persistPreferredName = useCallback((value: string) => {
+    const normalized = normalizeCyberBotName(value);
+    setPreferredName(normalized);
+    localStorage.setItem('cyberbot_preferred_name', normalized);
+    return normalized;
+  }, []);
+
+  const completeNamePrompt = useCallback(() => {
+    setNamePromptState('completed');
+    setNamePromptAfter(0);
+    localStorage.setItem('cyberbot_name_prompt_state', 'completed');
+    localStorage.setItem('cyberbot_name_prompt_after', '0');
+  }, []);
+
+  const updatePreferredName = useCallback((value: string) => {
+    persistPreferredName(value);
+    completeNamePrompt();
+  }, [persistPreferredName, completeNamePrompt]);
+
+  const advanceNamePrompt = useCallback(() => {
+    if (namePromptState === 'unseen') {
+      const remindAt = Date.now() + CYBERBOT_NAME_REMIND_MS;
+      setNamePromptState('deferred');
+      setNamePromptAfter(remindAt);
+      localStorage.setItem('cyberbot_name_prompt_state', 'deferred');
+      localStorage.setItem('cyberbot_name_prompt_after', String(remindAt));
+    } else if (namePromptState === 'deferred') {
+      setNamePromptState('dismissed');
+      setNamePromptAfter(0);
+      localStorage.setItem('cyberbot_name_prompt_state', 'dismissed');
+      localStorage.setItem('cyberbot_name_prompt_after', '0');
+    }
+  }, [namePromptState]);
+
+  const dismissNamePromptForever = useCallback(() => {
+    setNamePromptState('dismissed');
+    setNamePromptAfter(0);
+    localStorage.setItem('cyberbot_name_prompt_state', 'dismissed');
+    localStorage.setItem('cyberbot_name_prompt_after', '0');
+  }, []);
+
   const updateChatterLevel = useCallback((level: CyberBotChatterLevel) => {
     setChatterLevel(level);
     localStorage.setItem('cyberbot_chatter', level);
@@ -162,6 +215,18 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
     if (typeof settings.hoverAssistEnabled === 'boolean') updateHoverAssistEnabled(settings.hoverAssistEnabled);
     if (typeof settings.bannersEnabled === 'boolean') updateBannersEnabled(settings.bannersEnabled);
+    const restoredName = typeof settings.preferredName === 'string'
+      ? persistPreferredName(settings.preferredName)
+      : normalizeCyberBotName(localStorage.getItem('cyberbot_preferred_name') || '');
+    if (restoredName) completeNamePrompt();
+    else if (settings.namePromptState === 'unseen' || settings.namePromptState === 'deferred' || settings.namePromptState === 'dismissed' || settings.namePromptState === 'completed') {
+      setNamePromptState(settings.namePromptState);
+      localStorage.setItem('cyberbot_name_prompt_state', settings.namePromptState);
+    }
+    if (!restoredName && typeof settings.namePromptAfter === 'number' && Number.isFinite(settings.namePromptAfter) && settings.namePromptAfter >= 0) {
+      setNamePromptAfter(settings.namePromptAfter);
+      localStorage.setItem('cyberbot_name_prompt_after', String(settings.namePromptAfter));
+    }
     if (settings.chatterLevel === 'full' || settings.chatterLevel === 'minimal') updateChatterLevel(settings.chatterLevel);
     if (settings.quietHours && typeof settings.quietHours === 'object') {
       const { enabled, from, to } = settings.quietHours;
@@ -172,7 +237,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
       });
     }
-  }, [updatePosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, updateChatterLevel, updateQuietHours]);
+  }, [updatePosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
 
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
@@ -199,6 +264,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     tag?: string;
     action?: { label: string; onClick: () => void };
     secondaryAction?: { label: string; onClick: () => void };
+    tertiaryAction?: { label: string; onClick: () => void };
     durationMs?: number;
     priority?: 'low' | 'normal' | 'high';
     essential?: boolean;
@@ -234,6 +300,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       tag: msg.tag || t('cyberbot_tag_name'),
       action: msg.action,
       secondaryAction: msg.secondaryAction,
+      tertiaryAction: msg.tertiaryAction,
       durationMs: duration,
       timestamp: Date.now(),
       priority,
@@ -255,12 +322,12 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
 
   const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
     return phraseDeckRef.current!.tryNext(topic, phrase => say({
-      text: t(phrase.key, options.params),
+      text: t(cyberBotPhraseKeyWithName(phrase.key, preferredName), { ...options.params, userName: preferredName }),
       emotion: phrase.emotion,
       priority: options.priority ?? 'low',
       durationMs: options.durationMs,
     }));
-  }, [say, t]);
+  }, [say, t, preferredName]);
 
   // Greet once per activation, after disk settings load. Language/settings changes are not new arrivals.
   useEffect(() => {
@@ -292,8 +359,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
-    { enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, chatterLevel, quietHours }
-  ), [enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, chatterLevel, quietHours]);
+    { enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
+  ), [enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
 
   return {
     enabled,
@@ -306,6 +373,13 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     updateHoverAssistEnabled,
     bannersEnabled,
     updateBannersEnabled,
+    preferredName,
+    updatePreferredName,
+    namePromptState,
+    namePromptAfter,
+    advanceNamePrompt,
+    dismissNamePromptForever,
+    completeNamePrompt,
     chatterLevel,
     updateChatterLevel,
     quietHours,
