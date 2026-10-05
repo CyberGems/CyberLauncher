@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
 import { nextCyberBotIdleExpression } from './cyberBotBehavior';
 
@@ -87,9 +87,9 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     switch (faceEmotion) {
       case 'launcher':
         return (
-          <g fill="#22d3ee">
-            <rect x="27" y="37" width="14" height="14" rx="5" />
-            <path d="M 64 36 H 69 V 41 H 74 V 47 H 69 V 52 H 64 V 47 H 58 V 41 H 64 Z" />
+          <g fill="#22d3ee" fillOpacity="0.88" style={{ filter: 'drop-shadow(0 0 1px rgba(34, 211, 238, 0.4))' }}>
+            <rect x="29" y="39" width="10" height="10" rx="3.5" />
+            <path d="M 64 38 H 68 V 42 H 72 V 46 H 68 V 50 H 64 V 46 H 60 V 42 H 64 Z" />
           </g>
         );
       case 'curious':
@@ -434,10 +434,19 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               fillOpacity="0.05"
             />
 
-            {/* Terminal Face Content */}
-            <g filter={faceEmotion === 'launcher' ? undefined : 'url(#cyberGlowFilter)'}>
-              {renderFaceContent()}
-            </g>
+            {/* Crossfade between expressions without softening the logo face itself. */}
+            <AnimatePresence initial={false}>
+              <motion.g
+                key={faceEmotion}
+                initial={reducedMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={reducedMotion ? undefined : { opacity: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.18, ease: 'easeInOut' }}
+                filter={faceEmotion === 'launcher' ? undefined : 'url(#cyberGlowFilter)'}
+              >
+                {renderFaceContent()}
+              </motion.g>
+            </AnimatePresence>
           </g>
           {isSleeping && (
             <g fill="#94a3b8" className="font-mono font-bold" aria-hidden="true">
