@@ -28,6 +28,7 @@ export interface CyberBotSettings {
   enabled: boolean;
   position: CyberBotPosition;
   dodgeEnabled: boolean;
+  hoverAssistEnabled: boolean;
   chatterLevel: CyberBotChatterLevel;
   quietHours: CyberBotQuietHoursConfig;
 }

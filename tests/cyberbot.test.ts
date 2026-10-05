@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotSleepTimer, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -114,6 +114,59 @@ test('sleep waits for inactivity, wakes on interaction, and cleans up its timer'
   assert.deepEqual(changes, [true, false]);
 });
 
+test('hover assistance warns for three seconds and can be canceled before moving', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const counts: Array<number | null> = [];
+  let moves = 0;
+  const assist = createCyberBotHoverAssist(count => counts.push(count), () => { moves += 1; });
+
+  assist.enter();
+  context.mock.timers.tick(CYBERBOT_HOVER_DWELL_MS - 1);
+  assert.deepEqual(counts, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(counts, [3]);
+  context.mock.timers.tick(1000);
+  assert.deepEqual(counts, [3, 2]);
+  assist.cancel();
+  context.mock.timers.tick(5000);
+  assert.equal(moves, 0);
+  assert.deepEqual(counts, [3, 2, null]);
+
+  assist.leave();
+  assist.enter();
+  context.mock.timers.tick(CYBERBOT_HOVER_DWELL_MS);
+  context.mock.timers.tick(1000);
+  context.mock.timers.tick(1000);
+  context.mock.timers.tick(1000);
+  assert.equal(moves, 1);
+  assert.deepEqual(counts.slice(-4), [3, 2, 1, null]);
+
+  assist.leave();
+  assist.enter();
+  context.mock.timers.tick(CYBERBOT_HOVER_DWELL_MS + 3000);
+  assert.equal(moves, 1, 'a new hover cannot cause an immediate second relocation');
+  context.mock.timers.tick(CYBERBOT_HOVER_MOVE_COOLDOWN_MS);
+  assist.leave();
+  assist.enter();
+  context.mock.timers.tick(CYBERBOT_HOVER_DWELL_MS);
+  assert.equal(counts.at(-1), 3);
+  assist.dispose();
+  context.mock.timers.tick(5000);
+  assert.equal(moves, 1);
+});
+
+test('leaving during the countdown cancels the hover move', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  let moves = 0;
+  const assist = createCyberBotHoverAssist(() => {}, () => { moves += 1; });
+  assist.enter();
+  context.mock.timers.tick(CYBERBOT_HOVER_DWELL_MS + 1000);
+  assist.leave();
+  context.mock.timers.tick(5000);
+  assert.equal(moves, 0);
+  assist.dispose();
+});
+
 test('idle expression selection includes the new faces without repeating the previous expression', () => {
   const seen = new Set<string>();
   for (let i = 0; i < 12; i++) {
@@ -146,6 +199,7 @@ test('the companion exposes one keyboard button and an accessible dismiss action
     dragBoundsRef: React.createRef<HTMLDivElement>(),
     interactLabel: 'Interact with CyberBot',
     closeLabel: 'Dismiss CyberBot message',
+    hoverAssistText: count => `Moving in ${count}`,
   }));
 
   assert.match(html, /<button[^>]*aria-label="Interact with CyberBot"/);
@@ -215,6 +269,14 @@ test('every catalog phrase has matching English and Spanish placeholders and no 
       assert.ok(en?.trim(), `Missing English phrase: ${key}`);
       assert.deepEqual(es.match(/\{\w+\}/g) || [], en.match(/\{\w+\}/g) || [], key);
     }
+  }
+});
+
+test('hover assistance labels and countdown are translated in both languages', () => {
+  for (const language of ['es', 'en'] as const) {
+    assert.ok(translations[language].cyberbot_hover_assist_title);
+    assert.ok(translations[language].cyberbot_hover_assist_desc);
+    assert.ok(translations[language].cyberbot_hover_assist_message.includes('{count}'));
   }
 });
 

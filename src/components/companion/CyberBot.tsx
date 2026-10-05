@@ -3,7 +3,9 @@ import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue, useReducedMotion } from 'motion/react';
 import { CyberBotAvatar } from './CyberBotAvatar';
 import { CyberSpeechBubble } from './CyberSpeechBubble';
-import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion } from './companionTypes';
+import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion, CyberBotChatterLevel, CyberBotQuietHoursConfig } from './companionTypes';
+import { createCyberBotHoverAssist } from './cyberBotBehavior';
+import { isInQuietHours } from './useCyberBot';
 import { useCyberBotSleep } from './useCyberBotSleep';
 import { useCyberBotLayout } from './useCyberBotLayout';
 
@@ -15,9 +17,13 @@ interface CyberBotProps {
   position?: CyberBotPosition;
   onPositionChange?: (newPosition: CyberBotPosition) => void;
   dodgeEnabled?: boolean;
+  hoverAssistEnabled?: boolean;
+  chatterLevel?: CyberBotChatterLevel;
+  quietHours?: CyberBotQuietHoursConfig;
   dragBoundsRef: React.RefObject<HTMLDivElement | null>;
   interactLabel: string;
   closeLabel: string;
+  hoverAssistText: (count: number) => string;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
 
@@ -28,10 +34,14 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   onClickBot,
   position = 'bottom-right',
   onPositionChange,
-  dodgeEnabled = true,
+  dodgeEnabled = false,
+  hoverAssistEnabled = true,
+  chatterLevel = 'full',
+  quietHours,
   dragBoundsRef,
   interactLabel,
   closeLabel,
+  hoverAssistText,
   onSpeechVisibilityChange,
 }) => {
   const reducedMotion = useReducedMotion();
@@ -45,13 +55,44 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [layoutReady, setLayoutReady] = useState(false);
+  const [hoverCountdown, setHoverCountdown] = useState<number | null>(null);
   const dodgeTimerRef = useRef<number | null>(null);
   const dodgeExecutionTimerRef = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
   const dragEndTimerRef = useRef<number | null>(null);
   const dragCommitFrameRef = useRef<number | null>(null);
+  const moveForHoverRef = useRef<() => void>(() => {});
+  const hoverAssistRef = useRef<ReturnType<typeof createCyberBotHoverAssist> | null>(null);
   const sleeping = useCyberBotSleep(enabled);
-  const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: activeMessage?.id, bubbleRef });
+  const hoverMessage: CyberBotMessage | null = hoverCountdown === null ? null : {
+    id: 'bot_hover_assist',
+    text: hoverAssistText(hoverCountdown),
+    emotion: 'curious',
+    timestamp: 0,
+    priority: 'low',
+  };
+  const displayedMessage = activeMessage || hoverMessage;
+  const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
+  const canHoverAssist = hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
+    && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
+
+  moveForHoverRef.current = () => {
+    if (!canHoverAssist || activeMessage || placement.hasObstacles || placement.hidden || isDraggingRef.current) return;
+    const nextPos: CyberBotPosition = currentPos === 'bottom-right' ? 'bottom-left' : 'bottom-right';
+    setTemporaryEmotion('happy');
+    setManualOffset({ x: 0, y: 0 });
+    setCurrentPos(nextPos);
+    // The assistance is temporary; it must not overwrite the user's saved corner.
+    dodgeTimerRef.current = window.setTimeout(() => setTemporaryEmotion(null), 700);
+  };
+
+  useEffect(() => {
+    hoverAssistRef.current = createCyberBotHoverAssist(setHoverCountdown, () => moveForHoverRef.current());
+    return () => {
+      hoverAssistRef.current?.dispose();
+      hoverAssistRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     x.set(0);
@@ -61,8 +102,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   }, [position, x, y]);
 
   useEffect(() => {
-    onSpeechVisibilityChange?.(enabled && !placement.hidden && (!activeMessage || placement.bubbleVisible));
-  }, [enabled, placement.hidden, placement.bubbleVisible, !!activeMessage, onSpeechVisibilityChange]);
+    onSpeechVisibilityChange?.(enabled && !placement.hidden && (!displayedMessage || placement.bubbleVisible));
+  }, [enabled, placement.hidden, placement.bubbleVisible, !!displayedMessage, onSpeechVisibilityChange]);
 
   useEffect(() => {
     if (placement.hidden || layoutReady) return;
@@ -73,8 +114,15 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   useEffect(() => {
     if (!placement.hasObstacles) return;
     if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
+    hoverAssistRef.current?.leave();
     setTemporaryEmotion(null);
   }, [placement.hasObstacles]);
+
+  useEffect(() => {
+    if (!enabled || !canHoverAssist || placement.hidden || activeMessage || isDragging) {
+      hoverAssistRef.current?.leave();
+    }
+  }, [enabled, canHoverAssist, placement.hidden, activeMessage, isDragging]);
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -88,7 +136,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   // A visible message owns the expression, especially while showing an alert.
   const currentEmotion: CyberBotEmotion =
-    activeMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
+    displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
@@ -121,6 +169,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   const handlePointerDown = () => {
     // If the user actively clicks or grabs the bot, cancel the dodge leap!
+    hoverAssistRef.current?.cancel();
     setTemporaryEmotion(null);
     if (dodgeExecutionTimerRef.current) {
       window.clearTimeout(dodgeExecutionTimerRef.current);
@@ -170,6 +219,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         setIsDragging(true);
         setIsDodgeCooldown(true);
         setTemporaryEmotion(null);
+        hoverAssistRef.current?.cancel();
         if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
         if (dragEndTimerRef.current) window.clearTimeout(dragEndTimerRef.current);
         if (dragCommitFrameRef.current) window.cancelAnimationFrame(dragCommitFrameRef.current);
@@ -224,11 +274,11 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         }`}
       >
         <AnimatePresence mode="wait">
-          {activeMessage && (
+          {displayedMessage && (
             <CyberSpeechBubble
-              key={activeMessage.id}
-              message={activeMessage}
-              onClose={onDismissMessage}
+              key={displayedMessage.id}
+              message={displayedMessage}
+              onClose={activeMessage ? onDismissMessage : () => hoverAssistRef.current?.cancel()}
               position={placement.align === 'left' ? 'bottom-left' : 'bottom-right'}
               closeLabel={closeLabel}
             />
@@ -243,9 +293,14 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         onMouseEnter={() => {
           setIsHovered(true);
           handleMouseEnter();
+          if (canHoverAssist && !placement.hasObstacles && !placement.hidden && !activeMessage
+            && !isDodgeCooldown && !isDraggingRef.current) {
+            hoverAssistRef.current?.enter();
+          }
         }}
         onMouseLeave={() => {
           setIsHovered(false);
+          hoverAssistRef.current?.leave();
           if (dodgeExecutionTimerRef.current) {
             window.clearTimeout(dodgeExecutionTimerRef.current);
             dodgeExecutionTimerRef.current = null;
