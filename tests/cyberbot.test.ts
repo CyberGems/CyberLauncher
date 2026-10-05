@@ -8,7 +8,7 @@ import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotSleepTimer, createCyberBotVanishTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -385,6 +385,7 @@ test('centered dialogs and overlapping panels both remain unobstructed', () => {
 });
 
 test('sleep waits for inactivity, wakes on interaction, and cleans up its timer', context => {
+  assert.ok(CYBERBOT_SLEEP_DELAY_MS < 90_000);
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: boolean[] = [];
   const timer = createCyberBotSleepTimer(sleeping => changes.push(sleeping));
@@ -400,6 +401,51 @@ test('sleep waits for inactivity, wakes on interaction, and cleans up its timer'
   context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS * 2);
   timer.wake();
   assert.deepEqual(changes, [true, false]);
+});
+
+test('CyberBot vanishes after random idle periods and returns automatically with alternating styles', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const sequence = [0, 0, 0, 1, 1, 0, 0];
+  const changes: Array<{ hidden: boolean; style: string }> = [];
+  const timer = createCyberBotVanishTimer((hidden, style) => changes.push({ hidden, style }), () => sequence.shift() ?? 0);
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
+  timer.wake();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
+  assert.deepEqual(changes, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, [{ hidden: true, style: 'phase' }]);
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS);
+  assert.deepEqual(changes.at(-1), { hidden: false, style: 'phase' });
+  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS);
+  assert.deepEqual(changes.at(-1), { hidden: true, style: 'ascend' });
+  timer.wake();
+  assert.deepEqual(changes.at(-1), { hidden: false, style: 'ascend' });
+  timer.dispose();
+  const count = changes.length;
+  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS * 3);
+  assert.equal(changes.length, count);
+});
+
+test('messages or busy UI can interrupt and suspend the vanish cycle', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: boolean[] = [];
+  const timer = createCyberBotVanishTimer(hidden => changes.push(hidden), () => 0);
+  timer.pause();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS * 2);
+  assert.deepEqual(changes, []);
+  timer.resume();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
+  assert.deepEqual(changes, [true]);
+  timer.pause();
+  assert.deepEqual(changes, [true, false]);
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS * 2);
+  assert.deepEqual(changes, [true, false]);
+  timer.resume();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
+  assert.deepEqual(changes, [true, false, true]);
+  timer.wake();
+  assert.deepEqual(changes, [true, false, true, false]);
+  timer.dispose();
 });
 
 test('hover assistance warns for three seconds and can be canceled before moving', context => {

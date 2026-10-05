@@ -1,6 +1,11 @@
 import type { CyberBotEmotion } from './companionTypes';
 
-export const CYBERBOT_SLEEP_DELAY_MS = 90_000;
+export const CYBERBOT_SLEEP_DELAY_MS = 45_000;
+export const CYBERBOT_VANISH_MIN_IDLE_MS = 150_000;
+export const CYBERBOT_VANISH_MAX_IDLE_MS = 270_000;
+export const CYBERBOT_VANISH_MIN_AWAY_MS = 18_000;
+export const CYBERBOT_VANISH_MAX_AWAY_MS = 42_000;
+export type CyberBotVanishStyle = 'phase' | 'ascend';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // The logo face is the resting expression; these appear briefly between resting pauses.
@@ -42,6 +47,89 @@ export function createCyberBotSleepTimer(onSleep: (sleeping: boolean) => void, d
       clearTimeout(timer);
     },
   };
+}
+
+// A separate, low-frequency idle cycle. Pointer movement updates a timestamp;
+// it does not allocate a new timer on every event.
+export function createCyberBotVanishTimer(
+  onChange: (hidden: boolean, style: CyberBotVanishStyle) => void,
+  random = Math.random,
+) {
+  let lastActivity = Date.now();
+  let hidden = false;
+  let paused = false;
+  let disposed = false;
+  let style: CyberBotVanishStyle = 'phase';
+  let hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearTimer() {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  }
+  function check() {
+    timer = null;
+    if (disposed || paused) return;
+    const remaining = hideDelay - (Date.now() - lastActivity);
+    if (remaining > 0) {
+      timer = setTimeout(check, remaining);
+      return;
+    }
+    hidden = true;
+    style = random() < 0.5 ? 'phase' : 'ascend';
+    onChange(true, style);
+    timer = setTimeout(() => {
+      timer = null;
+      if (disposed || paused || !hidden) return;
+      hidden = false;
+      onChange(false, style);
+      lastActivity = Date.now();
+      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
+      scheduleHide();
+    }, randomDelay(CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MAX_AWAY_MS, random));
+  }
+  function scheduleHide() {
+    if (disposed || paused) return;
+    timer = setTimeout(check, hideDelay);
+  }
+  scheduleHide();
+
+  return {
+    wake() {
+      if (disposed) return;
+      lastActivity = Date.now();
+      if (!hidden) return;
+      hidden = false;
+      clearTimer();
+      onChange(false, style);
+      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
+      scheduleHide();
+    },
+    pause() {
+      if (disposed || paused) return;
+      paused = true;
+      clearTimer();
+      if (hidden) {
+        hidden = false;
+        onChange(false, style);
+      }
+    },
+    resume() {
+      if (disposed || !paused) return;
+      paused = false;
+      lastActivity = Date.now();
+      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
+      scheduleHide();
+    },
+    dispose() {
+      disposed = true;
+      clearTimer();
+    },
+  };
+}
+
+function randomDelay(min: number, max: number, random: () => number): number {
+  return min + Math.floor(Math.max(0, Math.min(0.999999, random())) * (max - min + 1));
 }
 
 export function createCyberBotHoverAssist(onCountdown: (remaining: number | null) => void, onMove: () => void) {

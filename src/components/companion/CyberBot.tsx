@@ -6,7 +6,7 @@ import { CyberSpeechBubble } from './CyberSpeechBubble';
 import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion, CyberBotChatterLevel, CyberBotQuietHoursConfig } from './companionTypes';
 import { createCyberBotHoverAssist } from './cyberBotBehavior';
 import { isInQuietHours } from './useCyberBot';
-import { useCyberBotSleep } from './useCyberBotSleep';
+import { useCyberBotPresence } from './useCyberBotPresence';
 import { useCyberBotLayout } from './useCyberBotLayout';
 
 interface CyberBotProps {
@@ -23,6 +23,7 @@ interface CyberBotProps {
   interactLabel: string;
   closeLabel: string;
   hoverAssistText: (count: number) => string;
+  systemAttention?: boolean;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
 
@@ -40,6 +41,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   interactLabel,
   closeLabel,
   hoverAssistText,
+  systemAttention = false,
   onSpeechVisibilityChange,
 }) => {
   const reducedMotion = useReducedMotion();
@@ -61,7 +63,6 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const dragCommitFrameRef = useRef<number | null>(null);
   const moveForHoverRef = useRef<() => void>(() => {});
   const hoverAssistRef = useRef<ReturnType<typeof createCyberBotHoverAssist> | null>(null);
-  const sleeping = useCyberBotSleep(enabled);
   const hoverMessage: CyberBotMessage | null = hoverCountdown === null ? null : {
     id: 'bot_hover_assist',
     text: hoverAssistText(hoverCountdown),
@@ -71,6 +72,13 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   };
   const displayedMessage = activeMessage || hoverMessage;
   const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
+  const { sleeping, vanished, vanishStyle } = useCyberBotPresence(
+    enabled,
+    !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
+    activeMessage?.id,
+    systemAttention,
+  );
+  const idleAway = vanished && !displayedMessage && !systemAttention;
   const canHoverAssist = hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
     && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
 
@@ -100,6 +108,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   }, [position, x, y]);
 
   useEffect(() => {
+    // An idle disappearance can reverse immediately, so it must not reroute
+    // system speech away from CyberBot as an actually obstructed layout would.
     onSpeechVisibilityChange?.(enabled && !placement.hidden && (!displayedMessage || placement.bubbleVisible));
   }, [enabled, placement.hidden, placement.bubbleVisible, !!displayedMessage, onSpeechVisibilityChange]);
 
@@ -188,7 +198,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   return (
     <motion.aside
       aria-label="CyberBot"
-      aria-hidden={placement.hidden || undefined}
+      aria-hidden={placement.hidden || idleAway || undefined}
       data-cyberbot-control
       drag
       // Numeric bounds avoid Motion's ref-resize handler retaining a second offset
@@ -284,38 +294,64 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       </div>
 
       {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
-      <button
-        type="button"
-        aria-label={interactLabel}
-        onMouseEnter={() => {
-          setIsHovered(true);
-          handleMouseEnter();
-          if (canHoverAssist && !placement.hasObstacles && !placement.hidden && !activeMessage
-            && !isDodgeCooldown && !isDraggingRef.current) {
-            hoverAssistRef.current?.enter();
-          }
-        }}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          hoverAssistRef.current?.leave();
-          if (dodgeExecutionTimerRef.current) {
-            window.clearTimeout(dodgeExecutionTimerRef.current);
-            dodgeExecutionTimerRef.current = null;
-          }
-          if (!isDodgeCooldown) {
-            setTemporaryEmotion(null);
-          }
-        }}
-        onPointerDown={handlePointerDown}
-        onClick={handleClick}
-        className="pointer-events-auto w-[94px] h-[94px] flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+      <AnimatePresence>
+        {idleAway && !reducedMotion && (
+          <motion.span
+            key={vanishStyle}
+            aria-hidden="true"
+            initial={{ opacity: 0.7, scale: 0.65, y: 0 }}
+            animate={{ opacity: 0, scale: vanishStyle === 'phase' ? 1.8 : 0.8, y: vanishStyle === 'ascend' ? -55 : 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: vanishStyle === 'phase' ? 0.55 : 0.68, ease: 'easeOut' }}
+            className="absolute inset-[14px] rounded-full border border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.55)] pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
+      <motion.div
+        initial={false}
+        animate={idleAway
+          ? vanishStyle === 'phase'
+            ? { opacity: 0, scale: 0.66, y: 0, rotate: 0, filter: 'blur(8px)' }
+            : { opacity: 0, scale: 0.52, y: -48, rotate: 12, filter: 'blur(2px)' }
+          : { opacity: 1, scale: 1, y: 0, rotate: 0, filter: 'blur(0px)' }}
+        transition={reducedMotion ? { duration: 0 } : { duration: idleAway ? (vanishStyle === 'phase' ? 0.48 : 0.62) : 0.28, ease: 'easeInOut' }}
+        className="relative w-[94px] h-[94px]"
+        style={{ pointerEvents: idleAway ? 'none' : 'auto' }}
       >
-        <CyberBotAvatar
-          emotion={currentEmotion}
-          isHovered={isHovered}
-          size={78}
-        />
-      </button>
+        <button
+          type="button"
+          disabled={idleAway}
+          aria-label={interactLabel}
+          onMouseEnter={() => {
+            setIsHovered(true);
+            handleMouseEnter();
+            if (canHoverAssist && !placement.hasObstacles && !placement.hidden && !activeMessage
+              && !isDodgeCooldown && !isDraggingRef.current) {
+              hoverAssistRef.current?.enter();
+            }
+          }}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            hoverAssistRef.current?.leave();
+            if (dodgeExecutionTimerRef.current) {
+              window.clearTimeout(dodgeExecutionTimerRef.current);
+              dodgeExecutionTimerRef.current = null;
+            }
+            if (!isDodgeCooldown) {
+              setTemporaryEmotion(null);
+            }
+          }}
+          onPointerDown={handlePointerDown}
+          onClick={handleClick}
+          className="pointer-events-auto w-[94px] h-[94px] flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+        >
+          <CyberBotAvatar
+            emotion={currentEmotion}
+            isHovered={isHovered}
+            size={78}
+          />
+        </button>
+      </motion.div>
     </motion.aside>
   );
 };

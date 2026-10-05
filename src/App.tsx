@@ -14467,6 +14467,7 @@ export default function App() {
         interactLabel={t('cyberbot_interact')}
         closeLabel={t('cyberbot_close_message')}
         hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
+        systemAttention={!!notification}
         onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
       />
 
