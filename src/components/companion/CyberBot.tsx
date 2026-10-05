@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useReducedMotion } from 'motion/react';
 import { CyberBotAvatar } from './CyberBotAvatar';
 import { CyberSpeechBubble } from './CyberSpeechBubble';
 import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion } from './companionTypes';
+import { useCyberBotSleep } from './useCyberBotSleep';
+import { useCyberBotLayout } from './useCyberBotLayout';
 
 interface CyberBotProps {
   enabled: boolean;
@@ -15,21 +17,7 @@ interface CyberBotProps {
   dragBoundsRef: React.RefObject<HTMLDivElement | null>;
   interactLabel: string;
   closeLabel: string;
-}
-
-export function getCyberBotViewportAdjustment(
-  bot: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
-  bubble: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>,
-  viewportWidth: number,
-  viewportHeight: number
-) {
-  const margin = 12;
-  const desiredX = Math.max(margin - bubble.left, 0) - Math.max(bubble.right - viewportWidth + margin, 0);
-  const desiredY = Math.max(margin - bubble.top, 0) - Math.max(bubble.bottom - viewportHeight + margin, 0);
-  return {
-    x: Math.min(viewportWidth - margin - bot.right, Math.max(margin - bot.left, desiredX)),
-    y: Math.min(viewportHeight - margin - bot.bottom, Math.max(margin - bot.top, desiredY)),
-  };
+  onSpeechVisibilityChange?: (visible: boolean) => void;
 }
 
 export const CyberBot: React.FC<CyberBotProps> = ({
@@ -43,13 +31,14 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   dragBoundsRef,
   interactLabel,
   closeLabel,
+  onSpeechVisibilityChange,
 }) => {
   const reducedMotion = useReducedMotion();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const botRef = useRef<HTMLElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [currentPos, setCurrentPos] = useState<CyberBotPosition>(position);
+  const [manualOffset, setManualOffset] = useState({ x: 0, y: 0 });
   const [temporaryEmotion, setTemporaryEmotion] = useState<CyberBotEmotion | null>(null);
   const [isDodgeCooldown, setIsDodgeCooldown] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -57,50 +46,43 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const dodgeTimerRef = useRef<number | null>(null);
   const dodgeExecutionTimerRef = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
+  const dragEndTimerRef = useRef<number | null>(null);
+  const sleeping = useCyberBotSleep(enabled);
+  const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: activeMessage?.id, bubbleRef });
 
   useEffect(() => {
     x.set(0);
     y.set(0);
     setCurrentPos(position);
+    setManualOffset({ x: 0, y: 0 });
   }, [position, x, y]);
 
-  const keepBubbleVisible = useCallback(() => {
-    const bot = botRef.current?.getBoundingClientRect();
-    const bubble = bubbleRef.current?.getBoundingClientRect();
-    if (!bot || !bubble || !bubble.width || !bubble.height) return;
-    const adjustment = getCyberBotViewportAdjustment(bot, bubble, window.innerWidth, window.innerHeight);
-    x.set(x.get() + adjustment.x);
-    y.set(y.get() + adjustment.y);
-  }, [x, y]);
+  useEffect(() => {
+    onSpeechVisibilityChange?.(enabled && !placement.hidden && (!activeMessage || placement.bubbleVisible));
+  }, [enabled, placement.hidden, placement.bubbleVisible, !!activeMessage, onSpeechVisibilityChange]);
 
   useEffect(() => {
-    if (!activeMessage) return;
-    const frame = window.requestAnimationFrame(keepBubbleVisible);
-    window.addEventListener('resize', keepBubbleVisible);
-    const observer = new ResizeObserver(keepBubbleVisible);
-    if (bubbleRef.current) observer.observe(bubbleRef.current);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('resize', keepBubbleVisible);
-      observer.disconnect();
-    };
-  }, [activeMessage?.id, currentPos, keepBubbleVisible]);
+    if (!placement.hasObstacles) return;
+    if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
+    setTemporaryEmotion(null);
+  }, [placement.hasObstacles]);
 
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
       if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
       if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
+      if (dragEndTimerRef.current) window.clearTimeout(dragEndTimerRef.current);
     };
   }, []);
 
   // A visible message owns the expression, especially while showing an alert.
   const currentEmotion: CyberBotEmotion =
-    activeMessage?.emotion || temporaryEmotion || 'idle';
+    activeMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
-    if (!dodgeEnabled || isDodgeCooldown || isDraggingRef.current) return;
+    if (!dodgeEnabled || placement.hasObstacles || isDodgeCooldown || isDraggingRef.current) return;
 
     // Show surprised/scared reaction first
     setTemporaryEmotion('scared');
@@ -115,6 +97,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
       x.set(0);
       y.set(0);
+      setManualOffset({ x: 0, y: 0 });
       setCurrentPos(nextPos);
       onPositionChange?.(nextPos);
 
@@ -128,6 +111,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   const handlePointerDown = () => {
     // If the user actively clicks or grabs the bot, cancel the dodge leap!
+    setTemporaryEmotion(null);
     if (dodgeExecutionTimerRef.current) {
       window.clearTimeout(dodgeExecutionTimerRef.current);
       dodgeExecutionTimerRef.current = null;
@@ -145,27 +129,29 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   if (!enabled) return null;
 
-  // Coordinate classes based on currentPos
-  const positionClasses =
-    currentPos === 'bottom-left'
-      ? 'bottom-14 left-20'
-      : currentPos === 'top-right'
-      ? 'top-20 right-8'
-      : 'bottom-14 right-8';
-
   return (
     <motion.aside
-      ref={botRef}
       aria-label="CyberBot"
+      aria-hidden={placement.hidden || undefined}
       data-cyberbot-control
       drag
-      dragConstraints={dragBoundsRef}
+      // Numeric bounds avoid Motion's ref-resize handler retaining a second offset
+      // after the layout hook has already repositioned the companion.
+      dragConstraints={{
+        left: 12 - placement.left,
+        top: 12 - placement.top,
+        right: (dragBoundsRef.current?.clientWidth ?? placement.left + 106) - placement.left - 106,
+        bottom: (dragBoundsRef.current?.clientHeight ?? placement.top + 106) - placement.top - 106,
+      }}
       dragMomentum={false}
       dragElastic={0.06}
-      style={{ x, y }}
+      style={{ x, y, left: placement.left, top: placement.top, visibility: placement.hidden ? 'hidden' : 'visible' }}
       onDragStart={() => {
         isDraggingRef.current = true;
         setIsDragging(true);
+        setIsDodgeCooldown(true);
+        setTemporaryEmotion(null);
+        if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
         if (dodgeExecutionTimerRef.current) {
           window.clearTimeout(dodgeExecutionTimerRef.current);
           dodgeExecutionTimerRef.current = null;
@@ -173,22 +159,33 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       }}
       onDragEnd={(_event, info) => {
         const dist = Math.hypot(info.offset.x, info.offset.y);
-        setTimeout(() => {
+        if (!placement.hasObstacles) {
+          setManualOffset({
+            x: placement.left + x.get() - (currentPos === 'bottom-left' ? 80 : window.innerWidth - 126),
+            y: placement.top + y.get() - (currentPos === 'top-right' ? 80 : window.innerHeight - 150),
+          });
+        }
+        x.set(0);
+        y.set(0);
+        dragEndTimerRef.current = window.setTimeout(() => {
           isDraggingRef.current = false;
           setIsDragging(false);
         }, dist > 5 ? 120 : 0);
-        window.requestAnimationFrame(keepBubbleVisible);
+        // Re-entering the hitbox at drop time must not turn a deliberate drag into a dodge.
+        dodgeTimerRef.current = window.setTimeout(() => setIsDodgeCooldown(false), 700);
       }}
       layout={!isDragging && !reducedMotion}
       transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
-      className={`fixed ${positionClasses} z-[180] w-[94px] h-[94px] pointer-events-none select-none`}
+      className="fixed z-[180] w-[94px] h-[94px] pointer-events-none select-none"
     >
       {/* Speech Bubble Area (Anchored directly above CyberBot without shifting layout) */}
       <div
         ref={bubbleRef}
         data-no-hide
+        aria-hidden={!placement.bubbleVisible || undefined}
+        style={{ width: placement.bubbleWidth, visibility: placement.bubbleVisible && !placement.hidden ? 'visible' : 'hidden' }}
         className={`absolute bottom-full mb-3 pointer-events-auto ${
-          currentPos === 'bottom-left' ? 'left-0' : 'right-0'
+          placement.align === 'left' ? 'left-0' : 'right-0'
         }`}
       >
         <AnimatePresence mode="wait">
@@ -197,7 +194,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
               key={activeMessage.id}
               message={activeMessage}
               onClose={onDismissMessage}
-              position={currentPos}
+              position={placement.align === 'left' ? 'bottom-left' : 'bottom-right'}
               closeLabel={closeLabel}
             />
           )}

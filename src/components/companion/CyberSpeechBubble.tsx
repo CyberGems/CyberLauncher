@@ -43,7 +43,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       transition={reducedMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
       role={message.priority === 'high' ? 'alert' : 'status'}
       data-no-hide
-      className={`relative min-w-[200px] max-w-xs sm:max-w-sm rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3.5 text-slate-200 select-none z-50`}
+      className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3.5 text-slate-200 select-none z-50`}
     >
       {/* Header Tag & Close button */}
       <div className="flex items-center justify-between gap-2 mb-1.5">

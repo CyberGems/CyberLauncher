@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CyberBot, getCyberBotViewportAdjustment } from '../src/components/companion/CyberBot';
+import { CyberBot } from '../src/components/companion/CyberBot';
+import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
+import { createCyberBotSleepTimer, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -32,20 +34,97 @@ test('quiet hours span midnight and stop at the configured end', () => {
   assert.equal(isInQuietHours('22:00', '07:00', at(7)), false);
 });
 
-test('a speech bubble near the viewport edge moves inward with the avatar', () => {
-  const adjustment = getCyberBotViewportAdjustment(
-    { left: 80, right: 174, top: 80, bottom: 174 },
-    { left: -20, right: 280, top: -40, bottom: 60 },
-    800,
-    600
-  );
-  assert.deepEqual(adjustment, { x: 32, y: 52 });
-  assert.deepEqual(getCyberBotViewportAdjustment(
-    { left: 686, right: 780, top: 486, bottom: 580 },
-    { left: 540, right: 840, top: 440, bottom: 640 },
-    800,
-    600
-  ), { x: -52, y: -52 });
+test('the avatar and speech remain inside the viewport after dragging to an edge', () => {
+  for (const preferred of [{ left: -200, top: -100 }, { left: 900, top: 800 }]) {
+    const layout = getCyberBotLayout({ width: 800, height: 600, preferred, align: 'right', bubbleHeight: 120, obstacles: [] });
+    assert.equal(layout.hidden, false);
+    assert.equal(layout.bubbleVisible, true);
+    assert.ok(layout.left >= 12 && layout.left + 94 <= 788);
+    assert.ok(layout.top - 132 >= 12 && layout.top + 94 <= 588);
+    const speechLeft = layout.align === 'right' ? layout.left + 94 - layout.bubbleWidth : layout.left;
+    assert.ok(speechLeft >= 12 && speechLeft + layout.bubbleWidth <= 788);
+  }
+});
+
+test('a right panel moves the robot and its entire bubble aside, then the saved position is restored', () => {
+  const base = { width: 800, height: 600, preferred: { left: 674, top: 450 }, align: 'right' as const, bubbleHeight: 100 };
+  const original = getCyberBotLayout({ ...base, obstacles: [] });
+  const aside = getCyberBotLayout({ ...base, obstacles: [{ left: 380, top: 0, right: 800, bottom: 600 }] });
+  assert.ok(aside.left + 94 <= 368);
+  assert.equal(aside.bubbleVisible, true);
+  assert.equal(aside.hidden, false);
+  const speechRight = aside.align === 'right' ? aside.left + 94 : aside.left + aside.bubbleWidth;
+  assert.ok(speechRight <= 368);
+  assert.deepEqual(getCyberBotLayout({ ...base, obstacles: [] }), original);
+});
+
+test('speech fits the narrow free strip shown beside a large panel', () => {
+  const layout = getCyberBotLayout({
+    width: 830, height: 1080, preferred: { left: 704, top: 930 }, align: 'right', bubbleHeight: 180,
+    obstacles: [{ left: 204, top: 0, right: 830, bottom: 1080 }],
+  });
+  assert.equal(layout.bubbleVisible, true);
+  assert.equal(layout.bubbleWidth, 180);
+  assert.ok(layout.left + 94 <= 192);
+});
+
+test('a full-width panel hides the companion; a smaller gap can keep just the avatar', () => {
+  const base = { width: 800, height: 600, preferred: { left: 674, top: 450 }, align: 'right' as const, bubbleHeight: 120 };
+  assert.equal(getCyberBotLayout({ ...base, obstacles: [{ left: 0, top: 0, right: 800, bottom: 600 }] }).hidden, true);
+  const compact = getCyberBotLayout({ ...base, obstacles: [{ left: 140, top: 0, right: 800, bottom: 600 }] });
+  assert.equal(compact.hidden, false);
+  assert.equal(compact.bubbleVisible, false);
+  assert.ok(compact.left + 94 <= 128);
+});
+
+test('centered dialogs and overlapping panels both remain unobstructed', () => {
+  const obstacles = [
+    { left: 800, top: 0, right: 1200, bottom: 800 },
+    { left: 350, top: 100, right: 850, bottom: 700 },
+  ];
+  const layout = getCyberBotLayout({ width: 1200, height: 800, preferred: { left: 1074, top: 650 }, align: 'right', bubbleHeight: 120, obstacles });
+  assert.equal(layout.hidden, false);
+  assert.equal(layout.bubbleVisible, true);
+  const footprint = {
+    left: layout.align === 'right' ? layout.left + 94 - layout.bubbleWidth : layout.left,
+    right: layout.align === 'right' ? layout.left + 94 : layout.left + layout.bubbleWidth,
+    top: layout.top - 132,
+    bottom: layout.top + 94,
+  };
+  for (const obstacle of obstacles) {
+    assert.ok(footprint.right <= obstacle.left - 12 || footprint.left >= obstacle.right + 12 || footprint.bottom <= obstacle.top - 12 || footprint.top >= obstacle.bottom + 12);
+  }
+});
+
+test('sleep waits for inactivity, wakes on interaction, and cleans up its timer', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: boolean[] = [];
+  const timer = createCyberBotSleepTimer(sleeping => changes.push(sleeping));
+  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS - 1);
+  timer.wake();
+  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS - 1);
+  assert.deepEqual(changes, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, [true]);
+  timer.wake();
+  assert.deepEqual(changes, [true, false]);
+  timer.dispose();
+  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS * 2);
+  timer.wake();
+  assert.deepEqual(changes, [true, false]);
+});
+
+test('idle expression selection includes the new faces without repeating the previous expression', () => {
+  const seen = new Set<string>();
+  for (let i = 0; i < 12; i++) {
+    const face = nextCyberBotIdleExpression('idle', () => i / 12);
+    seen.add(face);
+    assert.notEqual(nextCyberBotIdleExpression(face, () => 0), face);
+  }
+  assert.ok(seen.has('curious'));
+  assert.ok(seen.has('delighted'));
+  assert.ok(seen.has('affectionate'));
+  assert.ok(seen.has('sparkle'));
 });
 
 test('the companion exposes one keyboard button and an accessible dismiss action', () => {

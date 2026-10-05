@@ -129,6 +129,7 @@ export function CommandPalette({
         >
           <motion.div
             ref={dialogRef}
+            data-cyberbot-obstacle="top"
             role="dialog"
             aria-modal="true"
             aria-label={label}

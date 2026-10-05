@@ -306,6 +306,7 @@ export default function AboutModal({
     >
       <motion.div
         initial={{ scale: 0.94, opacity: 0, y: 20 }}
+        data-cyberbot-obstacle="center"
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.94, opacity: 0, y: 20 }}
         onClick={(e) => e.stopPropagation()}

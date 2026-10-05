@@ -1233,6 +1233,7 @@ const ClockHUD = ({
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             onClick={(e) => e.stopPropagation()}
+            data-cyberbot-obstacle="right"
             className="fixed right-0 top-0 bottom-0 z-50 flex shadow-2xl select-none"
           >
             {/* Left status panel: clock + active tasks */}
@@ -1754,6 +1755,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, t }:
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             onClick={(e) => e.stopPropagation()}
+            data-cyberbot-obstacle="right"
             className="fixed right-0 top-0 bottom-0 w-[420px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col overflow-hidden select-none"
           >
             <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
@@ -1909,6 +1911,7 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
             exit={{ x: '100%', opacity: 0.9 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             onClick={(e) => e.stopPropagation()}
+            data-cyberbot-obstacle="right"
             className="fixed right-0 top-0 bottom-0 w-[420px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 shadow-2xl flex flex-col overflow-hidden select-none"
           >
             <div className="px-5 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0 gap-3">
@@ -3331,6 +3334,7 @@ export default function App() {
   });
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
+  const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
 
   // Route system notifications to CyberBot when companion is active
   useEffect(() => {
@@ -7882,6 +7886,7 @@ export default function App() {
 
         <div 
           ref={scrollContainerRef} 
+          data-cyberbot-obstacle={isTerminalOpen ? 'bounds' : undefined}
           className={`flex-1 ${isTerminalOpen ? 'px-4 pb-4' : 'px-8 pb-8'} custom-scrollbar relative z-10 flex flex-col min-h-0 ${
             (searchScope === 'system' && searchQuery.trim() !== '') || isTerminalOpen
               ? 'overflow-hidden' 
@@ -9583,6 +9588,7 @@ export default function App() {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             data-no-hide
             onClick={(e) => e.stopPropagation()}
+            data-cyberbot-obstacle="right"
             className="fixed right-0 top-0 bottom-0 z-[60] flex shadow-2xl"
           >
             {/* Advanced options column (left of main form) */}
@@ -10305,6 +10311,7 @@ export default function App() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               data-no-hide
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="right"
               className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
                 isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
               }`}
@@ -12526,6 +12533,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(34,211,238,0.1)] overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
@@ -12607,6 +12615,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
@@ -13201,6 +13210,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
@@ -13279,6 +13289,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
@@ -13349,6 +13360,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
@@ -13413,6 +13425,7 @@ export default function App() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
               className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
@@ -13480,6 +13493,7 @@ export default function App() {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               data-no-hide
+              data-cyberbot-obstacle="center"
               className={`w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 shadow-2xl space-y-5 text-center ${
                 powerConfirmAction === 'shutdown'
                   ? 'border-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.2)]'
@@ -13691,6 +13705,7 @@ export default function App() {
               aria-labelledby="missing-shortcut-title"
               onClick={(e) => e.stopPropagation()}
               data-no-hide
+              data-cyberbot-obstacle="center"
               className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/35 bg-[#070b13]/95 shadow-[0_0_35px_rgba(245,158,11,0.14)] backdrop-blur-2xl"
             >
               <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/[0.07] px-5 py-4">
@@ -13754,7 +13769,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {!isElectron && !cyberBot.enabled && notification && (
+        {!isElectron && (!cyberBot.enabled || !isCyberBotSpeechVisible) && notification && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide
@@ -13948,6 +13963,7 @@ export default function App() {
         dragBoundsRef={rootRef}
         interactLabel={t('cyberbot_interact')}
         closeLabel={t('cyberbot_close_message')}
+        onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
       />
 
       {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}
