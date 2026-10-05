@@ -265,6 +265,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     action?: { label: string; onClick: () => void };
     secondaryAction?: { label: string; onClick: () => void };
     tertiaryAction?: { label: string; onClick: () => void };
+    onDismiss?: () => void;
     durationMs?: number;
     priority?: 'low' | 'normal' | 'high';
     essential?: boolean;
@@ -301,6 +302,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       action: msg.action,
       secondaryAction: msg.secondaryAction,
       tertiaryAction: msg.tertiaryAction,
+      onDismiss: msg.onDismiss,
       durationMs: duration,
       timestamp: Date.now(),
       priority,

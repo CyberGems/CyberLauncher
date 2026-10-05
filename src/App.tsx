@@ -5738,7 +5738,8 @@ export default function App() {
         detail: t('cyberbot_name_invite_detail'),
         emotion: 'curious',
         priority: 'low',
-        durationMs: 10000,
+        durationMs: 0,
+        onDismiss: cyberBot.advanceNamePrompt,
         action: {
           label: t('cyberbot_name_invite_set'),
           onClick: () => {
@@ -5748,11 +5749,10 @@ export default function App() {
             setIsSettingsOpen(true);
           },
         },
-        secondaryAction: { label: t('cyberbot_name_invite_later'), onClick: () => {} },
+        secondaryAction: { label: t('cyberbot_name_invite_later'), onClick: cyberBot.advanceNamePrompt },
         tertiaryAction: { label: t('cyberbot_name_invite_never'), onClick: cyberBot.dismissNamePromptForever },
       });
-      if (shown) cyberBot.advanceNamePrompt();
-      else timer = window.setTimeout(offer, 15000);
+      if (!shown) timer = window.setTimeout(offer, 15000);
     };
 
     timer = window.setTimeout(offer, 8000);

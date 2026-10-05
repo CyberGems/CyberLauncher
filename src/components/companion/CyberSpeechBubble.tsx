@@ -61,6 +61,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
           aria-label={closeLabel}
           onClick={(e) => {
             e.stopPropagation();
+            message.onDismiss?.();
             onClose();
           }}
           className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"

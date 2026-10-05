@@ -56,6 +56,7 @@ export interface CyberBotMessage {
     label: string;
     onClick: () => void;
   };
+  onDismiss?: () => void;
   durationMs?: number; // 0 or undefined for persistent until dismissed
   timestamp: number;
   priority?: 'low' | 'normal' | 'high';

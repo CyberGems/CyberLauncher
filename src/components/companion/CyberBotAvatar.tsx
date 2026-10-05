@@ -76,10 +76,9 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     // Keep the signature logo face crisp; only the other relaxed expressions blink.
     if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'launcher') {
       return (
-        <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
-          <text x="33" y="47" textAnchor="middle">-</text>
-          <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
-          <text x="67" y="47" textAnchor="middle">-</text>
+        <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
+          <path d="M 29 43 H 37 M 63 43 H 71" />
+          <path d="M 46 51 Q 51 53 56 51" stroke="#38bdf8" strokeWidth="1.6" />
         </g>
       );
     }
@@ -103,35 +102,33 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         );
       case 'delighted':
         return (
-          <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
-            <path d="M 28 43 Q 33 35 38 43 M 62 43 Q 67 35 72 43" />
-            <path d="M 44 48 Q 50 61 56 48 Z" fill="#38bdf8" stroke="none" />
-            <ellipse cx="29" cy="51" rx="4" ry="2" fill="#f43f5e" fillOpacity="0.65" stroke="none" />
-            <ellipse cx="71" cy="51" rx="4" ry="2" fill="#f43f5e" fillOpacity="0.65" stroke="none" />
+          <g fill="none" stroke="#22d3ee" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M 28 42 Q 33 39 38 41 M 62 41 Q 67 39 72 42" strokeWidth="2.2" />
+            <path d="M 44 51 Q 51 55 58 49" stroke="#38bdf8" strokeWidth="1.8" />
+            <path d="M 58 49 L 60 47" stroke="#38bdf8" strokeWidth="1.4" />
           </g>
         );
       case 'sparkle':
         return (
-          <g className="font-mono text-[13px] font-black" fill="#38bdf8" textAnchor="middle">
-            <text x="32" y="47">✦</text>
-            <text x="50" y="49" fontSize="11" fill="#22d3ee">‿</text>
-            <text x="68" y="47">✦</text>
+          <g fill="none" stroke="#38bdf8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M 33 38 L 34.5 42 L 38 43.5 L 34.5 45 L 33 49 L 31.5 45 L 28 43.5 L 31.5 42 Z" fill="#22d3ee" stroke="none" />
+            <path d="M 63 42 Q 68 40 72 42" strokeWidth="2" />
+            <path d="M 45 51 Q 51 54 57 50" stroke="#22d3ee" strokeWidth="1.7" />
           </g>
         );
       case 'affectionate':
         return (
-          <g className="font-mono text-[13px] font-black" fill="#f43f5e" textAnchor="middle">
-            <text x="32" y="47">♥</text>
-            <text x="50" y="49" fontSize="11" fill="#38bdf8">‿</text>
-            <text x="68" y="47">♥</text>
+          <g fill="#22d3ee">
+            <rect x="29" y="40" width="7" height="5" rx="2.5" />
+            <rect x="64" y="40" width="7" height="5" rx="2.5" />
+            <path d="M 45 51 Q 51 54 57 50" fill="none" stroke="#38bdf8" strokeWidth="1.7" strokeLinecap="round" />
           </g>
         );
       case 'happy':
         return (
-          <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
-            <text x="32" y="47" textAnchor="middle">^</text>
-            <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
-            <text x="68" y="47" textAnchor="middle">^</text>
+          <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
+            <path d="M 28 43 Q 33 39 38 43 M 62 43 Q 67 39 72 43" />
+            <path d="M 45 51 Q 51 54 57 50" stroke="#38bdf8" strokeWidth="1.7" />
           </g>
         );
       case 'alert':
@@ -152,10 +149,10 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         );
       case 'wink':
         return (
-          <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
-            <text x="33" y="47" textAnchor="middle">^</text>
-            <text x="50" y="49" textAnchor="middle" fontSize="11" fill="#38bdf8">‿</text>
-            <text x="67" y="47" textAnchor="middle">~</text>
+          <g fill="none" stroke="#22d3ee" strokeLinecap="round">
+            <rect x="30" y="40" width="7" height="6" rx="3" fill="#22d3ee" stroke="none" />
+            <path d="M 63 43 Q 67 41 71 43" strokeWidth="2" />
+            <path d="M 45 51 Q 52 55 58 49" stroke="#38bdf8" strokeWidth="1.7" />
           </g>
         );
       case 'sleeping':
@@ -333,7 +330,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               transform={
                 isHovered && !isSleeping
                   ? 'rotate(-32 23 77)'
-                  : faceEmotion === 'happy' || faceEmotion === 'wink' || faceEmotion === 'delighted'
+                  : faceEmotion === 'happy' || faceEmotion === 'wink'
                   ? 'rotate(-25 23 77)'
                   : 'rotate(8 23 77)'
               }
@@ -352,7 +349,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               transform={
                 isHovered && !isSleeping
                   ? 'rotate(32 76 77)'
-                  : faceEmotion === 'happy' || faceEmotion === 'wink' || faceEmotion === 'delighted'
+                  : faceEmotion === 'happy' || faceEmotion === 'wink'
                   ? 'rotate(25 76 77)'
                   : 'rotate(-8 76 77)'
               }
@@ -450,8 +447,18 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           </g>
           {isSleeping && (
             <g fill="#94a3b8" className="font-mono font-bold" aria-hidden="true">
-              <text x="77" y="19" fontSize="8">z</text>
-              <text x="86" y="11" fontSize="10">z</text>
+              <motion.g
+                animate={reducedMotion ? { opacity: 0.65, x: 0, y: 0 } : { opacity: [0, 0.8, 0], x: [0, 2, 4], y: [4, -2, -9] }}
+                transition={reducedMotion ? { duration: 0 } : { duration: 2.8, repeat: Infinity, ease: 'easeOut' }}
+              >
+                <text x="77" y="19" fontSize="8">z</text>
+              </motion.g>
+              <motion.g
+                animate={reducedMotion ? { opacity: 0.55, x: 0, y: 0 } : { opacity: [0, 0.7, 0], x: [0, 2, 4], y: [4, -2, -9] }}
+                transition={reducedMotion ? { duration: 0 } : { duration: 2.8, delay: 1.2, repeat: Infinity, ease: 'easeOut' }}
+              >
+                <text x="86" y="11" fontSize="10">z</text>
+              </motion.g>
             </g>
           )}
         </svg>

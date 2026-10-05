@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
+import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
 import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
@@ -61,6 +62,19 @@ test('the name invitation exposes its three explicit choices', () => {
   assert.match(html, /Choose a name/);
   assert.match(html, /Not now/);
   assert.match(html, /Don&#x27;t ask again/);
+});
+
+test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', () => {
+  const confident = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'delighted' }));
+  assert.match(confident, /data-cyberbot-face="delighted"/);
+  assert.doesNotMatch(confident, /#f43f5e|♥/);
+
+  const warm = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'affectionate' }));
+  assert.doesNotMatch(warm, /#f43f5e|♥/);
+
+  const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping' }));
+  assert.match(sleeping, /data-cyberbot-face="sleeping"/);
+  assert.equal((sleeping.match(/>z<\/text>/g) || []).length, 2);
 });
 
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
