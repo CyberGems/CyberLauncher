@@ -74,7 +74,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   // Face expression terminal characters
   const renderFaceContent = () => {
     // If blinking and not sleeping or scared, show closed eyes
-    if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert') {
+    if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'launcher') {
       return (
         <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
           <text x="33" y="47" textAnchor="middle">-</text>
@@ -85,6 +85,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     }
 
     switch (faceEmotion) {
+      case 'launcher':
+        return (
+          <g fill="#22d3ee">
+            <circle cx="34" cy="44" r="5.5" />
+            <path d="M 61 38 H 67 V 41 H 70 V 47 H 67 V 50 H 61 V 47 H 58 V 41 H 61 Z" />
+          </g>
+        );
       case 'curious':
         return (
           <g fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round">

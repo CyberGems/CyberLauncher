@@ -74,6 +74,11 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_context_cmd_palette_2', emotion: 'happy' },
     { key: 'cyberbot_context_cmd_palette_3', emotion: 'speaking' },
   ],
+  about: [
+    { key: 'cyberbot_context_about', emotion: 'launcher' },
+    { key: 'cyberbot_context_about_2', emotion: 'delighted' },
+    { key: 'cyberbot_context_about_3', emotion: 'sparkle' },
+  ],
   launch: [
     { key: 'cyberbot_launching_app', emotion: 'happy' },
     { key: 'cyberbot_launching_app_2', emotion: 'happy' },

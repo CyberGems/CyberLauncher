@@ -5,6 +5,7 @@ export type CyberBotEmotion =
   | 'delighted'
   | 'affectionate'
   | 'sparkle'
+  | 'launcher'
   | 'alert' 
   | 'scared' 
   | 'speaking' 

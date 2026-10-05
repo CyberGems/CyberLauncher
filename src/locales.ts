@@ -831,6 +831,9 @@ export const translations = {
     cyberbot_context_cmd_palette: "Escribe para buscar cualquier aplicación o comando al instante.",
     cyberbot_context_cmd_palette_2: "El puesto de mando del teclado. Empieza por escribir.",
     cyberbot_context_cmd_palette_3: "Aplicaciones y comandos, a unas pocas teclas de distancia.",
+    cyberbot_context_about: "Un punto y un signo más: de aquí heredé la mirada.",
+    cyberbot_context_about_2: "Aquí CyberLauncher cuenta quién es y qué versión lleva puesta.",
+    cyberbot_context_about_3: "Hecho por CyberGems, con atajos, brillo azul y atención a los detalles.",
   },
   en: {
     // Top Bar & General Placeholders
@@ -1664,6 +1667,9 @@ export const translations = {
     cyberbot_context_cmd_palette: "Type to quickly search and launch apps or run commands.",
     cyberbot_context_cmd_palette_2: "The keyboard command center. Start by typing.",
     cyberbot_context_cmd_palette_3: "Apps and commands, just a few keystrokes away.",
+    cyberbot_context_about: "A dot and a plus sign: this is where I got my look.",
+    cyberbot_context_about_2: "This is where CyberLauncher shares who it is and which version it is wearing.",
+    cyberbot_context_about_3: "Made by CyberGems, with shortcuts, a blue glow, and attention to detail.",
   }
 };
 

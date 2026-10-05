@@ -3378,7 +3378,9 @@ export default function App() {
 
     let targetTopic: CyberBotTopic | null = null;
 
-    if (isSettingsOpen) {
+    if (isAboutOpen) {
+      targetTopic = 'about';
+    } else if (isSettingsOpen) {
       if (settingsTab === 'cyberbot') {
         targetTopic = 'settings_cyberbot';
       } else if (settingsTab === 'backup') {
@@ -3415,6 +3417,7 @@ export default function App() {
   }, [
     isSettingsOpen,
     settingsTab,
+    isAboutOpen,
     isSystemHUDOpen,
     isStorageHUDOpen,
     isCommandPaletteOpen,

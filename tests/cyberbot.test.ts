@@ -125,6 +125,16 @@ test('idle expression selection includes the new faces without repeating the pre
   assert.ok(seen.has('delighted'));
   assert.ok(seen.has('affectionate'));
   assert.ok(seen.has('sparkle'));
+  assert.ok(seen.has('launcher'));
+});
+
+test('the About panel has a bilingual phrase deck featuring the CyberLauncher face', () => {
+  assert.equal(cyberBotPhrases.about.length, 3);
+  assert.ok(cyberBotPhrases.about.some(phrase => phrase.emotion === 'launcher'));
+  for (const { key } of cyberBotPhrases.about) {
+    assert.ok(translations.es[key]?.trim());
+    assert.ok(translations.en[key]?.trim());
+  }
 });
 
 test('the companion exposes one keyboard button and an accessible dismiss action', () => {
