@@ -2335,6 +2335,9 @@ export default function App() {
   const [powerConfirmAction, setPowerConfirmAction] = useState<'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout' | null>(null);
   const [powerCountdown, setPowerCountdown] = useState<number>(10);
   const [powerForceClose, setPowerForceClose] = useState<boolean>(false);
+  const [confirmBeforeDeletingApps, setConfirmBeforeDeletingApps] = useState<boolean>(() => localStorage.getItem('confirmBeforeDeletingApps') !== 'false');
+  const [appToDelete, setAppToDelete] = useState<LauncherApp | null>(null);
+  const [dontAskAgainOnAppDelete, setDontAskAgainOnAppDelete] = useState(false);
   const powerForceCloseRef = useRef(powerForceClose);
   powerForceCloseRef.current = powerForceClose;
   const powerMenuRef = useRef<HTMLDivElement>(null);
@@ -3198,6 +3201,17 @@ export default function App() {
       setEditingApp(null);
       setBrowseDropdownOpen(false);
     }
+  };
+
+  const deleteApp = (app: LauncherApp) => {
+    setApps(prev => prev.filter(item => item.id !== app.id));
+    setFavoriteIds(prev => prev.filter(id => id !== app.id));
+    setTaskbarAppIds(prev => prev.filter(id => id !== app.id));
+  };
+
+  const setAppDeleteConfirmationPreference = (enabled: boolean) => {
+    setConfirmBeforeDeletingApps(enabled);
+    localStorage.setItem('confirmBeforeDeletingApps', String(enabled));
   };
 
   const handleCreateCategory = (e?: React.FormEvent) => {
@@ -5700,7 +5714,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [namePromptCheckTick, setNamePromptCheckTick] = useState(0);
   useEffect(() => {
@@ -6812,7 +6826,9 @@ export default function App() {
           setIsCommandPaletteOpen(false);
           return;
         }
-        if (powerConfirmAction) {
+        if (appToDelete) {
+          setAppToDelete(null);
+        } else if (powerConfirmAction) {
           setPowerConfirmAction(null);
         } else if (isPowerMenuOpen) {
           setIsPowerMenuOpen(false);
@@ -6912,7 +6928,7 @@ export default function App() {
     };
   }, [
     isCommandPaletteOpen, isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
-    editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, confirmResetType,
+    editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, appToDelete, confirmResetType,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
@@ -10524,6 +10540,23 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_language_desc')}</p>
                 </div>
 
+                <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5">
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-wide">{t('general_confirm_delete_apps')}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('general_confirm_delete_apps_desc')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={confirmBeforeDeletingApps}
+                    aria-label={t('general_confirm_delete_apps')}
+                    onClick={() => setAppDeleteConfirmationPreference(!confirmBeforeDeletingApps)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${confirmBeforeDeletingApps ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${confirmBeforeDeletingApps ? 'left-6' : 'left-1'}`} />
+                  </button>
+                </div>
+
                 {/* Keyboard Shortcut Config */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -13023,12 +13056,16 @@ export default function App() {
                 
                 <button
                    onClick={() => {
-                     setApps(prev => prev.filter(app => app.id !== contextMenu.app!.id));
-                     setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
-                     setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                     const app = contextMenu.app!;
                      setContextMenu(null);
+                     if (confirmBeforeDeletingApps) {
+                       setDontAskAgainOnAppDelete(false);
+                       setAppToDelete(app);
+                     } else {
+                       deleteApp(app);
+                     }
                    }}
-                   className="w-full text-left px-4 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400"
+                   className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
                 >
                   {t('ctx_delete_app')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
                 </button>
@@ -13401,6 +13438,82 @@ export default function App() {
               <span className="text-[11px] font-cyber">{t('ctx_configure_footer')}</span>
               <Settings className="w-3.5 h-3.5 ml-2 text-cyan-400" />
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- APP DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {appToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAppToDelete(null)}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  {t('confirm_delete_app_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setAppToDelete(null)}
+                  aria-label={t('confirm_reset_btn_cancel')}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('confirm_delete_app_desc', { name: appToDelete.name })}
+                </p>
+
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
+                  <input
+                    type="checkbox"
+                    checked={dontAskAgainOnAppDelete}
+                    onChange={(e) => setDontAskAgainOnAppDelete(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                  />
+                  <span>{t('confirm_delete_app_dont_ask')}</span>
+                </label>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAppToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dontAskAgainOnAppDelete) setAppDeleteConfirmationPreference(false);
+                      deleteApp(appToDelete);
+                      setAppToDelete(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('ctx_delete_app')}</span>
+                    <EnterKeyBadge variant="danger" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
