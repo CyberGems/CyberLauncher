@@ -406,7 +406,7 @@ export default function AboutModal({
                     className="flex items-center justify-center gap-1.5 w-full py-2.5 px-1.5 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{versions?.isPortable ? t('about_download_portable') : t('about_download_btn')}</span>
+                    <span className="truncate">{t('about_download_btn')}</span>
                   </button>
                 </div>
               ) : status.state === 'skipped' ? (
@@ -426,7 +426,7 @@ export default function AboutModal({
                       className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{versions?.isPortable ? t('about_download_portable') : t('about_download_btn')}</span>
+                      <span className="truncate">{t('about_download_btn')}</span>
                     </button>
                   </div>
                   <button

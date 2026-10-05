@@ -2039,7 +2039,7 @@ function showDesktopToastInternal(payload: any) {
     win.webContents.send('desktop-toast-data', latestToastPayload);
   }
 
-  if (payload.type !== 'imminent') {
+  if (payload.type !== 'imminent' && !payload.persistent) {
     const ms = payload.source === 'launch' ? 3000 : payload.action ? 8000 : 4500;
     desktopToastAutoDismissTimer = setTimeout(() => {
       hideDesktopToastInternal();
@@ -3881,11 +3881,17 @@ function setupIpcHandlers() {
         const url = new URL(payload.url);
         if (url.protocol === 'https:') void shell.openExternal(url.toString());
       } catch { /* Ignore malformed release URLs. */ }
+      if (latestToastPayload?.persistent && latestToastPayload?.action === 'open-about' && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update:notice-dismissed');
+      }
       hideDesktopToastInternal();
     }
   });
 
   ipcMain.on('desktop-toast-hide', () => {
+    if (latestToastPayload?.persistent && latestToastPayload?.action === 'open-about' && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:notice-dismissed');
+    }
     hideDesktopToastInternal();
   });
 

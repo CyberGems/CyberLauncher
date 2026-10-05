@@ -477,6 +477,7 @@ declare global {
         releaseUrl?: string;
         releaseLabel?: string;
         dismissLabel?: string;
+        persistent?: boolean;
         source?: 'launch';
         essential?: boolean;
       }) => Promise<boolean>;
@@ -487,6 +488,7 @@ declare global {
         quietHours: { enabled: boolean; from: string; to: string };
       }) => Promise<boolean>;
       hideDesktopToast?: () => Promise<boolean>;
+      onUpdateNoticeDismissed?: (callback: () => void) => () => void;
       onCancelScheduledTask?: (callback: (taskId: string) => void) => () => void;
       onLaunchScheduledNow?: (callback: (taskId: string) => void) => () => void;
       onOpenHudAction?: (callback: (target: string) => void) => () => void;
@@ -2438,6 +2440,7 @@ export default function App() {
     detail?: string;
     releaseUrl?: string;
     source?: 'system-alert';
+    persistent?: boolean;
   } | null>(null);
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string } | null>(null);
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
@@ -2512,6 +2515,7 @@ export default function App() {
       setToastPaused(false);
       return;
     }
+    if (notification.persistent) return;
     if (toastPaused) return;
     if (!isElectron && typeof document !== 'undefined' && document.hidden) return;
 
@@ -3683,6 +3687,22 @@ export default function App() {
     }
   }, [scheduledTasks, handleLaunchImminentNow]);
 
+  const handleSkipUpdateVersion = useCallback((version: string) => {
+    localStorage.setItem(SKIPPED_UPDATE_KEY, version);
+    setUpdateStatus((prev) => {
+      if (prev.state === 'available') {
+        return {
+          state: 'skipped',
+          version,
+          releaseNotes: prev.releaseNotes,
+          releaseUrl: prev.releaseUrl,
+        };
+      }
+      return prev;
+    });
+    setNotification(null);
+  }, []);
+
   useEffect(() => {
     if (!isElectron || !isConfigLoaded) return;
     void window.electronAPI?.setToastPreferences?.({
@@ -3758,6 +3778,11 @@ export default function App() {
         if (!brandTag) brandTag = t('toast_brand_system');
       }
 
+      const isUpdateAvailable = notification.action === 'open-about' && updateStatus.state === 'available';
+      const updateVersion = isUpdateAvailable && updateStatus.state === 'available' ? updateStatus.version : '';
+      const updateReleaseUrl = isUpdateAvailable && updateStatus.state === 'available'
+        ? updateStatus.releaseUrl || `https://github.com/CyberGems/CyberLauncher/releases/tag/v${updateStatus.version.replace(/^v/i, '')}`
+        : undefined;
       const actionHandler = notification.action === 'open-hud-system'
         ? () => setIsSystemHUDOpen(true)
         : notification.action === 'open-hud-storage'
@@ -3768,21 +3793,54 @@ export default function App() {
         ? () => setIsAboutOpen(true)
         : undefined;
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
-        cyberBot.say({
-          text: notification.message,
-          detail: notification.detail,
-          emotion: cyberBotNotificationEmotion(notification),
-          tag: brandTag,
-          action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
-            ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
-            : undefined,
-          secondaryAction: actionHandler && notification.releaseUrl
-            ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
-            : undefined,
-          durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
-          priority: notification.level === 'critical' ? 'high' : 'normal',
-          essential: notification.essential,
-        });
+        if (isUpdateAvailable) {
+          cyberBot.say({
+            id: `update_available_${updateVersion}`,
+            text: notification.message,
+            detail: notification.detail,
+            emotion: 'happy',
+            tag: brandTag,
+            action: {
+              label: t('about_download_btn'),
+              onClick: () => {
+                setNotification(null);
+                void window.electronAPI?.downloadUpdate?.();
+              },
+            },
+            secondaryAction: {
+              label: t('about_view_release'),
+              onClick: () => {
+                setNotification(null);
+                if (updateReleaseUrl) openExternalUrl(updateReleaseUrl);
+              },
+            },
+            tertiaryAction: {
+              label: t('about_skip_btn'),
+              onClick: () => handleSkipUpdateVersion(updateVersion),
+            },
+            onDismiss: () => setNotification(null),
+            durationMs: 0,
+            priority: 'high',
+            essential: true,
+          });
+        } else {
+          cyberBot.say({
+            text: notification.message,
+            detail: notification.detail,
+            emotion: cyberBotNotificationEmotion(notification),
+            tag: brandTag,
+            action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
+              ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
+              : undefined,
+            secondaryAction: actionHandler && notification.releaseUrl
+              ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
+              : undefined,
+            onDismiss: notification.persistent ? () => setNotification(null) : undefined,
+            durationMs: notification.persistent ? 0 : notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
+            priority: notification.level === 'critical' ? 'high' : 'normal',
+            essential: notification.essential,
+          });
+        }
       }
 
       if (showFloating && (notification.source !== 'system-alert' || isWindowVisible)) void window.electronAPI!.showDesktopToast!({
@@ -3798,12 +3856,13 @@ export default function App() {
         releaseUrl: notification.releaseUrl,
         releaseLabel: notification.releaseUrl ? t('about_view_release') : undefined,
         dismissLabel: t('cyberbot_close_message'),
+        persistent: notification.persistent,
       });
       return;
     }
 
     if (isElectron) void window.electronAPI?.hideDesktopToast?.();
-  }, [imminentTask, notification, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl]);
+  }, [imminentTask, notification, updateStatus, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleSkipUpdateVersion, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl]);
 
   // Register desktop toast IPC action listeners (Cancel, Launch now, Open HUD)
   useEffect(() => {
@@ -3832,8 +3891,12 @@ export default function App() {
           setIsSystemHUDOpen(true);
         } else if (target === 'open-about') {
           setIsAboutOpen(true);
+          setNotification(null);
         }
       }));
+    }
+    if (window.electronAPI.onUpdateNoticeDismissed) {
+      unsubs.push(window.electronAPI.onUpdateNoticeDismissed(() => setNotification(null)));
     }
 
     return () => {
@@ -4626,22 +4689,6 @@ export default function App() {
     };
   }, []);
 
-  const handleSkipUpdateVersion = useCallback((version: string) => {
-    localStorage.setItem(SKIPPED_UPDATE_KEY, version);
-    setUpdateStatus((prev) => {
-      if (prev.state === 'available') {
-        return {
-          state: 'skipped',
-          version,
-          releaseNotes: prev.releaseNotes,
-          releaseUrl: prev.releaseUrl,
-        };
-      }
-      return prev;
-    });
-    setNotification(null);
-  }, []);
-
   // Update status: badge + toast (deduped per version/state)
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onUpdateStatus) return;
@@ -4681,6 +4728,8 @@ export default function App() {
           action: 'open-about',
           detail,
           releaseUrl,
+          essential: true,
+          persistent: true,
         });
       }
     };
@@ -7440,11 +7489,16 @@ export default function App() {
           <div className="pt-3 pb-2 px-3 flex items-center justify-between min-w-0">
             <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="bottom">
               <button 
+                type="button"
+                aria-label={t('tooltip_about')}
                 onClick={() => setIsAboutOpen(true)}
                 className="group relative flex items-center gap-2.5 min-w-0 cursor-pointer focus:outline-none"
               >
                 <span className="relative flex-shrink-0">
                   <CyberLogo className="w-[26.6px] h-[26.6px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
+                  {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                    <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
+                  )}
                 </span>
                 <span className="font-cyber font-bold text-[14px] tracking-wide text-white truncate leading-none">
                   Cyber<span className="text-cyan-400">Launcher</span>
@@ -7466,10 +7520,14 @@ export default function App() {
             <Tooltip label={withShortcut(t('tooltip_about'), 'F1')} placement="right">
               <button 
                 type="button"
+                aria-label={t('tooltip_about')}
                 onClick={() => setIsAboutOpen(true)}
                 className="group relative flex items-center justify-center w-7 h-7 cursor-pointer focus:outline-none"
               >
                 <CyberLogo className="w-[22.8px] h-[22.8px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
+                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                  <span aria-hidden="true" className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
+                )}
               </button>
             </Tooltip>
             <Tooltip label={withShortcut(t('tooltip_left_sidebar_expand'), 'Ctrl+Shift+B')} placement="right">
@@ -8953,9 +9011,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsAboutOpen(true)}
-                  className="group relative flex items-center justify-center w-7 h-7 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_12px_rgba(108,155,255,0.2)] hover:shadow-[0_0_16px_rgba(108,155,255,0.45)] transition-all duration-200 mr-0.5 focus:outline-none cursor-pointer"
+                  className="group relative flex items-center justify-center w-6 h-6 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_8px_rgba(108,155,255,0.18)] hover:shadow-[0_0_12px_rgba(108,155,255,0.35)] transition-all duration-200 mr-0.5 focus:outline-none cursor-pointer"
                 >
-                  <ArrowDown className={`w-4 h-4 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
+                  <ArrowDown className={`w-3.5 h-3.5 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
                 </button>
               </Tooltip>
             )}
@@ -9007,9 +9065,6 @@ export default function App() {
                   }`}
                 >
                   <MoreHorizontal className="w-3.5 h-3.5" />
-                  {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
-                  )}
                 </button>
               </Tooltip>
 
@@ -9163,9 +9218,6 @@ export default function App() {
                       >
                         <HelpCircle className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                         <span className="flex-1">{t('more_menu_help')}</span>
-                        {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-                        )}
                         <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
                       </button>
                     </div>
@@ -9285,11 +9337,7 @@ export default function App() {
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
                       <span className="flex-1">{t('more_menu_about')}</span>
-                      {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') ? (
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-                      ) : (
-                        <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">F1</kbd>
-                      )}
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">F1</kbd>
                     </button>
                   </motion.div>
                 )}
@@ -14275,6 +14323,7 @@ export default function App() {
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide
+            data-cyberbot-obstacle={notification.persistent ? 'bounds' : undefined}
             role={notification.action ? 'button' : undefined}
             tabIndex={notification.action ? 0 : undefined}
             onMouseEnter={() => { if (notification.action === 'open-about') setToastPaused(true); }}
@@ -14400,6 +14449,7 @@ export default function App() {
                       onClick={(e) => {
                         e.stopPropagation();
                         openExternalUrl(notification.releaseUrl!);
+                        if (notification.persistent) setNotification(null);
                       }}
                       className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-400/20 hover:text-white transition-colors cursor-pointer"
                     >
@@ -14427,6 +14477,7 @@ export default function App() {
                         onClick={(e) => {
                           e.stopPropagation();
                           void window.electronAPI?.downloadUpdate?.();
+                          setNotification(null);
                         }}
                         className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
                       >

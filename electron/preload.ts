@@ -194,6 +194,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update:status', handler);
     return () => { ipcRenderer.removeListener('update:status', handler); };
   },
+  onUpdateNoticeDismissed: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('update:notice-dismissed', handler);
+    return () => { ipcRenderer.removeListener('update:notice-dismissed', handler); };
+  },
 
   // --- System Health Alerts ---
   onSystemAlertToast: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => {
