@@ -18,17 +18,17 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 }) => {
   const reducedMotion = useReducedMotion();
   const [isBlinking, setIsBlinking] = useState(false);
-  const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('idle');
-  const lastExpressionRef = useRef<CyberBotEmotion>('idle');
+  const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
+  const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
 
   // Brief expressions separated by irregular resting pauses, with or without hover.
   // Reduced motion keeps these static face changes, but disables animated transforms and blinking.
   useEffect(() => {
-    setIdleExpression('idle');
+    setIdleExpression('launcher');
     if (emotion !== 'idle') return;
     let timer: number;
     const rest = () => {
-      setIdleExpression('idle');
+      setIdleExpression('launcher');
       const pause = reducedMotion ? 7000 : isHovered ? 1600 : 3200;
       timer = window.setTimeout(express, pause + Math.random() * 2600);
     };
@@ -73,7 +73,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   // Face expression terminal characters
   const renderFaceContent = () => {
-    // If blinking and not sleeping or scared, show closed eyes
+    // Keep the signature logo face crisp; only the other relaxed expressions blink.
     if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'launcher') {
       return (
         <g className="select-none font-mono text-[14px] font-black" fill="#22d3ee">
@@ -88,8 +88,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       case 'launcher':
         return (
           <g fill="#22d3ee">
-            <circle cx="34" cy="44" r="5.5" />
-            <path d="M 61 38 H 67 V 41 H 70 V 47 H 67 V 50 H 61 V 47 H 58 V 41 H 61 Z" />
+            <rect x="27" y="37" width="14" height="14" rx="5" />
+            <path d="M 64 36 H 69 V 41 H 74 V 47 H 69 V 52 H 64 V 47 H 58 V 41 H 64 Z" />
           </g>
         );
       case 'curious':
@@ -181,7 +181,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             <text x="67" y="47" textAnchor="middle">•</text>
           </g>
         );
-      case 'idle':
+      case 'terminal':
       default:
         return (
           <g className="select-none font-mono text-[15px] font-black tracking-widest" fill="#22d3ee">
@@ -435,7 +435,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             />
 
             {/* Terminal Face Content */}
-            <g filter="url(#cyberGlowFilter)">
+            <g filter={faceEmotion === 'launcher' ? undefined : 'url(#cyberGlowFilter)'}>
               {renderFaceContent()}
             </g>
           </g>

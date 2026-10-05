@@ -1,7 +1,8 @@
 import type { CyberBotEmotion } from './companionTypes';
 
 export const CYBERBOT_SLEEP_DELAY_MS = 90_000;
-export const cyberBotIdleExpressions = ['happy', 'wink', 'curious', 'delighted', 'affectionate', 'sparkle', 'launcher'] as const;
+// The logo face is the resting expression; these appear briefly between resting pauses.
+export const cyberBotIdleExpressions = ['happy', 'wink', 'curious', 'delighted', 'affectionate', 'sparkle', 'terminal'] as const;
 
 export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = Math.random): CyberBotEmotion {
   const choices = cyberBotIdleExpressions.filter(emotion => emotion !== previous);

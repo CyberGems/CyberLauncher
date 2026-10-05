@@ -125,7 +125,8 @@ test('idle expression selection includes the new faces without repeating the pre
   assert.ok(seen.has('delighted'));
   assert.ok(seen.has('affectionate'));
   assert.ok(seen.has('sparkle'));
-  assert.ok(seen.has('launcher'));
+  assert.ok(seen.has('terminal'));
+  assert.equal(seen.has('launcher'), false);
 });
 
 test('the About panel has a bilingual phrase deck featuring the CyberLauncher face', () => {
@@ -151,6 +152,7 @@ test('the companion exposes one keyboard button and an accessible dismiss action
   assert.match(html, /aria-label="Dismiss CyberBot message"/);
   assert.match(html, /data-no-hide/);
   assert.match(html, /data-cyberbot-control/);
+  assert.match(html, /data-cyberbot-face="launcher"/);
   assert.match(html, /role="alert"/);
   assert.equal((html.match(/aria-label="Interact with CyberBot"/g) || []).length, 1);
 });
