@@ -11,7 +11,7 @@ import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
 import { createCyberBotHoverAssist, createCyberBotSleepTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
-import { cyberBotPhrases, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
+import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
@@ -64,18 +64,34 @@ test('the name invitation exposes its three explicit choices', () => {
   assert.match(html, /Don&#x27;t ask again/);
 });
 
-test('everyday speech uses a quiet visual mark while informative tags remain', () => {
+test('speech uses the floating-banner logo without an empty header row', () => {
   const base = { id: 'greeting', text: 'Good morning', timestamp: 0 };
   const ordinary = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
     message: base, onClose: () => {}, closeLabel: 'Dismiss',
   }));
   assert.doesNotMatch(ordinary, /CYBERBOT/);
+  assert.match(ordinary, /src="\/icon-32\.png"/);
   assert.match(ordinary, /Good morning/);
+  assert.ok(ordinary.lastIndexOf('src="/icon-32.png"') < ordinary.indexOf('Good morning'));
+  assert.doesNotMatch(ordinary, /mb-1"><span aria-hidden/);
 
   const scheduled = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
     message: { ...base, tag: 'TIMER', emotion: 'alert' }, onClose: () => {}, closeLabel: 'Dismiss',
   }));
   assert.match(scheduled, /TIMER/);
+});
+
+test('app-launch count speech is clear for zero, one, and repeated launches in both languages', () => {
+  assert.equal(cyberBotPhraseKeyForCount('cyberbot_chat_click_2', '0'), 'cyberbot_chat_click_2_zero');
+  assert.equal(cyberBotPhraseKeyForCount('cyberbot_chat_click_2', '1'), 'cyberbot_chat_click_2_one');
+  assert.equal(cyberBotPhraseKeyForCount('cyberbot_chat_click_2', '14'), 'cyberbot_chat_click_2');
+  assert.equal(cyberBotPhraseKeyForCount('cyberbot_chat_click_3', '14'), 'cyberbot_chat_click_3');
+  for (const language of ['es', 'en'] as const) {
+    const { cyberbot_chat_click_2: many, cyberbot_chat_click_2_one: one, cyberbot_chat_click_2_zero: zero } = translations[language];
+    assert.match(many, /\{count\}/);
+    assert.doesNotMatch(one + zero, /\{count\}/);
+    for (const phrase of [many, one, zero]) assert.match(phrase, /CyberLauncher/);
+  }
 });
 
 test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', () => {

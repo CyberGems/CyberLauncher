@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TranslationKey } from '../../locales';
-import { createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from './cyberBotPhrases';
+import { createCyberBotPhraseDeck, cyberBotPhraseKeyForCount, getCyberBotGreetingTopic, type CyberBotTopic } from './cyberBotPhrases';
 import { CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, normalizeCyberBotName } from './cyberBotName';
 import type { 
   CyberBotMessage, 
@@ -327,7 +327,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
 
   const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
     return phraseDeckRef.current!.tryNext(topic, phrase => say({
-      text: t(cyberBotPhraseKeyWithName(phrase.key, preferredName), { ...options.params, userName: preferredName }),
+      text: t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, options.params?.count), preferredName), { ...options.params, userName: preferredName }),
       emotion: phrase.emotion,
       priority: options.priority ?? 'low',
       durationMs: options.durationMs,

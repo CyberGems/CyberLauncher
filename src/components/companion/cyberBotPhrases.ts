@@ -103,6 +103,13 @@ export const cyberBotPhrases = {
 
 export type CyberBotTopic = keyof typeof cyberBotPhrases;
 
+export function cyberBotPhraseKeyForCount(key: CyberBotPhrase['key'], count?: string): CyberBotPhrase['key'] {
+  if (key !== 'cyberbot_chat_click_2') return key;
+  if (count === '0') return 'cyberbot_chat_click_2_zero';
+  if (count === '1') return 'cyberbot_chat_click_2_one';
+  return key;
+}
+
 export function getCyberBotGreetingTopic(now = new Date()): CyberBotTopic {
   const hour = now.getHours();
   if (hour >= 5 && hour < 12) return 'greeting_morning';

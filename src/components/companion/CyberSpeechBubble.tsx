@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, Sparkles, AlertTriangle, CircleCheck, ArrowRight } from 'lucide-react';
+import { X, AlertTriangle, CircleCheck, ArrowRight } from 'lucide-react';
 import type { CyberBotMessage } from './companionTypes';
 
 interface CyberSpeechBubbleProps {
@@ -36,7 +36,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
     ? <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
     : isSuccess
     ? <CircleCheck className="w-3.5 h-3.5 text-emerald-400" />
-    : <Sparkles className="w-3.5 h-3.5 text-cyan-400" />;
+    : null;
 
   const tailPositionClass =
     position === 'bottom-left' ? 'left-[40px]' : 'right-[40px]';
@@ -49,46 +49,40 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       transition={reducedMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
       role={message.priority === 'high' ? 'alert' : 'status'}
       data-no-hide
-      className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3.5 text-slate-200 select-none z-50`}
+      className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
-      {/* A compact status mark identifies everyday speech; contextual tags stay visible when informative. */}
-      <div className="flex items-center justify-between gap-2 mb-1">
-        {message.tag ? (
-          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>
-            {statusIcon}
-            <span>{message.tag}</span>
+      <button
+        type="button"
+        aria-label={closeLabel}
+        onClick={(e) => {
+          e.stopPropagation();
+          message.onDismiss?.();
+          onClose();
+        }}
+        className="absolute right-2.5 top-2.5 p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+
+      <div className="flex items-start gap-2.5 pr-6">
+        <img src="/icon-32.png" alt="" aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 shrink-0 object-contain" />
+        <div className="min-w-0 flex-1">
+          {message.tag && (
+            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 mb-1 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>
+              {statusIcon}
+              <span>{message.tag}</span>
+            </div>
+          )}
+          <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words">
+            {message.text}
           </div>
-        ) : (
-          <span aria-hidden="true" className="inline-flex items-center justify-center w-5 h-5 opacity-75">
-            {statusIcon}
-          </span>
-        )}
-
-        <button
-          type="button"
-          aria-label={closeLabel}
-          onClick={(e) => {
-            e.stopPropagation();
-            message.onDismiss?.();
-            onClose();
-          }}
-          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+          {message.detail && (
+            <p className="mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
+              {message.detail}
+            </p>
+          )}
+        </div>
       </div>
-
-      {/* Main Text Message */}
-      <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words">
-        {message.text}
-      </div>
-
-      {/* Detail info if available */}
-      {message.detail && (
-        <p className="mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
-          {message.detail}
-        </p>
-      )}
 
       {/* Contextual Action Button */}
       {(message.action || message.secondaryAction || message.tertiaryAction) && (
