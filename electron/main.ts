@@ -11,6 +11,7 @@ import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
+import { shouldClearToastForRendererCleanup, shouldHideLauncherAfterLaunch, type LaunchResult } from '../src/launchFlow';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -207,30 +208,37 @@ function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
         .replace(/Ctrl/g, 'CommandOrControl');
       
       const success = globalShortcut.register(electronShortcut, () => {
-        try {
-          console.log(`[GLOBAL HOTKEY] Launching app ${item.id} (${item.name || item.path}) via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
-          
-          if (item.isAdmin && process.platform === 'win32') {
-            pauseHotspots();
-            watchUACUntilExit();
-            const escapedPath = item.path.replace(/'/g, "''");
-            const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
-            exec(command, { windowsHide: true });
-          } else {
-            shell.openPath(item.path);
+        console.log(`[GLOBAL HOTKEY] Launching app ${item.id} (${item.name || item.path}) via shortcut ${item.shortcut} (isAdmin: ${item.isAdmin})`);
+        void launchAppInternal(item.path, item.isAdmin).then(result => {
+          if (!result.success) {
+            console.error('[GLOBAL HOTKEY] Error launching shortcut app:', result.error);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('app-launched-via-hotkey', {
+                id: item.id, path: item.path, name: item.name, success: false, error: result.error, code: result.code,
+              });
+            }
+            return;
           }
-
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('app-launched-via-hotkey', {
               id: item.id,
               path: item.path,
               name: item.name,
-              icon: item.icon
+              icon: item.icon,
+              isAdmin: item.isAdmin,
+              windowHidden: result.windowHidden,
+              success: true,
             });
           }
-        } catch (launchErr) {
+        }).catch(launchErr => {
           console.error('[GLOBAL HOTKEY] Error launching shortcut app:', launchErr);
-        }
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('app-launched-via-hotkey', {
+              id: item.id, path: item.path, name: item.name, success: false,
+              error: launchErr instanceof Error ? launchErr.message : String(launchErr),
+            });
+          }
+        });
       });
       if (!success) {
         console.warn(`[GLOBAL HOTKEY] Failed to register custom shortcut: ${electronShortcut}`);
@@ -1983,9 +1991,15 @@ function showDesktopToastInternal(payload: any) {
   if (payload.source === 'system-alert' && launcherVisible) return;
   const channel = chooseNotificationChannel(toastDeliverySettings, {
     critical: payload.level === 'critical',
-    essential: payload.type === 'imminent',
+    essential: payload.type === 'imminent' || payload.essential === true,
     botAvailable: !launcherVisible || !payload.botUnavailable,
   });
+  // Launch commentary is optional CyberBot chatter, never a banner fallback.
+  // It must not replace a more important notification already on screen.
+  if (payload.source === 'launch') {
+    if (launcherVisible || channel !== 'bot') return;
+    if (desktopToastWin?.isVisible() && latestToastPayload?.source !== 'launch') return;
+  }
   if (channel === 'none' || (channel === 'bot' && launcherVisible)) {
     hideDesktopToastInternal();
     return;
@@ -2025,7 +2039,7 @@ function showDesktopToastInternal(payload: any) {
   }
 
   if (payload.type !== 'imminent') {
-    const ms = payload.action ? 8000 : 4500;
+    const ms = payload.source === 'launch' ? 3000 : payload.action ? 8000 : 4500;
     desktopToastAutoDismissTimer = setTimeout(() => {
       hideDesktopToastInternal();
     }, ms);
@@ -2211,12 +2225,28 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
     void launchAppInternal(payload.path, payload.isAdmin).then((res) => {
       if (!res?.success) {
         console.warn('[TRAY] Recent launch failed:', res?.error || payload.path);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('app-launched-via-hotkey', {
+            path: payload.path, name: payload.name, success: false, error: res?.error, code: res?.code,
+          });
+        }
         return;
       }
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('app-launched-via-hotkey', {
           path: payload.path,
           name: payload.name,
+          isAdmin: payload.isAdmin,
+          windowHidden: res.windowHidden,
+          success: true,
+        });
+      }
+    }).catch(launchErr => {
+      console.error('[TRAY] Recent launch failed:', launchErr);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-launched-via-hotkey', {
+          path: payload.path, name: payload.name, success: false,
+          error: launchErr instanceof Error ? launchErr.message : String(launchErr),
         });
       }
     });
@@ -3324,8 +3354,16 @@ async function buildSystemIndex() {
 // =====================================
 // IPC HANDLERS
 // =====================================
-async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<{ success: boolean; error?: string; code?: 'not-found' | 'launch-failed' }> {
-  if (!appPath) return { success: false, error: 'No path provided' };
+function finishSuccessfulLaunch(keepWindowOpen?: boolean): LaunchResult {
+  if (mainWindow && !mainWindow.isDestroyed() && shouldHideLauncherAfterLaunch(mainWindow.isAlwaysOnTop(), !!keepWindowOpen)) {
+    windowVisibilityState = 'hidden-intentional';
+    hideMainWindow();
+  }
+  return { success: true, windowHidden: !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible() };
+}
+
+async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean): Promise<LaunchResult> {
+  if (!appPath) return { success: false, error: 'No path provided', code: 'not-found' };
 
   try {
     const trimmedPath = appPath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
@@ -3336,27 +3374,21 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
     if (isUriProtocol) {
       console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
       await shell.openExternal(trimmedPath);
-      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
-      }
-      return { success: true };
+      return finishSuccessfulLaunch(keepWindowOpen);
     }
 
     const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
     if (isUwp) {
       console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${trimmedPath}`);
       const command = `explorer.exe shell:AppsFolder\\${trimmedPath}`;
-      exec(command, (err) => {
-        if (err) {
-          console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', err);
-        }
+      const launchError = await new Promise<Error | null>(resolve => {
+        exec(command, { windowsHide: true }, err => resolve(err));
       });
-      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+      if (launchError) {
+        console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', launchError);
+        return { success: false, error: launchError.message, code: 'launch-failed' };
       }
-      return { success: true };
+      return finishSuccessfulLaunch(keepWindowOpen);
     }
 
     let targetPath = path.normalize(trimmedPath);
@@ -3402,17 +3434,14 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
       const escapedPath = targetPath.replace(/'/g, "''");
       const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
 
-      exec(command, (err) => {
-        if (err) {
-          console.error('[LAUNCH] Error al ejecutar como administrador:', err);
-        }
+      const launchError = await new Promise<Error | null>(resolve => {
+        exec(command, { windowsHide: true }, err => resolve(err));
       });
-
-      if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
-        windowVisibilityState = 'hidden-intentional';
-        hideMainWindow();
+      if (launchError) {
+        console.error('[LAUNCH] Error al ejecutar como administrador:', launchError);
+        return { success: false, error: launchError.message, code: 'launch-failed' };
       }
-      return { success: true };
+      return finishSuccessfulLaunch(keepWindowOpen);
     }
 
     const errorMessage = await shell.openPath(targetPath);
@@ -3432,11 +3461,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
         return { success: false, error: errorMessage, code: 'launch-failed' };
       }
     }
-    if (!keepWindowOpen && !mainWindow?.isAlwaysOnTop()) {
-      windowVisibilityState = 'hidden-intentional';
-      hideMainWindow();
-    }
-    return { success: true };
+    return finishSuccessfulLaunch(keepWindowOpen);
   } catch (err: any) {
     return { success: false, error: err.message || 'Error desconocido al lanzar la aplicación', code: 'launch-failed' };
   }
@@ -3822,7 +3847,9 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('hide-desktop-toast', () => {
-    hideDesktopToastInternal();
+    // The renderer clears its ordinary notice when visibility changes after a
+    // launch. That cleanup must not immediately erase the launch commentary.
+    if (shouldClearToastForRendererCleanup(latestToastPayload?.source)) hideDesktopToastInternal();
     return true;
   });
 
@@ -4055,6 +4082,10 @@ foreach (\$app in \$startApps) {
   });
 
   ipcMain.handle('window-hide-to-tray', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isAlwaysOnTop()) {
+      mainWindow.webContents.send('always-on-top-blur-attempt');
+      return;
+    }
     windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
   });

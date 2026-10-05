@@ -15,6 +15,7 @@ import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, g
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
+import { chooseLaunchSpeechChannel, shouldClearToastForRendererCleanup, shouldHideLauncherAfterLaunch } from '../src/launchFlow';
 
 test('preferred names are optional, cleaned, and bounded', () => {
   assert.equal(normalizeCyberBotName('  Ana\n María  '), 'Ana María');
@@ -138,6 +139,36 @@ test('minimal chatter and quiet hours mute ordinary notices without muting criti
   assert.equal(chooseNotificationChannel(quiet, { critical: false, now: new Date(2026, 9, 4, 8, 0) }), 'bot');
 });
 
+test('launches hide only when unpinned and not scheduled to keep the window open', () => {
+  assert.equal(shouldHideLauncherAfterLaunch(false, false), true);
+  assert.equal(shouldHideLauncherAfterLaunch(true, false), false);
+  assert.equal(shouldHideLauncherAfterLaunch(false, true), false);
+  assert.equal(shouldHideLauncherAfterLaunch(true, true), false);
+});
+
+test('launch speech follows actual visibility and never falls back to a banner', () => {
+  const settings: NotificationDeliverySettings = {
+    botEnabled: true,
+    bannersEnabled: true,
+    chatterLevel: 'full',
+    quietHours: { enabled: false, from: '22:00', to: '07:00' },
+  };
+  assert.equal(chooseLaunchSpeechChannel(settings, false, true, true), 'inline');
+  assert.equal(chooseLaunchSpeechChannel(settings, true, true, true), 'floating');
+  assert.equal(chooseLaunchSpeechChannel(settings, true, false, false), 'none');
+  assert.equal(chooseLaunchSpeechChannel(settings, false, false, true), 'none');
+  assert.equal(chooseLaunchSpeechChannel({ ...settings, botEnabled: false }, true, true, true), 'none');
+  assert.equal(chooseLaunchSpeechChannel({ ...settings, chatterLevel: 'minimal' }, true, true, true), 'none');
+  const quiet = { ...settings, quietHours: { enabled: true, from: '22:00', to: '07:00' } };
+  assert.equal(chooseLaunchSpeechChannel(quiet, true, true, true, new Date(2026, 9, 4, 23, 0)), 'none');
+  assert.equal(shouldClearToastForRendererCleanup('launch'), false);
+  assert.equal(shouldClearToastForRendererCleanup('system-alert'), true);
+  assert.equal(shouldClearToastForRendererCleanup(), true);
+  for (const language of ['es', 'en'] as const) {
+    assert.ok(translations[language].launch_missing_path_detail.trim());
+  }
+});
+
 test('floating CyberBot keeps scheduled actions and release links usable', () => {
   const html = readFileSync(new URL('../public/tray/toast-window.html', import.meta.url), 'utf8');
   const source = readFileSync(new URL('../public/tray/toast-window.js', import.meta.url), 'utf8');
@@ -194,6 +225,11 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task', 'open-hud', 'open-release']);
+
+  receive({ presentation: 'bot', type: 'info', source: 'launch', title: 'Opening Editor' });
+  assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
+  assert.equal(element('cyberbotTitle').textContent, 'Opening Editor');
+  assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
 });
 
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({

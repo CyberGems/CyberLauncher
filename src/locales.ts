@@ -127,6 +127,7 @@ export const translations = {
     missing_shortcut_cancel: "Ahora no",
     launch_starting: "Iniciando...",
     launch_failed_message: "No se pudo abrir {name}.",
+    launch_missing_path_detail: "No se encontró el destino. Revisa la ubicación guardada.",
 
     // About & Updates
     about_title: "CyberLauncher",
@@ -994,6 +995,7 @@ export const translations = {
     missing_shortcut_cancel: "Not now",
     launch_starting: "Starting...",
     launch_failed_message: "Could not open {name}.",
+    launch_missing_path_detail: "The target could not be found. Check its saved location.",
 
     // About & Updates
     about_title: "CyberLauncher",

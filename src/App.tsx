@@ -26,6 +26,7 @@ import { CyberManagerRecommendation } from './components/CyberManagerRecommendat
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { chooseNotificationChannel } from './notificationRouting';
+import { chooseLaunchSpeechChannel, type LaunchResult } from './launchFlow';
 import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
   parseBackupHours,
@@ -356,7 +357,7 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
 declare global {
   interface Window {
     electronAPI?: {
-      launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<{ success: boolean; error?: string; code?: 'not-found' | 'launch-failed' }>;
+      launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<LaunchResult>;
       showNotification?: (options: { title: string; body: string }) => Promise<boolean>;
       getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
@@ -415,7 +416,7 @@ declare global {
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
       reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; surfaceMounted: boolean; surfaceChildren: number; surfaceOpacity: number | null; devicePixelRatio: number }) => void;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
-      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => () => void;
+      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; success?: boolean; error?: string; code?: LaunchResult['code'] }) => void) => () => void;
       runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) => Promise<{ success: boolean; cmdId?: string; cwd?: string; error?: string }>;
       getConsoleCwd?: () => Promise<string>;
       setConsoleCwd?: (targetPath: string) => Promise<{ success: boolean; cwd: string; error?: string }>;
@@ -466,6 +467,8 @@ declare global {
         releaseUrl?: string;
         releaseLabel?: string;
         dismissLabel?: string;
+        source?: 'launch';
+        essential?: boolean;
       }) => Promise<boolean>;
       setToastPreferences?: (settings: {
         botEnabled: boolean;
@@ -2418,6 +2421,7 @@ export default function App() {
     message: string;
     type: 'success' | 'info' | 'error' | 'warning';
     level?: 'warning' | 'critical';
+    essential?: boolean;
     brandTag?: string;
     /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
     action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock';
@@ -3378,6 +3382,33 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', updateVisibility);
   }, []);
 
+  const announceSuccessfulLaunch = useCallback((name: string, isAdmin: boolean, windowHidden: boolean) => {
+    const channel = chooseLaunchSpeechChannel({
+      botEnabled: cyberBot.enabled,
+      bannersEnabled: cyberBot.bannersEnabled,
+      chatterLevel: cyberBot.chatterLevel,
+      quietHours: cyberBot.quietHours,
+    }, windowHidden, isCyberBotSpeechVisible, !!window.electronAPI?.showDesktopToast);
+    const topic = isAdmin ? 'launch_admin' : 'launch';
+    if (channel === 'inline') {
+      cyberBot.sayPhrase(topic, { params: { name }, durationMs: 4000, priority: 'normal' });
+    } else if (channel === 'floating') {
+      cyberBot.deliverPhrase(topic, { name }, text => {
+        void window.electronAPI!.showDesktopToast!({
+          type: 'info',
+          source: 'launch',
+          title: text,
+          dismissLabel: t('cyberbot_close_message'),
+        });
+        return true;
+      });
+    }
+  }, [cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.sayPhrase, cyberBot.deliverPhrase, isCyberBotSpeechVisible, t]);
+
+  const reportLaunchFailure = useCallback((name: string, detail: string, action?: 'open-hud-clock', code?: LaunchResult['code']) => {
+    setNotification({ message: t('launch_failed_message', { name }), detail: code === 'not-found' ? t('launch_missing_path_detail') : detail, type: 'error', essential: true, action });
+  }, [t]);
+
   // Contextual CyberBot commentary on panel opening & settings navigation
   const topicCooldownsRef = useRef<Record<string, number>>({});
 
@@ -3482,6 +3513,55 @@ export default function App() {
 
   const [scheduledTasks, setScheduledTasks] = useState<Array<ScheduledTask>>([]);
   const [isPinFlashing, setIsPinFlashing] = useState(false);
+  const executedScheduledTaskIdsRef = useRef(new Set<string>());
+  const alertedScheduledTaskIdsRef = useRef(new Set<string>());
+
+  const executeScheduledTask = useCallback(async (task: ScheduledTask) => {
+    if (task.type === 'app' && task.targetPath) {
+      if (isElectron) {
+        try {
+          // A scheduled launch must not hide a launcher the user left open.
+          const result = await window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
+          if (!result.success) {
+            reportLaunchFailure(task.name, result.error || '', 'open-hud-clock', result.code);
+            return;
+          }
+        } catch (err: any) {
+          reportLaunchFailure(task.name, err?.message || String(err), 'open-hud-clock');
+          return;
+        }
+      } else {
+        console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
+      }
+      const matchedApp = apps.find(app => normalizeHistoryKey(app.path) === normalizeHistoryKey(task.targetPath));
+      if (matchedApp) {
+        setApps(prev => prev.map(app => app.id === matchedApp.id ? { ...app, usage: (app.usage || 0) + 1 } : app));
+      }
+      record24hLaunch();
+      addToHistory(task.name, task.targetPath, 'app');
+      setNotification({
+        message: t('notif_scheduled_app_launched'),
+        detail: t('notif_scheduled_app_launched_detail', { name: task.name }),
+        type: 'success',
+        action: 'open-hud-clock',
+      });
+    } else if (task.type === 'command' && task.command) {
+      if (isElectron) {
+        window.electronAPI!.runShellCommand(task.command);
+      } else {
+        console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
+      }
+      setNotification({
+        message: t('notif_scheduled_cmd_executed'),
+        detail: task.command,
+        type: 'success',
+        action: 'open-hud-clock',
+      });
+    }
+    playCyberBeep();
+  }, [apps, addToHistory, record24hLaunch, playCyberBeep, reportLaunchFailure, t]);
+  const executeScheduledTaskRef = useRef(executeScheduledTask);
+  executeScheduledTaskRef.current = executeScheduledTask;
 
   // Background Scheduler — only tick while there are active tasks (avoids 1 Hz App re-renders when idle)
   useEffect(() => {
@@ -3490,54 +3570,31 @@ export default function App() {
     const timer = setInterval(() => {
       setScheduledTasks(prev => {
         if (prev.length === 0) return prev;
-        
-        const updated = prev.map(task => {
-          if (task.remainingSeconds <= 1) {
-            // Executing scheduled action!
-            if (task.type === 'app' && task.targetPath) {
-              if (isElectron) {
-                window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
-              } else {
-                console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
-              }
-              addToHistory(task.name, task.targetPath, 'app');
-              setNotification({
-                message: t('notif_scheduled_app_launched'),
-                detail: t('notif_scheduled_app_launched_detail', { name: task.name }),
-                type: 'success',
-                action: 'open-hud-clock'
-              });
-            } else if (task.type === 'command' && task.command) {
-              if (isElectron) {
-                window.electronAPI!.runShellCommand(task.command);
-              } else {
-                console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
-              }
-              setNotification({
-                message: t('notif_scheduled_cmd_executed'),
-                detail: task.command,
-                type: 'success',
-                action: 'open-hud-clock'
-              });
-            }
-            
-            // Play our retro cyber sci-fi synthesized beep sound!
-            playCyberBeep();
-            return null; // Remove task
-          }
-          // Pre-launch imminent alert at 10s (or at start if duration < 10)
-          if (task.remainingSeconds === 10 || (task.totalSeconds < 10 && task.remainingSeconds === task.totalSeconds)) {
-            playCyberBeep();
-          }
-
-          return { ...task, remainingSeconds: task.remainingSeconds - 1 };
-        }).filter(Boolean) as Array<ScheduledTask>;
-
-        return updated;
+        return prev.map(task => task.remainingSeconds > 0
+          ? { ...task, remainingSeconds: task.remainingSeconds - 1 }
+          : task);
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [scheduledTasks.length > 0]);
+
+  useEffect(() => {
+    const due = scheduledTasks.filter(task => task.remainingSeconds <= 0);
+    for (const task of due) {
+      if (executedScheduledTaskIdsRef.current.has(task.id)) continue;
+      executedScheduledTaskIdsRef.current.add(task.id);
+      void executeScheduledTaskRef.current(task);
+    }
+    if (due.length > 0) setScheduledTasks(prev => prev.filter(task => task.remainingSeconds > 0));
+
+    for (const task of scheduledTasks) {
+      const atWarningPoint = task.remainingSeconds === 10
+        || (task.totalSeconds < 10 && task.remainingSeconds === task.totalSeconds);
+      if (!atWarningPoint || alertedScheduledTaskIdsRef.current.has(task.id)) continue;
+      alertedScheduledTaskIdsRef.current.add(task.id);
+      playCyberBeep();
+    }
+  }, [scheduledTasks]);
 
   // Scheduled-task countdowns live in the renderer — keep Chromium awake in the tray while any are pending.
   useEffect(() => {
@@ -3568,35 +3625,12 @@ export default function App() {
   }, [scheduledTasks, t]);
 
   const handleLaunchImminentNow = useCallback((task: ScheduledTask) => {
-    if (task.type === 'app' && task.targetPath) {
-      if (isElectron) {
-        window.electronAPI!.launchApp(task.targetPath, task.isAdmin, true);
-      } else {
-        console.log(`[WEB SIMULATOR] Launching scheduled app: ${task.name} path: ${task.targetPath}`);
-      }
-      addToHistory(task.name, task.targetPath, 'app');
-      setNotification({
-        message: t('notif_scheduled_app_launched'),
-        detail: t('notif_scheduled_app_launched_detail', { name: task.name }),
-        type: 'success',
-        action: 'open-hud-clock'
-      });
-    } else if (task.type === 'command' && task.command) {
-      if (isElectron) {
-        window.electronAPI!.runShellCommand(task.command);
-      } else {
-        console.log(`[WEB SIMULATOR] Running scheduled command: ${task.command}`);
-      }
-      setNotification({
-        message: t('notif_scheduled_cmd_executed'),
-        detail: task.command,
-        type: 'success',
-        action: 'open-hud-clock'
-      });
+    if (!executedScheduledTaskIdsRef.current.has(task.id)) {
+      executedScheduledTaskIdsRef.current.add(task.id);
+      void executeScheduledTask(task);
     }
-    playCyberBeep();
     setScheduledTasks(prev => prev.filter(t => t.id !== task.id));
-  }, [t, addToHistory]);
+  }, [executeScheduledTask]);
 
   const handleLaunchById = useCallback((taskId: string) => {
     const task = scheduledTasks.find(t => t.id === taskId);
@@ -3689,7 +3723,7 @@ export default function App() {
         : notification.action === 'open-about'
         ? () => setIsAboutOpen(true)
         : undefined;
-      if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical' }) === 'bot') {
+      if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
         cyberBot.say({
           text: notification.message,
           detail: notification.detail,
@@ -3703,12 +3737,14 @@ export default function App() {
             : undefined,
           durationMs: notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
           priority: notification.level === 'critical' ? 'high' : 'normal',
+          essential: notification.essential,
         });
       }
 
       if (showFloating && (notification.source !== 'system-alert' || isWindowVisible)) void window.electronAPI!.showDesktopToast!({
         type: notification.type,
         level: notification.level,
+        essential: notification.essential,
         title: notification.message,
         detail: notification.detail || '',
         action: notification.action,
@@ -3870,6 +3906,10 @@ export default function App() {
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onAppLaunchedViaHotkey) return;
     const unsub = window.electronAPI.onAppLaunchedViaHotkey((data) => {
+      if (data.success === false) {
+        reportLaunchFailure(data.name || 'App', data.error || '', undefined, data.code);
+        return;
+      }
       const targetApp = apps.find(a => (data.id && a.id === data.id) || (data.path && a.path === data.path) || (data.name && a.name === data.name));
       if (targetApp) {
         setApps(prevApps => prevApps.map(a => a.id === targetApp.id ? { ...a, usage: (a.usage || 0) + 1 } : a));
@@ -3879,9 +3919,10 @@ export default function App() {
         record24hLaunch();
         addToHistory(data.name || 'App', data.path, 'app', data.icon || '');
       }
+      announceSuccessfulLaunch(targetApp?.name || data.name || 'App', !!data.isAdmin, !!data.windowHidden);
     });
     return unsub;
-  }, [apps, addToHistory, record24hLaunch]);
+  }, [apps, addToHistory, record24hLaunch, announceSuccessfulLaunch, reportLaunchFailure]);
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.setTrayRecents) return;
@@ -4989,17 +5030,18 @@ export default function App() {
     const appPath = replacementPath ?? app.path ?? `mock://${app.name}`;
     const isRelink = replacementPath !== undefined;
     try {
-      if (app.path && isElectron) {
+      let windowHidden = false;
+      if (isElectron) {
+        if (!app.path && !replacementPath) {
+          reportLaunchFailure(app.name, t('launch_missing_path_detail'));
+          return;
+        }
         let result: Awaited<ReturnType<NonNullable<typeof window.electronAPI>['launchApp']>>;
         try {
-          result = await window.electronAPI!.launchApp(appPath, !!app.isAdmin);
+          result = await window.electronAPI!.launchApp(appPath, !!app.isAdmin, isAlwaysOnTop);
         } catch (err: any) {
           console.error(`Error al lanzar ${app.name}:`, err);
-          setNotification({
-            message: t('launch_failed_message', { name: app.name }),
-            detail: err?.message || String(err),
-            type: 'error',
-          });
+          reportLaunchFailure(app.name, err?.message || String(err));
           return;
         }
 
@@ -5007,14 +5049,11 @@ export default function App() {
           if (result.code === 'not-found') {
             setMissingShortcut({ app, path: appPath });
           } else {
-            setNotification({
-              message: t('launch_failed_message', { name: app.name }),
-              detail: result.error || '',
-              type: 'error',
-            });
+            reportLaunchFailure(app.name, result.error || '', undefined, result.code);
           }
           return;
         }
+        windowHidden = !!result.windowHidden;
       }
 
       // Solo los lanzamientos aceptados cuentan en uso, historial y estadísticas.
@@ -5024,17 +5063,7 @@ export default function App() {
       record24hLaunch();
       addToHistory(app.name, appPath, (app as any).type || 'app', (app as any).iconPath || '', isRelink);
 
-      if (cyberBot.enabled) {
-        cyberBot.sayPhrase(app.isAdmin ? 'launch_admin' : 'launch', {
-          params: { name: app.name },
-          durationMs: 4000,
-          priority: 'normal',
-        });
-      }
-
-      if (app.path && isElectron && !isAlwaysOnTop) {
-        void window.electronAPI!.windowHideToTray();
-      }
+      announceSuccessfulLaunch(app.name, !!app.isAdmin, windowHidden);
     } finally {
       window.clearTimeout(launchIndicatorTimer);
       setLaunchingAppIds(prev => {
@@ -5061,25 +5090,46 @@ export default function App() {
       setMissingShortcut(null);
       await handleLaunchApp(missing.app, replacementPath);
     } catch (err: any) {
-      setNotification({
-        message: t('launch_failed_message', { name: missing.app.name }),
-        detail: err?.message || String(err),
-        type: 'error',
-      });
+      reportLaunchFailure(missing.app.name, err?.message || String(err));
     } finally {
       setIsRelinkingShortcut(false);
     }
   };
 
+  const handleLaunchExternalItem = async (
+    item: Pick<HistoryItem, 'name' | 'path' | 'type' | 'icon'>,
+    isAdmin = false,
+  ) => {
+    let windowHidden = false;
+    if (isElectron) {
+      try {
+        const result = await window.electronAPI!.launchApp(item.path, isAdmin, isAlwaysOnTop);
+        if (!result.success) {
+          reportLaunchFailure(item.name, result.error || '', undefined, result.code);
+          return;
+        }
+        windowHidden = !!result.windowHidden;
+      } catch (err: any) {
+        reportLaunchFailure(item.name, err?.message || String(err));
+        return;
+      }
+    }
+
+    const matchedApp = apps.find(app => normalizeHistoryKey(app.path) === normalizeHistoryKey(item.path));
+    if (matchedApp) {
+      setApps(prev => prev.map(app => app.id === matchedApp.id ? { ...app, usage: (app.usage || 0) + 1 } : app));
+    }
+    record24hLaunch();
+    addToHistory(item.name, item.path, item.type, item.icon);
+    announceSuccessfulLaunch(item.name, isAdmin, windowHidden);
+  };
+
   const handleLaunchHistoryItem = async (item: HistoryItem) => {
     const appInfo = apps.find(a => a.path === item.path || a.name === item.name);
     if (appInfo) {
-      handleLaunchApp(appInfo);
+      await handleLaunchApp(appInfo);
     } else {
-      if (isElectron) {
-        window.electronAPI!.launchApp(item.path);
-      }
-      addToHistory(item.name, item.path, item.type, item.icon);
+      await handleLaunchExternalItem(item);
     }
   };
 
@@ -7849,10 +7899,7 @@ export default function App() {
                     e.preventDefault();
                     const item = displayedResults[systemSearchSelectedIndex];
                     if (item) {
-                      addToHistory(item.name, item.path, item.type, item.icon);
-                      if (isElectron) {
-                        window.electronAPI!.launchApp(item.path);
-                      }
+                      void handleLaunchExternalItem(item);
                     }
                     return;
                   }
@@ -8157,10 +8204,7 @@ export default function App() {
                       key={`${item.path}-${index}`}
                       data-search-result-index={index}
                       onClick={() => {
-                        addToHistory(item.name, item.path, item.type, item.icon);
-                        if (isElectron) {
-                          window.electronAPI!.launchApp(item.path);
-                        }
+                        void handleLaunchExternalItem(item);
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
@@ -8223,10 +8267,7 @@ export default function App() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                addToHistory(item.name, item.path, item.type, item.icon);
-                                if (isElectron) {
-                                  window.electronAPI!.launchApp(item.path, true);
-                                }
+                                void handleLaunchExternalItem(item, true);
                               }}
                               className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 hover:border-red-500/40 focus:outline-none transition-all duration-300 cursor-pointer"
                             >
@@ -13172,10 +13213,7 @@ export default function App() {
               data-system-menu-index={0}
               onMouseEnter={() => setSystemContextMenuIndex(0)}
               onClick={() => {
-                addToHistory(systemContextMenu.item.name, systemContextMenu.item.path, systemContextMenu.item.type, systemContextMenu.item.icon);
-                if (isElectron) {
-                  window.electronAPI!.launchApp(systemContextMenu.item.path);
-                }
+                void handleLaunchExternalItem(systemContextMenu.item);
                 setSystemContextMenu(null);
               }}
               className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
@@ -14094,7 +14132,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {!isElectron && notification && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
+        {!isElectron && notification && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', essential: notification.essential, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide

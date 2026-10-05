@@ -114,7 +114,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- Dynamic shortcuts ---
   registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) =>
     ipcRenderer.invoke('register-app-shortcuts', shortcuts),
-  onAppLaunchedViaHotkey: (callback: (data: { id?: number; path: string; name?: string; icon?: string }) => void) => {
+  onAppLaunchedViaHotkey: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; success?: boolean; error?: string; code?: 'not-found' | 'launch-failed' }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('app-launched-via-hotkey', handler);
     return () => { ipcRenderer.removeListener('app-launched-via-hotkey', handler); };

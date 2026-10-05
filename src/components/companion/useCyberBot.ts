@@ -325,14 +325,23 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     return true;
   }, [enabled, chatterLevel, quietHours, t]);
 
+  const deliverPhrase = useCallback((
+    topic: CyberBotTopic,
+    params: Record<string, string> | undefined,
+    deliver: (text: string, emotion: CyberBotEmotion) => boolean,
+  ) => phraseDeckRef.current!.tryNext(topic, phrase => deliver(
+    t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, params?.count), preferredName), { ...params, userName: preferredName }),
+    phrase.emotion,
+  )), [t, preferredName]);
+
   const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
-    return phraseDeckRef.current!.tryNext(topic, phrase => say({
-      text: t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, options.params?.count), preferredName), { ...options.params, userName: preferredName }),
-      emotion: phrase.emotion,
+    return deliverPhrase(topic, options.params, (text, emotion) => say({
+      text,
+      emotion,
       priority: options.priority ?? 'low',
       durationMs: options.durationMs,
     }));
-  }, [say, t, preferredName]);
+  }, [say, deliverPhrase]);
 
   // Greet once per activation, after disk settings load. Language/settings changes are not new arrivals.
   useEffect(() => {
@@ -394,6 +403,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     activeMessage,
     say,
     sayPhrase,
+    deliverPhrase,
     dismissMessage,
     handleClickBot,
   };
