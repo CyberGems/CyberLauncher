@@ -22,6 +22,7 @@ import {
   Bot, BotOff
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
+import { cyberBotNotificationEmotion } from './components/companion/cyberBotNotice';
 import { CyberManagerRecommendation } from './components/CyberManagerRecommendation';
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
@@ -3770,7 +3771,7 @@ export default function App() {
         cyberBot.say({
           text: notification.message,
           detail: notification.detail,
-          emotion: notification.type === 'error' || notification.type === 'warning' ? 'alert' : notification.type === 'success' ? 'success' : 'speaking',
+          emotion: cyberBotNotificationEmotion(notification),
           tag: brandTag,
           action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
             ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }

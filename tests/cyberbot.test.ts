@@ -6,6 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
+import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
 import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
@@ -166,7 +167,8 @@ test('speaking replaces each expression’s mouth instead of drawing a second on
     ['affectionate', 'M 45 51 Q 51 54 57 50'],
     ['happy', 'M 45 51 Q 51 54 57 50'],
     ['wink', 'M 45 51 Q 52 55 58 49'],
-    ['alert', '▱'],
+    ['alert', 'data-cyberbot-mouth="alert"'],
+    ['storage', 'data-cyberbot-mouth="storage"'],
     ['scared', '>o</text>'],
     ['success', '‿'],
     ['speaking', '‿'],
@@ -182,6 +184,22 @@ test('speaking replaces each expression’s mouth instead of drawing a second on
   const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', speechKey: 'test:sleep' }));
   assert.match(sleeping, /data-cyberbot-speaking="false"/);
   assert.doesNotMatch(sleeping, /data-cyberbot-speech-wave/);
+});
+
+test('RAM alerts keep the alert face while storage notices get a dedicated face', () => {
+  assert.equal(cyberBotNotificationEmotion({ type: 'warning', action: 'open-hud-system' }), 'alert');
+  assert.equal(cyberBotNotificationEmotion({ type: 'error', action: 'open-hud-system' }), 'alert');
+  assert.equal(cyberBotNotificationEmotion({ type: 'warning', action: 'open-hud-storage' }), 'storage');
+  assert.equal(cyberBotNotificationEmotion({ type: 'error', action: 'open-hud-storage' }), 'storage');
+  assert.equal(cyberBotNotificationEmotion({ type: 'success' }), 'success');
+  assert.equal(cyberBotNotificationEmotion({ type: 'info' }), 'speaking');
+
+  const ram = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'alert' }));
+  const storage = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'storage' }));
+  assert.match(ram, /M 31 37 H 35 L 34 44 H 32 Z/);
+  assert.match(storage, /data-cyberbot-face="storage"/);
+  assert.match(storage, /x="43" y="51" width="14" height="6"/);
+  assert.match(storage, /rgba\(245, 158, 11, 0\.45\)/);
 });
 
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
@@ -326,6 +344,17 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
   receive({ type: 'hide' });
   assert.equal(element('cyberbotCard').classList.contains('speaking'), false);
+
+  receive({ presentation: 'bot', type: 'warning', action: 'open-hud-system', title: 'High RAM usage' });
+  assert.equal(element('cyberbotCard').classList.contains('alert'), true);
+  assert.equal(element('cyberbotCard').classList.contains('storage'), false);
+  receive({ presentation: 'bot', type: 'warning', action: 'open-hud-storage', title: 'Low disk space' });
+  assert.equal(element('cyberbotCard').classList.contains('alert'), true);
+  assert.equal(element('cyberbotCard').classList.contains('storage'), true);
+  assert.equal(speechRestarts, 5);
+  receive({ presentation: 'bot', type: 'info', title: 'Routine notice' });
+  assert.equal(element('cyberbotCard').classList.contains('alert'), false);
+  assert.equal(element('cyberbotCard').classList.contains('storage'), false);
 });
 
 test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar', () => {
@@ -340,9 +369,14 @@ test('floating speech cue is finite and disabled under reduced motion', () => {
   const css = readFileSync(new URL('../public/tray/toast-window.css', import.meta.url), 'utf8');
   assert.match(html, /class="bot-speech-wave"/);
   assert.match(html, /class="bot-antenna-signal"/);
+  assert.match(html, /M31 37h4l-1 7h-2z M32 46h2v3h-2z/);
+  assert.match(html, /class="bot-face-alert"[\s\S]*class="bot-mouth" x="45" y="42" width="10" height="5"/);
+  assert.match(html, /class="bot-face-storage"[\s\S]*class="bot-mouth"[\s\S]*x="43" y="51" width="14" height="6"/);
+  assert.match(css, /\.cyberbot-card\.alert:not\(\.storage\) \.bot-face-alert \{ display: inline; \}/);
+  assert.match(css, /\.cyberbot-card\.storage \.bot-face-storage \{ display: inline; \}/);
   assert.match(css, /\.cyberbot-card\.speaking \.bot-head \{ animation: botSpeechNod 1\.8s/);
   assert.match(css, /@keyframes botSpeechSignal \{[^}]*100% \{ opacity: 0; \}/);
-  assert.match(css, /\.cyberbot-card\.alert\.speaking \.bot-face-alert path \{ animation: botSpeechMouth 1\.8s/);
+  assert.match(css, /\.cyberbot-card\.speaking \.bot-face-alert \.bot-mouth,[\s\S]*\.bot-face-storage \.bot-mouth \{ animation: botSpeechMouth 1\.8s/);
   assert.match(css, /@keyframes botSpeechMouth \{ 0%, 99% \{ opacity: 0; \} 100% \{ opacity: 1; \} \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.cyberbot-card\.speaking \.bot-speech-wave line,[\s\S]*animation: none;/);

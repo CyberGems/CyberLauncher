@@ -91,7 +91,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   // Face expression terminal characters
   const renderFaceContent = () => {
     // Keep the signature logo face crisp; only the other relaxed expressions blink.
-    if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'launcher') {
+    if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'storage' && faceEmotion !== 'launcher') {
       return (
         <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
           <path d="M 29 43 H 37 M 63 43 H 71" />
@@ -150,10 +150,24 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         );
       case 'alert':
         return (
-          <g className="select-none font-mono text-[15px] font-black" fill="#f59e0b">
-            <text x="33" y="48" textAnchor="middle">!</text>
-            {!speaking && <text x="50" y="48" textAnchor="middle" fontSize="12" fill="#fbbf24">▱</text>}
-            <text x="67" y="48" textAnchor="middle">!</text>
+          <g fill="#f59e0b">
+            <path d="M 31 37 H 35 L 34 44 H 32 Z M 32 46 H 34 V 49 H 32 Z" />
+            {!speaking && <rect data-cyberbot-mouth="alert" x="45" y="42" width="10" height="5" rx="1.5" fill="none" stroke="#fbbf24" strokeWidth="1.5" />}
+            <path d="M 65 37 H 69 L 68 44 H 66 Z M 66 46 H 68 V 49 H 66 Z" />
+          </g>
+        );
+      case 'storage':
+        return (
+          <g fill="#f59e0b">
+            <rect x="28" y="39" width="12" height="9" rx="2.5" />
+            <rect x="60" y="39" width="12" height="9" rx="2.5" />
+            {!speaking && (
+              <g data-cyberbot-mouth="storage" fill="none" stroke="#fbbf24" strokeWidth="1.4">
+                <rect x="43" y="51" width="14" height="6" rx="2" />
+                <circle cx="46" cy="54" r="1" fill="#fbbf24" stroke="none" />
+                <path d="M 50 54 H 54" strokeLinecap="round" />
+              </g>
+            )}
           </g>
         );
       case 'scared':
@@ -206,7 +220,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     }
   };
 
-  const isAlert = emotion === 'alert';
+  const isAlert = emotion === 'alert' || emotion === 'storage';
   const glowColor = isAlert ? 'rgba(245, 158, 11, 0.45)' : isSleeping ? 'rgba(34, 211, 238, 0.12)' : 'rgba(34, 211, 238, 0.45)';
 
   return (

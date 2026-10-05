@@ -116,7 +116,7 @@ if (window.desktopToast) {
     if (data.presentation === 'bot') {
       const speechKey = data.type === 'imminent'
         ? `${data.type}:${data.taskId || ''}`
-        : `${data.type}:${data.source || ''}:${data.title || ''}:${data.detail || ''}`;
+        : `${data.type}:${data.source || ''}:${data.action || ''}:${data.title || ''}:${data.detail || ''}`;
       if (cyberbotCard.classList.contains('hidden') || speechKey !== lastBotSpeechKey) {
         cyberbotCard.classList.remove('speaking');
         // Restart the finite cue when a different announcement replaces the current one.
@@ -128,6 +128,7 @@ if (window.desktopToast) {
       standardCard.classList.add('hidden');
       cyberbotCard.classList.remove('hidden');
       cyberbotCard.classList.toggle('alert', data.type === 'warning' || data.type === 'error' || data.type === 'imminent');
+      cyberbotCard.classList.toggle('storage', data.action === 'open-hud-storage');
       cyberbotTitle.textContent = data.title || '';
       cyberbotDetail.textContent = data.detail || '';
       cyberbotDetail.classList.toggle('hidden', !data.detail);

@@ -8,6 +8,7 @@ export type CyberBotEmotion =
   | 'launcher'
   | 'terminal'
   | 'alert' 
+  | 'storage'
   | 'scared' 
   | 'speaking' 
   | 'sleeping' 

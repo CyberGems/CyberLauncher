@@ -88,20 +88,24 @@ html, body {
   filter: drop-shadow(0 4px 12px rgba(34, 211, 238, 0.4));
   animation: botFloat 3.2s ease-in-out infinite;
 }
-.cyberbot-card.alert .bot-face-logo { display: none; }
-.cyberbot-card:not(.alert) .bot-face-alert { display: none; }
+.bot-face-logo, .bot-face-alert, .bot-face-storage { display: none; }
+.cyberbot-card:not(.alert):not(.storage) .bot-face-logo { display: inline; }
+.cyberbot-card.alert:not(.storage) .bot-face-alert { display: inline; }
+.cyberbot-card.storage .bot-face-storage { display: inline; }
 .bot-speech-wave, .bot-antenna-signal { opacity: 0; }
 .bot-antenna-signal { transform-origin: 50px 11px; }
-.cyberbot-card.alert .bot-speech-wave, .cyberbot-card.alert .bot-antenna-signal { stroke: #fbbf24; }
+.cyberbot-card:is(.alert, .storage) .bot-speech-wave,
+.cyberbot-card:is(.alert, .storage) .bot-antenna-signal { stroke: #fbbf24; }
 .cyberbot-card.speaking .bot-head { animation: botSpeechNod 1.8s ease-in-out both; }
 .cyberbot-card.speaking .bot-speech-wave { animation: botSpeechSignal 1.8s ease-out both; }
 .cyberbot-card.speaking .bot-speech-wave line { transform-box: fill-box; transform-origin: center bottom; animation: botSpeechBar 0.45s ease-in-out 3 alternate; }
 .cyberbot-card.speaking .bot-speech-wave line:nth-child(2) { animation-delay: 0.08s; }
 .cyberbot-card.speaking .bot-speech-wave line:nth-child(3) { animation-delay: 0.15s; }
 .cyberbot-card.speaking .bot-antenna-signal { animation: botAntennaSignal 1.8s ease-out both; }
-.cyberbot-card.alert.speaking .bot-face-alert path { animation: botSpeechMouth 1.8s linear both; }
-.cyberbot-card.alert .cyberbot-bubble { border-color: rgba(245, 158, 11, 0.55); }
-.cyberbot-card.alert .cyberbot-brand { color: #fbbf24; }
+.cyberbot-card.speaking .bot-face-alert .bot-mouth,
+.cyberbot-card.speaking .bot-face-storage .bot-mouth { animation: botSpeechMouth 1.8s linear both; }
+.cyberbot-card:is(.alert, .storage) .cyberbot-bubble { border-color: rgba(245, 158, 11, 0.55); }
+.cyberbot-card:is(.alert, .storage) .cyberbot-brand { color: #fbbf24; }
 .cyberbot-bubble {
   position: relative;
   align-self: flex-start;
@@ -150,7 +154,8 @@ html, body {
   .cyberbot-card.speaking .bot-speech-wave,
   .cyberbot-card.speaking .bot-speech-wave line,
   .cyberbot-card.speaking .bot-antenna-signal,
-  .cyberbot-card.alert.speaking .bot-face-alert path { animation: none; }
+  .cyberbot-card.speaking .bot-face-alert .bot-mouth,
+  .cyberbot-card.speaking .bot-face-storage .bot-mouth { animation: none; }
 }
 
 @keyframes toastSlideIn {
