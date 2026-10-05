@@ -8,7 +8,7 @@ import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotSleepTimer, createCyberBotVanishTimer, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_DELAY_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -384,68 +384,76 @@ test('centered dialogs and overlapping panels both remain unobstructed', () => {
   }
 });
 
-test('sleep waits for inactivity, wakes on interaction, and cleans up its timer', context => {
-  assert.ok(CYBERBOT_SLEEP_DELAY_MS < 90_000);
+test('idle cycle favors 15–30 second departures and eventually takes a 45–60 second sleep', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
-  const changes: boolean[] = [];
-  const timer = createCyberBotSleepTimer(sleeping => changes.push(sleeping));
-  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS - 1);
-  timer.wake();
-  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS - 1);
-  assert.deepEqual(changes, []);
-  context.mock.timers.tick(1);
-  assert.deepEqual(changes, [true]);
-  timer.wake();
-  assert.deepEqual(changes, [true, false]);
-  timer.dispose();
-  context.mock.timers.tick(CYBERBOT_SLEEP_DELAY_MS * 2);
-  timer.wake();
-  assert.deepEqual(changes, [true, false]);
-});
-
-test('CyberBot vanishes after random idle periods and returns automatically with alternating styles', context => {
-  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
-  const sequence = [0, 0, 0, 1, 1, 0, 0];
-  const changes: Array<{ hidden: boolean; style: string }> = [];
-  const timer = createCyberBotVanishTimer((hidden, style) => changes.push({ hidden, style }), () => sequence.shift() ?? 0);
+  const changes: string[] = [];
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
-  timer.wake();
+  cycle.wake();
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
   assert.deepEqual(changes, []);
   context.mock.timers.tick(1);
-  assert.deepEqual(changes, [{ hidden: true, style: 'phase' }]);
+  assert.deepEqual(changes, ['hidden']);
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS);
-  assert.deepEqual(changes.at(-1), { hidden: false, style: 'phase' });
-  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS);
-  assert.deepEqual(changes.at(-1), { hidden: true, style: 'ascend' });
-  timer.wake();
-  assert.deepEqual(changes.at(-1), { hidden: false, style: 'ascend' });
-  timer.dispose();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
+  assert.deepEqual(changes, ['hidden', 'awake', 'hidden']);
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_IDLE_MS - 1);
+  assert.deepEqual(changes.at(-1), 'awake');
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes.at(-1), 'sleeping');
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_REST_MS);
+  assert.deepEqual(changes.at(-1), 'awake');
+  cycle.dispose();
   const count = changes.length;
-  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS * 3);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MAX_IDLE_MS * 3);
   assert.equal(changes.length, count);
 });
 
-test('messages or busy UI can interrupt and suspend the vanish cycle', context => {
+test('the random idle windows reach their upper limits and either state wakes on activity', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
-  const changes: boolean[] = [];
-  const timer = createCyberBotVanishTimer(hidden => changes.push(hidden), () => 0);
-  timer.pause();
-  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS * 2);
+  const changes: Array<{ state: string; style: string }> = [];
+  const sequence = [0, 0.999999, 0.999999, 0, 0];
+  const cycle = createCyberBotIdleCycle((state, style) => changes.push({ state, style }), () => sequence.shift() ?? 0);
+  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS - 1);
   assert.deepEqual(changes, []);
-  timer.resume();
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes.at(-1), { state: 'hidden', style: 'ascend' });
+  cycle.wake();
+  assert.deepEqual(changes.at(-1), { state: 'awake', style: 'ascend' });
+  cycle.dispose();
+
+  const sleepChanges: string[] = [];
+  const sleepCycle = createCyberBotIdleCycle(state => sleepChanges.push(state), () => 0.999999);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MAX_IDLE_MS - 1);
+  assert.deepEqual(sleepChanges, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(sleepChanges, ['sleeping']);
+  sleepCycle.wake();
+  assert.deepEqual(sleepChanges, ['sleeping', 'awake']);
+  sleepCycle.dispose();
+});
+
+test('messages or busy UI interrupt and suspend either idle gesture', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: string[] = [];
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
+  cycle.pause();
+  context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS * 2);
+  assert.deepEqual(changes, []);
+  cycle.resume();
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
-  assert.deepEqual(changes, [true]);
-  timer.pause();
-  assert.deepEqual(changes, [true, false]);
+  assert.deepEqual(changes, ['hidden']);
+  cycle.pause();
+  assert.deepEqual(changes, ['hidden', 'awake']);
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS * 2);
-  assert.deepEqual(changes, [true, false]);
-  timer.resume();
+  assert.deepEqual(changes, ['hidden', 'awake']);
+  cycle.resume();
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
-  assert.deepEqual(changes, [true, false, true]);
-  timer.wake();
-  assert.deepEqual(changes, [true, false, true, false]);
-  timer.dispose();
+  assert.deepEqual(changes, ['hidden', 'awake', 'hidden']);
+  cycle.wake();
+  assert.deepEqual(changes, ['hidden', 'awake', 'hidden', 'awake']);
+  cycle.dispose();
 });
 
 test('hover assistance warns for three seconds and can be canceled before moving', context => {

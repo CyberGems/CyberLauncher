@@ -1,11 +1,16 @@
 import type { CyberBotEmotion } from './companionTypes';
 
-export const CYBERBOT_SLEEP_DELAY_MS = 45_000;
-export const CYBERBOT_VANISH_MIN_IDLE_MS = 150_000;
-export const CYBERBOT_VANISH_MAX_IDLE_MS = 270_000;
+export const CYBERBOT_SLEEP_MIN_IDLE_MS = 45_000;
+export const CYBERBOT_SLEEP_MAX_IDLE_MS = 60_000;
+export const CYBERBOT_SLEEP_MIN_REST_MS = 15_000;
+export const CYBERBOT_SLEEP_MAX_REST_MS = 30_000;
+export const CYBERBOT_VANISH_MIN_IDLE_MS = 15_000;
+export const CYBERBOT_VANISH_MAX_IDLE_MS = 30_000;
 export const CYBERBOT_VANISH_MIN_AWAY_MS = 18_000;
 export const CYBERBOT_VANISH_MAX_AWAY_MS = 42_000;
+export const CYBERBOT_VANISH_CHANCE = 0.75;
 export type CyberBotVanishStyle = 'phase' | 'ascend';
+export type CyberBotIdleState = 'awake' | 'sleeping' | 'hidden';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // The logo face is the resting expression; these appear briefly between resting pauses.
@@ -16,110 +21,95 @@ export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = M
   return choices[Math.floor(random() * choices.length)];
 }
 
-// Activity only updates a timestamp while awake, rather than allocating a timer on every mouse move.
-export function createCyberBotSleepTimer(onSleep: (sleeping: boolean) => void, delay = CYBERBOT_SLEEP_DELAY_MS) {
-  let lastActivity = Date.now();
-  let sleeping = false;
-  let disposed = false;
-  let timer: ReturnType<typeof setTimeout>;
-  const check = () => {
-    if (disposed) return;
-    const remaining = delay - (Date.now() - lastActivity);
-    if (remaining > 0) timer = setTimeout(check, remaining);
-    else {
-      sleeping = true;
-      onSleep(true);
-    }
-  };
-  timer = setTimeout(check, delay);
-  return {
-    wake() {
-      if (disposed) return;
-      lastActivity = Date.now();
-      if (sleeping) {
-        sleeping = false;
-        onSleep(false);
-        timer = setTimeout(check, delay);
-      }
-    },
-    dispose() {
-      disposed = true;
-      clearTimeout(timer);
-    },
-  };
-}
-
-// A separate, low-frequency idle cycle. Pointer movement updates a timestamp;
-// it does not allocate a new timer on every event.
-export function createCyberBotVanishTimer(
-  onChange: (hidden: boolean, style: CyberBotVanishStyle) => void,
+// One idle cycle chooses a gesture instead of running overlapping sleep and
+// vanish timers. Two consecutive departures guarantee a sleep next time.
+export function createCyberBotIdleCycle(
+  onChange: (state: CyberBotIdleState, style: CyberBotVanishStyle) => void,
   random = Math.random,
 ) {
   let lastActivity = Date.now();
-  let hidden = false;
+  let state: CyberBotIdleState = 'awake';
   let paused = false;
   let disposed = false;
   let style: CyberBotVanishStyle = 'phase';
-  let hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
+  let consecutiveVanish = 0;
+  let nextGesture: 'vanish' | 'sleep';
+  let idleDelay: number;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   function clearTimer() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
   }
+  function chooseNextGesture() {
+    nextGesture = consecutiveVanish >= 2 || random() >= CYBERBOT_VANISH_CHANCE ? 'sleep' : 'vanish';
+    idleDelay = nextGesture === 'vanish'
+      ? randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random)
+      : randomDelay(CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, random);
+  }
+  function scheduleCheck(delay = idleDelay) {
+    if (disposed || paused) return;
+    timer = setTimeout(check, delay);
+  }
+  function finishGesture() {
+    timer = null;
+    if (disposed || paused || state === 'awake') return;
+    state = 'awake';
+    onChange(state, style);
+    lastActivity = Date.now();
+    chooseNextGesture();
+    scheduleCheck();
+  }
   function check() {
     timer = null;
     if (disposed || paused) return;
-    const remaining = hideDelay - (Date.now() - lastActivity);
+    const remaining = idleDelay - (Date.now() - lastActivity);
     if (remaining > 0) {
-      timer = setTimeout(check, remaining);
+      scheduleCheck(remaining);
       return;
     }
-    hidden = true;
-    style = random() < 0.5 ? 'phase' : 'ascend';
-    onChange(true, style);
-    timer = setTimeout(() => {
-      timer = null;
-      if (disposed || paused || !hidden) return;
-      hidden = false;
-      onChange(false, style);
-      lastActivity = Date.now();
-      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
-      scheduleHide();
-    }, randomDelay(CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MAX_AWAY_MS, random));
+    if (nextGesture === 'vanish') {
+      state = 'hidden';
+      consecutiveVanish += 1;
+      style = random() < 0.5 ? 'phase' : 'ascend';
+      onChange(state, style);
+      timer = setTimeout(finishGesture, randomDelay(CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MAX_AWAY_MS, random));
+    } else {
+      state = 'sleeping';
+      consecutiveVanish = 0;
+      onChange(state, style);
+      timer = setTimeout(finishGesture, randomDelay(CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_SLEEP_MAX_REST_MS, random));
+    }
   }
-  function scheduleHide() {
-    if (disposed || paused) return;
-    timer = setTimeout(check, hideDelay);
-  }
-  scheduleHide();
+  chooseNextGesture();
+  scheduleCheck();
 
   return {
     wake() {
       if (disposed) return;
       lastActivity = Date.now();
-      if (!hidden) return;
-      hidden = false;
+      if (state === 'awake') return;
+      state = 'awake';
       clearTimer();
-      onChange(false, style);
-      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
-      scheduleHide();
+      onChange(state, style);
+      chooseNextGesture();
+      scheduleCheck();
     },
     pause() {
       if (disposed || paused) return;
       paused = true;
       clearTimer();
-      if (hidden) {
-        hidden = false;
-        onChange(false, style);
+      if (state !== 'awake') {
+        state = 'awake';
+        onChange(state, style);
       }
     },
     resume() {
       if (disposed || !paused) return;
       paused = false;
       lastActivity = Date.now();
-      hideDelay = randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random);
-      scheduleHide();
+      chooseNextGesture();
+      scheduleCheck();
     },
     dispose() {
       disposed = true;
