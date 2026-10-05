@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue, useReducedMotion } from 'motion/react';
 import { CyberBotAvatar } from './CyberBotAvatar';
 import { CyberSpeechBubble } from './CyberSpeechBubble';
@@ -43,10 +44,12 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [isDodgeCooldown, setIsDodgeCooldown] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [layoutReady, setLayoutReady] = useState(false);
   const dodgeTimerRef = useRef<number | null>(null);
   const dodgeExecutionTimerRef = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
   const dragEndTimerRef = useRef<number | null>(null);
+  const dragCommitFrameRef = useRef<number | null>(null);
   const sleeping = useCyberBotSleep(enabled);
   const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: activeMessage?.id, bubbleRef });
 
@@ -62,6 +65,12 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   }, [enabled, placement.hidden, placement.bubbleVisible, !!activeMessage, onSpeechVisibilityChange]);
 
   useEffect(() => {
+    if (placement.hidden || layoutReady) return;
+    const frame = window.requestAnimationFrame(() => setLayoutReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [placement.hidden, layoutReady]);
+
+  useEffect(() => {
     if (!placement.hasObstacles) return;
     if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
     setTemporaryEmotion(null);
@@ -73,6 +82,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
       if (dodgeExecutionTimerRef.current) window.clearTimeout(dodgeExecutionTimerRef.current);
       if (dragEndTimerRef.current) window.clearTimeout(dragEndTimerRef.current);
+      if (dragCommitFrameRef.current) window.cancelAnimationFrame(dragCommitFrameRef.current);
     };
   }, []);
 
@@ -145,13 +155,24 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       }}
       dragMomentum={false}
       dragElastic={0.06}
-      style={{ x, y, left: placement.left, top: placement.top, visibility: placement.hidden ? 'hidden' : 'visible' }}
+      style={{
+        x,
+        y,
+        left: placement.left,
+        top: placement.top,
+        visibility: placement.hidden ? 'hidden' : 'visible',
+        transition: isDragging || reducedMotion || placement.hidden || !layoutReady
+          ? 'none'
+          : 'left 360ms cubic-bezier(0.22, 1, 0.36, 1), top 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
       onDragStart={() => {
         isDraggingRef.current = true;
         setIsDragging(true);
         setIsDodgeCooldown(true);
         setTemporaryEmotion(null);
         if (dodgeTimerRef.current) window.clearTimeout(dodgeTimerRef.current);
+        if (dragEndTimerRef.current) window.clearTimeout(dragEndTimerRef.current);
+        if (dragCommitFrameRef.current) window.cancelAnimationFrame(dragCommitFrameRef.current);
         if (dodgeExecutionTimerRef.current) {
           window.clearTimeout(dodgeExecutionTimerRef.current);
           dodgeExecutionTimerRef.current = null;
@@ -159,23 +180,37 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       }}
       onDragEnd={(_event, info) => {
         const dist = Math.hypot(info.offset.x, info.offset.y);
+        const finishDrag = () => {
+          dragEndTimerRef.current = window.setTimeout(() => {
+            isDraggingRef.current = false;
+            setIsDragging(false);
+          }, dist > 5 ? 120 : 0);
+        };
         if (!placement.hasObstacles) {
-          setManualOffset({
-            x: placement.left + x.get() - (currentPos === 'bottom-left' ? 80 : window.innerWidth - 126),
-            y: placement.top + y.get() - (currentPos === 'top-right' ? 80 : window.innerHeight - 150),
+          const droppedLeft = placement.left + x.get();
+          const droppedTop = placement.top + y.get();
+          // Let Motion finish its pointer-up bookkeeping before changing the
+          // anchor, then clear the drag transform in the same frame.
+          dragCommitFrameRef.current = window.requestAnimationFrame(() => {
+            dragCommitFrameRef.current = null;
+            flushSync(() => {
+              setManualOffset({
+                x: droppedLeft - (currentPos === 'bottom-left' ? 80 : window.innerWidth - 126),
+                y: droppedTop - (currentPos === 'top-right' ? 80 : window.innerHeight - 150),
+              });
+            });
+            x.set(0);
+            y.set(0);
+            finishDrag();
           });
+        } else {
+          x.set(0);
+          y.set(0);
+          finishDrag();
         }
-        x.set(0);
-        y.set(0);
-        dragEndTimerRef.current = window.setTimeout(() => {
-          isDraggingRef.current = false;
-          setIsDragging(false);
-        }, dist > 5 ? 120 : 0);
         // Re-entering the hitbox at drop time must not turn a deliberate drag into a dodge.
         dodgeTimerRef.current = window.setTimeout(() => setIsDodgeCooldown(false), 700);
       }}
-      layout={!isDragging && !reducedMotion}
-      transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
       className="fixed z-[180] w-[94px] h-[94px] pointer-events-none select-none"
     >
       {/* Speech Bubble Area (Anchored directly above CyberBot without shifting layout) */}
