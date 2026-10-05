@@ -6,6 +6,7 @@ import { nextCyberBotIdleExpression } from './cyberBotBehavior';
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
   isHovered?: boolean;
+  speechKey?: string;
   size?: number;
   className?: string;
 }
@@ -13,6 +14,7 @@ interface CyberBotAvatarProps {
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
   isHovered = false,
+  speechKey,
   size = 76,
   className = '',
 }) => {
@@ -191,12 +193,14 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   const isAlert = emotion === 'alert';
   const isSleeping = emotion === 'sleeping';
+  const speaking = !!speechKey && !isSleeping && !reducedMotion;
   const glowColor = isAlert ? 'rgba(245, 158, 11, 0.45)' : isSleeping ? 'rgba(34, 211, 238, 0.12)' : 'rgba(34, 211, 238, 0.45)';
 
   return (
     <div
       aria-hidden="true"
       data-cyberbot-face={faceEmotion}
+      data-cyberbot-speaking={speaking ? 'true' : 'false'}
       className={`relative inline-flex flex-col items-center justify-center select-none group ${className}`}
       style={{ width: size, height: size }}
     >
@@ -358,7 +362,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           </g>
 
           {/* --- HEAD & EARS --- */}
-          <g id="head">
+          <motion.g
+            id="head"
+            key={speechKey || 'silent'}
+            initial={false}
+            animate={speaking ? { y: [0, -1.2, 0, 0.6, 0] } : { y: 0 }}
+            transition={{ duration: speaking ? 1.8 : 0, ease: 'easeInOut' }}
+          >
             {/* Left Ear Antenna */}
             <path
               d="M 17 38 C 11 38 11 50 17 50 Z"
@@ -387,8 +397,19 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               cy="11"
               r={isHovered && !isSleeping ? 4 : 3}
               fill={isSleeping ? '#64748b' : isHovered ? '#38bdf8' : isAlert ? '#ef4444' : '#22d3ee'}
-              className={isSleeping ? '' : 'motion-safe:animate-pulse'}
+              className={isSleeping || speaking ? '' : 'motion-safe:animate-pulse'}
             />
+            {speaking && (
+              <motion.circle
+                key={`antenna-${speechKey}`}
+                cx="50" cy="11" fill="none"
+                stroke={isAlert ? '#fbbf24' : '#67e8f9'}
+                strokeWidth="1.2"
+                initial={{ r: 3, opacity: 0 }}
+                animate={{ r: [3, 5.5, 3, 6, 3], opacity: [0, 0.7, 0, 0.55, 0] }}
+                transition={{ duration: 1.8, ease: 'easeInOut' }}
+              />
+            )}
 
             {/* Outer Head (Cloud-like rounded capsule) */}
             <path
@@ -444,7 +465,30 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 {renderFaceContent()}
               </motion.g>
             </AnimatePresence>
-          </g>
+            {speaking && (
+              <motion.g
+                key={`speech-${speechKey}`}
+                data-cyberbot-speech-wave="true"
+                fill="none"
+                stroke={isAlert ? '#fbbf24' : '#67e8f9'}
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.9, 0.9, 0] }}
+                transition={{ duration: 1.8, times: [0, 0.08, 0.76, 1] }}
+              >
+                {[46, 50, 54].map((x, index) => (
+                  <motion.line
+                    key={x}
+                    x1={x} x2={x} y1="59"
+                    initial={{ y2: 58 }}
+                    animate={{ y2: index === 1 ? [58, 54, 57, 53, 58] : [58, 56, 54, 57, 58] }}
+                    transition={{ duration: 0.45 + index * 0.08, repeat: 2, ease: 'easeInOut' }}
+                  />
+                ))}
+              </motion.g>
+            )}
+          </motion.g>
           {isSleeping && (
             <g fill="#94a3b8" className="font-mono font-bold" aria-hidden="true">
               <motion.g

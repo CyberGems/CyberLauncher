@@ -90,6 +90,15 @@ html, body {
 }
 .cyberbot-card.alert .bot-face-logo { display: none; }
 .cyberbot-card:not(.alert) .bot-face-alert { display: none; }
+.bot-speech-wave, .bot-antenna-signal { opacity: 0; }
+.bot-antenna-signal { transform-origin: 50px 11px; }
+.cyberbot-card.alert .bot-speech-wave, .cyberbot-card.alert .bot-antenna-signal { stroke: #fbbf24; }
+.cyberbot-card.speaking .bot-head { animation: botSpeechNod 1.8s ease-in-out both; }
+.cyberbot-card.speaking .bot-speech-wave { animation: botSpeechSignal 1.8s ease-out both; }
+.cyberbot-card.speaking .bot-speech-wave line { transform-box: fill-box; transform-origin: center bottom; animation: botSpeechBar 0.45s ease-in-out 3 alternate; }
+.cyberbot-card.speaking .bot-speech-wave line:nth-child(2) { animation-delay: 0.08s; }
+.cyberbot-card.speaking .bot-speech-wave line:nth-child(3) { animation-delay: 0.15s; }
+.cyberbot-card.speaking .bot-antenna-signal { animation: botAntennaSignal 1.8s ease-out both; }
 .cyberbot-card.alert .cyberbot-bubble { border-color: rgba(245, 158, 11, 0.55); }
 .cyberbot-card.alert .cyberbot-brand { color: #fbbf24; }
 .cyberbot-bubble {
@@ -130,7 +139,16 @@ html, body {
 .cyberbot-secondary { color: #cbd5e1; background: rgba(100,116,139,.18); border: 1px solid rgba(148,163,184,.35); }
 .cyberbot-actions button:hover { filter: brightness(1.25); }
 @keyframes botFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@media (prefers-reduced-motion: reduce) { .cyberbot-avatar, .cyberbot-card { animation: none; } }
+@keyframes botSpeechNod { 0%, 100% { transform: translateY(0); } 22% { transform: translateY(-1.2px); } 48% { transform: translateY(0); } 72% { transform: translateY(0.6px); } }
+@keyframes botSpeechSignal { 0%, 100% { opacity: 0; } 8%, 76% { opacity: 0.9; } }
+@keyframes botSpeechBar { from { transform: scaleY(0.45); } to { transform: scaleY(1); } }
+@keyframes botAntennaSignal { 0%, 100% { opacity: 0; transform: scale(0.6); } 24%, 68% { opacity: 0.7; transform: scale(1.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .cyberbot-avatar, .cyberbot-card, .cyberbot-card.speaking .bot-head,
+  .cyberbot-card.speaking .bot-speech-wave,
+  .cyberbot-card.speaking .bot-speech-wave line,
+  .cyberbot-card.speaking .bot-antenna-signal { animation: none; }
+}
 
 @keyframes toastSlideIn {
   from {

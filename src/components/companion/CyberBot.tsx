@@ -348,6 +348,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
           <CyberBotAvatar
             emotion={currentEmotion}
             isHovered={isHovered}
+            speechKey={displayedMessage && placement.bubbleVisible && !placement.hidden
+              ? `${displayedMessage.id}:${displayedMessage.timestamp}` : undefined}
             size={78}
           />
         </button>

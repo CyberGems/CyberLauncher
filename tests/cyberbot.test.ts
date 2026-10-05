@@ -147,6 +147,17 @@ test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', ()
   assert.equal((sleeping.match(/>z<\/text>/g) || []).length, 2);
 });
 
+test('speech adds a finite facial signal without replacing the logo expression', () => {
+  const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher' }));
+  const speaking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher', speechKey: 'message:1' }));
+  assert.match(silent, /data-cyberbot-speaking="false"/);
+  assert.doesNotMatch(silent, /data-cyberbot-speech-wave/);
+  assert.match(speaking, /data-cyberbot-face="launcher"/);
+  assert.match(speaking, /data-cyberbot-speaking="true"/);
+  assert.match(speaking, /data-cyberbot-speech-wave="true"/);
+  assert.match(speaking, /M 64 38 H 68 V 42 H 72/);
+});
+
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
   const settings: NotificationDeliverySettings = {
     botEnabled: true,
@@ -233,13 +244,14 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
     addEventListener: (event: string, handler: (event: { stopPropagation: () => void }) => void) => void;
     setAttribute: (name: string, value: string) => void;
   }>();
+  let speechRestarts = 0;
   const element = (id: string) => {
     if (!elements.has(id)) {
       const classes = new Set<string>(['hidden']);
       const listeners: Record<string, (event: { stopPropagation: () => void }) => void> = {};
       elements.set(id, {
         classList: {
-          add: (...names) => names.forEach(name => classes.add(name)),
+          add: (...names) => names.forEach(name => { if (id === 'cyberbotCard' && name === 'speaking') speechRestarts++; classes.add(name); }),
           remove: (...names) => names.forEach(name => classes.delete(name)),
           toggle: (name, force) => { if (force === undefined ? !classes.has(name) : force) classes.add(name); else classes.delete(name); },
           contains: name => classes.has(name),
@@ -265,21 +277,29 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
 
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 9s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
+  assert.equal(element('cyberbotCard').classList.contains('speaking'), true);
+  assert.equal(speechRestarts, 1);
   assert.equal(element('standardCard').classList.contains('hidden'), true);
   assert.equal(element('cyberbotTitle').textContent, 'Launching in 9s');
+  receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 8s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
+  assert.equal(speechRestarts, 1, 'countdown updates should not restart the speaking cue');
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task']);
 
   receive({ presentation: 'bot', type: 'info', title: 'Update available', action: 'open-about', actionLabel: 'About', releaseUrl: 'https://example.com/release', releaseLabel: 'Release notes' });
+  assert.equal(speechRestarts, 2);
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task', 'open-hud', 'open-release']);
 
   receive({ presentation: 'bot', type: 'info', source: 'launch', title: 'Opening Editor' });
+  assert.equal(speechRestarts, 3);
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
   assert.equal(element('cyberbotTitle').textContent, 'Opening Editor');
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
+  receive({ type: 'hide' });
+  assert.equal(element('cyberbotCard').classList.contains('speaking'), false);
 });
 
 test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar', () => {
@@ -287,6 +307,17 @@ test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar
   assert.match(css, /\.cyberbot-card\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;/s);
   assert.match(css, /\.cyberbot-avatar\s*\{[^}]*flex:\s*0 0 84px;[^}]*width:\s*84px;/s);
   assert.match(css, /\.cyberbot-bubble\s*\{[^}]*flex:\s*0 1 auto;[^}]*width:\s*max-content;[^}]*max-width:\s*382px;/s);
+});
+
+test('floating speech cue is finite and disabled under reduced motion', () => {
+  const html = readFileSync(new URL('../public/tray/toast-window.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../public/tray/toast-window.css', import.meta.url), 'utf8');
+  assert.match(html, /class="bot-speech-wave"/);
+  assert.match(html, /class="bot-antenna-signal"/);
+  assert.match(css, /\.cyberbot-card\.speaking \.bot-head \{ animation: botSpeechNod 1\.8s/);
+  assert.match(css, /@keyframes botSpeechSignal \{[^}]*100% \{ opacity: 0; \}/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /\.cyberbot-card\.speaking \.bot-speech-wave line,[\s\S]*animation: none;/);
 });
 
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({

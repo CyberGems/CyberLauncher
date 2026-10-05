@@ -3,6 +3,7 @@
 let currentTaskId = null;
 let currentActionTarget = null;
 let currentReleaseUrl = null;
+let lastBotSpeechKey = null;
 
 const cyberbotCard = document.getElementById('cyberbotCard');
 const cyberbotTitle = document.getElementById('cyberbotTitle');
@@ -93,6 +94,8 @@ if (window.desktopToast) {
     if (!data) return;
 
     if (data.type === 'hide') {
+      cyberbotCard.classList.remove('speaking');
+      lastBotSpeechKey = null;
       imminentCard.classList.add('exiting');
       standardCard.classList.add('exiting');
       cyberbotCard.classList.add('exiting');
@@ -111,6 +114,16 @@ if (window.desktopToast) {
     }
 
     if (data.presentation === 'bot') {
+      const speechKey = data.type === 'imminent'
+        ? `${data.type}:${data.taskId || ''}`
+        : `${data.type}:${data.source || ''}:${data.title || ''}:${data.detail || ''}`;
+      if (cyberbotCard.classList.contains('hidden') || speechKey !== lastBotSpeechKey) {
+        cyberbotCard.classList.remove('speaking');
+        // Restart the finite cue when a different announcement replaces the current one.
+        void cyberbotCard.offsetWidth;
+        cyberbotCard.classList.add('speaking');
+      }
+      lastBotSpeechKey = speechKey;
       imminentCard.classList.add('hidden');
       standardCard.classList.add('hidden');
       cyberbotCard.classList.remove('hidden');
@@ -147,6 +160,8 @@ if (window.desktopToast) {
     }
 
     cyberbotCard.classList.add('hidden');
+    cyberbotCard.classList.remove('speaking');
+    lastBotSpeechKey = null;
 
     if (data.type === 'imminent') {
       standardCard.classList.add('hidden');
