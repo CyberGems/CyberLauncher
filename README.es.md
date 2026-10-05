@@ -68,6 +68,11 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Soporte multi-monitor**: elige en qué pantalla aparece CyberLauncher (incluido "Seguir al cursor")
 - **Ocultar al perder el foco**: el lanzador se oculta automáticamente al cambiar a otra ventana
 
+### 🤖 Compañero CyberBot
+- **Compañero animado**: CyberBot comparte comentarios contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos desde el lanzador.
+- **Personaliza la experiencia**: Elige un nombre, mueve a CyberBot, ajusta su nivel de interacción y define un horario silencioso. Descansa tras 90 segundos sin actividad en el lanzador y despierta cuando vuelves.
+- **No es un chatbot**: CyberBot usa mensajes contextuales integrados. Puedes desactivarlo en `Ajustes → CyberBot`; los banners de respaldo pueden mostrar avisos en su lugar.
+
 ### 📊 Sistema y monitorización
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior
 - **Centro de energía del sistema**: acceso rápido a Apagar, Reiniciar, Suspender y Bloquear con cuenta regresiva de seguridad de 10s

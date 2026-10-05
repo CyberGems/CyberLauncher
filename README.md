@@ -68,6 +68,11 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Multi-Monitor Support**: Choose which display CyberLauncher appears on (including "Follow cursor")
 - **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
 
+### 🤖 CyberBot Companion
+- **Animated desktop companion**: CyberBot shares contextual launch feedback, system notices, scheduled-task countdowns, and tips from the launcher.
+- **Personalize the experience**: Choose a name, move CyberBot, set an interaction level, and schedule quiet hours. It rests after 90 seconds without launcher activity and wakes when you return.
+- **Not a chatbot**: CyberBot uses built-in contextual messages. You can turn it off in `Settings → CyberBot`; backup banners can show notices in its place.
+
 ### 📊 System & Monitoring
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
 - **System Power Hub**: Fast access to Shutdown, Restart, Sleep, and Lock with a 10s safety confirmation modal

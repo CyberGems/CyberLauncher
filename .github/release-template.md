@@ -8,7 +8,7 @@
 
 <!-- Maintainer: Rewrite the marked paragraph for every release. Use 25-45 words, lead with user-facing changes, and do not repeat the app name or version. -->
 <!-- changelog-summary:start -->
-Navigate faster with the collapsible sidebar rail and Ctrl+K command palette, manage power actions with a countdown safeguard, track scheduled launches in standalone alerts, customize automated backups, and enjoy fluid icon reordering with an acrylic tray menu.
+Meet CyberBot, an animated companion that shares launch feedback, system notices, and practical tips; personalize its name, position, quiet hours, and interaction level. This release also adds an interactive PowerShell or CMD terminal, improves app launch guidance, and refines monitoring and scheduled-task alerts.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
@@ -17,64 +17,46 @@ Navigate faster with the collapsible sidebar rail and Ctrl+K command palette, ma
 
 ### ✨ Key Features & Highlights
 
-- 🗂️ **Collapsible Left Sidebar**:
-  - Compact 52px icon rail for categories with a keyboard shortcut (`Ctrl+B`), smooth fade masks, and expanded view on hover or toggle.
+- 🤖 **CyberBot Companion**:
+  - Animated expressions and contextual messages for launches, system notices, scheduled-task countdowns, and tips.
+  - Personalize its name and position, set quiet hours or minimal interaction, or disable the companion and use backup banners.
 
-- ⌨️ **Command Palette (Ctrl+K)**:
-  - Instant searchable command palette to trigger launcher actions, open settings, or switch views without leaving the keyboard.
+- 💻 **Interactive Cyber Terminal**:
+  - Open a persistent PowerShell or CMD session from the search field with `>`; use shell history and interactive programs, and switch shells from the toolbar.
 
-- ⚡ **System Power Hub & Safety Countdown**:
-  - Integrated footer power hub with shutdown, reboot, sleep, and lock commands backed by a 10-second cancelable confirmation modal.
+- 🧭 **Smoother Launcher Workflow**:
+  - Guided first-run setup, clearer app-add and pinned-launch behavior, and improved visibility when apps open.
+  - System monitoring now highlights critical memory use and can recommend CyberManager from the resource panel.
 
-- ⏰ **Desktop Alerts & Scheduler Overhaul**:
-  - Standalone desktop alert window for imminent countdowns and launch toasts that persist outside the main launcher panel.
-  - Redesigned scheduler with analog chronometer, quick presets, execution history, custom dropdowns, and toolbar launch button.
-
-- 🎯 **Fluid Reordering & Drag Polish**:
-  - Live animated reordering for favorites and taskbar icons, with cursor grab feedback and dead-spot outside-click protection.
-
-- 🪟 **Acrylic Tray Menu & System Health**:
-  - Custom acrylic tray menu featuring recent shortcuts and suite recommendations.
-  - Proactive system health notifications for low disk space and high RAM usage.
-
-- 💾 **Automated Backups & Portable Support**:
-  - Configurable scheduled automated backups with retention policies.
-  - Support for portable builds and portable user data directories.
+- 🔔 **More Reliable Notifications**:
+  - Route launcher notices through CyberBot when available, with configurable banners and protected delivery for critical alerts.
+  - CyberBot's idle animations and speech cues are refined to stay clear and responsive.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-Navega más rápido con la barra lateral colapsable y la paleta de comandos Ctrl+K, gestiona acciones de energía con cuenta regresiva de seguridad, sigue lanzamientos programados en alertas flotantes independientes, personaliza copias de seguridad automáticas y disfruta de reordenación fluida con menú de bandeja acrílico.
+Conoce a CyberBot, un compañero animado que comparte avisos al abrir apps, novedades del sistema y consejos; personaliza su nombre, posición, horario silencioso e interacción. Esta versión también incorpora una terminal interactiva de PowerShell o CMD, mejora la guía para abrir apps y refina la monitorización y las alertas de tareas programadas.
 
 ---
 
 ### ✨ Novedades destacadas
 
-- 🗂️ **Barra lateral izquierda colapsable**:
-  - Barra compacta de 52px para categorías con atajo de teclado (`Ctrl+B`), máscaras de desvanecimiento suave y vista expandida al pasar el cursor o alternar.
+- 🤖 **Compañero CyberBot**:
+  - Gestos animados y mensajes contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos.
+  - Personaliza su nombre y posición, define un horario silencioso o interacción mínima, o desactiva el compañero y usa banners de respaldo.
 
-- ⌨️ **Paleta de comandos (Ctrl+K)**:
-  - Paleta de comandos instantánea y con búsqueda para ejecutar acciones del lanzador, abrir ajustes o cambiar de vista sin soltar el teclado.
+- 💻 **Cyber Terminal interactiva**:
+  - Abre una sesión persistente de PowerShell o CMD desde el buscador con `>`; usa el historial y programas interactivos, y cambia de consola desde la barra.
 
-- ⚡ **Centro de energía del sistema y cuenta regresiva de seguridad**:
-  - Centro de energía integrado en el pie de página con comandos de apagado, reinicio, suspensión y bloqueo respaldados por un modal de confirmación cancelable de 10 segundos.
+- 🧭 **Flujo del lanzador más claro**:
+  - Guía inicial, instrucciones más claras para agregar apps y usar el modo PIN, y mejor visibilidad al abrir aplicaciones.
+  - El monitor del sistema destaca el uso crítico de memoria y puede recomendar CyberManager desde el panel de recursos.
 
-- ⏰ **Alertas de escritorio y renovación del programador**:
-  - Ventana de alertas de escritorio independiente para cuentas regresivas inminentes y avisos emergentes que persisten fuera del panel principal.
-  - Programador rediseñado con cronómetro analógico, ajustes rápidos predefinidos, historial de ejecuciones, menús desplegables personalizados y botón de temporizador en la barra de herramientas.
-
-- 🎯 **Reordenación fluida y pulido de arrastre**:
-  - Reordenación animada en tiempo real para favoritos e iconos de la barra de tareas, con cursor de agarre interactivo y protección contra ocultación en clics externos.
-
-- 🪟 **Menú de bandeja acrílico y salud del sistema**:
-  - Menú de bandeja acrílico personalizado con accesos directos recientes y recomendaciones de la suite CyberGems.
-  - Notificaciones proactivas de salud del sistema por espacio bajo en disco y alto uso de memoria RAM.
-
-- 💾 **Copias de seguridad automáticas y soporte portable**:
-  - Copias de seguridad automáticas programables con políticas de retención.
-  - Soporte para compilaciones portables y almacenamiento de datos de usuario en modo portable.
+- 🔔 **Avisos más confiables**:
+  - Los avisos del lanzador llegan a CyberBot cuando está disponible, con banners configurables y entrega protegida para alertas críticas.
+  - Se refinan las animaciones en reposo y las señales al hablar para mantener a CyberBot claro y ágil.
 
 </details>
 
