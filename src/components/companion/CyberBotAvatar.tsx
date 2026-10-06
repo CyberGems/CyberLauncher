@@ -179,8 +179,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           fill={activeLightColor}
           style={{ filter: `drop-shadow(0 0 2px ${isAlert ? 'rgba(251, 191, 36, 0.65)' : 'rgba(103, 232, 249, 0.65)'})` }}
         >
-          <rect x="29" y="40" width="11" height="4" rx="2" />
-          <rect x="60" y="40" width="11" height="4" rx="2" />
+          <rect x="30" y="38" width="8" height="9" rx="4" />
+          <rect x="62" y="38" width="8" height="9" rx="4" />
         </g>
       );
     }
@@ -377,12 +377,12 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         >
           <defs>
             <linearGradient id="cyberBotBodyGrad" x1="12%" y1="0%" x2="88%" y2="100%">
-              <stop offset="0%" stopColor="#64748b" />
-              <stop offset="38%" stopColor="#273449" />
+              <stop offset="0%" stopColor="#334155" />
+              <stop offset="42%" stopColor="#172033" />
               <stop offset="100%" stopColor="#0b1120" />
             </linearGradient>
             <linearGradient id="cyberBotCobaltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#2563eb" />
+              <stop offset="0%" stopColor="#1d4ed8" />
               <stop offset="55%" stopColor="#172554" />
               <stop offset="100%" stopColor="#0f172a" />
             </linearGradient>
@@ -406,7 +406,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               <feGaussianBlur stdDeviation="2.4" />
             </filter>
             <clipPath id="cyberBotFaceClip">
-              <rect x="23" y="22" width="54" height="33" rx="9" />
+              <rect x="24" y="30" width="52" height="29" rx="9" />
             </clipPath>
           </defs>
 
@@ -483,39 +483,37 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               }}
               style={{ transformOrigin: '50px 58px' }}
             >
-            {/* Integrated stabilizer nacelles reinforce the torso instead of reading as arms. */}
+            {/* Detached shoulder pods keep the silhouette technical and compact. */}
             <path
-              d="M 28 53 C 19 51 13 59 13 70 C 13 81 18 87 27 86 L 32 79 L 32 59 Z"
+              d="M 25 63 C 18 62 14 67 14 75 C 14 83 18 88 24 87 C 28 84 29 68 25 63 Z"
               fill="url(#cyberBotCobaltGrad)"
-              stroke="#64748b" strokeWidth="1.2"
+              stroke="#38bdf8" strokeWidth="1.3"
+              transform={isHovered && !isSleeping ? 'rotate(-7 22 75)' : 'rotate(2 22 75)'}
+              className="motion-safe:transition-transform motion-safe:duration-300"
             />
             <path
-              d="M 72 53 C 81 51 87 59 87 70 C 87 81 82 87 73 86 L 68 79 L 68 59 Z"
+              d="M 75 63 C 82 62 86 67 86 75 C 86 83 82 88 76 87 C 72 84 71 68 75 63 Z"
               fill="url(#cyberBotCobaltGrad)"
-              stroke="#64748b" strokeWidth="1.2"
+              stroke="#38bdf8" strokeWidth="1.3"
+              transform={isHovered && !isSleeping ? 'rotate(7 78 75)' : 'rotate(-2 78 75)'}
+              className="motion-safe:transition-transform motion-safe:duration-300"
             />
-            <path d="M 19 60 Q 16 70 19 80" fill="none" stroke="#38bdf8" strokeWidth="1.15" strokeLinecap="round" opacity={isSleeping ? 0.2 : 0.72} />
-            <path d="M 81 60 Q 84 70 81 80" fill="none" stroke="#38bdf8" strokeWidth="1.15" strokeLinecap="round" opacity={isSleeping ? 0.2 : 0.72} />
+            <path d="M 17 69 Q 21 66 25 68" fill="none" stroke="#67e8f9" strokeWidth="1" strokeLinecap="round" opacity="0.72" />
+            <path d="M 83 69 Q 79 66 75 68" fill="none" stroke="#67e8f9" strokeWidth="1" strokeLinecap="round" opacity="0.72" />
 
-            {/* Levitation core and broad armored torso. */}
+            {/* Compact floating torso. */}
             <path
-              d="M 38 81 Q 50 101 62 81 Z"
-              fill="#080f1e" stroke="#334155" strokeWidth="1.1"
-            />
-            <path
-              d="M 27 51 Q 50 46 73 51 L 80 65 L 76 80 Q 66 92 50 94 Q 34 92 24 80 L 20 65 Z"
+              d="M 30 59 C 36 56 64 56 70 59 L 74 76 C 73 87 63 93 50 94 C 37 93 27 87 26 76 Z"
               fill="url(#cyberBotBodyGrad)"
-              stroke="#64748b" strokeWidth="1.25"
+              stroke="#64748b" strokeWidth="1.4"
             />
-            <path d="M 27 57 L 40 61 L 36 84 Q 29 80 26 74 Z" fill="#172554" opacity="0.95" />
-            <path d="M 73 57 L 60 61 L 64 84 Q 71 80 74 74 Z" fill="#172554" opacity="0.95" />
-            <path d="M 28 53 Q 50 48 72 53 L 66 60 Q 50 56 34 60 Z" fill="#334155" opacity="0.9" />
-            <path d="M 31 55 Q 50 60 69 55" fill="none" stroke="#38bdf8" strokeWidth="0.8" opacity={isSleeping ? 0.18 : 0.65} />
-            <path d="M 29 82 Q 50 94 71 82" fill="none" stroke="#1e3a8a" strokeWidth="1.1" opacity="0.82" />
+            <path d="M 29 62 Q 50 70 71 62" fill="none" stroke="#1d4ed8" strokeWidth="3" opacity="0.72" />
+            <path d="M 29 62 Q 50 67 71 62" fill="none" stroke="#67e8f9" strokeWidth="0.85" opacity={isSleeping ? 0.25 : 0.8} />
+            <path d="M 31 82 Q 50 91 69 82" fill="none" stroke="#1e3a8a" strokeWidth="1.1" opacity="0.9" />
 
             {/* Recessed voice panel: bottom-to-top light intensity. */}
             <path
-              d="M 40 59 Q 50 61 60 59 L 62 84 Q 50 89 38 84 Z"
+              d="M 40 65 Q 50 68 60 65 L 62 84 Q 50 90 38 84 Z"
               fill="#050b18" stroke="#475569" strokeWidth="1"
             />
             <motion.g
@@ -554,22 +552,28 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
               })}
             </motion.g>
 
-            {/* Low visor and flush crown sensor avoid the old toy-like antenna. */}
-            <path
-              d="M 28 14 C 37 11 63 11 72 14 C 80 17 84 24 84 34 C 84 44 78 51 68 54 C 58 56 42 56 32 54 C 22 51 16 44 16 34 C 16 24 20 17 28 14 Z"
-              fill="url(#cyberBotBodyGrad)"
-              stroke="#94a3b8" strokeWidth="1.25" strokeOpacity="0.72"
-            />
-            <path d="M 35 14 Q 50 8 65 14 L 61 19 H 39 Z" fill="url(#cyberBotCobaltGrad)" stroke="#475569" strokeWidth="0.8" />
-            <path d="M 45 14 H 55" fill="none" stroke="#67e8f9" strokeWidth="1.4" strokeLinecap="round" opacity={isSleeping ? 0.18 : 0.85} />
+            {/* Broad, low visor and restrained sensor make the head less toy-like. */}
+            <rect x="48.5" y="9" width="3" height="7" rx="1.5" fill="#475569" />
             <rect
-              x="21" y="20" width="58" height="35" rx="11"
-              fill="url(#cyberBotScreenGrad)"
-              stroke={isAlert ? '#f59e0b' : '#475569'}
-              strokeWidth="1.3" strokeOpacity="0.92"
+              x="45" y="6" width="10" height="5" rx="2.5"
+              fill={isSleeping ? '#334155' : 'url(#cyberBotCobaltGrad)'}
+              stroke={isAlert ? '#fbbf24' : '#38bdf8'} strokeWidth="1"
             />
-            <path d="M 24 23 H 43 L 27 52 H 24 Z" fill="url(#cyberBotHighlight)" opacity="0.14" />
-            <path d="M 32 55 Q 50 59 68 55" fill="none" stroke="#22d3ee" strokeWidth="0.75" opacity={isSleeping ? 0.12 : 0.52} />
+            <path
+              d="M 25 17 C 34 13 66 13 75 17 C 84 21 88 29 87 39 C 87 51 79 59 68 61 C 58 63 42 63 32 61 C 21 59 13 51 13 39 C 12 29 16 21 25 17 Z"
+              fill="url(#cyberBotBodyGrad)"
+              stroke="#64748b" strokeWidth="1.6"
+            />
+            <path d="M 28 17 Q 50 11 72 17 L 66 22 Q 50 19 34 22 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="0.8" />
+            <path d="M 17 34 C 10 34 10 47 17 48 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="1.2" />
+            <path d="M 83 34 C 90 34 90 47 83 48 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="1.2" />
+            <rect
+              x="20" y="24" width="60" height="34" rx="11"
+              fill="url(#cyberBotScreenGrad)"
+              stroke={isAlert ? '#f59e0b' : '#38bdf8'}
+              strokeWidth="1.5" strokeOpacity="0.82"
+            />
+            <path d="M 23 27 H 43 L 27 55 H 23 Z" fill="url(#cyberBotHighlight)" opacity="0.18" />
 
             <AnimatePresence initial={false}>
               <motion.g
