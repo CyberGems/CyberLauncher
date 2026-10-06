@@ -3458,7 +3458,9 @@ export default function App() {
 
     let targetTopic: CyberBotTopic | null = null;
 
-    if (isAboutOpen) {
+    if (isTerminalOpen) {
+      targetTopic = 'terminal';
+    } else if (isAboutOpen) {
       targetTopic = 'about';
     } else if (isSettingsOpen) {
       if (settingsTab === 'cyberbot') {
@@ -3505,6 +3507,7 @@ export default function App() {
     isSystemHUDOpen,
     isStorageHUDOpen,
     isCommandPaletteOpen,
+    isTerminalOpen,
     isAddingApp,
     openedViaDrop,
     isAddingCategory,
@@ -8530,7 +8533,6 @@ export default function App() {
               </h3>
               <div
                 ref={favContainerRef}
-                data-no-hide
                 className="relative flex flex-wrap gap-3 rounded-2xl p-2 -m-2"
                 data-cl-drop="favorites"
               >

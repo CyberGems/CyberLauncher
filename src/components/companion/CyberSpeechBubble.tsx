@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { X, AlertTriangle, CircleCheck, ArrowRight } from 'lucide-react';
+import { X, AlertTriangle, Bot, CircleCheck, ArrowRight } from 'lucide-react';
 import type { CyberBotMessage } from './companionTypes';
 
 interface CyberSpeechBubbleProps {
@@ -65,7 +65,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       </button>
 
       <div className="flex items-start gap-2.5 pr-6">
-        <img src="/icon-32.png" alt="" aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 shrink-0 object-contain" />
+        <Bot aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 shrink-0 text-cyan-400" />
         <div className="min-w-0 flex-1">
           {message.tag && (
             <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 mb-1 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>

@@ -105,15 +105,16 @@ test('the name invitation exposes its three explicit choices', () => {
   assert.match(html, /Don&#x27;t ask again/);
 });
 
-test('speech uses the floating-banner logo without an empty header row', () => {
+test('speech uses the CyberBot symbol without an empty header row', () => {
   const base = { id: 'greeting', text: 'Good morning', timestamp: 0 };
   const ordinary = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
     message: base, onClose: () => {}, closeLabel: 'Dismiss',
   }));
   assert.doesNotMatch(ordinary, /CYBERBOT/);
-  assert.match(ordinary, /src="\/icon-32\.png"/);
+  assert.match(ordinary, /lucide-bot/);
+  assert.doesNotMatch(ordinary, /icon-32\.png/);
   assert.match(ordinary, /Good morning/);
-  assert.ok(ordinary.lastIndexOf('src="/icon-32.png"') < ordinary.indexOf('Good morning'));
+  assert.ok(ordinary.indexOf('lucide-bot') < ordinary.indexOf('Good morning'));
   assert.doesNotMatch(ordinary, /mb-1"><span aria-hidden/);
 
   const scheduled = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
@@ -645,6 +646,15 @@ test('the About panel has a bilingual phrase deck featuring the CyberLauncher fa
   assert.equal(cyberBotPhrases.about.length, 3);
   assert.ok(cyberBotPhrases.about.some(phrase => phrase.emotion === 'launcher'));
   for (const { key } of cyberBotPhrases.about) {
+    assert.ok(translations.es[key]?.trim());
+    assert.ok(translations.en[key]?.trim());
+  }
+});
+
+test('Cyber Terminal has a bilingual contextual phrase deck', () => {
+  assert.equal(cyberBotPhrases.terminal.length, 3);
+  assert.ok(cyberBotPhrases.terminal.some(phrase => phrase.emotion === 'terminal'));
+  for (const { key } of cyberBotPhrases.terminal) {
     assert.ok(translations.es[key]?.trim());
     assert.ok(translations.en[key]?.trim());
   }
