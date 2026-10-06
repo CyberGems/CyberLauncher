@@ -7,6 +7,7 @@ export type CyberBotEmotion =
   | 'sparkle'
   | 'launcher'
   | 'terminal'
+  | 'marquee'
   | 'alert' 
   | 'storage'
   | 'scared' 

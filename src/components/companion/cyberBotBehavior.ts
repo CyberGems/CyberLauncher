@@ -17,13 +17,45 @@ export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal', 'curious'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
 export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
+export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.12;
 export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 5_500;
 export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 8_500;
 export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 3_200;
 export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 4_800;
+export const CYBERBOT_IDLE_MARQUEE_MIN_MS = 9_000;
+export const CYBERBOT_IDLE_MARQUEE_MAX_MS = 12_000;
+
+export function getCyberBotIdleMarqueeMessages(appVersion: string): string[] {
+  return [
+    `CYBERLAUNCHER v${appVersion}`,
+    'CYBERBOT // ONLINE',
+    'CYBERGEMS',
+    '[ CTRL + K ]',
+    '0101 // 1100',
+  ];
+}
+
+export function nextCyberBotIdleMarqueeMessage(
+  previous: string | null,
+  appVersion: string,
+  random = Math.random,
+): string {
+  const messages = getCyberBotIdleMarqueeMessages(appVersion);
+  const choices = messages.filter(message => message !== previous);
+  return choices[Math.floor(random() * choices.length)];
+}
 
 export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = Math.random): CyberBotEmotion {
-  const pool = random() < CYBERBOT_IDLE_EXPRESSIVE_CHANCE
+  const roll = random();
+  if (
+    roll >= CYBERBOT_IDLE_EXPRESSIVE_CHANCE
+    && roll < CYBERBOT_IDLE_EXPRESSIVE_CHANCE + CYBERBOT_IDLE_MARQUEE_CHANCE
+    && previous !== 'marquee'
+  ) {
+    return 'marquee';
+  }
+
+  const pool = roll < CYBERBOT_IDLE_EXPRESSIVE_CHANCE
     ? cyberBotExpressiveIdleExpressions
     : cyberBotNeutralIdleExpressions;
   const choices = pool.filter(emotion => emotion !== previous);
@@ -31,6 +63,10 @@ export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = M
 }
 
 export function getCyberBotIdleExpressionDuration(expression: CyberBotEmotion, random = Math.random): number {
+  if (expression === 'marquee') {
+    return randomDelay(CYBERBOT_IDLE_MARQUEE_MIN_MS, CYBERBOT_IDLE_MARQUEE_MAX_MS, random);
+  }
+
   const isNeutral = cyberBotNeutralIdleExpressions.includes(expression as typeof cyberBotNeutralIdleExpressions[number]);
   return isNeutral
     ? randomDelay(CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, random)
@@ -38,7 +74,7 @@ export function getCyberBotIdleExpressionDuration(expression: CyberBotEmotion, r
 }
 
 export function shouldCyberBotBlink(emotion: CyberBotEmotion): boolean {
-  return !['launcher', 'terminal', 'sleeping', 'scared', 'alert', 'storage'].includes(emotion);
+  return !['launcher', 'terminal', 'marquee', 'sleeping', 'scared', 'alert', 'storage'].includes(emotion);
 }
 
 // One idle cycle chooses a gesture instead of running overlapping sleep and

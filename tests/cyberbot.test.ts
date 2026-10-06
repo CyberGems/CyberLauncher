@@ -9,7 +9,33 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_CHANCE, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, nextCyberBotIdleExpression, shouldCyberBotBlink } from '../src/components/companion/cyberBotBehavior';
+import {
+  createCyberBotHoverAssist,
+  createCyberBotIdleCycle,
+  CYBERBOT_HOVER_DWELL_MS,
+  CYBERBOT_HOVER_MOVE_COOLDOWN_MS,
+  CYBERBOT_IDLE_EXPRESSIVE_CHANCE,
+  CYBERBOT_IDLE_EXPRESSIVE_MAX_MS,
+  CYBERBOT_IDLE_EXPRESSIVE_MIN_MS,
+  CYBERBOT_IDLE_MARQUEE_CHANCE,
+  CYBERBOT_IDLE_MARQUEE_MAX_MS,
+  CYBERBOT_IDLE_MARQUEE_MIN_MS,
+  CYBERBOT_IDLE_NEUTRAL_MAX_MS,
+  CYBERBOT_IDLE_NEUTRAL_MIN_MS,
+  CYBERBOT_SLEEP_MAX_IDLE_MS,
+  CYBERBOT_SLEEP_MIN_IDLE_MS,
+  CYBERBOT_SLEEP_MIN_REST_MS,
+  CYBERBOT_VANISH_MAX_IDLE_MS,
+  CYBERBOT_VANISH_MIN_AWAY_MS,
+  CYBERBOT_VANISH_MIN_IDLE_MS,
+  cyberBotExpressiveIdleExpressions,
+  cyberBotNeutralIdleExpressions,
+  getCyberBotIdleExpressionDuration,
+  getCyberBotIdleMarqueeMessages,
+  nextCyberBotIdleExpression,
+  nextCyberBotIdleMarqueeMessage,
+  shouldCyberBotBlink,
+} from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotPhrase, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -147,6 +173,26 @@ test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', ()
   const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping' }));
   assert.match(sleeping, /data-cyberbot-face="sleeping"/);
   assert.equal((sleeping.match(/>z<\/text>/g) || []).length, 2);
+});
+
+test('the marquee face replaces the eyes with clipped, version-aware status text', () => {
+  const packageJson = JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as { version: string };
+  const messages = getCyberBotIdleMarqueeMessages(packageJson.version);
+  assert.deepEqual(messages, [
+    `CYBERLAUNCHER v${packageJson.version}`,
+    'CYBERBOT // ONLINE',
+    'CYBERGEMS',
+    '[ CTRL + K ]',
+    '0101 // 1100',
+  ]);
+
+  const marquee = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee' }));
+  assert.match(marquee, /data-cyberbot-face="marquee"/);
+  assert.match(marquee, /data-cyberbot-marquee=/);
+  assert.match(marquee, /clip-path="url\(#cyberBotFaceClip\)"/);
+  assert.doesNotMatch(marquee, /M 28 43 Q 33 39 38 43/);
 });
 
 test('speech adds a finite facial signal without replacing the logo expression', () => {
@@ -619,6 +665,7 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   let previous: CyberBotMessage['emotion'] = 'idle';
   let neutralCount = 0;
   let expressiveCount = 0;
+  let marqueeCount = 0;
   const neutralFaces = new Set<string>();
 
   for (let i = 0; i < 500; i++) {
@@ -629,13 +676,29 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
       neutralFaces.add(face);
     }
     if (cyberBotExpressiveIdleExpressions.includes(face as typeof cyberBotExpressiveIdleExpressions[number])) expressiveCount += 1;
+    if (face === 'marquee') marqueeCount += 1;
     previous = face;
   }
 
   assert.ok(neutralCount > expressiveCount * 4, 'neutral faces should dominate the idle loop');
-  assert.equal(neutralCount + expressiveCount, 500);
+  assert.ok(marqueeCount > expressiveCount, 'marquee statuses should be occasional but easier to encounter than smiles');
+  assert.equal(neutralCount + expressiveCount + marqueeCount, 500);
   assert.deepEqual(neutralFaces, new Set(cyberBotNeutralIdleExpressions));
   assert.equal(CYBERBOT_IDLE_EXPRESSIVE_CHANCE, 0.02);
+  assert.equal(CYBERBOT_IDLE_MARQUEE_CHANCE, 0.12);
+});
+
+test('idle marquee messages vary without immediate repeats', () => {
+  const messages = getCyberBotIdleMarqueeMessages('1.12.0');
+  let previous: string | null = null;
+  const seen = new Set<string>();
+  for (let i = 0; i < 30; i++) {
+    const message = nextCyberBotIdleMarqueeMessage(previous, '1.12.0', () => (i % messages.length) / messages.length);
+    assert.notEqual(message, previous);
+    seen.add(message);
+    previous = message;
+  }
+  assert.deepEqual(seen, new Set(messages));
 });
 
 test('idle timing holds every random face for several seconds', () => {
@@ -643,12 +706,15 @@ test('idle timing holds every random face for several seconds', () => {
   assert.equal(getCyberBotIdleExpressionDuration('terminal', () => 0.999999), CYBERBOT_IDLE_NEUTRAL_MAX_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0), CYBERBOT_IDLE_EXPRESSIVE_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0.999999), CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('marquee', () => 0), CYBERBOT_IDLE_MARQUEE_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('marquee', () => 0.999999), CYBERBOT_IDLE_MARQUEE_MAX_MS);
   assert.ok(CYBERBOT_IDLE_EXPRESSIVE_MIN_MS >= 3_000);
 });
 
 test('the Terminal face remains stable instead of using the generic blink', () => {
   assert.equal(shouldCyberBotBlink('terminal'), false);
   assert.equal(shouldCyberBotBlink('launcher'), false);
+  assert.equal(shouldCyberBotBlink('marquee'), false);
   assert.equal(shouldCyberBotBlink('curious'), true);
 });
 

@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
-import { getCyberBotIdleExpressionDuration, nextCyberBotIdleExpression, shouldCyberBotBlink } from './cyberBotBehavior';
+import {
+  getCyberBotIdleExpressionDuration,
+  getCyberBotIdleMarqueeMessages,
+  nextCyberBotIdleExpression,
+  nextCyberBotIdleMarqueeMessage,
+  shouldCyberBotBlink,
+} from './cyberBotBehavior';
 
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
@@ -12,6 +18,7 @@ interface CyberBotAvatarProps {
 }
 
 const SPEECH_CUE_MS = 1800;
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
@@ -24,8 +31,10 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const isSleeping = emotion === 'sleeping';
   const [isBlinking, setIsBlinking] = useState(false);
   const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
+  const [marqueeMessage, setMarqueeMessage] = useState(() => getCyberBotIdleMarqueeMessages(APP_VERSION)[0]);
   const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
+  const lastMarqueeMessageRef = useRef(marqueeMessage);
 
   // Cycle directly between slow, random expressions instead of returning to one
   // resting face between every change. Cheerful gestures remain occasional.
@@ -35,6 +44,11 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     let timer: number;
     const showNext = () => {
       const next = nextCyberBotIdleExpression(lastExpressionRef.current);
+      if (next === 'marquee') {
+        const message = nextCyberBotIdleMarqueeMessage(lastMarqueeMessageRef.current, APP_VERSION);
+        lastMarqueeMessageRef.current = message;
+        setMarqueeMessage(message);
+      }
       lastExpressionRef.current = next;
       setIdleExpression(next);
       timer = window.setTimeout(showNext, getCyberBotIdleExpressionDuration(next));
@@ -204,6 +218,41 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             <text x="67" y="47" textAnchor="middle">•</text>
           </g>
         );
+      case 'marquee':
+        return reducedMotion ? (
+          <text
+            data-cyberbot-marquee={marqueeMessage}
+            x="50"
+            y="47"
+            textAnchor="middle"
+            textLength="48"
+            lengthAdjust="spacingAndGlyphs"
+            fontFamily="monospace"
+            fontSize="6.5"
+            fontWeight="700"
+            fill="#22d3ee"
+          >
+            {marqueeMessage}
+          </text>
+        ) : (
+          <g clipPath="url(#cyberBotFaceClip)">
+            <motion.text
+              data-cyberbot-marquee={marqueeMessage}
+              x="76"
+              y="47"
+              fontFamily="monospace"
+              fontSize="6.5"
+              fontWeight="700"
+              letterSpacing="0.35"
+              fill="#22d3ee"
+              initial={false}
+              animate={{ x: [76, -105] }}
+              transition={{ duration: 10.5, ease: 'linear' }}
+            >
+              {marqueeMessage}
+            </motion.text>
+          </g>
+        );
       case 'terminal':
       default:
         return (
@@ -288,6 +337,9 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <clipPath id="cyberBotFaceClip">
+              <rect x="24" y="30" width="52" height="29" rx="9" />
+            </clipPath>
           </defs>
 
           {/* --- LEGS / FEET --- */}
