@@ -23,6 +23,7 @@ interface CyberBotProps {
   interactLabel: string;
   closeLabel: string;
   hoverAssistText: (count: number) => string;
+  marqueeStatusMessages?: readonly string[];
   priorityEmotion?: CyberBotEmotion;
   systemAttention?: boolean;
   onSpeechVisibilityChange?: (visible: boolean) => void;
@@ -42,6 +43,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   interactLabel,
   closeLabel,
   hoverAssistText,
+  marqueeStatusMessages,
   priorityEmotion,
   systemAttention = false,
   onSpeechVisibilityChange,
@@ -350,6 +352,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
           <CyberBotAvatar
             emotion={currentEmotion}
             isHovered={isHovered}
+            marqueeStatusMessages={marqueeStatusMessages}
             speechKey={displayedMessage && placement.bubbleVisible && !placement.hidden
               ? `${displayedMessage.id}:${displayedMessage.timestamp}` : undefined}
             size={78}

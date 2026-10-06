@@ -14522,6 +14522,12 @@ export default function App() {
         interactLabel={t('cyberbot_interact')}
         closeLabel={t('cyberbot_close_message')}
         hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
+        marqueeStatusMessages={[
+          t('cyberbot_marquee_online'),
+          t('cyberbot_marquee_brand'),
+          t('cyberbot_marquee_systems_ok'),
+          t('cyberbot_marquee_ready'),
+        ]}
         systemAttention={!!notification}
         onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
       />

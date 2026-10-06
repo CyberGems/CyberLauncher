@@ -13,6 +13,7 @@ interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
   isHovered?: boolean;
   speechKey?: string;
+  marqueeStatusMessages?: readonly string[];
   size?: number;
   className?: string;
 }
@@ -24,17 +25,22 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
   isHovered = false,
   speechKey,
+  marqueeStatusMessages,
   size = 76,
   className = '',
 }) => {
   const reducedMotion = useReducedMotion();
+  const marqueeMessages = getCyberBotIdleMarqueeMessages(APP_VERSION, marqueeStatusMessages);
   const isSleeping = emotion === 'sleeping';
   const [isBlinking, setIsBlinking] = useState(false);
   const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
-  const [marqueeMessage, setMarqueeMessage] = useState(() => getCyberBotIdleMarqueeMessages(APP_VERSION)[0]);
+  const [marqueeMessage, setMarqueeMessage] = useState(() => marqueeMessages[0]);
   const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
-  const lastMarqueeMessageRef = useRef(marqueeMessage);
+  const lastMarqueeMessageRef = useRef<string | null>(null);
+  const marqueeMessagesRef = useRef(marqueeMessages);
+  const facesSinceMarqueeRef = useRef(1);
+  marqueeMessagesRef.current = marqueeMessages;
 
   // Cycle directly between slow, random expressions instead of returning to one
   // resting face between every change. Cheerful gestures remain occasional.
@@ -43,11 +49,21 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     if (emotion !== 'idle') return;
     let timer: number;
     const showNext = () => {
-      const next = nextCyberBotIdleExpression(lastExpressionRef.current);
+      const next = nextCyberBotIdleExpression(
+        lastExpressionRef.current,
+        Math.random,
+        facesSinceMarqueeRef.current,
+      );
       if (next === 'marquee') {
-        const message = nextCyberBotIdleMarqueeMessage(lastMarqueeMessageRef.current, APP_VERSION);
+        const message = nextCyberBotIdleMarqueeMessage(
+          lastMarqueeMessageRef.current,
+          marqueeMessagesRef.current,
+        );
         lastMarqueeMessageRef.current = message;
         setMarqueeMessage(message);
+        facesSinceMarqueeRef.current = 0;
+      } else {
+        facesSinceMarqueeRef.current += 1;
       }
       lastExpressionRef.current = next;
       setIdleExpression(next);
@@ -96,6 +112,9 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   const faceEmotion = emotion === 'idle' ? idleExpression : emotion;
   const speaking = speechActive && !!speechKey && !isSleeping && !reducedMotion;
+  const marqueeTextWidth = Math.max(54, marqueeMessage.length * 6.3);
+  const marqueeEndX = 20 - marqueeTextWidth;
+  const marqueeDurationSeconds = (56 + marqueeTextWidth) / 16;
 
   // Face expression terminal characters
   const renderFaceContent = () => {
@@ -219,38 +238,30 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
           </g>
         );
       case 'marquee':
-        return reducedMotion ? (
-          <text
-            data-cyberbot-marquee={marqueeMessage}
-            x="50"
-            y="47"
-            textAnchor="middle"
-            textLength="48"
-            lengthAdjust="spacingAndGlyphs"
-            fontFamily="monospace"
-            fontSize="6.5"
-            fontWeight="700"
-            fill="#22d3ee"
-          >
-            {marqueeMessage}
-          </text>
-        ) : (
+        // Scrolling is the content of this face, so it remains active while
+        // reduced-motion mode continues to suppress CyberBot's ambient motion.
+        return (
           <g clipPath="url(#cyberBotFaceClip)">
-            <motion.text
+            <text
               data-cyberbot-marquee={marqueeMessage}
               x="76"
-              y="47"
-              fontFamily="monospace"
-              fontSize="6.5"
-              fontWeight="700"
-              letterSpacing="0.35"
-              fill="#22d3ee"
-              initial={false}
-              animate={{ x: [76, -105] }}
-              transition={{ duration: 10.5, ease: 'linear' }}
+              y="49"
+              fontFamily="'JetBrains Mono', monospace"
+              fontSize="10.5"
+              fontWeight="800"
+              letterSpacing="0.2"
+              fill="#67e8f9"
             >
               {marqueeMessage}
-            </motion.text>
+              <animate
+                attributeName="x"
+                from="76"
+                to={String(marqueeEndX)}
+                dur={`${marqueeDurationSeconds}s`}
+                calcMode="linear"
+                repeatCount="indefinite"
+              />
+            </text>
           </g>
         );
       case 'terminal':
@@ -534,7 +545,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 animate={{ opacity: 1 }}
                 exit={reducedMotion ? undefined : { opacity: 0 }}
                 transition={{ duration: reducedMotion ? 0 : 0.18, ease: 'easeInOut' }}
-                filter={faceEmotion === 'launcher' ? undefined : 'url(#cyberGlowFilter)'}
+                filter={faceEmotion === 'launcher' || faceEmotion === 'marquee' ? undefined : 'url(#cyberGlowFilter)'}
               >
                 {renderFaceContent()}
               </motion.g>

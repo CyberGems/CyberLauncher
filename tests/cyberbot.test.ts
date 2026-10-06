@@ -17,6 +17,7 @@ import {
   CYBERBOT_IDLE_EXPRESSIVE_CHANCE,
   CYBERBOT_IDLE_EXPRESSIVE_MAX_MS,
   CYBERBOT_IDLE_EXPRESSIVE_MIN_MS,
+  CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE,
   CYBERBOT_IDLE_MARQUEE_CHANCE,
   CYBERBOT_IDLE_MARQUEE_MAX_MS,
   CYBERBOT_IDLE_MARQUEE_MIN_MS,
@@ -184,14 +185,16 @@ test('the marquee face replaces the eyes with clipped, version-aware status text
     `CYBERLAUNCHER v${packageJson.version}`,
     'CYBERBOT // ONLINE',
     'CYBERGEMS',
-    '[ CTRL + K ]',
-    '0101 // 1100',
+    'SYSTEMS // OK',
+    'READY // TO LAUNCH',
   ]);
 
   const marquee = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee' }));
   assert.match(marquee, /data-cyberbot-face="marquee"/);
   assert.match(marquee, /data-cyberbot-marquee=/);
   assert.match(marquee, /clip-path="url\(#cyberBotFaceClip\)"/);
+  assert.match(marquee, /font-size="10.5"/);
+  assert.match(marquee, /<animate attributeName="x" from="76"/);
   assert.doesNotMatch(marquee, /M 28 43 Q 33 39 38 43/);
 });
 
@@ -685,7 +688,11 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   assert.equal(neutralCount + expressiveCount + marqueeCount, 500);
   assert.deepEqual(neutralFaces, new Set(cyberBotNeutralIdleExpressions));
   assert.equal(CYBERBOT_IDLE_EXPRESSIVE_CHANCE, 0.02);
-  assert.equal(CYBERBOT_IDLE_MARQUEE_CHANCE, 0.12);
+  assert.equal(CYBERBOT_IDLE_MARQUEE_CHANCE, 0.25);
+  assert.equal(
+    nextCyberBotIdleExpression('curious', () => 0.999999, CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE),
+    'marquee',
+  );
 });
 
 test('idle marquee messages vary without immediate repeats', () => {
@@ -693,12 +700,27 @@ test('idle marquee messages vary without immediate repeats', () => {
   let previous: string | null = null;
   const seen = new Set<string>();
   for (let i = 0; i < 30; i++) {
-    const message = nextCyberBotIdleMarqueeMessage(previous, '1.12.0', () => (i % messages.length) / messages.length);
+    const message = nextCyberBotIdleMarqueeMessage(previous, messages, () => (i % messages.length) / messages.length);
     assert.notEqual(message, previous);
     seen.add(message);
     previous = message;
   }
   assert.deepEqual(seen, new Set(messages));
+});
+
+test('idle marquee statuses are clear and translated in Spanish and English', () => {
+  const keys = [
+    'cyberbot_marquee_online',
+    'cyberbot_marquee_brand',
+    'cyberbot_marquee_systems_ok',
+    'cyberbot_marquee_ready',
+  ] as const;
+  for (const language of ['es', 'en'] as const) {
+    const statuses = keys.map(key => translations[language][key]);
+    assert.ok(statuses.every(Boolean));
+    assert.doesNotMatch(statuses.join(' '), /CTRL|0101|1100/);
+    assert.equal(getCyberBotIdleMarqueeMessages('1.12.0', statuses).length, 5);
+  }
 });
 
 test('idle timing holds every random face for several seconds', () => {

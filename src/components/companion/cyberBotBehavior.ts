@@ -17,35 +17,50 @@ export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal', 'curious'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
 export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
-export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.12;
+export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.25;
+export const CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE = 2;
 export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 5_500;
 export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 8_500;
 export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 3_200;
 export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 4_800;
-export const CYBERBOT_IDLE_MARQUEE_MIN_MS = 9_000;
-export const CYBERBOT_IDLE_MARQUEE_MAX_MS = 12_000;
+export const CYBERBOT_IDLE_MARQUEE_MIN_MS = 11_000;
+export const CYBERBOT_IDLE_MARQUEE_MAX_MS = 14_000;
 
-export function getCyberBotIdleMarqueeMessages(appVersion: string): string[] {
+export const cyberBotDefaultIdleMarqueeStatuses = [
+  'CYBERBOT // ONLINE',
+  'CYBERGEMS',
+  'SYSTEMS // OK',
+  'READY // TO LAUNCH',
+] as const;
+
+export function getCyberBotIdleMarqueeMessages(
+  appVersion: string,
+  statuses: readonly string[] = cyberBotDefaultIdleMarqueeStatuses,
+): string[] {
   return [
     `CYBERLAUNCHER v${appVersion}`,
-    'CYBERBOT // ONLINE',
-    'CYBERGEMS',
-    '[ CTRL + K ]',
-    '0101 // 1100',
+    ...statuses,
   ];
 }
 
 export function nextCyberBotIdleMarqueeMessage(
   previous: string | null,
-  appVersion: string,
+  messages: readonly string[],
   random = Math.random,
 ): string {
-  const messages = getCyberBotIdleMarqueeMessages(appVersion);
   const choices = messages.filter(message => message !== previous);
   return choices[Math.floor(random() * choices.length)];
 }
 
-export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = Math.random): CyberBotEmotion {
+export function nextCyberBotIdleExpression(
+  previous: CyberBotEmotion,
+  random = Math.random,
+  facesSinceMarquee = 0,
+): CyberBotEmotion {
+  if (previous !== 'marquee' && facesSinceMarquee >= CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE) {
+    return 'marquee';
+  }
+
   const roll = random();
   if (
     roll >= CYBERBOT_IDLE_EXPRESSIVE_CHANCE
