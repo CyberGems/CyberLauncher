@@ -9,7 +9,7 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_CHANCE, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_HOVER_REST_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_CHANCE, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, nextCyberBotIdleExpression, shouldCyberBotBlink } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotPhrase, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -162,7 +162,7 @@ test('speech adds a finite facial signal without replacing the logo expression',
 
 test('speaking replaces each expression’s mouth instead of drawing a second one', () => {
   const mouths = [
-    ['curious', 'M 46 51 Q 50 53 55 49'],
+    ['curious', 'M 46 51 H 55'],
     ['delighted', 'M 44 51 Q 51 55 58 49'],
     ['sparkle', 'M 45 51 Q 51 54 57 50'],
     ['affectionate', 'M 45 51 Q 51 54 57 50'],
@@ -619,28 +619,37 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   let previous: CyberBotMessage['emotion'] = 'idle';
   let neutralCount = 0;
   let expressiveCount = 0;
+  const neutralFaces = new Set<string>();
 
   for (let i = 0; i < 500; i++) {
     const face = nextCyberBotIdleExpression(previous ?? 'idle', random);
     assert.notEqual(face, previous);
-    if (cyberBotNeutralIdleExpressions.includes(face as typeof cyberBotNeutralIdleExpressions[number])) neutralCount += 1;
+    if (cyberBotNeutralIdleExpressions.includes(face as typeof cyberBotNeutralIdleExpressions[number])) {
+      neutralCount += 1;
+      neutralFaces.add(face);
+    }
     if (cyberBotExpressiveIdleExpressions.includes(face as typeof cyberBotExpressiveIdleExpressions[number])) expressiveCount += 1;
     previous = face;
   }
 
   assert.ok(neutralCount > expressiveCount * 4, 'neutral faces should dominate the idle loop');
   assert.equal(neutralCount + expressiveCount, 500);
+  assert.deepEqual(neutralFaces, new Set(cyberBotNeutralIdleExpressions));
   assert.equal(CYBERBOT_IDLE_EXPRESSIVE_CHANCE, 0.02);
 });
 
-test('idle timing keeps neutral and resting faces on screen longer than cheerful gestures', () => {
-  assert.equal(getCyberBotIdleRestDuration(false, false, () => 0), CYBERBOT_IDLE_REST_MIN_MS);
-  assert.equal(getCyberBotIdleRestDuration(true, false, () => 0), CYBERBOT_IDLE_HOVER_REST_MIN_MS);
+test('idle timing holds every random face for several seconds', () => {
   assert.equal(getCyberBotIdleExpressionDuration('launcher', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('terminal', () => 0.999999), CYBERBOT_IDLE_NEUTRAL_MAX_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0), CYBERBOT_IDLE_EXPRESSIVE_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0.999999), CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
-  assert.ok(CYBERBOT_IDLE_NEUTRAL_MIN_MS > CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
+  assert.ok(CYBERBOT_IDLE_EXPRESSIVE_MIN_MS >= 3_000);
+});
+
+test('the Terminal face remains stable instead of using the generic blink', () => {
+  assert.equal(shouldCyberBotBlink('terminal'), false);
+  assert.equal(shouldCyberBotBlink('launcher'), false);
+  assert.equal(shouldCyberBotBlink('curious'), true);
 });
 
 test('the About panel has a bilingual phrase deck featuring the CyberLauncher face', () => {

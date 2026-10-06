@@ -13,19 +13,14 @@ export type CyberBotVanishStyle = 'phase' | 'ascend';
 export type CyberBotIdleState = 'awake' | 'sleeping' | 'hidden';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
-// The logo face is the main resting expression. Keep the ambient loop mostly
-// composed, reserving visibly cheerful gestures for occasional moments.
-export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal'] as const;
+// Idle rotates slowly through composed faces. Visibly cheerful gestures remain rare.
+export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal', 'curious'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
 export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
-export const CYBERBOT_IDLE_REST_MIN_MS = 12_000;
-export const CYBERBOT_IDLE_REST_MAX_MS = 17_000;
-export const CYBERBOT_IDLE_HOVER_REST_MIN_MS = 6_000;
-export const CYBERBOT_IDLE_HOVER_REST_MAX_MS = 8_500;
 export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 5_500;
-export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 7_500;
-export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 900;
-export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 1_300;
+export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 8_500;
+export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 3_200;
+export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 4_800;
 
 export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = Math.random): CyberBotEmotion {
   const pool = random() < CYBERBOT_IDLE_EXPRESSIVE_CHANCE
@@ -35,18 +30,15 @@ export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = M
   return choices[Math.floor(random() * choices.length)];
 }
 
-export function getCyberBotIdleRestDuration(isHovered: boolean, reducedMotion: boolean, random = Math.random): number {
-  if (reducedMotion) return randomDelay(CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_IDLE_REST_MAX_MS, random);
-  return isHovered
-    ? randomDelay(CYBERBOT_IDLE_HOVER_REST_MIN_MS, CYBERBOT_IDLE_HOVER_REST_MAX_MS, random)
-    : randomDelay(CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_IDLE_REST_MAX_MS, random);
-}
-
 export function getCyberBotIdleExpressionDuration(expression: CyberBotEmotion, random = Math.random): number {
   const isNeutral = cyberBotNeutralIdleExpressions.includes(expression as typeof cyberBotNeutralIdleExpressions[number]);
   return isNeutral
     ? randomDelay(CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, random)
     : randomDelay(CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, random);
+}
+
+export function shouldCyberBotBlink(emotion: CyberBotEmotion): boolean {
+  return !['launcher', 'terminal', 'sleeping', 'scared', 'alert', 'storage'].includes(emotion);
 }
 
 // One idle cycle chooses a gesture instead of running overlapping sleep and

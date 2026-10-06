@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
-import { getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from './cyberBotBehavior';
+import { getCyberBotIdleExpressionDuration, nextCyberBotIdleExpression, shouldCyberBotBlink } from './cyberBotBehavior';
 
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
@@ -27,29 +27,25 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
 
-  // Neutral faces lead the ambient loop. Cheerful gestures remain short and occasional.
+  // Cycle directly between slow, random expressions instead of returning to one
+  // resting face between every change. Cheerful gestures remain occasional.
   // Reduced motion keeps these static face changes, but disables animated transforms and blinking.
   useEffect(() => {
-    setIdleExpression('launcher');
     if (emotion !== 'idle') return;
     let timer: number;
-    const rest = () => {
-      setIdleExpression('launcher');
-      timer = window.setTimeout(express, getCyberBotIdleRestDuration(isHovered, reducedMotion));
-    };
-    const express = () => {
+    const showNext = () => {
       const next = nextCyberBotIdleExpression(lastExpressionRef.current);
       lastExpressionRef.current = next;
       setIdleExpression(next);
-      timer = window.setTimeout(rest, getCyberBotIdleExpressionDuration(next));
+      timer = window.setTimeout(showNext, getCyberBotIdleExpressionDuration(next));
     };
-    rest();
+    showNext();
     return () => window.clearTimeout(timer);
-  }, [isHovered, emotion, reducedMotion]);
+  }, [emotion]);
 
   // Natural blinking effect every 3.5 to 6 seconds
   useEffect(() => {
-    if (reducedMotion || emotion === 'sleeping') {
+    if (reducedMotion || !shouldCyberBotBlink(emotion as CyberBotEmotion)) {
       setIsBlinking(false);
       return;
     }
@@ -72,7 +68,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       window.clearTimeout(blinkTimer);
       window.clearTimeout(endBlinkTimer);
     };
-  }, [reducedMotion, emotion === 'sleeping']);
+  }, [reducedMotion, emotion]);
 
   useEffect(() => {
     if (!speechKey || isSleeping || reducedMotion) {
@@ -89,8 +85,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   // Face expression terminal characters
   const renderFaceContent = () => {
-    // Keep the signature logo face crisp; only the other relaxed expressions blink.
-    if (isBlinking && faceEmotion !== 'sleeping' && faceEmotion !== 'scared' && faceEmotion !== 'alert' && faceEmotion !== 'storage' && faceEmotion !== 'launcher') {
+    // Keep the signature and terminal faces stable; only organic expressions blink.
+    if (isBlinking && shouldCyberBotBlink(faceEmotion)) {
       return (
         <g fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round">
           <path d="M 29 43 H 37 M 63 43 H 71" />
@@ -113,7 +109,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
             <path d="M 27 35 Q 32 31 37 35" />
             <ellipse cx="33" cy="43" rx="3.5" ry="4.5" fill="#22d3ee" stroke="none" />
             <circle cx="66" cy="43" r="2.5" fill="#22d3ee" stroke="none" />
-            {!speaking && <path d="M 46 51 Q 50 53 55 49" />}
+            {!speaking && <path d="M 46 51 H 55" />}
           </g>
         );
       case 'delighted':
