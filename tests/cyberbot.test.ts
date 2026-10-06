@@ -209,21 +209,18 @@ test('the marquee animation restarts when the launcher returns from the tray', (
   assert.match(source, /setMarqueeAnimationRun\(run => run \+ 1\)/);
 });
 
-test('speech keeps only calm eyes on the visor and moves its signal to the chest', () => {
+test('speech adds a finite facial signal without replacing the logo expression', () => {
   const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher' }));
   const speaking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher', speechKey: 'message:1' }));
   assert.match(silent, /data-cyberbot-speaking="false"/);
-  assert.doesNotMatch(silent, /data-cyberbot-speech-equalizer/);
+  assert.doesNotMatch(silent, /data-cyberbot-speech-wave/);
   assert.match(speaking, /data-cyberbot-face="launcher"/);
   assert.match(speaking, /data-cyberbot-speaking="true"/);
-  assert.match(speaking, /data-cyberbot-speaking-eyes="true"/);
-  assert.match(speaking, /data-cyberbot-speech-equalizer="true"/);
-  assert.equal((speaking.match(/data-cyberbot-speech-bar=/g) || []).length, 5);
-  assert.doesNotMatch(speaking, /data-cyberbot-speech-wave/);
-  assert.doesNotMatch(speaking, /M 64 38 H 68 V 42 H 72/);
+  assert.match(speaking, /data-cyberbot-speech-wave="true"/);
+  assert.match(speaking, /M 64 38 H 68 V 42 H 72/);
 });
 
-test('speaking suppresses every resting mouth and face symbol', () => {
+test('speaking replaces each expression’s mouth instead of drawing a second one', () => {
   const mouths = [
     ['curious', 'M 46 51 H 55'],
     ['delighted', 'M 44 51 Q 51 55 58 49'],
@@ -243,30 +240,11 @@ test('speaking suppresses every resting mouth and face symbol', () => {
     const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, speechKey: `test:${emotion}` }));
     assert.ok(silent.includes(mouth), `${emotion} should retain its resting mouth`);
     assert.ok(!talking.includes(mouth), `${emotion} should hide its resting mouth while speaking`);
-    assert.match(talking, /data-cyberbot-speaking-eyes="true"/);
-    assert.match(talking, /data-cyberbot-speech-equalizer="true"/);
+    assert.match(talking, /data-cyberbot-speech-wave="true"/);
   }
   const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', speechKey: 'test:sleep' }));
   assert.match(sleeping, /data-cyberbot-speaking="false"/);
-  assert.doesNotMatch(sleeping, /data-cyberbot-speech-equalizer/);
-});
-
-test('the Orbiter chassis has no feet and keeps a floor-anchored hover halo', () => {
-  const html = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher' }));
-  assert.match(html, /data-cyberbot-orbiter="true"/);
-  assert.match(html, /data-cyberbot-hover-float="true"/);
-  assert.match(html, /data-cyberbot-halo="true"/);
-  assert.match(html, /data-cyberbot-chest="true"/);
-  assert.doesNotMatch(html, /id="legs"|Left Foot|Right Foot/);
-});
-
-test('the hover halo becomes CyberBot’s primary idle portal', () => {
-  const hidden = renderToStaticMarkup(React.createElement(CyberBotAvatar, {
-    emotion: 'idle', vanished: true, vanishStyle: 'portal',
-  }));
-  assert.match(hidden, /data-cyberbot-halo="true"/);
-  assert.match(hidden, /data-cyberbot-orbiter="true"/);
-  assert.doesNotMatch(hidden, /data-cyberbot-speaking="true"/);
+  assert.doesNotMatch(sleeping, /data-cyberbot-speech-wave/);
 });
 
 test('RAM alerts keep the alert face while storage notices get a dedicated face', () => {

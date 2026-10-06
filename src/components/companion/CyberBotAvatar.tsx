@@ -7,50 +7,27 @@ import {
   nextCyberBotIdleExpression,
   nextCyberBotIdleMarqueeMessage,
   shouldCyberBotBlink,
-  type CyberBotVanishStyle,
 } from './cyberBotBehavior';
 
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
   isHovered?: boolean;
   speechKey?: string;
-  speechDurationMs?: number;
   marqueeStatusMessages?: readonly string[];
   size?: number;
   className?: string;
-  vanished?: boolean;
-  vanishStyle?: CyberBotVanishStyle;
 }
 
-const DEFAULT_SPEECH_CUE_MS = 2400;
+const SPEECH_CUE_MS = 1800;
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
-
-const SPEECH_BAR_ENVELOPES = [
-  [0.42, 1, 0.72, 1, 0.64, 0.92, 0.5],
-  [0.16, 0.9, 0.46, 1, 0.32, 0.8, 0.16],
-  [0.1, 0.2, 0.82, 0.4, 1, 0.24, 0.1],
-  [0.07, 0.1, 0.28, 0.88, 0.22, 0.58, 0.07],
-  [0.05, 0.07, 0.12, 0.44, 0.94, 0.1, 0.05],
-] as const;
-
-const CHEST_LIGHT_BARS = [
-  { y: 84, width: 10 },
-  { y: 80, width: 12 },
-  { y: 76, width: 14 },
-  { y: 72, width: 12 },
-  { y: 68, width: 9 },
-] as const;
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
   isHovered = false,
   speechKey,
-  speechDurationMs = DEFAULT_SPEECH_CUE_MS,
   marqueeStatusMessages,
   size = 76,
   className = '',
-  vanished = false,
-  vanishStyle = 'portal',
 }) => {
   const reducedMotion = useReducedMotion();
   const marqueeMessages = getCyberBotIdleMarqueeMessages(APP_VERSION, marqueeStatusMessages);
@@ -59,7 +36,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
   const [marqueeMessage, setMarqueeMessage] = useState(() => marqueeMessages[0]);
   const [marqueeAnimationRun, setMarqueeAnimationRun] = useState(0);
-  const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping);
+  const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
   const lastMarqueeMessageRef = useRef<string | null>(null);
   const marqueeMessagesRef = useRef(marqueeMessages);
@@ -151,40 +128,23 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   }, [reducedMotion, emotion]);
 
   useEffect(() => {
-    if (!speechKey || isSleeping) {
+    if (!speechKey || isSleeping || reducedMotion) {
       setSpeechActive(false);
       return;
     }
     setSpeechActive(true);
-    const timer = window.setTimeout(() => setSpeechActive(false), speechDurationMs);
+    const timer = window.setTimeout(() => setSpeechActive(false), SPEECH_CUE_MS);
     return () => window.clearTimeout(timer);
-  }, [speechKey, speechDurationMs, isSleeping]);
+  }, [speechKey, isSleeping, reducedMotion]);
 
   const faceEmotion = emotion === 'idle' ? idleExpression : emotion;
-  const speaking = speechActive && !!speechKey && !isSleeping;
+  const speaking = speechActive && !!speechKey && !isSleeping && !reducedMotion;
   const marqueeTextWidth = Math.max(54, marqueeMessage.length * 6.3);
   const marqueeEndX = 20 - marqueeTextWidth;
   const marqueeDurationSeconds = (56 + marqueeTextWidth) / 16;
-  const isAlert = emotion === 'alert' || emotion === 'storage';
-  const activeLightColor = isAlert ? '#fbbf24' : '#67e8f9';
-  const portalHidden = vanished && vanishStyle === 'portal';
 
   // Face expression terminal characters
   const renderFaceContent = () => {
-    // Speech belongs to the chest equalizer. The visor stays calm and readable.
-    if (speaking) {
-      return (
-        <g
-          data-cyberbot-speaking-eyes="true"
-          fill={activeLightColor}
-          style={{ filter: `drop-shadow(0 0 2px ${isAlert ? 'rgba(251, 191, 36, 0.65)' : 'rgba(103, 232, 249, 0.65)'})` }}
-        >
-          <rect x="30" y="38" width="8" height="9" rx="4" />
-          <rect x="62" y="38" width="8" height="9" rx="4" />
-        </g>
-      );
-    }
-
     // Keep the signature and terminal faces stable; only organic expressions blink.
     if (isBlinking && shouldCyberBotBlink(faceEmotion)) {
       return (
@@ -344,6 +304,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     }
   };
 
+  const isAlert = emotion === 'alert' || emotion === 'storage';
   const glowColor = isAlert ? 'rgba(245, 158, 11, 0.45)' : isSleeping ? 'rgba(34, 211, 238, 0.12)' : 'rgba(34, 211, 238, 0.45)';
 
   return (
@@ -368,33 +329,47 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         whileTap={reducedMotion ? undefined : { scale: 0.95 }}
         className="w-full h-full flex flex-col items-center justify-center"
       >
+        {/* Inner Ambient Layer: Handles Continuous Smooth Sinusoidal Floating */}
+        <motion.div
+          animate={reducedMotion ? { y: 0, rotate: 0 } : {
+            y: isSleeping ? [0, -1.5, 0] : [0, -5, 0],
+            rotate: isSleeping ? 0 : isHovered ? [-1.5, 1.5, -1.5] : [0, 0.75, 0],
+          }}
+          transition={reducedMotion ? { duration: 0 } : {
+            duration: isSleeping ? 5 : isHovered ? 1.4 : 3.2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          className="w-full h-full flex flex-col items-center justify-center"
+        >
         <svg
-          viewBox="0 0 100 108"
+          viewBox="0 0 100 105"
           width={size}
           height={size}
           className="w-full h-full"
           style={{ filter: `drop-shadow(0 4px 16px ${glowColor})` }}
         >
           <defs>
-            <linearGradient id="cyberBotBodyGrad" x1="12%" y1="0%" x2="88%" y2="100%">
-              <stop offset="0%" stopColor="#334155" />
-              <stop offset="42%" stopColor="#172033" />
-              <stop offset="100%" stopColor="#0b1120" />
+            {/* Main Blue Body Gradient */}
+            <linearGradient id="cyberBotBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="35%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#1e3a8a" />
             </linearGradient>
-            <linearGradient id="cyberBotCobaltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1d4ed8" />
-              <stop offset="55%" stopColor="#172554" />
-              <stop offset="100%" stopColor="#0f172a" />
-            </linearGradient>
+
+            {/* Screen Glass Gradient */}
             <linearGradient id="cyberBotScreenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#020617" />
-              <stop offset="55%" stopColor="#050b18" />
-              <stop offset="100%" stopColor="#0b1730" />
+              <stop offset="0%" stopColor="#050b1a" />
+              <stop offset="100%" stopColor="#0a192f" />
             </linearGradient>
+
+            {/* Highlight Gradient */}
             <linearGradient id="cyberBotHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
             </linearGradient>
+
+            {/* Eye Glow Filter */}
             <filter id="cyberGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="2" result="blur" />
               <feMerge>
@@ -402,211 +377,264 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <filter id="cyberHaloGlow" x="-60%" y="-300%" width="220%" height="700%">
-              <feGaussianBlur stdDeviation="2.4" />
-            </filter>
             <clipPath id="cyberBotFaceClip">
               <rect x="24" y="30" width="52" height="29" rx="9" />
             </clipPath>
           </defs>
 
-          {/* The hover field stays floor-anchored while the chassis floats above it. */}
-          <motion.ellipse
-            data-cyberbot-halo-glow="true"
-            cx="50" cy="99" rx="27" ry="4.5"
-            fill={isAlert ? '#f59e0b' : '#22d3ee'}
-            filter="url(#cyberHaloGlow)"
-            animate={reducedMotion
-              ? { opacity: portalHidden ? 0 : isSleeping ? 0.08 : 0.18, scaleX: portalHidden ? 1.7 : 1, scaleY: 1 }
-              : portalHidden
-                ? { opacity: [0.2, 0.48, 0], scaleX: [1, 1.55, 1.8], scaleY: [1, 1.18, 0.45] }
-                : {
-                    opacity: isSleeping ? [0.08, 0.12, 0.08] : [0.2, 0.1, 0.2],
-                    scaleX: isSleeping ? [0.98, 0.94, 0.98] : [1, 0.88, 1],
-                    scaleY: 1,
-                  }}
-            transition={reducedMotion
-              ? { duration: 0 }
-              : portalHidden
-                ? { duration: 0.68, times: [0, 0.55, 1], ease: 'easeIn' }
-                : { duration: isSleeping ? 5 : 3.4, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ transformOrigin: '50px 99px' }}
-          />
-          <motion.ellipse
-            data-cyberbot-halo="true"
-            cx="50" cy="98" rx="25" ry="4.5"
-            fill="none"
-            stroke={isSleeping ? '#475569' : isAlert ? '#fbbf24' : '#38bdf8'}
-            strokeWidth="2.1"
-            animate={reducedMotion
-              ? { opacity: portalHidden ? 0 : isSleeping ? 0.34 : 0.78, scaleX: portalHidden ? 1.7 : 1, scaleY: 1 }
-              : portalHidden
-                ? { opacity: [0.82, 1, 0], scaleX: [1, 1.48, 1.72], scaleY: [1, 1.22, 0.4] }
-                : {
-                    opacity: isSleeping ? [0.28, 0.4, 0.28] : [0.82, 0.5, 0.82],
-                    scaleX: isSleeping ? [0.98, 0.94, 0.98] : [1, 0.88, 1],
-                    scaleY: 1,
-                  }}
-            transition={reducedMotion
-              ? { duration: 0 }
-              : portalHidden
-                ? { duration: 0.68, times: [0, 0.55, 1], ease: 'easeIn' }
-                : { duration: isSleeping ? 5 : 3.4, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ transformOrigin: '50px 98px', filter: `drop-shadow(0 0 3px ${isAlert ? '#f59e0b' : '#22d3ee'})` }}
-          />
+          {/* --- LEGS / FEET --- */}
+          <g id="legs">
+            {/* Left Foot */}
+            <rect
+              x="33"
+              y="88"
+              width="12"
+              height="11"
+              rx="5"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
+            {/* Right Foot */}
+            <rect
+              x="55"
+              y="88"
+              width="12"
+              height="11"
+              rx="5"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+            />
+          </g>
 
+          {/* --- TORSO & ARMS --- */}
+          <g id="body">
+            {/* Torso */}
+            <rect
+              x="31"
+              y="66"
+              width="38"
+              height="26"
+              rx="8"
+              fill="url(#cyberBotBodyGrad)"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
+            />
+            {/* Torso Detail Panel */}
+            <rect
+              x="38"
+              y="72"
+              width="24"
+              height="12"
+              rx="4"
+              fill="#0b172e"
+              stroke="#38bdf8"
+              strokeWidth="1"
+            />
+            <circle cx="44" cy="78" r="2" fill={isSleeping ? '#64748b' : '#22d3ee'} className={isSleeping ? '' : 'motion-safe:animate-pulse'} />
+            <line x1="50" y1="78" x2="57" y2="78" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" />
+
+            {/* Left Arm */}
+            <rect
+              x="18"
+              y="69"
+              width="11"
+              height="16"
+              rx="5"
+              fill="#2563eb"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+              transform={
+                isHovered && !isSleeping
+                  ? 'rotate(-32 23 77)'
+                  : faceEmotion === 'happy' || faceEmotion === 'wink'
+                  ? 'rotate(-25 23 77)'
+                  : 'rotate(8 23 77)'
+              }
+              className="motion-safe:transition-transform motion-safe:duration-300"
+            />
+            {/* Right Arm */}
+            <rect
+              x="71"
+              y="69"
+              width="11"
+              height="16"
+              rx="5"
+              fill="#2563eb"
+              stroke="#38bdf8"
+              strokeWidth="1.5"
+              transform={
+                isHovered && !isSleeping
+                  ? 'rotate(32 76 77)'
+                  : faceEmotion === 'happy' || faceEmotion === 'wink'
+                  ? 'rotate(25 76 77)'
+                  : 'rotate(-8 76 77)'
+              }
+              className="motion-safe:transition-transform motion-safe:duration-300"
+            />
+          </g>
+
+          {/* --- HEAD & EARS --- */}
           <motion.g
-            id="cyberBotOrbiter"
-            data-cyberbot-orbiter="true"
-            animate={reducedMotion
-              ? { y: portalHidden ? 38 : 0, rotate: 0, scaleX: portalHidden ? 0.46 : 1, scaleY: portalHidden ? 0.08 : 1, opacity: portalHidden ? 0 : 1 }
-              : portalHidden
-                ? { y: [0, 12, 38], rotate: [0, -1.5, 0], scaleX: [1, 0.88, 0.46], scaleY: [1, 0.82, 0.08], opacity: [1, 1, 0] }
-                : { y: 0, rotate: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
-            transition={reducedMotion
-              ? { duration: 0 }
-              : portalHidden
-                ? { duration: 0.68, times: [0, 0.55, 1], ease: [0.55, 0, 1, 0.45] }
-                : { duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
-            style={{ transformOrigin: '50px 58px' }}
+            id="head"
+            key={speechKey || 'silent'}
+            initial={false}
+            animate={speaking ? { y: [0, -1.2, 0, 0.6, 0] } : { y: 0 }}
+            transition={{ duration: speaking ? SPEECH_CUE_MS / 1000 : 0, ease: 'easeInOut' }}
           >
-            <motion.g
-              data-cyberbot-hover-float="true"
-              animate={reducedMotion ? { y: 0, rotate: 0 } : {
-                y: isSleeping ? [0, -1.2, 0] : [0, -3.5, 0],
-                rotate: isSleeping ? 0 : isHovered ? [-1.2, 1.2, -1.2] : [0, 0.45, 0],
-              }}
-              transition={reducedMotion ? { duration: 0 } : {
-                duration: isSleeping ? 5 : isHovered ? 1.4 : 3.4,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              style={{ transformOrigin: '50px 58px' }}
-            >
-            {/* Detached shoulder pods keep the silhouette technical and compact. */}
+            {/* Left Ear Antenna */}
             <path
-              d="M 25 63 C 18 62 14 67 14 75 C 14 83 18 88 24 87 C 28 84 29 68 25 63 Z"
-              fill="url(#cyberBotCobaltGrad)"
-              stroke="#38bdf8" strokeWidth="1.3"
-              transform={isHovered && !isSleeping ? 'rotate(-7 22 75)' : 'rotate(2 22 75)'}
-              className="motion-safe:transition-transform motion-safe:duration-300"
+              d="M 17 38 C 11 38 11 50 17 50 Z"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
             />
-            <path
-              d="M 75 63 C 82 62 86 67 86 75 C 86 83 82 88 76 87 C 72 84 71 68 75 63 Z"
-              fill="url(#cyberBotCobaltGrad)"
-              stroke="#38bdf8" strokeWidth="1.3"
-              transform={isHovered && !isSleeping ? 'rotate(7 78 75)' : 'rotate(-2 78 75)'}
-              className="motion-safe:transition-transform motion-safe:duration-300"
-            />
-            <path d="M 17 69 Q 21 66 25 68" fill="none" stroke="#67e8f9" strokeWidth="1" strokeLinecap="round" opacity="0.72" />
-            <path d="M 83 69 Q 79 66 75 68" fill="none" stroke="#67e8f9" strokeWidth="1" strokeLinecap="round" opacity="0.72" />
+            <circle cx="14" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
 
-            {/* Compact floating torso. */}
+            {/* Right Ear Antenna */}
             <path
-              d="M 30 59 C 36 56 64 56 70 59 L 74 76 C 73 87 63 93 50 94 C 37 93 27 87 26 76 Z"
+              d="M 83 38 C 89 38 89 50 83 50 Z"
+              fill="#1e3a8a"
+              stroke="#38bdf8"
+              strokeWidth="1.8"
+            />
+            <circle cx="86" cy="44" r="2" fill={isAlert ? '#f59e0b' : '#22d3ee'} />
+
+            {/* Top Mini Crown Antenna */}
+            <path
+              d="M 46 16 C 46 11 54 11 54 16 L 52 20 L 48 20 Z"
+              fill="#38bdf8"
+            />
+            <circle
+              cx="50"
+              cy="11"
+              r={isHovered && !isSleeping ? 4 : 3}
+              fill={isSleeping ? '#64748b' : isHovered ? '#38bdf8' : isAlert ? '#ef4444' : '#22d3ee'}
+              className={isSleeping || speaking ? '' : 'motion-safe:animate-pulse'}
+            />
+            {speaking && (
+              <motion.circle
+                key={`antenna-${speechKey}`}
+                cx="50" cy="11" fill="none"
+                stroke={isAlert ? '#fbbf24' : '#67e8f9'}
+                strokeWidth="1.2"
+                initial={{ r: 3, opacity: 0 }}
+                animate={{ r: [3, 5.5, 3, 6, 3], opacity: [0, 0.7, 0, 0.55, 0] }}
+                transition={{ duration: SPEECH_CUE_MS / 1000, ease: 'easeInOut' }}
+              />
+            )}
+
+            {/* Outer Head (Cloud-like rounded capsule) */}
+            <path
+              d="M 28 20 
+                 C 35 15, 45 16, 50 16 
+                 C 55 16, 65 15, 72 20 
+                 C 85 24, 88 35, 87 45 
+                 C 88 56, 84 66, 70 69 
+                 C 62 71, 38 71, 30 69 
+                 C 16 66, 12 56, 13 45 
+                 C 12 35, 15 24, 28 20 Z"
               fill="url(#cyberBotBodyGrad)"
-              stroke="#64748b" strokeWidth="1.4"
+              stroke="#38bdf8"
+              strokeWidth="2.2"
             />
-            <path d="M 29 62 Q 50 70 71 62" fill="none" stroke="#1d4ed8" strokeWidth="3" opacity="0.72" />
-            <path d="M 29 62 Q 50 67 71 62" fill="none" stroke="#67e8f9" strokeWidth="0.85" opacity={isSleeping ? 0.25 : 0.8} />
-            <path d="M 31 82 Q 50 91 69 82" fill="none" stroke="#1e3a8a" strokeWidth="1.1" opacity="0.9" />
 
-            {/* Recessed voice panel: bottom-to-top light intensity. */}
+            {/* Subtle Head Gloss Highlight */}
             <path
-              d="M 40 65 Q 50 68 60 65 L 62 84 Q 50 90 38 84 Z"
-              fill="#050b18" stroke="#475569" strokeWidth="1"
+              d="M 30 22 C 40 18, 60 18, 70 22 C 60 25, 40 25, 30 22 Z"
+              fill="url(#cyberBotHighlight)"
             />
-            <motion.g
-              key={speaking ? `chest-${speechKey}` : 'chest-idle'}
-              data-cyberbot-chest="true"
-              data-cyberbot-speech-equalizer={speaking ? 'true' : undefined}
-            >
-              {CHEST_LIGHT_BARS.map((bar, index) => {
-                const envelope = SPEECH_BAR_ENVELOPES[index];
-                const restingOpacity = isSleeping ? 0.08 : index === 0 ? 0.38 : 0.13;
-                const animate = speaking
-                  ? reducedMotion
-                    ? { opacity: index < 3 ? 0.88 : 0.16, scaleX: 1 }
-                    : { opacity: envelope, scaleX: envelope.map(value => 0.76 + value * 0.24) }
-                  : { opacity: restingOpacity, scaleX: 1 };
-                return (
-                  <motion.rect
-                    key={bar.y}
-                    data-cyberbot-speech-bar={index + 1}
-                    x={50 - bar.width / 2} y={bar.y}
-                    width={bar.width} height="2.5" rx="1.25"
-                    fill={isSleeping ? '#64748b' : activeLightColor}
-                    initial={false}
-                    animate={animate}
-                    transition={speaking && !reducedMotion
-                      ? {
-                          duration: 0.82 + index * 0.075,
-                          times: [0, 0.12, 0.3, 0.47, 0.65, 0.82, 1],
-                          repeat: Infinity,
-                          ease: 'easeInOut',
-                        }
-                      : { duration: reducedMotion ? 0 : 0.25 }}
-                    style={{ transformOrigin: `50px ${bar.y + 1.25}px`, filter: speaking ? `drop-shadow(0 0 2px ${activeLightColor})` : undefined }}
-                  />
-                );
-              })}
-            </motion.g>
 
-            {/* Broad, low visor and restrained sensor make the head less toy-like. */}
-            <rect x="48.5" y="9" width="3" height="7" rx="1.5" fill="#475569" />
+            {/* OLED Screen Face (Visor) */}
             <rect
-              x="45" y="6" width="10" height="5" rx="2.5"
-              fill={isSleeping ? '#334155' : 'url(#cyberBotCobaltGrad)'}
-              stroke={isAlert ? '#fbbf24' : '#38bdf8'} strokeWidth="1"
-            />
-            <path
-              d="M 25 17 C 34 13 66 13 75 17 C 84 21 88 29 87 39 C 87 51 79 59 68 61 C 58 63 42 63 32 61 C 21 59 13 51 13 39 C 12 29 16 21 25 17 Z"
-              fill="url(#cyberBotBodyGrad)"
-              stroke="#64748b" strokeWidth="1.6"
-            />
-            <path d="M 28 17 Q 50 11 72 17 L 66 22 Q 50 19 34 22 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="0.8" />
-            <path d="M 17 34 C 10 34 10 47 17 48 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="1.2" />
-            <path d="M 83 34 C 90 34 90 47 83 48 Z" fill="url(#cyberBotCobaltGrad)" stroke="#38bdf8" strokeWidth="1.2" />
-            <rect
-              x="20" y="24" width="60" height="34" rx="11"
+              x="22"
+              y="27"
+              width="56"
+              height="35"
+              rx="12"
               fill="url(#cyberBotScreenGrad)"
-              stroke={isAlert ? '#f59e0b' : '#38bdf8'}
-              strokeWidth="1.5" strokeOpacity="0.82"
+              stroke={isAlert ? '#f59e0b' : '#22d3ee'}
+              strokeWidth="1.8"
+              strokeOpacity="0.8"
             />
-            <path d="M 23 27 H 43 L 27 55 H 23 Z" fill="url(#cyberBotHighlight)" opacity="0.18" />
 
+            {/* Screen Inner Glare / Reflection */}
+            <path
+              d="M 24 30 L 44 30 L 26 58 L 24 58 Z"
+              fill="#ffffff"
+              fillOpacity="0.05"
+            />
+
+            {/* Crossfade between expressions without softening the logo face itself. */}
             <AnimatePresence initial={false}>
               <motion.g
-                key={speaking ? `speaking-${speechKey}` : faceEmotion}
+                key={faceEmotion}
                 initial={reducedMotion ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={reducedMotion ? undefined : { opacity: 0 }}
                 transition={{ duration: reducedMotion ? 0 : 0.18, ease: 'easeInOut' }}
-                filter={faceEmotion === 'launcher' || faceEmotion === 'marquee' || speaking ? undefined : 'url(#cyberGlowFilter)'}
+                filter={faceEmotion === 'launcher' || faceEmotion === 'marquee' ? undefined : 'url(#cyberGlowFilter)'}
               >
                 {renderFaceContent()}
               </motion.g>
             </AnimatePresence>
-
-            {isSleeping && (
-              <g fill="#94a3b8" className="font-mono font-bold" aria-hidden="true">
-                <motion.g
-                  animate={reducedMotion ? { opacity: 0.65, x: 0, y: 0 } : { opacity: [0, 0.8, 0], x: [0, 2, 4], y: [4, -2, -9] }}
-                  transition={reducedMotion ? { duration: 0 } : { duration: 2.8, repeat: Infinity, ease: 'easeOut' }}
-                >
-                  <text x="77" y="19" fontSize="8">z</text>
-                </motion.g>
-                <motion.g
-                  animate={reducedMotion ? { opacity: 0.55, x: 0, y: 0 } : { opacity: [0, 0.7, 0], x: [0, 2, 4], y: [4, -2, -9] }}
-                  transition={reducedMotion ? { duration: 0 } : { duration: 2.8, delay: 1.2, repeat: Infinity, ease: 'easeOut' }}
-                >
-                  <text x="86" y="11" fontSize="10">z</text>
-                </motion.g>
-              </g>
+            {speaking && (
+              <motion.g
+                key={`speech-${speechKey}`}
+                data-cyberbot-speech-wave="true"
+                fill="none"
+                stroke={isAlert ? '#fbbf24' : '#67e8f9'}
+                strokeWidth="1.25"
+                strokeLinecap="round"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.9, 0.9, 0] }}
+                transition={{ duration: SPEECH_CUE_MS / 1000, times: [0, 0.08, 0.76, 1] }}
+              >
+                {[46, 50, 54].map((x, index) => (
+                  <motion.line
+                    key={x}
+                    x1={x} x2={x} y1="56"
+                    initial={{ y2: 55 }}
+                    animate={{ y2: index === 1 ? [55, 51, 53, 49, 55] : [55, 53, 50, 54, 55] }}
+                    transition={{ duration: 0.45 + index * 0.08, repeat: 2, ease: 'easeInOut' }}
+                  />
+                ))}
+              </motion.g>
             )}
-            </motion.g>
           </motion.g>
+          {isSleeping && (
+            <g fill="#94a3b8" className="font-mono font-bold" aria-hidden="true">
+              <motion.g
+                animate={reducedMotion ? { opacity: 0.65, x: 0, y: 0 } : { opacity: [0, 0.8, 0], x: [0, 2, 4], y: [4, -2, -9] }}
+                transition={reducedMotion ? { duration: 0 } : { duration: 2.8, repeat: Infinity, ease: 'easeOut' }}
+              >
+                <text x="77" y="19" fontSize="8">z</text>
+              </motion.g>
+              <motion.g
+                animate={reducedMotion ? { opacity: 0.55, x: 0, y: 0 } : { opacity: [0, 0.7, 0], x: [0, 2, 4], y: [4, -2, -9] }}
+                transition={reducedMotion ? { duration: 0 } : { duration: 2.8, delay: 1.2, repeat: Infinity, ease: 'easeOut' }}
+              >
+                <text x="86" y="11" fontSize="10">z</text>
+              </motion.g>
+            </g>
+          )}
         </svg>
+
+        {/* Dynamic Floating Shadow */}
+        <motion.div
+          animate={reducedMotion || isSleeping ? { scale: 1, opacity: isSleeping ? 0.15 : 0.3 } : {
+            scale: isHovered ? [0.95, 0.75, 0.95] : [1, 0.8, 1],
+            opacity: isHovered ? [0.4, 0.2, 0.4] : [0.3, 0.15, 0.3],
+          }}
+          transition={reducedMotion || isSleeping ? { duration: reducedMotion ? 0 : 0.4 } : {
+            duration: isHovered ? 1.4 : 3.2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          className="w-10 h-2 bg-cyan-500/25 rounded-full blur-[2px] mt-1"
+        />
+        </motion.div>
       </motion.div>
     </div>
   );
