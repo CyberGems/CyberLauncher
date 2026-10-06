@@ -9,7 +9,7 @@ export const CYBERBOT_VANISH_MAX_IDLE_MS = 30_000;
 export const CYBERBOT_VANISH_MIN_AWAY_MS = 18_000;
 export const CYBERBOT_VANISH_MAX_AWAY_MS = 42_000;
 export const CYBERBOT_VANISH_CHANCE = 0.75;
-export type CyberBotVanishStyle = 'phase' | 'ascend';
+export type CyberBotVanishStyle = 'portal' | 'ascend';
 export type CyberBotIdleState = 'awake' | 'sleeping' | 'hidden';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
@@ -102,7 +102,7 @@ export function createCyberBotIdleCycle(
   let state: CyberBotIdleState = 'awake';
   let paused = false;
   let disposed = false;
-  let style: CyberBotVanishStyle = 'phase';
+  let style: CyberBotVanishStyle = 'portal';
   let consecutiveVanish = 0;
   let nextGesture: 'vanish' | 'sleep';
   let idleDelay: number;
@@ -142,7 +142,9 @@ export function createCyberBotIdleCycle(
     if (nextGesture === 'vanish') {
       state = 'hidden';
       consecutiveVanish += 1;
-      style = random() < 0.5 ? 'phase' : 'ascend';
+      // The hover portal is CyberBot's signature departure. A rarer ascent
+      // keeps long idle sessions from feeling mechanically repetitive.
+      style = random() < 0.8 ? 'portal' : 'ascend';
       onChange(state, style);
       timer = setTimeout(finishGesture, randomDelay(CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MAX_AWAY_MS, random));
     } else {

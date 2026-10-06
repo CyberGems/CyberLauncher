@@ -299,14 +299,14 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
       {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
       <AnimatePresence>
-        {idleAway && !reducedMotion && (
+        {idleAway && !reducedMotion && vanishStyle === 'ascend' && (
           <motion.span
             key={vanishStyle}
             aria-hidden="true"
             initial={{ opacity: 0.7, scale: 0.65, y: 0 }}
-            animate={{ opacity: 0, scale: vanishStyle === 'phase' ? 1.8 : 0.8, y: vanishStyle === 'ascend' ? -55 : 0 }}
+            animate={{ opacity: 0, scale: 0.8, y: -55 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: vanishStyle === 'phase' ? 0.55 : 0.68, ease: 'easeOut' }}
+            transition={{ duration: 0.68, ease: 'easeOut' }}
             className="absolute inset-[14px] rounded-full border border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.55)] pointer-events-none"
           />
         )}
@@ -314,11 +314,11 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       <motion.div
         initial={false}
         animate={idleAway
-          ? vanishStyle === 'phase'
-            ? { opacity: 0, scale: 0.66, y: 0, rotate: 0, filter: 'blur(8px)' }
+          ? vanishStyle === 'portal'
+            ? { opacity: 1, scale: 1, y: 0, rotate: 0, filter: 'blur(0px)' }
             : { opacity: 0, scale: 0.52, y: -48, rotate: 12, filter: 'blur(2px)' }
           : { opacity: 1, scale: 1, y: 0, rotate: 0, filter: 'blur(0px)' }}
-        transition={reducedMotion ? { duration: 0 } : { duration: idleAway ? (vanishStyle === 'phase' ? 0.48 : 0.62) : 0.28, ease: 'easeInOut' }}
+        transition={reducedMotion ? { duration: 0 } : { duration: idleAway && vanishStyle === 'ascend' ? 0.62 : 0.28, ease: 'easeInOut' }}
         className="relative w-[94px] h-[94px]"
         style={{ pointerEvents: idleAway ? 'none' : 'auto' }}
       >
@@ -355,6 +355,11 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             marqueeStatusMessages={marqueeStatusMessages}
             speechKey={displayedMessage && placement.bubbleVisible && !placement.hidden
               ? `${displayedMessage.id}:${displayedMessage.timestamp}` : undefined}
+            speechDurationMs={displayedMessage
+              ? Math.min(5200, Math.max(2200, displayedMessage.text.length * 55))
+              : undefined}
+            vanished={idleAway}
+            vanishStyle={vanishStyle}
             size={78}
           />
         </button>

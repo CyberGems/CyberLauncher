@@ -3,7 +3,7 @@ import { createCyberBotIdleCycle, type CyberBotIdleState, type CyberBotVanishSty
 
 export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?: string, systemAttention = false) {
   const [idleState, setIdleState] = useState<CyberBotIdleState>('awake');
-  const [vanishStyle, setVanishStyle] = useState<CyberBotVanishStyle>('phase');
+  const [vanishStyle, setVanishStyle] = useState<CyberBotVanishStyle>('portal');
   const [documentVisible, setDocumentVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
   const cycleRef = useRef<ReturnType<typeof createCyberBotIdleCycle> | null>(null);
 
