@@ -35,6 +35,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [isBlinking, setIsBlinking] = useState(false);
   const [idleExpression, setIdleExpression] = useState<CyberBotEmotion>('launcher');
   const [marqueeMessage, setMarqueeMessage] = useState(() => marqueeMessages[0]);
+  const [marqueeAnimationRun, setMarqueeAnimationRun] = useState(0);
   const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
   const lastMarqueeMessageRef = useRef<string | null>(null);
@@ -72,6 +73,32 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     showNext();
     return () => window.clearTimeout(timer);
   }, [emotion]);
+
+  // Chromium can leave an SVG timeline suspended after the BrowserWindow was
+  // hidden to the tray. Recreate only the marquee animation when it returns.
+  useEffect(() => {
+    let restartFrame: number | null = null;
+    const restartMarquee = () => {
+      if (document.hidden) return;
+      if (restartFrame !== null) window.cancelAnimationFrame(restartFrame);
+      restartFrame = window.requestAnimationFrame(() => {
+        restartFrame = null;
+        setMarqueeAnimationRun(run => run + 1);
+      });
+    };
+    const handleVisibility = () => {
+      if (!document.hidden) restartMarquee();
+    };
+    const unsubscribeLauncherShown = window.electronAPI?.onLauncherShown?.(restartMarquee);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', restartMarquee);
+    return () => {
+      if (restartFrame !== null) window.cancelAnimationFrame(restartFrame);
+      unsubscribeLauncherShown?.();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', restartMarquee);
+    };
+  }, []);
 
   // Natural blinking effect every 3.5 to 6 seconds
   useEffect(() => {
@@ -243,10 +270,12 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         return (
           <g clipPath="url(#cyberBotFaceClip)">
             <text
+              key={`${marqueeMessage}:${marqueeAnimationRun}`}
               data-cyberbot-marquee={marqueeMessage}
+              data-cyberbot-marquee-run={marqueeAnimationRun}
               x="76"
               y="49"
-              fontFamily="'JetBrains Mono', monospace"
+              fontFamily="'JetBrains Mono', 'Segoe UI Symbol', monospace"
               fontSize="10.5"
               fontWeight="800"
               letterSpacing="0.2"

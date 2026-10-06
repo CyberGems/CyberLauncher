@@ -35,7 +35,7 @@ import {
   shouldRemindPinOnBlur,
   type LaunchResult,
 } from './launchFlow';
-import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
+import { getCyberBotGreetingTopic, type CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
   parseBackupHours,
   parseBackupKeep,
@@ -7393,6 +7393,13 @@ export default function App() {
     }
   };
 
+  const cyberBotMarqueeGreetingKey: TranslationKey = (() => {
+    const topic = getCyberBotGreetingTopic();
+    if (topic === 'greeting_morning') return 'cyberbot_marquee_greeting_morning';
+    if (topic === 'greeting_afternoon') return 'cyberbot_marquee_greeting_afternoon';
+    return 'cyberbot_marquee_greeting_evening';
+  })();
+
   return (
     <div 
       ref={rootRef}
@@ -14524,6 +14531,7 @@ export default function App() {
         hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
         marqueeStatusMessages={[
           t('cyberbot_marquee_online'),
+          t(cyberBotMarqueeGreetingKey),
           t('cyberbot_marquee_brand'),
           t('cyberbot_marquee_systems_ok'),
           t('cyberbot_marquee_ready'),

@@ -192,10 +192,21 @@ test('the marquee face replaces the eyes with clipped, version-aware status text
   const marquee = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee' }));
   assert.match(marquee, /data-cyberbot-face="marquee"/);
   assert.match(marquee, /data-cyberbot-marquee=/);
+  assert.match(marquee, /data-cyberbot-marquee-run="0"/);
   assert.match(marquee, /clip-path="url\(#cyberBotFaceClip\)"/);
   assert.match(marquee, /font-size="10.5"/);
   assert.match(marquee, /<animate attributeName="x" from="76"/);
   assert.doesNotMatch(marquee, /M 28 43 Q 33 39 38 43/);
+});
+
+test('the marquee animation restarts when the launcher returns from the tray', () => {
+  const source = readFileSync(
+    new URL('../src/components/companion/CyberBotAvatar.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /onLauncherShown\?\.\(restartMarquee\)/);
+  assert.match(source, /visibilitychange/);
+  assert.match(source, /setMarqueeAnimationRun\(run => run \+ 1\)/);
 });
 
 test('speech adds a finite facial signal without replacing the logo expression', () => {
@@ -709,17 +720,24 @@ test('idle marquee messages vary without immediate repeats', () => {
 });
 
 test('idle marquee statuses are clear and translated in Spanish and English', () => {
-  const keys = [
+  const statusKeys = [
     'cyberbot_marquee_online',
     'cyberbot_marquee_brand',
     'cyberbot_marquee_systems_ok',
     'cyberbot_marquee_ready',
   ] as const;
+  const greetingKeys = [
+    'cyberbot_marquee_greeting_morning',
+    'cyberbot_marquee_greeting_afternoon',
+    'cyberbot_marquee_greeting_evening',
+  ] as const;
   for (const language of ['es', 'en'] as const) {
-    const statuses = keys.map(key => translations[language][key]);
-    assert.ok(statuses.every(Boolean));
+    const statuses = statusKeys.map(key => translations[language][key]);
+    const greetings = greetingKeys.map(key => translations[language][key]);
+    assert.ok([...statuses, ...greetings].every(Boolean));
+    assert.deepEqual(greetings.map(greeting => Array.from(greeting)[0]), ['☕', '☀', '☾']);
     assert.doesNotMatch(statuses.join(' '), /CTRL|0101|1100/);
-    assert.equal(getCyberBotIdleMarqueeMessages('1.12.0', statuses).length, 5);
+    assert.equal(getCyberBotIdleMarqueeMessages('1.12.0', [statuses[0], greetings[0], ...statuses.slice(1)]).length, 6);
   }
 });
 
