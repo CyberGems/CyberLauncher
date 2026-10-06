@@ -9,7 +9,7 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_HOVER_REST_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
 import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
@@ -609,19 +609,36 @@ test('leaving during the countdown cancels the hover move', context => {
   assist.dispose();
 });
 
-test('idle expression selection includes the new faces without repeating the previous expression', () => {
-  const seen = new Set<string>();
-  for (let i = 0; i < 12; i++) {
-    const face = nextCyberBotIdleExpression('idle', () => i / 12);
-    seen.add(face);
-    assert.notEqual(nextCyberBotIdleExpression(face, () => 0), face);
+test('idle expressions favor neutral faces and never repeat consecutively', () => {
+  let seed = 42;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  let previous: CyberBotMessage['emotion'] = 'idle';
+  let neutralCount = 0;
+  let expressiveCount = 0;
+
+  for (let i = 0; i < 500; i++) {
+    const face = nextCyberBotIdleExpression(previous ?? 'idle', random);
+    assert.notEqual(face, previous);
+    if (cyberBotNeutralIdleExpressions.includes(face as typeof cyberBotNeutralIdleExpressions[number])) neutralCount += 1;
+    if (cyberBotExpressiveIdleExpressions.includes(face as typeof cyberBotExpressiveIdleExpressions[number])) expressiveCount += 1;
+    previous = face;
   }
-  assert.ok(seen.has('curious'));
-  assert.ok(seen.has('delighted'));
-  assert.ok(seen.has('affectionate'));
-  assert.ok(seen.has('sparkle'));
-  assert.ok(seen.has('terminal'));
-  assert.equal(seen.has('launcher'), false);
+
+  assert.ok(neutralCount > expressiveCount * 4, 'neutral faces should dominate the idle loop');
+  assert.equal(neutralCount + expressiveCount, 500);
+});
+
+test('idle timing keeps neutral and resting faces on screen longer than cheerful gestures', () => {
+  assert.equal(getCyberBotIdleRestDuration(false, false, () => 0), CYBERBOT_IDLE_REST_MIN_MS);
+  assert.equal(getCyberBotIdleRestDuration(true, false, () => 0), CYBERBOT_IDLE_HOVER_REST_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('curious', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('terminal', () => 0.999999), CYBERBOT_IDLE_NEUTRAL_MAX_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0), CYBERBOT_IDLE_EXPRESSIVE_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0.999999), CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
+  assert.ok(CYBERBOT_IDLE_NEUTRAL_MIN_MS > CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
 });
 
 test('the About panel has a bilingual phrase deck featuring the CyberLauncher face', () => {

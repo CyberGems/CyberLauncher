@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
-import { nextCyberBotIdleExpression } from './cyberBotBehavior';
+import { getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from './cyberBotBehavior';
 
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
@@ -27,7 +27,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [speechActive, setSpeechActive] = useState(!!speechKey && !isSleeping && !reducedMotion);
   const lastExpressionRef = useRef<CyberBotEmotion>('launcher');
 
-  // Brief expressions separated by irregular resting pauses, with or without hover.
+  // Neutral faces lead the ambient loop. Cheerful gestures remain short and occasional.
   // Reduced motion keeps these static face changes, but disables animated transforms and blinking.
   useEffect(() => {
     setIdleExpression('launcher');
@@ -35,14 +35,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     let timer: number;
     const rest = () => {
       setIdleExpression('launcher');
-      const pause = reducedMotion ? 7000 : isHovered ? 1600 : 3200;
-      timer = window.setTimeout(express, pause + Math.random() * 2600);
+      timer = window.setTimeout(express, getCyberBotIdleRestDuration(isHovered, reducedMotion));
     };
     const express = () => {
       const next = nextCyberBotIdleExpression(lastExpressionRef.current);
       lastExpressionRef.current = next;
       setIdleExpression(next);
-      timer = window.setTimeout(rest, 1800 + Math.random() * 1400);
+      timer = window.setTimeout(rest, getCyberBotIdleExpressionDuration(next));
     };
     rest();
     return () => window.clearTimeout(timer);
