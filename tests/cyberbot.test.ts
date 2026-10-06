@@ -9,10 +9,10 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
-import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_HOVER_REST_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
+import { createCyberBotHoverAssist, createCyberBotIdleCycle, CYBERBOT_HOVER_DWELL_MS, CYBERBOT_HOVER_MOVE_COOLDOWN_MS, CYBERBOT_IDLE_EXPRESSIVE_CHANCE, CYBERBOT_IDLE_EXPRESSIVE_MAX_MS, CYBERBOT_IDLE_EXPRESSIVE_MIN_MS, CYBERBOT_IDLE_HOVER_REST_MIN_MS, CYBERBOT_IDLE_NEUTRAL_MAX_MS, CYBERBOT_IDLE_NEUTRAL_MIN_MS, CYBERBOT_IDLE_REST_MIN_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_VANISH_MAX_IDLE_MS, CYBERBOT_VANISH_MIN_AWAY_MS, CYBERBOT_VANISH_MIN_IDLE_MS, cyberBotExpressiveIdleExpressions, cyberBotNeutralIdleExpressions, getCyberBotIdleExpressionDuration, getCyberBotIdleRestDuration, nextCyberBotIdleExpression } from '../src/components/companion/cyberBotBehavior';
 import { canReplaceCyberBotMessage, getCyberBotInitialPosition, isInQuietHours } from '../src/components/companion/useCyberBot';
 import type { CyberBotMessage } from '../src/components/companion/companionTypes';
-import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
+import { cyberBotPhrases, cyberBotPhraseKeyForCount, createCyberBotPhraseDeck, getCyberBotGreetingTopic, type CyberBotPhrase, type CyberBotTopic } from '../src/components/companion/cyberBotPhrases';
 import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWithName, isCyberBotNamePromptDue, normalizeCyberBotName } from '../src/components/companion/cyberBotName';
 import { CYBERBOT_SETUP_REMIND_MS, isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from '../src/components/companion/cyberBotSetup';
 import { translations } from '../src/locales';
@@ -630,12 +630,13 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
 
   assert.ok(neutralCount > expressiveCount * 4, 'neutral faces should dominate the idle loop');
   assert.equal(neutralCount + expressiveCount, 500);
+  assert.equal(CYBERBOT_IDLE_EXPRESSIVE_CHANCE, 0.02);
 });
 
 test('idle timing keeps neutral and resting faces on screen longer than cheerful gestures', () => {
   assert.equal(getCyberBotIdleRestDuration(false, false, () => 0), CYBERBOT_IDLE_REST_MIN_MS);
   assert.equal(getCyberBotIdleRestDuration(true, false, () => 0), CYBERBOT_IDLE_HOVER_REST_MIN_MS);
-  assert.equal(getCyberBotIdleExpressionDuration('curious', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('launcher', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('terminal', () => 0.999999), CYBERBOT_IDLE_NEUTRAL_MAX_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0), CYBERBOT_IDLE_EXPRESSIVE_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0.999999), CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);
@@ -653,11 +654,27 @@ test('the About panel has a bilingual phrase deck featuring the CyberLauncher fa
 
 test('Cyber Terminal has a bilingual contextual phrase deck', () => {
   assert.equal(cyberBotPhrases.terminal.length, 3);
-  assert.ok(cyberBotPhrases.terminal.some(phrase => phrase.emotion === 'terminal'));
+  assert.ok(cyberBotPhrases.terminal.every(phrase => phrase.emotion === 'terminal'));
   for (const { key } of cyberBotPhrases.terminal) {
     assert.ok(translations.es[key]?.trim());
     assert.ok(translations.en[key]?.trim());
   }
+});
+
+test('casual CyberBot commentary reserves cheerful faces for actual achievements', () => {
+  const casualTopics = [
+    'interaction', 'greeting_morning', 'greeting_afternoon', 'greeting_evening',
+    'settings_general', 'settings_cyberbot', 'settings_backup', 'hud_system',
+    'hud_storage', 'command_palette', 'terminal', 'add_app', 'add_app_drop',
+    'add_category', 'launch', 'launch_admin', 'launch_pinned',
+    'launch_admin_pinned', 'pin_blur', 'last_launch',
+  ] as const;
+  const cheerful = new Set(['happy', 'wink', 'delighted', 'affectionate', 'sparkle', 'speaking']);
+  const casualPhrases = casualTopics.flatMap(topic => [...cyberBotPhrases[topic]]) as CyberBotPhrase[];
+  const cheerfulPhrases = casualPhrases
+    .filter(phrase => cheerful.has(phrase.emotion));
+
+  assert.deepEqual(cheerfulPhrases.map(phrase => phrase.key), ['cyberbot_reaction_achievement']);
 });
 
 test('the companion exposes one keyboard button and an accessible dismiss action', () => {
@@ -678,6 +695,21 @@ test('the companion exposes one keyboard button and an accessible dismiss action
   assert.match(html, /data-cyberbot-face="launcher"/);
   assert.match(html, /role="alert"/);
   assert.equal((html.match(/aria-label="Interact with CyberBot"/g) || []).length, 1);
+});
+
+test('a priority expression overrides a message face while Cyber Terminal is open', () => {
+  const html = renderToStaticMarkup(React.createElement(CyberBot, {
+    enabled: true,
+    activeMessage: { ...message('high'), emotion: 'happy' },
+    onDismissMessage: () => {},
+    dragBoundsRef: React.createRef<HTMLDivElement>(),
+    interactLabel: 'Interact with CyberBot',
+    closeLabel: 'Dismiss CyberBot message',
+    hoverAssistText: count => `Moving in ${count}`,
+    priorityEmotion: 'terminal',
+  }));
+
+  assert.match(html, /data-cyberbot-face="terminal"/);
 });
 
 test('each phrase deck exhausts its choices before repeating and avoids consecutive repeats across rounds', () => {

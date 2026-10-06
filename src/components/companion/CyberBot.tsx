@@ -23,6 +23,7 @@ interface CyberBotProps {
   interactLabel: string;
   closeLabel: string;
   hoverAssistText: (count: number) => string;
+  priorityEmotion?: CyberBotEmotion;
   systemAttention?: boolean;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
@@ -41,6 +42,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   interactLabel,
   closeLabel,
   hoverAssistText,
+  priorityEmotion,
   systemAttention = false,
   onSpeechVisibilityChange,
 }) => {
@@ -142,9 +144,9 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     };
   }, []);
 
-  // A visible message owns the expression, especially while showing an alert.
+  // A contextual priority can intentionally own the face, such as Terminal mode.
   const currentEmotion: CyberBotEmotion =
-    displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
+    priorityEmotion || displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {

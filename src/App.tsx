@@ -14517,6 +14517,7 @@ export default function App() {
         hoverAssistEnabled={cyberBot.hoverAssistEnabled}
         chatterLevel={cyberBot.chatterLevel}
         quietHours={cyberBot.quietHours}
+        priorityEmotion={isTerminalOpen ? 'terminal' : undefined}
         dragBoundsRef={rootRef}
         interactLabel={t('cyberbot_interact')}
         closeLabel={t('cyberbot_close_message')}

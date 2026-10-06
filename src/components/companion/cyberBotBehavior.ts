@@ -15,17 +15,17 @@ export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // The logo face is the main resting expression. Keep the ambient loop mostly
 // composed, reserving visibly cheerful gestures for occasional moments.
-export const cyberBotNeutralIdleExpressions = ['curious', 'terminal'] as const;
+export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
-export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.15;
-export const CYBERBOT_IDLE_REST_MIN_MS = 9_000;
-export const CYBERBOT_IDLE_REST_MAX_MS = 13_000;
-export const CYBERBOT_IDLE_HOVER_REST_MIN_MS = 4_500;
-export const CYBERBOT_IDLE_HOVER_REST_MAX_MS = 6_500;
-export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 4_200;
-export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 6_400;
-export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 1_200;
-export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 1_800;
+export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
+export const CYBERBOT_IDLE_REST_MIN_MS = 12_000;
+export const CYBERBOT_IDLE_REST_MAX_MS = 17_000;
+export const CYBERBOT_IDLE_HOVER_REST_MIN_MS = 6_000;
+export const CYBERBOT_IDLE_HOVER_REST_MAX_MS = 8_500;
+export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 5_500;
+export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 7_500;
+export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 900;
+export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 1_300;
 
 export function nextCyberBotIdleExpression(previous: CyberBotEmotion, random = Math.random): CyberBotEmotion {
   const pool = random() < CYBERBOT_IDLE_EXPRESSIVE_CHANCE
