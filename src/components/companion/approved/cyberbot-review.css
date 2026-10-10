@@ -1,0 +1,30 @@
+.cyberbot-review-controls {
+  position: fixed;
+  left: 20px;
+  top: 100px;
+  width: min(350px, calc(100vw - 40px));
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  z-index: 250;
+  padding: 16px;
+  color: #e2e8f0;
+  background: #0c0a1df2;
+  border: 1px solid #38bdf84d;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px #0008;
+  font: 13px/1.5 Inter, sans-serif;
+}
+.cyberbot-review-heading { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.cyberbot-review-controls p { margin: 10px 0; color: #94a3b8; }
+.cyberbot-review-controls label { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+.cyberbot-review-faces { display: flex; gap: 6px; flex-wrap: wrap; }
+.cyberbot-review-controls button, .cyberbot-review-controls select {
+  padding: 5px 9px;
+  border: 1px solid #38bdf840;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.cyberbot-review-controls button[aria-pressed="true"] { border-color: #00f0ff; color: #00f0ff; }
+.cyberbot-review-controls :focus-visible { outline: 2px solid #00f0ff; outline-offset: 2px; }

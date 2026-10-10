@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CyberBotEmotion } from './companionTypes';
+import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 import {
   getCyberBotIdleExpressionDuration,
   getCyberBotIdleMarqueeMessages,
@@ -21,7 +22,18 @@ interface CyberBotAvatarProps {
 const SPEECH_CUE_MS = 1800;
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
-export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
+const ApprovedCyberBotAvatar = React.lazy(() => import('./approved/ApprovedCyberBotAvatar'));
+
+export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = (props) => {
+  const review = React.useContext(CyberBotReviewContext);
+  if (review) return <React.Suspense fallback={null}>
+    <ApprovedCyberBotAvatar {...review} isHovered={props.isHovered}
+      marqueeStatusMessages={props.marqueeStatusMessages} className={props.className} />
+  </React.Suspense>;
+  return <LegacyCyberBotAvatar {...props} />;
+};
+
+const LegacyCyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle',
   isHovered = false,
   speechKey,

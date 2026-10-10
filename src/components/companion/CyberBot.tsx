@@ -8,6 +8,7 @@ import { createCyberBotHoverAssist } from './cyberBotBehavior';
 import { isInQuietHours } from './useCyberBot';
 import { useCyberBotPresence } from './useCyberBotPresence';
 import { useCyberBotLayout } from './useCyberBotLayout';
+import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 
 interface CyberBotProps {
   enabled: boolean;
@@ -49,6 +50,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   onSpeechVisibilityChange,
 }) => {
   const reducedMotion = useReducedMotion();
+  const reviewingDesign = React.useContext(CyberBotReviewContext) !== null;
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -78,12 +80,12 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
   const { sleeping, vanished, vanishStyle } = useCyberBotPresence(
     enabled,
-    !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
+    reviewingDesign || !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
     activeMessage?.id,
     systemAttention,
   );
   const idleAway = vanished && !displayedMessage && !systemAttention;
-  const canHoverAssist = hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
+  const canHoverAssist = !reviewingDesign && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
     && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
 
   moveForHoverRef.current = () => {

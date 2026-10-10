@@ -1,0 +1,594 @@
+<svg id="cyberBotV2" viewBox="0 0 100 115" width="100%" height="100%" style="overflow: visible;">
+              <defs>
+                <!-- Neon Cyan Filter Glow -->
+                <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="2.2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+
+                <filter id="haloGlow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="3.6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+
+                <!-- High-Contrast Helm Gradient (Deep Slate & Obsidian) -->
+                <linearGradient id="helmGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1e293b" />
+                  <stop offset="45%" stopColor="#0f172a" />
+                  <stop offset="100%" stopColor="#080e1a" />
+                </linearGradient>
+
+                <!-- Helm Forehead Cobalt Shell (Inspired by Capture 2) -->
+                <linearGradient id="foreheadCobaltGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="60%" stopColor="#1e3a8a" />
+                  <stop offset="100%" stopColor="#0f172a" />
+                </linearGradient>
+
+                <!-- Torso Gradient (Cobalt Shadow to Midnight) -->
+                <linearGradient id="torsoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#131e3a" />
+                  <stop offset="55%" stopColor="#0a1024" />
+                  <stop offset="100%" stopColor="#0d172e" />
+                </linearGradient>
+
+                <!-- Pod Outer Shell Gradient -->
+                <linearGradient id="podGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="40%" stopColor="#1e293b" />
+                  <stop offset="100%" stopColor="#0f172a" />
+                </linearGradient>
+
+                <!-- OLED Glass Screen Gradient -->
+                <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#020617" />
+                  <stop offset="100%" stopColor="#071026" />
+                </linearGradient>
+
+                <!-- High-Contrast Cyan Rim Lighting Gradient (Sharp definition on dark backgrounds) -->
+                <linearGradient id="rimCyanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#00f0ff" />
+                  <stop offset="45%" stopColor="#38bdf8" />
+                  <stop offset="85%" stopColor="#00f0ff" />
+                  <stop offset="100%" stopColor="#22d3ee" />
+                </linearGradient>
+
+                <!-- Pure Cyan Core Gradient (No grey, 100% electric cyan plasma) -->
+                <radialGradient id="pureCyanCoreGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#00f0ff" stopOpacity="0.55" />
+                  <stop offset="65%" stopColor="#00f0ff" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#00f0ff" stopOpacity="0" />
+                </radialGradient>
+
+                <!-- Abyss Singularity Gradient (Deep cosmic void) -->
+                <radialGradient id="abyssCoreGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#020108" stopOpacity="0.96" />
+                  <stop offset="70%" stopColor="#03020e" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#00f0ff" stopOpacity="0.25" />
+                </radialGradient>
+
+                <!-- Cyan Outer Depth Gradient (Seamless, luminous, zero dark spots) -->
+                <linearGradient id="cyanStrokeDepthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.82" />
+                  <stop offset="45%" stop-color="#00f0ff" stop-opacity="0.92" />
+                  <stop offset="100%" stop-color="#00f0ff" stop-opacity="1" />
+                </linearGradient>
+
+                <!-- Cyan Dashed Depth Gradient (Seamless, luminous, zero dark spots) -->
+                <linearGradient id="cyanDashedDepthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.80" />
+                  <stop offset="45%" stop-color="#00f0ff" stop-opacity="0.92" />
+                  <stop offset="100%" stop-color="#00f0ff" stop-opacity="1" />
+                </linearGradient>
+              </defs>
+
+              <!-- 1. DIMENSIONAL GATEWAY / GROUNDED HALO (Anchored Base - Does NOT Float with Body!) -->
+              <g id="haloGroup" class="halo-element grounded-active">
+                <!-- Halo Ring Geometry System -->
+                <g id="haloRingGeometry">
+                  <!-- 1. PERSPECTIVE 3D RINGS (Composición pura de 2 elementos: anillo exterior cónico y anillo punteado desplazado hacia el fondo) -->
+                  <g id="halo-rings-perspective">
+                    <!-- Elemento 1: Anillo exterior continuo 360° con fuga cónica suave (1.0px fondo -> 2.3px frente, cero cortes) -->
+                    <path d="M 12 103 A 38 8.8 0 1 0 88 103 A 38 8.8 0 1 0 12 103 Z M 13.6 102.35 A 36.4 7.15 0 1 0 86.4 102.35 A 36.4 7.15 0 1 0 13.6 102.35 Z"
+                      fill-rule="evenodd"
+                      fill="url(#cyanStrokeDepthGrad)"
+                      filter="url(#haloGlow)"
+                    />
+
+                    <!-- Elemento 2: Anillo punteado interior continuo (cy=101.3: comprimido a 0.7px/1.7px arriba, abierto a 2.8px/5.1px abajo) -->
+                    <ellipse cx="50" cy="101.3" rx="27" ry="5.4"
+                      fill="none"
+                      stroke="url(#cyanDashedDepthGrad)"
+                      stroke-width="1.2"
+                      stroke-dasharray="4 2"
+                      opacity="0.95"
+                      filter="url(#haloGlow)"
+                    />
+                  </g>
+
+                  <!-- 2. FLAT 2D RINGS (Modo uniforme clásico sin fuga) -->
+                  <g id="halo-rings-flat" style="display: none;">
+                    <ellipse cx="50" cy="103" rx="38" ry="8.8"
+                      fill="none"
+                      stroke="#00f0ff"
+                      stroke-width="1.8"
+                      filter="url(#haloGlow)"
+                    />
+                    <ellipse cx="50" cy="103" rx="27" ry="6.0"
+                      fill="none"
+                      stroke="#38bdf8"
+                      stroke-width="1.1"
+                      stroke-dasharray="4 2"
+                      opacity="0.85"
+                    />
+                  </g>
+                </g>
+
+                <!-- Core Interior Variants (Switchable) -->
+                <g id="haloCoreVariants">
+                  <!-- 1. Hueco Transparente (Recomendado: 100% transparente, cero círculos grises) -->
+                  <g id="halo-core-hollow">
+                    <!-- Centro limpio y transparente -->
+                  </g>
+
+                  <!-- 2. Abismo / Singularidad (Negro cósmico profundo de agujero de gusano) -->
+                  <g id="halo-core-abyss" style="display: none;">
+                    <ellipse cx="50" cy="103" rx="36" ry="8.0" fill="url(#abyssCoreGrad)" />
+                  </g>
+
+                  <!-- 3. Plasma Cian Neón (Glow saturado eléctrico, sin discos grises ni blancos opacos) -->
+                  <g id="halo-core-cyanglow" style="display: none;">
+                    <ellipse cx="50" cy="103" rx="28" ry="6.2" fill="url(#pureCyanCoreGrad)" filter="url(#haloGlow)" />
+                    <ellipse cx="50" cy="103" rx="14" ry="2.8" fill="#00f0ff" opacity="0.45" filter="drop-shadow(0 0 4px #00f0ff)" />
+                  </g>
+
+                  <!-- 4. Anillos Concéntricos (Vórtice geométrico de líneas puras sin rellenos) -->
+                  <g id="halo-core-rings" style="display: none;">
+                    <ellipse cx="50" cy="103" rx="16" ry="3.5" fill="none" stroke="#00f0ff" stroke-width="0.9" opacity="0.8" />
+                    <ellipse cx="50" cy="103" rx="8" ry="1.8" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.9" />
+                  </g>
+                </g>
+              </g>
+
+              <!-- 2. ROBOT BODY & HEAD (Independent Floating Assembly) -->
+              <g id="botAssembly" class="levitating">
+
+                <!-- Lateral Thruster Pod (Left) -->
+                <g id="podLeft" class="lateral-pod reactor-pulse-on reactor-cherenkov-glow">
+                  <!-- Outer Pod Shell -->
+                  <path class="pod-shell" d="M 17 62
+                           C 23 62, 25 68, 25 74
+                           C 25 80, 23 85, 17 85
+                           C 11 85, 10 80, 10 74
+                           C 10 68, 11 62, 17 62 Z"
+                    fill="url(#podGrad)"
+                    stroke="#38bdf8"
+                    stroke-width="1.3"
+                  />
+                  <!-- Inner Inset Plate (Reactor Containment Chamber) -->
+                  <path class="pod-chamber" d="M 17 65 C 21 65, 22 69, 22 74 C 22 78, 21 82, 17 82 C 13 82, 13 78, 13 74 C 13 69, 13 65, 17 65 Z" fill="#090d16" opacity="0.75" />
+                  <!-- Core Style 1: Plasma Core Filament (Line + Circle) [Active Default] -->
+                  <g class="pod-core-filament" id="pod-left-filament">
+                    <line class="pod-rod" x1="17" y1="67" x2="17" y2="80" stroke="#00f0ff" stroke-width="1.6" stroke-linecap="round" />
+                    <circle class="pod-rod-tip" cx="17" cy="80.5" r="1.2" fill="#00f0ff" />
+                  </g>
+                  <!-- Core Style 2: Segmented Fission Cells (3 Micro-pills) -->
+                  <g class="pod-core-cells" id="pod-left-cells" style="display: none;">
+                    <rect class="pod-cell" x="15.8" y="66.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                    <rect class="pod-cell" x="15.8" y="71.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                    <rect class="pod-cell" x="15.8" y="76.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                  </g>
+                </g>
+
+                <!-- Lateral Thruster Pod (Right) -->
+                <g id="podRight" class="lateral-pod reactor-pulse-on reactor-cherenkov-glow">
+                  <!-- Outer Pod Shell -->
+                  <path class="pod-shell" d="M 83 62
+                           C 89 62, 90 68, 90 74
+                           C 90 80, 89 85, 83 85
+                           C 77 85, 75 80, 75 74
+                           C 75 68, 77 62, 83 62 Z"
+                    fill="url(#podGrad)"
+                    stroke="#38bdf8"
+                    stroke-width="1.3"
+                  />
+                  <!-- Inner Inset Plate (Reactor Containment Chamber) -->
+                  <path class="pod-chamber" d="M 83 65 C 87 65, 87 69, 87 74 C 87 78, 87 82, 83 82 C 79 82, 79 78, 79 74 C 79 69, 79 65, 83 65 Z" fill="#090d16" opacity="0.75" />
+                  <!-- Core Style 1: Plasma Core Filament (Line + Circle) [Active Default] -->
+                  <g class="pod-core-filament" id="pod-right-filament">
+                    <line class="pod-rod" x1="83" y1="67" x2="83" y2="80" stroke="#00f0ff" stroke-width="1.6" stroke-linecap="round" />
+                    <circle class="pod-rod-tip" cx="83" cy="80.5" r="1.2" fill="#00f0ff" />
+                  </g>
+                  <!-- Core Style 2: Segmented Fission Cells (3 Micro-pills) -->
+                  <g class="pod-core-cells" id="pod-right-cells" style="display: none;">
+                    <rect class="pod-cell" x="81.8" y="66.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                    <rect class="pod-cell" x="81.8" y="71.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                    <rect class="pod-cell" x="81.8" y="76.5" width="2.4" height="3.2" rx="1.2" fill="#00f0ff" />
+                  </g>
+                </g>
+
+                <!-- Main Torso & Equalizer Fuselage Assembly -->
+                <g id="torsoChassisGroup">
+                  <!-- Main Torso Chassis (Tapered Keel) -->
+                  <path d="M 29 60
+                           C 36 58, 64 58, 71 60
+                           C 76 66, 75 76, 70 83
+                           C 63 90, 56 94.5, 50 95.5
+                           C 44 94.5, 37 90, 30 83
+                           C 25 76, 24 66, 29 60 Z"
+                    fill="url(#torsoGrad)"
+                    stroke="url(#rimCyanGrad)"
+                    stroke-width="1.6"
+                    filter="drop-shadow(0 2px 8px rgba(0, 240, 255, 0.2))"
+                  />
+
+                  <!-- Torso Armor Facets (Geometric Shoulder Chamfers) -->
+                  <path d="M 31 62 L 39 62 L 40 79 L 33 76 Z" fill="#1e293b" opacity="0.65" />
+                  <path d="M 69 62 L 61 62 L 60 79 L 67 76 Z" fill="#1e293b" opacity="0.65" />
+
+                  <!-- CHEST EQUALIZER PANEL (Core Feature 1) -->
+                  <g id="chestEqualizerGroup">
+                    <!-- Beveled Equalizer Frame Cavity -->
+                    <path d="M 40 63.5 Q 50 62.5 60 63.5 L 58 87.5 Q 50 89.5 42 87.5 Z"
+                      fill="#030712"
+                      stroke="#0284c7"
+                      stroke-width="0.9"
+                    />
+                    <!-- Upper Cavity Accent Line -->
+                    <line x1="43" y1="64" x2="57" y2="64" stroke="#38bdf8" stroke-width="0.8" opacity="0.6" />
+
+                    <!-- Dynamic Equalizer Multi-Style Container -->
+                    <g id="equalizerBars" class="standby-eq">
+                      <!-- 1. STYLE A: ESCALERA VU VERTICAL (Peldaños de abajo hacia arriba con alcance variable) -->
+                      <g id="eq-style-ladder">
+                        <!-- Variante 1.1: Trapecio Escudo (Estrecho abajo -> Ancho arriba, concordante con las líneas del chasis) [Activo por defecto] -->
+                        <g id="ladder-trapezoid">
+                          <rect class="vu-rung-5" x="40.75" y="65.5" width="18.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-4" x="41.5" y="70.0" width="17.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-3" x="42.25" y="74.5" width="15.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-2" x="43.0" y="79.0" width="14.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-1" x="43.75" y="83.5" width="12.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.45" />
+                        </g>
+
+                        <!-- Variante 1.2: Pirámide Foco Láser (Ancho abajo -> Estrecho arriba, torre de plasma) -->
+                        <g id="ladder-pyramid" style="display: none;">
+                          <rect class="vu-rung-5" x="45.25" y="65.5" width="9.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-4" x="44.5" y="70.0" width="11.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-3" x="43.75" y="74.5" width="12.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-2" x="43.0" y="79.0" width="14.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-1" x="42.25" y="83.5" width="15.5" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.45" />
+                        </g>
+
+                        <!-- Variante 1.3: Barril Equilibrado (Anterior simétrico) -->
+                        <g id="ladder-barrel" style="display: none;">
+                          <rect class="vu-rung-5" x="42.5" y="65.5" width="15.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-4" x="41.5" y="70.0" width="17.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-3" x="41.0" y="74.5" width="18.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-2" x="41.5" y="79.0" width="17.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.16" />
+                          <rect class="vu-rung-1" x="42.5" y="83.5" width="15.0" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.45" />
+                        </g>
+                      </g>
+
+                      <!-- 2. STYLE B: COLUMNAS DE ESPECTRO VERTICAL (Barras verticales que crecen de abajo hacia arriba) -->
+                      <g id="eq-style-bars" style="display: none;">
+                        <rect id="col-1" class="eq-col-bar" x="42.5" y="68.5" width="2.2" height="18" rx="1.1" fill="#00f0ff" />
+                        <rect id="col-2" class="eq-col-bar" x="46.0" y="67.0" width="2.2" height="19.5" rx="1.1" fill="#00f0ff" />
+                        <rect id="col-3" class="eq-col-bar" x="48.8" y="65.5" width="2.4" height="21" rx="1.2" fill="#00f0ff" />
+                        <rect id="col-4" class="eq-col-bar" x="51.8" y="67.0" width="2.2" height="19.5" rx="1.1" fill="#00f0ff" />
+                        <rect id="col-5" class="eq-col-bar" x="55.3" y="68.5" width="2.2" height="18" rx="1.1" fill="#00f0ff" />
+                      </g>
+
+                      <!-- 3. STYLE C: PULSO HORIZONTAL (Versión anterior para comparativa) -->
+                      <g id="eq-style-horizontal" style="display: none;">
+                        <rect id="bar-1" x="42.5" y="66.5" width="15" height="2.2" rx="1.1" fill="#00f0ff" opacity="0.25" />
+                        <rect id="bar-2" x="41" y="71" width="18" height="2.2" rx="1.1" fill="#00f0ff" opacity="0.25" />
+                        <rect id="bar-3" x="40.5" y="75.5" width="19" height="2.4" rx="1.2" fill="#00f0ff" opacity="0.75" filter="drop-shadow(0 0 3px #00f0ff)" />
+                        <rect id="bar-4" x="41.5" y="80" width="17" height="2.2" rx="1.1" fill="#00f0ff" opacity="0.25" />
+                        <rect id="bar-5" x="43.5" y="84.5" width="13" height="2.2" rx="1.1" fill="#00f0ff" opacity="0.25" />
+                      </g>
+                    </g>
+                  </g>
+
+                  <!-- KEEL & LOWER FUSELAGE VARIANTS -->
+                  <g id="keelVariants">
+                    <!-- 1. Quilla Lisa Blindada (Recomendada: Cero LEDs en zona baja, chasis sobrio) -->
+                    <g id="keel-clean">
+                      <!-- Fuselaje blindado limpio sin luces puntuales -->
+                    </g>
+
+                    <!-- 2. Ranura Difusora Horizontal (Tobera iónica plana) -->
+                    <g id="keel-slot" style="display: none;">
+                      <path d="M 43 92.5 Q 50 94.8 57 92.5" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round" fill="none" filter="drop-shadow(0 0 2px #00f0ff)" />
+                    </g>
+
+                    <!-- 3. Doble Tobera Angular Lateral (Escapes laterales, centro neutro) -->
+                    <g id="keel-twin" style="display: none;">
+                      <line x1="42" y1="91.5" x2="39" y2="87.5" stroke="#00f0ff" stroke-width="1.4" stroke-linecap="round" filter="drop-shadow(0 0 2px #00f0ff)" />
+                      <line x1="58" y1="91.5" x2="61" y2="87.5" stroke="#00f0ff" stroke-width="1.4" stroke-linecap="round" filter="drop-shadow(0 0 2px #00f0ff)" />
+                    </g>
+
+                    <!-- 4. LED Circular (Versión anterior para comparación) -->
+                    <g id="keel-dot" style="display: none;">
+                      <circle cx="50" cy="94.5" r="2" fill="#00f0ff" filter="drop-shadow(0 0 4px #00f0ff)" />
+                    </g>
+                  </g>
+
+                  <!-- Magnetic Neck Collar Gap (Prevents hunchback look!) -->
+                  <rect x="42" y="55" width="16" height="4.5" rx="2" fill="#090d16" stroke="#1e293b" stroke-width="0.8" />
+                  <line id="neckCollarLine" class="neck-collar-line" x1="44" y1="57.2" x2="56" y2="57.2" stroke="#00f0ff" stroke-width="1.3" opacity="0.8" />
+                </g>
+
+                <!-- HEAD & VISOR ASSEMBLY -->
+                <g id="headGroup">
+                  <!-- Head Turntable (Pivota 180° en el eje Y para revelar el Lado B / Cara Posterior) -->
+                  <g id="headTurntable">
+                    <!-- Helmet Exterior Shell (Curved Sleek Aerodynamic Dome) -->
+                    <path d="M 28 17
+                             C 36 12, 64 12, 72 17
+                             C 83 22, 87 31, 86 42
+                             C 85 50.5, 78 55.5, 68 56.5
+                             C 58 57.5, 42 57.5, 32 56.5
+                             C 22 55.5, 15 50.5, 14 42
+                             C 13 31, 17 22, 28 17 Z"
+                      fill="url(#helmGrad)"
+                      stroke="url(#rimCyanGrad)"
+                      stroke-width="1.8"
+                      filter="drop-shadow(0 2px 10px rgba(0, 240, 255, 0.22))"
+                    />
+
+                    <!-- CREST & FOREHEAD VARIANTS -->
+                    <g id="crestVariants">
+                      <!-- 1. Cúpula Lisa Esculpida (Recomendada: Cero artefactos) -->
+                      <g id="crest-clean">
+                        <!-- Cobalt Cowl (Solid mass, without wireframe lines) -->
+                        <path d="M 28 17
+                                 C 36 12, 64 12, 72 17
+                                 C 78 21, 80 26, 78 29.5
+                                 C 68 24.5, 32 24.5, 22 29.5
+                                 C 20 26, 22 21, 28 17 Z"
+                          fill="url(#foreheadCobaltGrad)"
+                        />
+                        <!-- Flush Cyan Sensor Jewel -->
+                        <rect class="helmet-sensor-light" x="44" y="14.5" width="12" height="2.2" rx="1.1" fill="#00f0ff" filter="drop-shadow(0 0 3px #00f0ff)" />
+                      </g>
+
+                      <!-- 2. Visera Blindada Angular -->
+                      <g id="crest-brow" style="display: none;">
+                        <path d="M 28 17 C 36 12, 64 12, 72 17 L 76 25 L 24 25 Z" fill="url(#foreheadCobaltGrad)" opacity="0.8" />
+                        <path d="M 24 24 L 50 20 L 76 24 L 72 26 L 50 22.5 L 28 26 Z" fill="#38bdf8" />
+                        <rect class="helmet-sensor-light" x="45" y="14" width="10" height="2.2" rx="1.1" fill="#00f0ff" />
+                      </g>
+
+                      <!-- 3. Versión con Líneas Múltiples (Causante del artefacto en el video) -->
+                      <g id="crest-lines" style="display: none;">
+                        <path d="M 43 13.5 Q 50 10.5 57 13.5 L 55 17 L 45 17 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="0.9" />
+                        <line class="helmet-sensor-light" x1="46" y1="13.5" x2="54" y2="13.5" stroke="#00f0ff" stroke-width="1.5" stroke-linecap="round" />
+                        <path d="M 31 18 Q 50 14 69 18 L 67 22 Q 50 18 33 22 Z" fill="url(#foreheadCobaltGrad)" stroke="#38bdf8" stroke-width="0.6" />
+                      </g>
+                    </g>
+
+                    <!-- Side Ear Acoustic Sensor Nodes -->
+                    <g class="ear-node ear-left" id="earNodeLeft">
+                      <path class="ear-capsule" d="M 14 36 C 12 36, 12 44, 14 44 Z" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.2" />
+                      <rect class="ear-light" x="12" y="38" width="1.8" height="4" rx="0.9" fill="#00f0ff" opacity="0.85" />
+                    </g>
+                    <g class="ear-node ear-right" id="earNodeRight">
+                      <path class="ear-capsule" d="M 86 36 C 88 36, 88 44, 86 44 Z" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.2" />
+                      <rect class="ear-light" x="86.2" y="38" width="1.8" height="4" rx="0.9" fill="#00f0ff" opacity="0.85" />
+                    </g>
+
+                    <!-- FRONT FACE (Lado A: Visor Frontal Activo) -->
+                    <g id="headFrontFace" class="head-turntable-face head-face-front">
+
+                  <!-- OLED Visor Screen (Deep Curved Panoramic Glass) -->
+                  <rect x="22" y="24" width="56" height="28" rx="9"
+                    fill="url(#screenGrad)"
+                    stroke="#0284c7"
+                    stroke-width="1.3"
+                  />
+
+                  <!-- Inner Glass Specular Glare Arc -->
+                  <path d="M 25 26 L 46 26 L 27 50 L 25 47 Z" fill="#ffffff" opacity="0.06" />
+
+                  <!-- DIGITAL VISOR FACE CONTENT -->
+                  <g id="visorFaceContent">
+                    <!-- Default Sleek Horizontal Slit Eyes -->
+                    <g id="face-eyes-default" filter="url(#neonGlow)">
+                      <!-- Left Eye -->
+                      <rect id="leftEye" x="29" y="34.5" width="14" height="4.5" rx="2.25" fill="#00f0ff" />
+                      <!-- Right Eye -->
+                      <rect id="rightEye" x="57" y="34.5" width="14" height="4.5" rx="2.25" fill="#00f0ff" />
+                    </g>
+
+                    <!-- Marquee Text Simulation (Hidden by default) -->
+                    <g id="face-marquee" style="display: none;">
+                      <clipPath id="marqueeClip">
+                        <rect x="23" y="24.5" width="54" height="27" rx="8.5" />
+                      </clipPath>
+                      <g clip-path="url(#marqueeClip)">
+                        <g id="face-marquee-content">
+                          <text class="marquee-text-node" x="78" y="43"
+                            fill="#00f0ff"
+                            font-family="'JetBrains Mono', monospace"
+                            font-size="17"
+                            font-weight="800"
+                            letter-spacing="0.04em"
+                            filter="url(#neonGlow)">
+                            CYBERLAUNCHER v1.12
+                            <animate attributeName="x" from="78" to="-180" dur="9.9s" calcMode="linear" repeatCount="indefinite" />
+                          </text>
+                        </g>
+                      </g>
+                    </g>
+
+                    <!-- 1. Launcher Face Lower Logo (Cubo + Plus: ■ +) [Mitad inferior del logo oficial] -->
+                    <g id="face-launcher" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Ojo Izquierdo: Cubo / Squircle redondeado -->
+                      <rect x="31.25" y="32.25" width="9.5" height="9.5" rx="3.2" fill="#00f0ff" />
+                      <!-- Ojo Derecho: Signo Más (+) Simétrico -->
+                      <rect x="59.25" y="35.5" width="9.5" height="3" rx="1.5" fill="#00f0ff" />
+                      <rect x="62.5" y="32.25" width="3" height="9.5" rx="1.5" fill="#00f0ff" />
+                    </g>
+
+                    <!-- 2. Launcher Face Upper Logo (Doble Cubo: ■ ■) [Mitad superior del logo oficial] -->
+                    <g id="face-launcher-top" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Ojo Izquierdo: Cubo redondeado -->
+                      <rect x="31.25" y="32.25" width="9.5" height="9.5" rx="3.2" fill="#00f0ff" />
+                      <!-- Ojo Derecho: Cubo redondeado -->
+                      <rect x="59.25" y="32.25" width="9.5" height="9.5" rx="3.2" fill="#00f0ff" />
+                    </g>
+
+                    <!-- 3. Terminal Hacker Face (> _) [Prompt con cursor titilante continuo] -->
+                    <g id="face-terminal" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Ojo Izquierdo: Chevron Prompt (>) -->
+                      <path d="M 32.5 32.5 L 39.5 37 L 32.5 41.5" fill="none" stroke="#00f0ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                      <!-- Ojo Derecho: Cursor Underscore titilante (_) -->
+                      <line class="terminal-cursor" x1="59" y1="41.5" x2="69" y2="41.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round" />
+                    </g>
+
+                    <!-- 4. Curious / Optical Scanner Face (• ◉) [Escáner de atención] -->
+                    <g id="face-curious" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Ojo Izquierdo: Ceja arqueada curiosa + lente de escaneo -->
+                      <path d="M 30 28.5 Q 36 26 42 28.5" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" />
+                      <ellipse cx="36" cy="36.5" rx="4.5" ry="5.5" fill="#00f0ff" />
+                      <!-- Ojo Derecho: Retícula de precisión + sensor giratorio -->
+                      <circle cx="64" cy="36.5" r="3.2" fill="#00f0ff" />
+                      <circle class="curious-reticle" cx="64" cy="36.5" r="6.2" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-dasharray="3.5 2.5" opacity="0.85" />
+                    </g>
+
+                    <!-- 5. Flight / High Speed Transit Face (• •) [Ojos de vuelo enfocados con destello aerodinámico] -->
+                    <g id="face-flight" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Ojo Izquierdo: Sensor circular concentrado con destello especular -->
+                      <circle cx="36" cy="36.5" r="4.6" fill="#00f0ff" />
+                      <circle cx="37.5" cy="35.2" r="1.5" fill="#ffffff" />
+                      <!-- Ojo Derecho: Sensor circular concentrado con destello especular -->
+                      <circle cx="64" cy="36.5" r="4.6" fill="#00f0ff" />
+                      <circle cx="65.5" cy="35.2" r="1.5" fill="#ffffff" />
+                      <!-- Estela/Rastro de velocidad sutil aerodinámica -->
+                      <path d="M 31 29 Q 36 27.5 41 29" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.8" />
+                      <path d="M 69 29 Q 64 27.5 59 29" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.8" />
+                    </g>
+
+                    <!-- Sleeping Face (Hidden by default) -->
+                    <g id="face-sleeping" style="display: none;">
+                      <path d="M 29 38 Q 36 41 43 38" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" />
+                      <path d="M 57 38 Q 64 41 71 38" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" />
+                      <!-- Animated Floating Z particles -->
+                      <g id="sleep-particles">
+                        <g class="sleep-z-1">
+                          <text x="73" y="25" fill="#94a3b8" font-family="'JetBrains Mono', monospace" font-size="7.5" font-weight="bold">z</text>
+                        </g>
+                        <g class="sleep-z-2">
+                          <text x="81" y="18" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9.5" font-weight="bold">Z</text>
+                        </g>
+                      </g>
+                    </g>
+
+                    <!-- Alert Face (Amber warning mode) -->
+                    <g id="face-alert" style="display: none;" filter="url(#neonGlow)">
+                      <!-- Variante 1: Exclamaciones Pulidas (! !) [Recomendada: Rescata el original sin hostilidad] -->
+                      <g id="alert-variant-exclamation">
+                        <rect x="34.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" />
+                        <circle cx="36" cy="41" r="1.6" fill="#f59e0b" />
+                        <rect x="62.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" />
+                        <circle cx="64" cy="41" r="1.6" fill="#f59e0b" />
+                        <rect x="45.5" y="43.5" width="9" height="3.5" rx="1.75" fill="rgba(245, 158, 11, 0.15)" stroke="#fbbf24" stroke-width="1.3" />
+                      </g>
+
+                      <!-- Variante 2: Ojos Atentos / Preocupados (• •) -->
+                      <g id="alert-variant-concerned" style="display: none;">
+                        <path d="M 31 29.5 Q 36 27 41 29.5" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round" fill="none" />
+                        <path d="M 69 29.5 Q 64 27 59 29.5" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round" fill="none" />
+                        <ellipse cx="36" cy="35.5" rx="4" ry="4.5" fill="#f59e0b" />
+                        <ellipse cx="64" cy="35.5" rx="4" ry="4.5" fill="#f59e0b" />
+                        <ellipse cx="50" cy="44.5" rx="2.5" ry="2" fill="rgba(245, 158, 11, 0.15)" stroke="#fbbf24" stroke-width="1.4" />
+                      </g>
+
+                      <!-- Variante 3: Triángulos HUD de Precaución (▲ ▲) -->
+                      <g id="alert-variant-triangles" style="display: none;">
+                        <path d="M 36 29.5 L 42.5 39.5 L 29.5 39.5 Z" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                        <circle cx="36" cy="36.5" r="1.1" fill="#f59e0b" />
+                        <path d="M 64 29.5 L 70.5 39.5 L 57.5 39.5 Z" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                        <circle cx="64" cy="36.5" r="1.1" fill="#f59e0b" />
+                        <rect x="46" y="43" width="8" height="2.2" rx="1.1" fill="#fbbf24" opacity="0.85" />
+                      </g>
+
+                      <!-- Variante 4: Barras Ámbar Sobrias (▬ ▬) -->
+                      <g id="alert-variant-bars" style="display: none;">
+                        <rect x="29" y="34.5" width="14" height="4.5" rx="2.25" fill="#f59e0b" />
+                        <rect x="57" y="34.5" width="14" height="4.5" rx="2.25" fill="#f59e0b" />
+                        <rect x="45.5" y="43.5" width="9" height="3" rx="1.5" fill="rgba(245, 158, 11, 0.15)" stroke="#fbbf24" stroke-width="1.2" />
+                      </g>
+
+                      <!-- Variante 5: Robot Enojado (Anterior para comparar) -->
+                      <g id="alert-variant-angry" style="display: none;">
+                        <path d="M 30 33 L 42 37" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M 70 33 L 58 37" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" />
+                        <circle cx="50" cy="44" r="2" fill="#f59e0b" />
+                      </g>
+                    </g>
+                  </g> <!-- end visorFaceContent -->
+                </g> <!-- end headFrontFace -->
+
+                <!-- BACK FACE (Lado B: Segunda Cara Posterior / Retorno 180°) -->
+                <g id="headBackFace" class="head-turntable-face head-face-back">
+                    <!-- Rear OLED Visor Screen (Deep Curved Panoramic Glass) -->
+                    <rect x="22" y="24" width="56" height="28" rx="9"
+                      fill="url(#screenGrad)"
+                      stroke="#0284c7"
+                      stroke-width="1.3"
+                    />
+
+                    <!-- Rear Inner Glass Specular Glare Arc -->
+                    <path d="M 75 26 L 54 26 L 73 50 L 75 47 Z" fill="#ffffff" opacity="0.06" />
+
+                    <!-- DIGITAL REAR VISOR EXPRESSIONS (Lado B) -->
+                    <g id="visorBackFaceContent" filter="url(#neonGlow)">
+                      <!-- Variante B1: ^ ^ Ojos Arqueados Felices de Saludo (Default al girar) -->
+                      <g id="face-back-happy">
+                        <!-- Ojo Izquierdo Arqueado Feliz ^ -->
+                        <path d="M 29 38.5 Q 36 30.5 43 38.5" stroke="#00f0ff" stroke-width="2.6" stroke-linecap="round" fill="none" />
+                        <!-- Ojo Derecho Arqueado Feliz ^ -->
+                        <path d="M 57 38.5 Q 64 30.5 71 38.5" stroke="#00f0ff" stroke-width="2.6" stroke-linecap="round" fill="none" />
+                        <!-- Sonrisa Curva Amable ‿ -->
+                        <path d="M 46 43 Q 50 47.5 54 43" stroke="#00f0ff" stroke-width="2.2" stroke-linecap="round" fill="none" />
+                        <!-- Rubor cibernético sutil bajo los ojos (dots) -->
+                        <circle cx="28" cy="42" r="1.3" fill="#38bdf8" opacity="0.75" />
+                        <circle cx="72" cy="42" r="1.3" fill="#38bdf8" opacity="0.75" />
+                      </g>
+
+                      <!-- Variante B2: ^ ~ Guiño Pícaro / Cómplice -->
+                      <g id="face-back-wink" style="display: none;">
+                        <!-- Ojo Izquierdo Guiñado - -->
+                        <line x1="29" y1="36" x2="43" y2="36" stroke="#00f0ff" stroke-width="2.6" stroke-linecap="round" />
+                        <!-- Ojo Derecho Abierto y Curioso ^ -->
+                        <path d="M 57 38.5 Q 64 30.5 71 38.5" stroke="#00f0ff" stroke-width="2.6" stroke-linecap="round" fill="none" />
+                        <!-- Sonrisa Curva de complicidad -->
+                        <path d="M 46 43 Q 51 47 55 42" stroke="#00f0ff" stroke-width="2.2" stroke-linecap="round" fill="none" />
+                        <!-- Destello estelar en guiño -->
+                        <circle cx="36" cy="31" r="1.2" fill="#cffafe" />
+                      </g>
+
+                      <!-- Variante B3: ◉ Centinela Monocular 360° -->
+                      <g id="face-back-sentinel" style="display: none;">
+                        <!-- Sensor Central HUD -->
+                        <circle cx="50" cy="38" r="8.5" fill="none" stroke="#00f0ff" stroke-width="1.8" />
+                        <circle cx="50" cy="38" r="4.5" fill="#00f0ff" />
+                        <circle cx="50" cy="38" r="1.8" fill="#ffffff" />
+                        <line x1="38" y1="38" x2="41" y2="38" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" />
+                        <line x1="59" y1="38" x2="62" y2="38" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" />
+                        <line x1="50" y1="26" x2="50" y2="29" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" />
+                        <line x1="50" y1="47" x2="50" y2="50" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" />
+                      </g>
+                    </g>
+                  </g>
+                </g> <!-- end headTurntable -->
+              </g> <!-- end headGroup -->
+            </g> <!-- end botAssembly -->
+          </svg>

@@ -1,0 +1,895 @@
+/* Extracted from the approved laboratory. Geometry and timing are preserved. */
+@import '@fontsource/jetbrains-mono/600.css';
+
+
+    /* Robot Floating Assembly (Decoupled from Grounded Halo) */
+    .cyberbot-approved-avatar [data-part="botAssembly"] {
+      transform-origin: 50px 50px;
+      will-change: transform, opacity;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, filter 0.45s ease;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].levitating {
+      animation: approved-botHoverFloat 3.2s ease-in-out infinite;
+    }
+
+    @keyframes approved-botHoverFloat {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    /* Portal Animation Sequences on Robot Body */
+    .cyberbot-approved-avatar [data-part="botAssembly"].portal-sinking {
+      animation: approved-botPortalSink 0.58s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].portal-hidden {
+      opacity: 0;
+      transform: translateY(45px) scale(0.5);
+      pointer-events: none;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].portal-emerging {
+      animation: approved-botPortalEmerge 1.22s forwards;
+    }
+
+    @keyframes approved-botPortalSink {
+      0% {
+        transform: translateY(0px) scale(1);
+        opacity: 1;
+      }
+      30% {
+        transform: translateY(10px) scale(0.96);
+        opacity: 0.95;
+      }
+      100% {
+        transform: translateY(44px) scale(0.45);
+        opacity: 0;
+      }
+    }
+
+    @keyframes approved-botPortalEmerge {
+      0% {
+        transform: translateY(45px) scale(0.5);
+        opacity: 0;
+      }
+      15% {
+        /* Portal abre en suelo: CyberBot inicia un ascenso único, continuo y fluido hacia la cúspide */
+        transform: translateY(45px) scale(0.5);
+        opacity: 0;
+        animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      65% {
+        /* Cúspide de máxima altura (-5px): alcanza su punto álgido sin paradas intermedias */
+        transform: translateY(-5px) scale(1.02);
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+      }
+      100% {
+        /* Descenso suave y directo hacia la posición final (0px); el halo ya está oculto */
+        transform: translateY(0px) scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* DIMENSIONAL GATEWAY / GROUNDED HALO */
+    .cyberbot-approved-avatar .halo-element {
+      transform-origin: 50px 103px;
+      will-change: transform, opacity;
+    }
+
+    /* Halo stays 100% collapsed and hidden while CyberBot is vanished */
+    .cyberbot-approved-avatar .halo-element.halo-hidden {
+      display: none !important;
+      opacity: 0 !important;
+      transform: scale(0) !important;
+      pointer-events: none !important;
+    }
+
+    /* Subtle stationary energy breathing on the ground plane */
+    .cyberbot-approved-avatar .halo-element.grounded-active {
+      animation: approved-haloGroundPulse 3.8s ease-in-out infinite;
+    }
+
+    @keyframes approved-haloGroundPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.92;
+      }
+      50% {
+        transform: scale(1.04);
+        opacity: 1;
+      }
+    }
+
+    /* HALO PORTAL EXIT: Portal bursts open from 0 (if ephemeral) or 1, receives CyberBot, and snaps shut */
+    .cyberbot-approved-avatar .halo-element.portal-flare {
+      animation: approved-haloPortalExit 0.98s forwards;
+    }
+
+    @keyframes approved-haloPortalExit {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      22% {
+        /* Bursts open on floor to catch descending CyberBot */
+        transform: scale(1.24);
+        opacity: 1;
+        animation-timing-function: linear;
+      }
+      58% {
+        /* Holds wide while CyberBot descends through threshold */
+        transform: scale(1.24);
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      100% {
+        /* Unbroken continuous collapse directly to singularity zero */
+        transform: scale(0);
+        opacity: 0;
+      }
+    }
+
+    /* HALO PORTAL EMERGE (EPHEMERAL): Bursts open from 0, CyberBot ascends out, portal closes shut! */
+    .cyberbot-approved-avatar .halo-element.portal-emerge-close {
+      animation: approved-haloPortalEmergeClose 0.88s forwards;
+    }
+
+    @keyframes approved-haloPortalEmergeClose {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      24% {
+        /* Bursts open on ground first */
+        transform: scale(1.24);
+        opacity: 1;
+        animation-timing-function: linear;
+      }
+      56% {
+        /* Holds wide while CyberBot's body emerges through the threshold */
+        transform: scale(1.24);
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      100% {
+        /* Snaps shut into zero and disappears completely from the floor at 0.88s! */
+        transform: scale(0);
+        opacity: 0;
+      }
+    }
+
+    /* HALO PORTAL EMERGE (PERSISTENT): Bursts open from 0, CyberBot ascends, portal settles at 1.0 */
+    .cyberbot-approved-avatar .halo-element.portal-open {
+      animation: approved-haloPortalEnter 1.25s forwards;
+    }
+
+    @keyframes approved-haloPortalEnter {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      20% {
+        transform: scale(1.24);
+        opacity: 1;
+        animation-timing-function: linear;
+      }
+      52% {
+        transform: scale(1.22);
+        opacity: 1;
+        animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0.92;
+      }
+    }
+    .cyberbot-approved-avatar .visor-blinking {
+      animation: approved-visorBlinkAnim 0.16s ease-in-out forwards;
+      transform-origin: 50px 37px;
+    }
+    @keyframes approved-visorBlinkAnim {
+      0% { transform: scaleY(1); }
+      50% { transform: scaleY(0.12); }
+      100% { transform: scaleY(1); }
+    }
+
+    /* Terminal Cursor Pulse */
+    .cyberbot-approved-avatar .terminal-cursor {
+      animation: approved-termCursorBlink 0.9s steps(2, start) infinite;
+    }
+    @keyframes approved-termCursorBlink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Curious Reticle Gentle Spin Animation */
+    .cyberbot-approved-avatar .curious-reticle {
+      animation: approved-reticleSpin 6s linear infinite;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    @keyframes approved-reticleSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Sleeping Animated Floating Z Particles (Fiel a la física de CyberBot 1.0) */
+    .cyberbot-approved-avatar .sleep-z-1 {
+      animation: approved-sleepZFloat1 2.8s ease-out infinite;
+    }
+    .cyberbot-approved-avatar .sleep-z-2 {
+      animation: approved-sleepZFloat2 2.8s ease-out 1.2s infinite;
+    }
+    @keyframes approved-sleepZFloat1 {
+      0% { opacity: 0; transform: translate(0px, 4px); }
+      35% { opacity: 0.85; transform: translate(2px, -2px); }
+      100% { opacity: 0; transform: translate(4px, -10px); }
+    }
+    @keyframes approved-sleepZFloat2 {
+      0% { opacity: 0; transform: translate(0px, 4px); }
+      35% { opacity: 0.75; transform: translate(2px, -2px); }
+      100% { opacity: 0; transform: translate(5px, -12px); }
+    }
+
+    /* Pause levitation during pure marquee mode without any position jump */
+    .cyberbot-approved-avatar.marquee-active:not(.compact-screen-active) [data-part="botAssembly"].levitating {
+      animation-play-state: paused !important;
+    }
+
+    /* En modo Transformación Monitor (.compact-screen-active):
+       El chasis desciende suavemente a la cota base (0px) para que la cabeza NO quede
+       congelada a media altura (-8px) si la levitación estaba activa. */
+    .cyberbot-approved-avatar.compact-screen-active [data-part="botAssembly"] {
+      animation: none !important;
+      transform: translateY(0px) !important;
+      transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Compact Screen Transformation Mode: Asymmetric Physics (Deliberate Entry ~1.1s, Snappy Exit 0.42s) */
+    .cyberbot-approved-avatar [data-part="podLeft"] {
+      transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.32s ease;
+      transform-origin: 18px 73px;
+      will-change: transform, opacity;
+    }
+    .cyberbot-approved-avatar [data-part="podRight"] {
+      transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.32s ease;
+      transform-origin: 82px 73px;
+      will-change: transform, opacity;
+    }
+    .cyberbot-approved-avatar [data-part="torsoChassisGroup"] {
+      transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+      transform-origin: 50px 60px;
+      will-change: transform, opacity;
+    }
+    .cyberbot-approved-avatar [data-part="headGroup"] {
+      transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: 50px 57px;
+      will-change: transform;
+    }
+
+    /* Entry Retractions */
+    .cyberbot-approved-avatar.compact-screen-active [data-part="podLeft"] {
+      transform: translate(24px, -10px) scale(0.1);
+      opacity: 0;
+      transition: transform 0.50s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.38s ease;
+    }
+    .cyberbot-approved-avatar.compact-screen-active [data-part="podRight"] {
+      transform: translate(-24px, -10px) scale(0.1);
+      opacity: 0;
+      transition: transform 0.50s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.38s ease;
+    }
+    .cyberbot-approved-avatar.compact-screen-active [data-part="torsoChassisGroup"] {
+      transform: translateY(-24px) scale(0.2);
+      transform-origin: 50px 60px;
+      opacity: 0;
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.40s ease;
+    }
+
+    /* Head Landing with Dual-Corner Contact Physics:
+       1. Descenso gravitacional continuo y acelerado (0-58%): CERO pausas intermedias
+       2. Primer impacto: Esquina izquierda golpea el suelo con inclinación (-4.6deg a los 58%, y: 50.8px)
+       3. Rebote cinético elástico hacia arriba (47.2px) y pivote hacia la derecha (+1.2deg a los 72%)
+       4. Segundo impacto: Esquina derecha golpea el suelo (+2.4deg a los 84%, y: 49.8px)
+       5. Micro-amortiguación de balanceo hacia el centro (-0.5deg a los 93%)
+       6. Reposo final: Asentado 11px por debajo del chasis (y: 49px), firme en el suelo */
+    .cyberbot-approved-avatar.compact-screen-active [data-part="headGroup"] {
+      animation: approved-headMonitorLanding 1.05s linear forwards;
+      transform-origin: 50px 57px;
+    }
+
+    @keyframes approved-headMonitorLanding {
+      0% {
+        transform: translateY(0px) rotate(0deg);
+        animation-timing-function: cubic-bezier(0.55, 0.05, 0.75, 0.15);
+      }
+      58% {
+        /* Primer contacto: Lado izquierdo golpea la superficie */
+        transform: translateY(50.8px) rotate(-4.6deg);
+        animation-timing-function: cubic-bezier(0.18, 0.85, 0.35, 1);
+      }
+      72% {
+        /* Rebote y transferencia de peso: Pivota hacia la derecha */
+        transform: translateY(47.2px) rotate(1.2deg);
+        animation-timing-function: cubic-bezier(0.45, 0, 0.75, 0.25);
+      }
+      84% {
+        /* Segundo contacto: Lado derecho golpea la superficie */
+        transform: translateY(49.8px) rotate(2.4deg);
+        animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      93% {
+        /* Micro-amortiguación de balanceo */
+        transform: translateY(48.6px) rotate(-0.5deg);
+        animation-timing-function: ease-out;
+      }
+      100% {
+        /* Reposo absoluto: Firme y sólido en el suelo, 11px por debajo de donde estaba el chasis */
+        transform: translateY(49px) rotate(0deg);
+      }
+    }
+
+    /* DRAG & FLIGHT AERODYNAMIC INERTIA PHYSICS */
+    .cyberbot-approved-avatar [data-part="cyberBotV2"] {
+      touch-action: none;
+      user-select: none;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active {
+      animation: none !important;
+      cursor: grabbing !important;
+      will-change: transform;
+      transition: transform 0.08s ease-out; /* Respuesta ágil y continua al cursor */
+    }
+
+    /* Sobrecarga de Reactores Turbo en Vuelo / Arrastre */
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .lateral-pod {
+      filter: drop-shadow(0 0 10px #00f0ff) drop-shadow(0 0 22px rgba(0, 240, 255, 0.75)) !important;
+    }
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-rod {
+      stroke-width: 2.2 !important;
+    }
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-chamber {
+      opacity: 0.95 !important;
+    }
+
+    /* Aceleración de cadencia de reactores nucleares (Consumo de energía turbo en arrastre ~0.45s) */
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-rod,
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-rod-tip,
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-cell,
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-chamber,
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .pod-shell {
+      animation-duration: 0.45s !important;
+    }
+
+    /* Retículo de Escáner Curioso Acelerado durante Vuelo (Rotación 1.2s) */
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .curious-reticle {
+      animation-duration: 1.2s !important;
+    }
+
+    /* Sobrecarga y Estroboscopio de Alarma durante Vuelo / Arrastre:
+       Parpadeo rápido del sensor del casco y ambas orejas laterales
+       ("Pérdida de control / Override por intervención humana") */
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .helmet-sensor-light {
+      animation: approved-helmetOverrideStrobe 0.16s ease-in-out infinite alternate !important;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .ear-light {
+      animation: approved-earLightStrobe 0.16s ease-in-out infinite alternate !important;
+    }
+
+    .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active .ear-capsule {
+      animation: approved-earCapsuleStrobe 0.16s ease-in-out infinite alternate !important;
+    }
+
+    @keyframes approved-helmetOverrideStrobe {
+      0% {
+        fill: #00f0ff;
+        opacity: 1;
+        filter: drop-shadow(0 0 6px #00f0ff) drop-shadow(0 0 14px #00f0ff);
+      }
+      30% {
+        fill: #ffffff;
+        opacity: 1;
+        filter: drop-shadow(0 0 9px #ffffff) drop-shadow(0 0 18px #00f0ff);
+      }
+      65% {
+        fill: #0284c7;
+        opacity: 0.15;
+        filter: none;
+      }
+      100% {
+        fill: #00f0ff;
+        opacity: 0.95;
+        filter: drop-shadow(0 0 4px #00f0ff);
+      }
+    }
+
+    @keyframes approved-earLightStrobe {
+      0% {
+        fill: #ffffff;
+        opacity: 1;
+        filter: drop-shadow(0 0 6px #00f0ff) drop-shadow(0 0 12px #ffffff);
+      }
+      40% {
+        fill: #00f0ff;
+        opacity: 1;
+        filter: drop-shadow(0 0 5px #00f0ff);
+      }
+      75% {
+        fill: #0369a1;
+        opacity: 0.15;
+        filter: none;
+      }
+      100% {
+        fill: #ffffff;
+        opacity: 0.95;
+        filter: drop-shadow(0 0 7px #00f0ff);
+      }
+    }
+
+    @keyframes approved-earCapsuleStrobe {
+      0% {
+        fill: #0284c7;
+        stroke: #00f0ff;
+        stroke-width: 2.2;
+        filter: drop-shadow(0 0 6px #00f0ff);
+      }
+      50% {
+        fill: #0f172a;
+        stroke: #38bdf8;
+        stroke-width: 1.2;
+        filter: none;
+      }
+      100% {
+        fill: #0284c7;
+        stroke: #00f0ff;
+        stroke-width: 2;
+        filter: drop-shadow(0 0 5px #00f0ff);
+      }
+    }
+
+    /* Micro-rebote Elástico de Asentamiento al Soltar el Arrastre */
+    .cyberbot-approved-avatar [data-part="botAssembly"].drop-settling {
+      animation: approved-botDropSettle 0.52s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+    }
+
+    @keyframes approved-botDropSettle {
+      0% {
+        transform: translateY(6px) scale(0.98);
+      }
+      38% {
+        transform: translateY(-4px) scale(1.02);
+      }
+      70% {
+        transform: translateY(2px) scale(0.99);
+      }
+      100% {
+        transform: translateY(0px) scale(1);
+      }
+    }
+
+    /* ==========================================================================
+       EFECTO HOVER Y MECANISMO DE CABEZA GIRATORIA 180° ("DOS CARAS")
+       Inspirado en juguetes robóticos clásicos en miniatura con mecanismo de doble faz:
+       - El plato giratorio #headTurntable rota 180° sobre el eje Y con rebote
+         mecánico elástico (cubic-bezier(0.34, 1.4, 0.64, 1)).
+       - A medio giro (0.26s) la Cara Frontal (Lado A) da paso a la Cara Posterior
+         (Lado B: ^ ^ Saludo Feliz, ^ ~ Guiño o ◉ Centinela 360°).
+       - Desvanecimiento bidireccional suave (450ms) al entrar y salir del hover.
+       - Reactores entran en cadencia de espera atenta (1.8s).
+       - Aura cian perimetral se ilumina sutilmente con transición suave.
+       ========================================================================== */
+    .cyberbot-approved-avatar [data-part="cyberBotV2"] {
+      cursor: grab;
+    }
+
+    /* Suavidad bidireccional al retirar el cursor (evita desaparición brusca) */
+    .cyberbot-approved-avatar .helmet-sensor-light, .cyberbot-approved-avatar .ear-light {
+      transition: filter 0.45s ease, opacity 0.45s ease;
+    }
+
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) [data-part="botAssembly"]:not(.dragging-active) {
+      filter: drop-shadow(0 0 14px rgba(0, 240, 255, 0.35));
+    }
+
+    /* ==========================================================================
+       PLATO GIRATORIO DE CABEZA 180° ("DOS CARAS" / TOY ROBOT TURNTABLE)
+       Proyección física de giro de 180° en el eje vertical (X=50, Y=36.5):
+       La cabeza gira y se comprime hacia el eje central, en el punto neutro
+       (260ms) conmuta entre Cara A y Cara B, y se expande elásticamente
+       con rebote mecánico de juguete vintage (overshoot 1.08 -> 1.0).
+       ========================================================================== */
+    .cyberbot-approved-avatar [data-part="headTurntable"] {
+      transform-origin: 50px 36.5px;
+      transform-box: view-box;
+      will-change: transform;
+    }
+
+    /* Estado de Caras: Cara A (Frontal) y Cara B (Reverso) */
+    .cyberbot-approved-avatar .head-face-front {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.08s ease;
+    }
+
+    .cyberbot-approved-avatar .head-face-back {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.08s ease;
+    }
+
+    /* Cuando la cabeza está girada hacia Cara B */
+    .cyberbot-approved-avatar.head-facing-back .head-face-front {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .cyberbot-approved-avatar.head-facing-back .head-face-back {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Animación de Giro Mecánico 180° Ágil, Rápido y Continuo (Click robótico en miniatura) */
+    @keyframes approved-headSpinMechanical {
+      0% {
+        transform: scaleX(1);
+      }
+      20% {
+        transform: scaleX(0.75);
+      }
+      38% {
+        transform: scaleX(0.35);
+      }
+      49% {
+        transform: scaleX(0.02);
+      }
+      51% {
+        transform: scaleX(0.02);
+      }
+      62% {
+        transform: scaleX(0.42);
+      }
+      80% {
+        transform: scaleX(0.88);
+      }
+      92% {
+        transform: scaleX(1.04);
+      }
+      100% {
+        transform: scaleX(1);
+      }
+    }
+
+    .cyberbot-approved-avatar .head-spinning {
+      animation: approved-headSpinMechanical 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Línea luminosa del cuello magnético: se desvanece de inmediato durante el giro */
+    /* para evitar que sus extremos sobresalgan como luces fantasma o generen un glitch a 1:1 */
+    .cyberbot-approved-avatar .neck-collar-line {
+      transition: opacity 0.12s ease;
+    }
+
+    .cyberbot-approved-avatar.head-spinning-active .neck-collar-line,
+    .cyberbot-approved-avatar [data-part="botAssembly"]:has(.head-spinning) .neck-collar-line {
+      opacity: 0 !important;
+      transition: opacity 0.03s ease !important;
+    }
+
+    /* Variante 'tilt': Ladeo curioso orgánico de cabeza (+2.4°) al posar el cursor */
+    .cyberbot-approved-avatar.hover-mode-tilt [data-part="cyberBotV2"]:hover:not(.dragging-active) [data-part="headGroup"] {
+      transform: rotate(2.4deg);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Sensor de cresta del casco enfocado con luz atenta */
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .helmet-sensor-light {
+      filter: drop-shadow(0 0 5px #00f0ff) drop-shadow(0 0 10px rgba(0, 240, 255, 0.6)) !important;
+      opacity: 1 !important;
+    }
+
+    /* Luces de las orejas receptivas */
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .ear-light {
+      filter: drop-shadow(0 0 3px #00f0ff);
+      opacity: 1 !important;
+    }
+
+    /* Cadencia de espera atenta en reactores (1.8s en lugar de 2.8s de reposo) */
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .pod-rod,
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .pod-rod-tip,
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .pod-cell,
+    .cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .pod-chamber {
+      animation-duration: 1.8s !important;
+    }
+
+    /* Equalizer Dynamic Animation Classes */
+
+    /* STYLE A: ESCALERA VU VERTICAL (Peldaños de abajo hacia arriba con alcance variable) */
+    .cyberbot-approved-avatar .speaking-eq .vu-rung-1 { animation: approved-vuRungPulse1 1.7s ease-in-out infinite; }
+    .cyberbot-approved-avatar .speaking-eq .vu-rung-2 { animation: approved-vuRungPulse2 1.7s ease-in-out infinite; }
+    .cyberbot-approved-avatar .speaking-eq .vu-rung-3 { animation: approved-vuRungPulse3 1.7s ease-in-out infinite; }
+    .cyberbot-approved-avatar .speaking-eq .vu-rung-4 { animation: approved-vuRungPulse4 1.7s ease-in-out infinite; }
+    .cyberbot-approved-avatar .speaking-eq .vu-rung-5 { animation: approved-vuRungPulse5 1.7s ease-in-out infinite; }
+
+    /* Rung 1 (Base / Suelo): Articula cada sílaba y baja en pausas (cero congelamiento) */
+    @keyframes approved-vuRungPulse1 {
+      0%, 100% { opacity: 0.20; filter: none; }
+      5% { opacity: 0.25; filter: none; }
+      8%, 14% { opacity: 1.0; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); }
+      18% { opacity: 0.22; filter: none; }
+      22% { opacity: 0.30; filter: none; }
+      25%, 32% { opacity: 1.0; filter: drop-shadow(0 0 4px var(--eq-glow-color, #00f0ff)); } /* PICO 1 */
+      36% { opacity: 0.22; filter: none; }
+      40% { opacity: 0.25; filter: none; }
+      43%, 49% { opacity: 1.0; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* Valle medio */
+      53% { opacity: 0.20; filter: none; }
+      58% { opacity: 0.30; filter: none; }
+      61%, 71% { opacity: 1.0; filter: drop-shadow(0 0 4px var(--eq-glow-color, #00f0ff)); } /* PICO 2 */
+      75% { opacity: 0.65; filter: drop-shadow(0 0 2px var(--eq-glow-color, #00f0ff)); }
+      79% { opacity: 0.22; filter: none; }
+      83% { opacity: 0.25; filter: none; }
+      85%, 91% { opacity: 1.0; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* Resolución */
+      95% { opacity: 0.20; filter: none; }
+    }
+
+    /* Rung 2 (Nivel 2): Acompaña a Rung 1 en el silabeo activo */
+    @keyframes approved-vuRungPulse2 {
+      0%, 100% { opacity: 0.16; filter: none; }
+      7% { opacity: 0.16; }
+      9%, 13% { opacity: 0.95; filter: drop-shadow(0 0 2px var(--eq-glow-color, #00f0ff)); }
+      17% { opacity: 0.16; }
+      23% { opacity: 0.16; }
+      25%, 32% { opacity: 1.0; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* PICO 1 */
+      35% { opacity: 0.16; }
+      41% { opacity: 0.16; }
+      44%, 48% { opacity: 0.95; filter: drop-shadow(0 0 2px var(--eq-glow-color, #00f0ff)); }
+      52% { opacity: 0.16; }
+      59% { opacity: 0.16; }
+      61%, 71% { opacity: 1.0; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* PICO 2 */
+      75% { opacity: 0.50; filter: none; }
+      78% { opacity: 0.16; }
+      84% { opacity: 0.16; }
+      86%, 90% { opacity: 0.90; filter: drop-shadow(0 0 2px var(--eq-glow-color, #00f0ff)); }
+      94% { opacity: 0.16; }
+    }
+
+    /* Rung 3 (Nivel 3 - Medio): Modulación de intensidad media y participante en ambos picos */
+    @keyframes approved-vuRungPulse3 {
+      0%, 100% { opacity: 0.16; filter: none; }
+      24% { opacity: 0.16; }
+      26%, 31% { opacity: 0.95; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* PICO 1 */
+      34% { opacity: 0.16; }
+      42% { opacity: 0.16; }
+      44%, 48% { opacity: 0.85; filter: drop-shadow(0 0 2px var(--eq-glow-color, #00f0ff)); } /* Valle medio */
+      51% { opacity: 0.16; }
+      59% { opacity: 0.16; }
+      62%, 70% { opacity: 1.0; filter: drop-shadow(0 0 4px var(--eq-glow-color, #00f0ff)); } /* PICO 2 */
+      74% { opacity: 0.25; filter: none; }
+      77% { opacity: 0.16; }
+    }
+
+    /* Rung 4 (Nivel 4 - Alto): Disparador pre-cúspide en ambos picos */
+    @keyframes approved-vuRungPulse4 {
+      0%, 100% { opacity: 0.16; filter: none; }
+      24% { opacity: 0.16; }
+      26%, 31% { opacity: 0.95; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); } /* PICO 1 */
+      33% { opacity: 0.16; }
+      60% { opacity: 0.16; }
+      62%, 69% { opacity: 1.0; filter: drop-shadow(0 0 4px var(--eq-glow-color, #00f0ff)); } /* PICO 2 */
+      72% { opacity: 0.16; }
+    }
+
+    /* Rung 5 (Nivel 5 - Cúspide / Pico): LLEGA ARRIBA DOS VECES POR CICLO (Pico 1 y Pico 2) */
+    @keyframes approved-vuRungPulse5 {
+      0%, 100% { opacity: 0.16; filter: none; }
+      25% { opacity: 0.16; }
+      27%, 30% { opacity: 1.0; filter: drop-shadow(0 0 6px var(--eq-peak-glow, #cffafe)); } /* PICO 1 */
+      32% { opacity: 0.16; }
+      62% { opacity: 0.16; }
+      64%, 68% { opacity: 1.0; filter: drop-shadow(0 0 6px var(--eq-peak-glow, #cffafe)); } /* PICO 2 */
+      71% { opacity: 0.16; }
+    }
+
+    /* En reposo: la base respira suavemente como latido vital, los demás peldaños quedan en silueta */
+    .cyberbot-approved-avatar .standby-eq .vu-rung-1 {
+      animation: approved-standbyVuBreathe 3.2s ease-in-out infinite;
+    }
+    @keyframes approved-standbyVuBreathe {
+      0%, 100% { opacity: 0.35; filter: none; }
+      50% { opacity: 0.85; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); }
+    }
+
+    /* STYLE B: COLUMNAS DE ESPECTRO VERTICAL (Crecen hacia arriba desde y=86.5) */
+    .cyberbot-approved-avatar .eq-col-bar {
+      transform-origin: 50px 86.5px;
+      will-change: transform, opacity;
+    }
+    .cyberbot-approved-avatar .standby-eq .eq-col-bar {
+      transform: scaleY(0.18);
+      opacity: 0.35;
+    }
+    .cyberbot-approved-avatar .standby-eq [data-part="col-3"] {
+      animation: approved-colStandbyBreathe 3.2s ease-in-out infinite;
+    }
+    @keyframes approved-colStandbyBreathe {
+      0%, 100% { transform: scaleY(0.18); opacity: 0.35; }
+      50% { transform: scaleY(0.42); opacity: 0.9; filter: drop-shadow(0 0 3px #00f0ff); }
+    }
+
+    .cyberbot-approved-avatar .speaking-eq [data-part="col-1"] { animation: approved-colPulse1 0.44s ease-in-out infinite alternate; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="col-2"] { animation: approved-colPulse2 0.32s ease-in-out infinite alternate; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="col-3"] { animation: approved-colPulse3 0.25s ease-in-out infinite alternate; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="col-4"] { animation: approved-colPulse4 0.36s ease-in-out infinite alternate; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="col-5"] { animation: approved-colPulse5 0.40s ease-in-out infinite alternate; }
+
+    @keyframes approved-colPulse1 {
+      0% { transform: scaleY(0.2); opacity: 0.4; }
+      50% { transform: scaleY(0.68); opacity: 0.85; }
+      100% { transform: scaleY(0.35); opacity: 0.6; }
+    }
+    @keyframes approved-colPulse2 {
+      0% { transform: scaleY(0.25); opacity: 0.5; }
+      40% { transform: scaleY(0.85); opacity: 0.95; filter: drop-shadow(0 0 3px #00f0ff); }
+      100% { transform: scaleY(0.4); opacity: 0.6; }
+    }
+    @keyframes approved-colPulse3 {
+      0% { transform: scaleY(0.3); opacity: 0.6; }
+      35% { transform: scaleY(0.72); opacity: 0.85; }
+      65% { transform: scaleY(0.98); opacity: 1.0; filter: drop-shadow(0 0 4px #00f0ff); }
+      100% { transform: scaleY(0.42); opacity: 0.7; }
+    }
+    @keyframes approved-colPulse4 {
+      0% { transform: scaleY(0.2); opacity: 0.4; }
+      60% { transform: scaleY(0.82); opacity: 0.95; filter: drop-shadow(0 0 3px #00f0ff); }
+      100% { transform: scaleY(0.35); opacity: 0.6; }
+    }
+    @keyframes approved-colPulse5 {
+      0% { transform: scaleY(0.18); opacity: 0.4; }
+      45% { transform: scaleY(0.6); opacity: 0.8; }
+      100% { transform: scaleY(0.25); opacity: 0.5; }
+    }
+
+    /* STYLE C: PULSO HORIZONTAL (Versión previa) */
+    @keyframes approved-eqBarPulse1 {
+      0%, 100% { transform: scaleX(0.35); opacity: 0.6; }
+      50% { transform: scaleX(1.0); opacity: 1; }
+    }
+    @keyframes approved-eqBarPulse2 {
+      0%, 100% { transform: scaleX(0.9); opacity: 0.95; }
+      50% { transform: scaleX(0.4); opacity: 0.55; }
+    }
+    @keyframes approved-eqBarPulse3 {
+      0%, 100% { transform: scaleX(0.5); opacity: 0.75; }
+      30% { transform: scaleX(1.0); opacity: 1; }
+      70% { transform: scaleX(0.7); opacity: 0.85; }
+    }
+    @keyframes approved-eqBarPulse4 {
+      0%, 100% { transform: scaleX(0.35); opacity: 0.5; }
+      50% { transform: scaleX(0.95); opacity: 1; }
+    }
+    @keyframes approved-eqBarPulse5 {
+      0%, 100% { transform: scaleX(0.65); opacity: 0.8; }
+      50% { transform: scaleX(0.2); opacity: 0.4; }
+    }
+
+    .cyberbot-approved-avatar .speaking-eq [data-part="bar-1"] { animation: approved-eqBarPulse1 0.42s ease-in-out infinite; transform-origin: 50px 67.5px; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="bar-2"] { animation: approved-eqBarPulse2 0.36s ease-in-out infinite; transform-origin: 50px 72px; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="bar-3"] { animation: approved-eqBarPulse3 0.28s ease-in-out infinite; transform-origin: 50px 76.5px; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="bar-4"] { animation: approved-eqBarPulse4 0.45s ease-in-out infinite; transform-origin: 50px 81px; }
+    .cyberbot-approved-avatar .speaking-eq [data-part="bar-5"] { animation: approved-eqBarPulse5 0.32s ease-in-out infinite; transform-origin: 50px 85.5px; }
+
+    .cyberbot-approved-avatar .standby-eq [data-part="bar-3"] {
+      animation: approved-standbyBreathe 3.2s ease-in-out infinite;
+      transform-origin: 50px 76.5px;
+    }
+    @keyframes approved-standbyBreathe {
+      0%, 100% { opacity: 0.4; transform: scaleX(0.75); }
+      50% { opacity: 0.85; transform: scaleX(0.95); }
+    }
+
+    /* ==========================================================================
+       LATERAL NUCLEAR REACTORS (Brazos / Fuentes de Energía / Cherenkov Pulse)
+       ========================================================================== */
+    .cyberbot-approved-avatar {
+      --reactor-duration: 2.8s;
+      --chamber-floor-opacity: 0.92;
+      --chamber-peak-opacity: 0.98;
+    }
+
+    /* Filamento de plasma central y micro-celdas */
+    .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on .pod-rod {
+      animation: approved-reactorCorePulse var(--reactor-duration) ease-in-out infinite;
+      will-change: stroke, opacity, filter;
+    }
+    .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on .pod-rod-tip {
+      animation: approved-reactorTipPulse var(--reactor-duration) ease-in-out infinite;
+      will-change: fill, opacity, filter;
+    }
+    .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on .pod-cell {
+      animation: approved-reactorTipPulse var(--reactor-duration) ease-in-out infinite;
+      will-change: fill, opacity, filter;
+    }
+
+    /* Cámara de contención interna (Efecto Cherenkov en la cavidad de cristal oscuro) */
+    .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on.reactor-cherenkov-glow .pod-chamber {
+      animation: approved-reactorChamberPulse var(--reactor-duration) ease-in-out infinite;
+      will-change: fill, opacity, filter;
+    }
+
+    /* Blindaje exterior (Flux magnético de contención en el aro perimetral) */
+    .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on .pod-shell {
+      animation: approved-reactorShellPulse var(--reactor-duration) ease-in-out infinite;
+      will-change: stroke, filter;
+    }
+
+    @keyframes approved-reactorCorePulse {
+      0%, 100% {
+        opacity: 0.35;
+        stroke: #00f0ff;
+        filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.5));
+      }
+      50% {
+        opacity: 1.0;
+        stroke: #ffffff; /* Núcleo blanco incandescente super-brillante como 'core' de energía */
+        filter: drop-shadow(0 0 3px #00f0ff) drop-shadow(0 0 7px rgba(0, 240, 255, 0.9)) drop-shadow(0 0 11px rgba(0, 240, 255, 0.6));
+      }
+    }
+
+    @keyframes approved-reactorTipPulse {
+      0%, 100% {
+        opacity: 0.35;
+        fill: #00f0ff;
+        filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.5));
+      }
+      50% {
+        opacity: 1.0;
+        fill: #ffffff;
+        filter: drop-shadow(0 0 3px #00f0ff) drop-shadow(0 0 7px rgba(0, 240, 255, 0.9)) drop-shadow(0 0 11px rgba(0, 240, 255, 0.6));
+      }
+    }
+
+    @keyframes approved-reactorChamberPulse {
+      0%, 100% {
+        fill: #081a2e; /* Manto de plasma contenido oscuro y sólido */
+        opacity: var(--chamber-floor-opacity, 0.92); /* Base sólida (0.92): la cámara no se apaga */
+        filter: drop-shadow(0 0 1px rgba(0, 240, 255, 0.15));
+      }
+      50% {
+        fill: #07253f; /* Resplandor Cherenkov sutil en el clímax */
+        opacity: var(--chamber-peak-opacity, 0.98);
+        filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.3));
+      }
+    }
+
+    /* Blindaje exterior: Contorno sobrio sin glow parásito exterior para jerarquía visual limpia */
+    @keyframes approved-reactorShellPulse {
+      0%, 100% {
+        stroke: #0284c7;
+        stroke-opacity: 0.55;
+        filter: none;
+      }
+      50% {
+        stroke: #38bdf8;
+        stroke-opacity: 0.85;
+        filter: none; /* Cero drop-shadow exterior: el núcleo interior es el protagonista indiscutible */
+      }
+    }
+
+    /* Boost de potencia en habla: los reactores suben su piso lumínico para simular alimentación de voz */
+    .cyberbot-approved-avatar.speaking-active .lateral-pod.reactor-pulse-on .pod-rod {
+      stroke: #cffafe;
+    }
+
+
+.cyberbot-approved-avatar { display: inline-flex; flex: none; overflow: visible; }
+.cyberbot-approved-avatar.reduced-motion * { animation: none !important; transition: none !important; }
+.cyberbot-approved-avatar.reduced-motion.compact-screen-active [data-part="headGroup"] { transform: translateY(49px); }
