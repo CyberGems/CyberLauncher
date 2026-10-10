@@ -1,6 +1,7 @@
+import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
-import { motion, AnimatePresence, useMotionValue, useReducedMotion } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue } from 'motion/react';
 import { CyberBotAvatar } from './CyberBotAvatar';
 import { CyberSpeechBubble } from './CyberSpeechBubble';
 import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion, CyberBotChatterLevel, CyberBotQuietHoursConfig } from './companionTypes';
@@ -49,7 +50,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   systemAttention = false,
   onSpeechVisibilityChange,
 }) => {
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useCyberBotReducedMotion();
   const reviewingDesign = React.useContext(CyberBotReviewContext) !== null;
   const x = useMotionValue(0);
   const y = useMotionValue(0);

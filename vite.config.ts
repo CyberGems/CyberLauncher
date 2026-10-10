@@ -13,7 +13,18 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },
+  build: {
+    rollupOptions: { input: { launcher: path.resolve(__dirname, 'index.html'), toast: path.resolve(__dirname, 'cyberbot-toast.html') } },
+  },
   plugins: [
+    {
+      name: 'desktop-toast-production-csp',
+      transformIndexHtml(html, context) {
+        // React refresh uses an inline preamble in development only.
+        return !context.server && context.filename.endsWith('cyberbot-toast.html')
+          ? html.replace("script-src 'self' 'unsafe-inline';", "script-src 'self';") : html;
+      },
+    },
     react(),
     tailwindcss(),
     electron({

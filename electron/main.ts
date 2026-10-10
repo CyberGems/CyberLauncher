@@ -1926,20 +1926,11 @@ function updateToastDeliverySettings(value: unknown) {
 }
 
 function getToastWindowHtmlPath(): string {
-  const isDev = Boolean(VITE_DEV_SERVER_URL);
   const candidates = [
-    isDev ? path.join(__dirname, '../public/tray/toast-window.html') : '',
-    path.join(app.getAppPath(), 'dist/tray/toast-window.html'),
-    path.join(app.getAppPath(), 'public/tray/toast-window.html'),
-    path.join(process.resourcesPath, 'public/tray/toast-window.html'),
-    path.join(__dirname, '../dist/tray/toast-window.html'),
-    path.join(__dirname, '../public/tray/toast-window.html'),
-    path.join(process.cwd(), 'public/tray/toast-window.html'),
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return path.join(__dirname, '../public/tray/toast-window.html');
+    path.join(app.getAppPath(), 'dist/cyberbot-toast.html'),
+    path.join(__dirname, '../dist/cyberbot-toast.html'),
+  ];
+  return candidates.find(candidate => fs.existsSync(candidate)) || candidates[0];
 }
 
 function ensureDesktopToastWin(): BrowserWindow {
@@ -1972,7 +1963,11 @@ function ensureDesktopToastWin(): BrowserWindow {
   });
 
   desktopToastWin.setAlwaysOnTop(true, 'screen-saver');
-  void desktopToastWin.loadFile(htmlPath);
+  if (VITE_DEV_SERVER_URL) {
+    void desktopToastWin.loadURL(new URL('/cyberbot-toast.html', VITE_DEV_SERVER_URL).href);
+  } else {
+    void desktopToastWin.loadFile(htmlPath);
+  }
 
   desktopToastWin.webContents.on('did-finish-load', () => {
     if (latestToastPayload && desktopToastWin && !desktopToastWin.isDestroyed()) {

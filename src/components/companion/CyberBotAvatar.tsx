@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useReducedMotion } from 'motion/react';
+import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import type { CyberBotEmotion } from './companionTypes';
 import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 import ApprovedCyberBotAvatar from './approved/ApprovedCyberBotAvatar';
@@ -26,7 +26,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   speechKey, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
 }) => {
   const review = React.useContext(CyberBotReviewContext);
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useCyberBotReducedMotion();
   const catalogKey = JSON.stringify(marqueeStatusMessages);
   const messages = useMemo(() => getCyberBotIdleMarqueeMessages(APP_VERSION,
     catalogKey ? JSON.parse(catalogKey) : undefined), [catalogKey]);

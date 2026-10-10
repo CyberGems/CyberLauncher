@@ -55,4 +55,16 @@ Verification: 55 CyberBot tests, TypeScript and production build passed. Native 
 
 The installed application and its real data profile are unchanged. The isolated review can run real behavior or hold a selected expression. Its conversation level is now full; minimal chatter continues to suppress ordinary interaction phrases by its existing rule. The build retains its existing chunk-size warning.
 
-The separate desktop tray/toast renderer still uses its previous avatar. Migrating and visually checking that renderer remains a separate step. No new installer or release has been generated or installed.
+## Stage three: desktop notifications
+
+The separate transparent desktop toast now mounts the same approved avatar component as the launcher. The old toast SVG is removed. Its 84 CSS pixel width is preserved; its height is now 96.6 pixels to retain the approved 100 by 115 aspect ratio. Existing message text, bilingual labels, scheduler buttons, release links, dismissal and banner fallback remain in the toast controller.
+
+The toast is a Vite build entry, `cyberbot-toast.html`, instead of an unbundled public HTML page. Electron opens that entry through Vite during development and from `dist` in production. The production script policy remains restricted to local scripts. Bundled fonts may use local file or data URLs, including small font subsets embedded by Vite.
+
+Speech uses the approved chest equalizer for 1.8 seconds. Countdown updates keep the same announcement key, so they do not restart the cue. Hiding or changing to a banner unmounts the avatar and clears its timers. CyberBot now subscribes to live changes of the system reduced-motion preference, including in the launcher; changing that preference does not extend an old desktop speech cue.
+
+Verification: TypeScript, production build and all 56 CyberBot tests passed. The isolated real Electron toast was tested at 150% Windows scaling in a 530 by 180 CSS pixel window. The avatar measured 84 by 96.59375 pixels, and the bubble and action buttons stayed inside the window after its entry transition. Tests exercised the finite speech cue, countdown updates, launcher/alert/storage/success faces, literal text containing HTML, live reduced-motion changes, banner fallback, unmount on dismissal, and loading the actual compiled page through `file:`. No toast renderer or console errors remained.
+
+Scheduler launch/cancel buttons were clicked through the actual preload and main process using a deliberately nonexistent task ID in the isolated profile. IPC delivery was verified; no real scheduled application was executed. The storage HUD action was also delivered through that bridge. Release-link dispatch is covered by the controller test; opening an external browser was not part of native verification.
+
+Both rendering surfaces now share the approved artwork. The installed app, its profile and the untracked source laboratory remain untouched. Minor visual polish and a future installer/release remain separate work.

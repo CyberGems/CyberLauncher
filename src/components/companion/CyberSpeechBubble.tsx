@@ -1,5 +1,6 @@
+import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import React from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { X, AlertTriangle, Bot, CircleCheck, ArrowRight } from 'lucide-react';
 import type { CyberBotMessage } from './companionTypes';
 
@@ -16,7 +17,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   position = 'bottom-right',
   closeLabel,
 }) => {
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useCyberBotReducedMotion();
   const isAlert = message.emotion === 'alert';
   const isSuccess = message.emotion === 'success';
 

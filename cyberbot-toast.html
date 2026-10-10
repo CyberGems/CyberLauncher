@@ -2,54 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: local-resource:; script-src 'self'; font-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: local-resource:; script-src 'self' 'unsafe-inline'; font-src 'self' data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CyberLauncher Notification</title>
-  <link rel="stylesheet" href="toast-window.css">
 </head>
 <body>
   <div id="toastRoot" class="toast-shell">
     <div id="cyberbotCard" class="cyberbot-card hidden" role="status" aria-live="polite">
-      <svg class="cyberbot-avatar" viewBox="0 0 100 105" aria-hidden="true">
-        <defs>
-          <linearGradient id="botBody" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#38bdf8"/><stop offset="0.35" stop-color="#2563eb"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>
-          <linearGradient id="botScreen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#050b1a"/><stop offset="1" stop-color="#0a192f"/></linearGradient>
-        </defs>
-        <rect x="33" y="88" width="12" height="11" rx="5" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.5"/>
-        <rect x="55" y="88" width="12" height="11" rx="5" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.5"/>
-        <rect x="18" y="69" width="11" height="16" rx="5" fill="#2563eb" stroke="#38bdf8" stroke-width="1.5" transform="rotate(8 23 77)"/>
-        <rect x="71" y="69" width="11" height="16" rx="5" fill="#2563eb" stroke="#38bdf8" stroke-width="1.5" transform="rotate(-8 76 77)"/>
-        <rect x="31" y="66" width="38" height="26" rx="8" fill="url(#botBody)" stroke="#38bdf8" stroke-width="1.8"/>
-        <rect x="38" y="72" width="24" height="12" rx="4" fill="#0b172e" stroke="#38bdf8"/>
-        <circle cx="44" cy="78" r="2" fill="#22d3ee"/><path d="M50 78h7" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
-        <g class="bot-head">
-          <path d="M17 38c-6 0-6 12 0 12z M83 38c6 0 6 12 0 12z" fill="#1e3a8a" stroke="#38bdf8" stroke-width="1.8"/>
-          <path d="M46 16c0-5 8-5 8 0l-2 4h-4z" fill="#38bdf8"/><circle cx="50" cy="11" r="3" fill="#22d3ee"/>
-          <circle class="bot-antenna-signal" cx="50" cy="11" r="3" fill="none" stroke="#67e8f9" stroke-width="1.2"/>
-          <path d="M28 20C35 15 45 16 50 16c5 0 15-1 22 4 13 4 16 15 15 25 1 11-3 21-17 24-8 2-32 2-40 0-14-3-18-13-17-24-1-10 2-21 15-25z" fill="url(#botBody)" stroke="#38bdf8" stroke-width="2.2"/>
-          <rect x="22" y="27" width="56" height="35" rx="12" fill="url(#botScreen)" stroke="#22d3ee" stroke-width="1.8"/>
-          <g class="bot-face-logo" fill="#22d3ee"><rect x="29" y="39" width="10" height="10" rx="3.5"/><path d="M64 38h4v4h4v4h-4v4h-4v-4h-4v-4h4z"/></g>
-          <g class="bot-face-alert" fill="#f59e0b">
-            <path d="M31 37h4l-1 7h-2z M32 46h2v3h-2z"/>
-            <rect class="bot-mouth" x="45" y="42" width="10" height="5" rx="1.5" fill="none" stroke="#fbbf24" stroke-width="1.5"/>
-            <path d="M65 37h4l-1 7h-2z M66 46h2v3h-2z"/>
-          </g>
-          <g class="bot-face-storage" fill="#f59e0b">
-            <rect x="28" y="39" width="12" height="9" rx="2.5"/>
-            <rect x="60" y="39" width="12" height="9" rx="2.5"/>
-            <g class="bot-mouth" fill="none" stroke="#fbbf24" stroke-width="1.4">
-              <rect x="43" y="51" width="14" height="6" rx="2"/>
-              <circle cx="46" cy="54" r="1" fill="#fbbf24" stroke="none"/>
-              <path d="M50 54h4" stroke-linecap="round"/>
-            </g>
-          </g>
-          <g class="bot-speech-wave" fill="none" stroke="#67e8f9" stroke-width="1.25" stroke-linecap="round">
-            <line x1="46" x2="46" y1="56" y2="52"/>
-            <line x1="50" x2="50" y1="56" y2="50"/>
-            <line x1="54" x2="54" y1="56" y2="53"/>
-          </g>
-        </g>
-      </svg>
+      <div id="cyberbotAvatar" class="cyberbot-avatar" aria-hidden="true"></div>
       <div class="cyberbot-bubble">
         <div class="cyberbot-header"><span class="cyberbot-brand">✧ CYBERBOT <span id="cyberbotBrandTag"></span></span><button type="button" id="cyberbotDismissBtn" class="close-btn" aria-label="Dismiss">×</button></div>
         <div id="cyberbotTitle" class="cyberbot-title"></div>
@@ -71,7 +31,7 @@
       </div>
       <div class="task-info">
         <div class="card-brand-micro">
-          <img src="../icon-32.png" class="brand-micro-icon" alt="" />
+          <img src="/icon-32.png" class="brand-micro-icon" alt="" />
           <span class="brand-micro-text">CYBERLAUNCHER</span>
           <span class="brand-micro-sep">/</span>
           <span id="imminentBrandTag" class="brand-micro-sub">TIMER</span>
@@ -98,7 +58,7 @@
     <div id="standardCard" class="toast-card card-standard hidden">
       <div class="card-header-bar">
         <div class="brand-meta">
-          <img src="../icon-32.png" class="brand-meta-icon" alt="" />
+          <img src="/icon-32.png" class="brand-meta-icon" alt="" />
           <span class="brand-meta-name">CYBERLAUNCHER</span>
           <span class="brand-meta-slash">/</span>
           <span id="brandMetaTag" class="brand-meta-tag">SISTEMA</span>
@@ -122,6 +82,6 @@
       </div>
     </div>
   </div>
-  <script src="toast-window.js"></script>
+  <script type="module" src="/src/cyberbot-toast.tsx"></script>
 </body>
 </html>

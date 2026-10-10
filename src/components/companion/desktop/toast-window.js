@@ -94,6 +94,7 @@ if (window.desktopToast) {
     if (!data) return;
 
     if (data.type === 'hide') {
+      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: null }));
       cyberbotCard.classList.remove('speaking');
       lastBotSpeechKey = null;
       imminentCard.classList.add('exiting');
@@ -124,6 +125,10 @@ if (window.desktopToast) {
         cyberbotCard.classList.add('speaking');
       }
       lastBotSpeechKey = speechKey;
+      const face = data.action === 'open-hud-storage' ? 'storage'
+        : ['warning', 'error', 'imminent'].includes(data.type) ? 'alert'
+        : data.type === 'success' ? 'success' : 'launcher';
+      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: { face, speechKey } }));
       imminentCard.classList.add('hidden');
       standardCard.classList.add('hidden');
       cyberbotCard.classList.remove('hidden');
@@ -160,6 +165,7 @@ if (window.desktopToast) {
       return;
     }
 
+    window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: null }));
     cyberbotCard.classList.add('hidden');
     cyberbotCard.classList.remove('speaking');
     lastBotSpeechKey = null;

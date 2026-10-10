@@ -6,6 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
+import { DesktopCyberBotAvatar } from '../src/components/companion/desktop/DesktopCyberBotAvatar';
 import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup } from '../src/components/companion/approved/approvedCyberBotBehavior';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
@@ -330,8 +331,8 @@ test('PIN guidance pauses after a launch and does not repeat on every outside cl
 });
 
 test('floating CyberBot keeps scheduled actions and release links usable', () => {
-  const html = readFileSync(new URL('../public/tray/toast-window.html', import.meta.url), 'utf8');
-  const source = readFileSync(new URL('../public/tray/toast-window.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../cyberbot-toast.html', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/components/companion/desktop/toast-window.js', import.meta.url), 'utf8');
   const ids = [...source.matchAll(/getElementById\('([^']+)'\)/g)].map(match => match[1]);
   for (const id of ids) assert.ok(html.includes(`id="${id}"`), `Missing toast element ${id}`);
 
@@ -362,11 +363,13 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
     }
     return elements.get(id)!;
   };
+  const avatarStates: Array<{ face: string; speechKey: string } | null> = [];
   const actions: Array<[string, unknown]> = [];
   let receive: (data: Record<string, unknown>) => void = () => {};
   runInNewContext(source, {
     document: { getElementById: element },
-    window: { desktopToast: {
+    CustomEvent: class { constructor(public type: string, public options: { detail: unknown }) {} },
+    window: { dispatchEvent: (event: { options: { detail: { face: string; speechKey: string } | null } }) => avatarStates.push(event.options.detail), desktopToast: {
       onData: (callback: typeof receive) => { receive = callback; },
       action: (name: string, payload: unknown) => actions.push([name, payload]),
       hide: () => {},
@@ -382,6 +385,8 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(element('cyberbotTitle').textContent, 'Launching in 9s');
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 8s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
   assert.equal(speechRestarts, 1, 'countdown updates should not restart the speaking cue');
+  assert.equal(avatarStates[0]?.face, 'alert');
+  assert.equal(avatarStates[0]?.speechKey, avatarStates[1]?.speechKey);
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task']);
@@ -399,6 +404,7 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
   receive({ type: 'hide' });
   assert.equal(element('cyberbotCard').classList.contains('speaking'), false);
+  assert.equal(avatarStates.at(-1), null, 'hidden notifications must unmount the avatar');
 
   receive({ presentation: 'bot', type: 'warning', action: 'open-hud-system', title: 'High RAM usage' });
   assert.equal(element('cyberbotCard').classList.contains('alert'), true);
@@ -407,34 +413,38 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(element('cyberbotCard').classList.contains('alert'), true);
   assert.equal(element('cyberbotCard').classList.contains('storage'), true);
   assert.equal(speechRestarts, 5);
+  assert.equal(avatarStates.at(-1)?.face, 'storage');
   receive({ presentation: 'bot', type: 'info', title: 'Routine notice' });
   assert.equal(element('cyberbotCard').classList.contains('alert'), false);
   assert.equal(element('cyberbotCard').classList.contains('storage'), false);
 });
 
 test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar', () => {
-  const css = readFileSync(new URL('../public/tray/toast-window.css', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../src/components/companion/desktop/toast-window.css', import.meta.url), 'utf8');
   assert.match(css, /\.cyberbot-card\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;/s);
   assert.match(css, /\.cyberbot-avatar\s*\{[^}]*flex:\s*0 0 84px;[^}]*width:\s*84px;/s);
   assert.match(css, /\.cyberbot-bubble\s*\{[^}]*flex:\s*0 1 auto;[^}]*width:\s*max-content;[^}]*max-width:\s*382px;/s);
 });
 
-test('floating speech cue is finite and disabled under reduced motion', () => {
-  const html = readFileSync(new URL('../public/tray/toast-window.html', import.meta.url), 'utf8');
-  const css = readFileSync(new URL('../public/tray/toast-window.css', import.meta.url), 'utf8');
-  assert.match(html, /class="bot-speech-wave"/);
-  assert.match(html, /class="bot-antenna-signal"/);
-  assert.match(html, /M31 37h4l-1 7h-2z M32 46h2v3h-2z/);
-  assert.match(html, /class="bot-face-alert"[\s\S]*class="bot-mouth" x="45" y="42" width="10" height="5"/);
-  assert.match(html, /class="bot-face-storage"[\s\S]*class="bot-mouth"[\s\S]*x="43" y="51" width="14" height="6"/);
-  assert.match(css, /\.cyberbot-card\.alert:not\(\.storage\) \.bot-face-alert \{ display: inline; \}/);
-  assert.match(css, /\.cyberbot-card\.storage \.bot-face-storage \{ display: inline; \}/);
-  assert.match(css, /\.cyberbot-card\.speaking \.bot-head \{ animation: botSpeechNod 1\.8s/);
-  assert.match(css, /@keyframes botSpeechSignal \{[^}]*100% \{ opacity: 0; \}/);
-  assert.match(css, /\.cyberbot-card\.speaking \.bot-face-alert \.bot-mouth,[\s\S]*\.bot-face-storage \.bot-mouth \{ animation: botSpeechMouth 1\.8s/);
-  assert.match(css, /@keyframes botSpeechMouth \{ 0%, 99% \{ opacity: 0; \} 100% \{ opacity: 1; \} \}/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /\.cyberbot-card\.speaking \.bot-speech-wave line,[\s\S]*animation: none;/);
+test('floating notifications reuse the approved shell and preserve alert, disk and success expressions', () => {
+  const html = readFileSync(new URL('../cyberbot-toast.html', import.meta.url), 'utf8');
+  assert.match(html, /id="cyberbotAvatar" class="cyberbot-avatar"/);
+  assert.doesNotMatch(html, /botBody|bot-face-logo|bot-speech-wave/);
+  for (const face of ['launcher', 'alert', 'storage', 'success'] as const) {
+    const markup = renderToStaticMarkup(React.createElement(DesktopCyberBotAvatar, { face, speechKey: 'notice' }));
+    assert.match(markup, /data-cyberbot-design="approved"/);
+    assert.ok(markup.includes(`data-cyberbot-face="${face}"`));
+    assert.match(markup, /width:84px;height:96\.6px/);
+    assert.match(markup, /viewBox="0 0 100 115"/);
+  }
+});
+
+test('floating speech uses a cancellable finite cue and honors reduced motion', () => {
+  const source = readFileSync(new URL('../src/components/companion/desktop/DesktopCyberBotAvatar.tsx', import.meta.url), 'utf8');
+  assert.match(source, /setTimeout\(\(\) => setSpeaking\(false\), 1800\)/);
+  assert.match(source, /clearTimeout\(timer\)/);
+  assert.match(source, /speaking=\{speaking && !reducedMotion\}/);
+  assert.match(source, /\[speechKey\]/);
 });
 
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({

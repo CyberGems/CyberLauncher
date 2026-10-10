@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useReducedMotion } from 'motion/react';
+import { useCyberBotReducedMotion } from '../useCyberBotReducedMotion';
 import artwork from './cyberbot-approved.svg?raw';
 import './cyberbot-approved.css';
 import './cyberbot-integration.css';
@@ -31,7 +31,7 @@ export default function ApprovedCyberBotAvatar({
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const prefix = `approved-${useId().replace(/[^\w-]/g, '')}-`;
-  const reducedMotion = useReducedMotion() || !motionEnabled;
+  const reducedMotion = useCyberBotReducedMotion() || !motionEnabled;
   const [portalPhase, setPortalPhase] = useState<'awake' | 'sinking' | 'hidden' | 'emerging'>('awake');
   const [backFacing, setBackFacing] = useState(false);
   const [turning, setTurning] = useState(false);
