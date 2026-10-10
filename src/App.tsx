@@ -9585,7 +9585,7 @@ export default function App() {
       </div> {/* Cierra el contenedor de sidebars y contenido principal */}
 
       {/* --- TASKBAR DE ESCRITORIO --- */}
-      <div className="flex-shrink-0 flex items-center justify-between w-full bg-black/60 backdrop-blur-3xl border-t border-white/10 px-6 py-2 z-40 relative">
+      <div data-cyberbot-floor className="flex-shrink-0 flex items-center justify-between w-full bg-black/60 backdrop-blur-3xl border-t border-white/10 px-6 py-2 z-40 relative">
         {/* Lado izquierdo: Agregar acceso y Favoritos */}
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <Tooltip label={t('tooltip_add_taskbar_access')} placement="top">

@@ -1,0 +1,3 @@
+/* Application integration, kept separate from the unchanged laboratory styles. */
+.cyberbot-approved-avatar.portal-active [data-part="botAssembly"] { animation-play-state: running !important; }
+.cyberbot-approved-avatar.reduced-motion [data-part="botAssembly"].portal-hidden { opacity: 0; }

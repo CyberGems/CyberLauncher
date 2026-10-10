@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCyberBotIdleCycle, type CyberBotIdleState, type CyberBotVanishStyle } from './cyberBotBehavior';
 
-export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?: string, systemAttention = false) {
+export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?: string, systemAttention = false, reading = false) {
   const [idleState, setIdleState] = useState<CyberBotIdleState>('awake');
   const [vanishStyle, setVanishStyle] = useState<CyberBotVanishStyle>('phase');
   const [documentVisible, setDocumentVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
@@ -17,6 +17,10 @@ export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?:
     });
     cycleRef.current = cycle;
     const wake = () => cycle.wake();
+    const unsubscribe = window.electronAPI?.onLauncherShown?.(() => {
+      setDocumentVisible(!document.hidden);
+      wake();
+    });
     const events = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'focus'] as const;
     const onVisibility = () => {
       setDocumentVisible(!document.hidden);
@@ -27,6 +31,7 @@ export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?:
     return () => {
       cycleRef.current = null;
       cycle.dispose();
+      unsubscribe?.();
       for (const event of events) window.removeEventListener(event, wake, true);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -35,10 +40,11 @@ export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?:
   useEffect(() => {
     const current = cycleRef.current;
     if (!current) return;
+    current.setReading(reading);
     if (messageId || systemAttention) current.wake();
     if (busy || !documentVisible) current.pause();
     else current.resume();
-  }, [busy, documentVisible, messageId, systemAttention, enabled]);
+  }, [busy, documentVisible, messageId, systemAttention, enabled, reading]);
 
   return { sleeping: idleState === 'sleeping', vanished: idleState === 'hidden', vanishStyle };
 }

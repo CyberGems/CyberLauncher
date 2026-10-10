@@ -1,7 +1,8 @@
 import { createContext } from 'react';
 
 export type ApprovedCyberBotFace = 'launcher' | 'launcher-top' | 'default' | 'marquee'
-  | 'terminal' | 'curious' | 'flight' | 'sleeping' | 'alert';
+  | 'terminal' | 'curious' | 'flight' | 'sleeping' | 'alert' | 'happy' | 'delighted'
+  | 'affectionate' | 'sparkle' | 'wink' | 'scared' | 'storage' | 'success' | 'speaking';
 
 export interface CyberBotReviewState {
   face: ApprovedCyberBotFace;
@@ -10,5 +11,5 @@ export interface CyberBotReviewState {
   motion: boolean;
 }
 
-// Supplied only by the review entry point. Normal launches retain their current bot.
+// Optional overrides for inspecting the same component used by normal launches.
 export const CyberBotReviewContext = createContext<CyberBotReviewState | null>(null);

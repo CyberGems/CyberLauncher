@@ -1,8 +1,9 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
-import { getCyberBotLayout, type CyberBotRect, type CyberBotLayout } from './cyberBotLayout';
+import { getCyberBotLayout, getCyberBotAnchor, type CyberBotRect, type CyberBotLayout } from './cyberBotLayout';
 import type { CyberBotPosition } from './companionTypes';
 
 const OBSTACLE = '[data-cyberbot-obstacle]';
+const FLOOR = '[data-cyberbot-floor]';
 
 export function useCyberBotLayout({ enabled, position, offset, messageId, bubbleRef }: {
   enabled: boolean;
@@ -11,8 +12,8 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
   messageId?: string;
   bubbleRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean }>({
-    left: 0, top: 0, bubbleWidth: 300, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false,
+  const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean; anchorLeft: number; anchorTop: number }>({
+    left: 0, top: 0, bubbleWidth: 300, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, anchorLeft: 0, anchorTop: 0,
   });
 
   useLayoutEffect(() => {
@@ -24,6 +25,9 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
       const width = window.innerWidth;
       const height = window.innerHeight;
       const elements = [...document.querySelectorAll<HTMLElement>(OBSTACLE)];
+      const floor = document.querySelector<HTMLElement>(FLOOR);
+      const measurable = floor ? [...elements, floor] : elements;
+      const anchor = getCyberBotAnchor(width, height, position, offset, floor?.getBoundingClientRect().top);
       const obstacles: CyberBotRect[] = elements.map(element => {
         const w = element.offsetWidth;
         const h = element.offsetHeight;
@@ -36,12 +40,12 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
         }
       }).filter(rect => rect.right > rect.left && rect.bottom > rect.top);
       for (const element of observed) {
-        if (!elements.includes(element)) {
+        if (!measurable.includes(element)) {
           resizeObserver.unobserve(element);
           observed.delete(element);
         }
       }
-      for (const element of elements) {
+      for (const element of measurable) {
         if (!observed.has(element)) {
           observed.add(element);
           resizeObserver.observe(element);
@@ -50,15 +54,13 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
       const next = {
         ...getCyberBotLayout({
           width, height,
-          preferred: {
-            left: (position === 'bottom-left' ? 80 : width - 126) + offset.x,
-            top: (position === 'top-right' ? 80 : height - 150) + offset.y,
-          },
+          preferred: anchor,
           align: position === 'bottom-left' ? 'left' : 'right',
           bubbleHeight: messageId ? (bubbleRef.current?.offsetHeight || 140) : 0,
           obstacles,
         }),
         hasObstacles: obstacles.length > 0,
+        anchorLeft: anchor.left, anchorTop: anchor.top,
       };
       setLayout(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
     };
@@ -67,11 +69,11 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
     };
     const resizeObserver = new ResizeObserver(schedule);
     if (bubbleRef.current) resizeObserver.observe(bubbleRef.current);
-    const containsObstacle = (node: Node) => node instanceof Element && (node.matches(OBSTACLE) || node.querySelector(OBSTACLE));
+    const containsObstacle = (node: Node) => node instanceof Element && (node.matches(OBSTACLE + ', ' + FLOOR) || node.querySelector(OBSTACLE + ', ' + FLOOR));
     const observer = new MutationObserver(records => {
       if (records.some(record => record.type === 'attributes' || [...record.addedNodes, ...record.removedNodes].some(containsObstacle))) schedule();
     });
-    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-cyberbot-obstacle'] });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-cyberbot-obstacle', 'data-cyberbot-floor'] });
     window.addEventListener('resize', schedule);
     measure();
     return () => {

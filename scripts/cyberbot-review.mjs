@@ -37,7 +37,7 @@ writeFileSync(path.join(data, 'cyber-launcher-config.json'), JSON.stringify({
   activationShortcut: 'Ctrl+Alt+Shift+F11',
   cyberBotSettings: { enabled: true, position: 'bottom-right', dodgeEnabled: false, hoverAssistEnabled: false,
     bannersEnabled: true, preferredName: '', namePromptState: 'dismissed', namePromptAfter: 0,
-    chatterLevel: 'minimal', quietHours: { enabled: false, from: '22:00', to: '07:00' } },
+    chatterLevel: 'full', quietHours: { enabled: false, from: '22:00', to: '07:00' } },
 }, null, 2));
 const server = await createServer({
   configFile: false, root: project, plugins: [react(), tailwindcss()],

@@ -15,6 +15,15 @@ export interface CyberBotLayout {
 }
 
 export const CYBERBOT_SIZE = 94;
+// The approved 80px SVG lands at y=106.5 inside a 94px centered hitbox.
+export const CYBERBOT_LANDED_BOTTOM = (94 - 80 * 1.15) / 2 + 106.5 * 0.8;
+export function getCyberBotAnchor(width: number, height: number, position: 'bottom-left' | 'bottom-right' | 'top-right',
+  offset: { x: number; y: number }, floorTop = height - 57) {
+  return {
+    left: (position === 'bottom-left' ? 80 : width - 138) + offset.x,
+    top: (position === 'top-right' ? 80 : floorTop - CYBERBOT_LANDED_BOTTOM) + offset.y,
+  };
+}
 const MARGIN = 12;
 const BUBBLE_GAP = 12;
 

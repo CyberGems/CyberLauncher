@@ -101,6 +101,7 @@ export function createCyberBotIdleCycle(
   let lastActivity = Date.now();
   let state: CyberBotIdleState = 'awake';
   let paused = false;
+  let reading = false;
   let disposed = false;
   let style: CyberBotVanishStyle = 'phase';
   let consecutiveVanish = 0;
@@ -119,7 +120,7 @@ export function createCyberBotIdleCycle(
       : randomDelay(CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, random);
   }
   function scheduleCheck(delay = idleDelay) {
-    if (disposed || paused) return;
+    if (disposed || paused || reading) return;
     timer = setTimeout(check, delay);
   }
   function finishGesture() {
@@ -156,6 +157,14 @@ export function createCyberBotIdleCycle(
   scheduleCheck();
 
   return {
+    // Reading defers the gesture without resetting elapsed idle time.
+    setReading(value: boolean) {
+      if (disposed || reading === value) return;
+      reading = value;
+      if (state !== 'awake') return;
+      clearTimer();
+      if (!reading) scheduleCheck(Math.max(0, idleDelay - (Date.now() - lastActivity)));
+    },
     wake() {
       if (disposed) return;
       lastActivity = Date.now();

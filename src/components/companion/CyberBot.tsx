@@ -60,6 +60,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [isDodgeCooldown, setIsDodgeCooldown] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragTilt, setDragTilt] = useState(0);
+  const [marqueeReading, setMarqueeReading] = useState(false);
   const [layoutReady, setLayoutReady] = useState(false);
   const [hoverCountdown, setHoverCountdown] = useState<number | null>(null);
   const dodgeTimerRef = useRef<number | null>(null);
@@ -78,11 +80,12 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   };
   const displayedMessage = activeMessage || hoverMessage;
   const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
-  const { sleeping, vanished, vanishStyle } = useCyberBotPresence(
+  const { sleeping, vanished } = useCyberBotPresence(
     enabled,
     reviewingDesign || !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
     activeMessage?.id,
     systemAttention,
+    marqueeReading,
   );
   const idleAway = vanished && !displayedMessage && !systemAttention;
   const canHoverAssist = !reviewingDesign && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
@@ -241,7 +244,11 @@ export const CyberBot: React.FC<CyberBotProps> = ({
           dodgeExecutionTimerRef.current = null;
         }
       }}
+      onDrag={(_event, info) => {
+        setDragTilt(Math.max(-14, Math.min(14, info.offset.x * 0.14 + info.velocity.x * 0.009)));
+      }}
       onDragEnd={(_event, info) => {
+        setDragTilt(0);
         const dist = Math.hypot(info.offset.x, info.offset.y);
         const finishDrag = () => {
           dragEndTimerRef.current = window.setTimeout(() => {
@@ -258,8 +265,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             dragCommitFrameRef.current = null;
             flushSync(() => {
               setManualOffset({
-                x: droppedLeft - (currentPos === 'bottom-left' ? 80 : window.innerWidth - 126),
-                y: droppedTop - (currentPos === 'top-right' ? 80 : window.innerHeight - 150),
+                x: manualOffset.x + droppedLeft - placement.anchorLeft,
+                y: manualOffset.y + droppedTop - placement.anchorTop,
               });
             });
             x.set(0);
@@ -300,27 +307,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       </div>
 
       {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
-      <AnimatePresence>
-        {idleAway && !reducedMotion && (
-          <motion.span
-            key={vanishStyle}
-            aria-hidden="true"
-            initial={{ opacity: 0.7, scale: 0.65, y: 0 }}
-            animate={{ opacity: 0, scale: vanishStyle === 'phase' ? 1.8 : 0.8, y: vanishStyle === 'ascend' ? -55 : 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: vanishStyle === 'phase' ? 0.55 : 0.68, ease: 'easeOut' }}
-            className="absolute inset-[14px] rounded-full border border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.55)] pointer-events-none"
-          />
-        )}
-      </AnimatePresence>
-      <motion.div
-        initial={false}
-        animate={idleAway
-          ? vanishStyle === 'phase'
-            ? { opacity: 0, scale: 0.66, y: 0, rotate: 0, filter: 'blur(8px)' }
-            : { opacity: 0, scale: 0.52, y: -48, rotate: 12, filter: 'blur(2px)' }
-          : { opacity: 1, scale: 1, y: 0, rotate: 0, filter: 'blur(0px)' }}
-        transition={reducedMotion ? { duration: 0 } : { duration: idleAway ? (vanishStyle === 'phase' ? 0.48 : 0.62) : 0.28, ease: 'easeInOut' }}
+      <div
         className="relative w-[94px] h-[94px]"
         style={{ pointerEvents: idleAway ? 'none' : 'auto' }}
       >
@@ -354,13 +341,17 @@ export const CyberBot: React.FC<CyberBotProps> = ({
           <CyberBotAvatar
             emotion={currentEmotion}
             isHovered={isHovered}
+            isDragging={isDragging}
+            dragTilt={dragTilt}
+            away={idleAway}
+            onMarqueeReadingChange={setMarqueeReading}
             marqueeStatusMessages={marqueeStatusMessages}
             speechKey={displayedMessage && placement.bubbleVisible && !placement.hidden
               ? `${displayedMessage.id}:${displayedMessage.timestamp}` : undefined}
-            size={78}
+            size={80}
           />
         </button>
-      </motion.div>
+      </div>
     </motion.aside>
   );
 };

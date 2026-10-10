@@ -6,9 +6,10 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
+import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup } from '../src/components/companion/approved/approvedCyberBotBehavior';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
-import { getCyberBotLayout } from '../src/components/companion/cyberBotLayout';
+import { getCyberBotLayout, getCyberBotAnchor, CYBERBOT_LANDED_BOTTOM } from '../src/components/companion/cyberBotLayout';
 import {
   createCyberBotHoverAssist,
   createCyberBotIdleCycle,
@@ -173,7 +174,7 @@ test('CyberBot keeps the refined expression in-brand and shows sleep glyphs', ()
 
   const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping' }));
   assert.match(sleeping, /data-cyberbot-face="sleeping"/);
-  assert.equal((sleeping.match(/>z<\/text>/g) || []).length, 2);
+  assert.equal((sleeping.match(/>[zZ]<\/text>/g) || []).length, 2);
 });
 
 test('the marquee face replaces the eyes with clipped, version-aware status text', () => {
@@ -193,9 +194,9 @@ test('the marquee face replaces the eyes with clipped, version-aware status text
   assert.match(marquee, /data-cyberbot-face="marquee"/);
   assert.match(marquee, /data-cyberbot-marquee=/);
   assert.match(marquee, /data-cyberbot-marquee-run="0"/);
-  assert.match(marquee, /clip-path="url\(#cyberBotFaceClip\)"/);
-  assert.match(marquee, /font-size="10.5"/);
-  assert.match(marquee, /<animate attributeName="x" from="76"/);
+  assert.match(marquee, /clip-path="url\(#approved-[\w-]+marqueeClip\)"/);
+  assert.match(marquee, /font-size="17"/);
+  assert.match(marquee, /<animate attributeName="x" from="78"/);
   assert.doesNotMatch(marquee, /M 28 43 Q 33 39 38 43/);
 });
 
@@ -206,45 +207,38 @@ test('the marquee animation restarts when the launcher returns from the tray', (
   );
   assert.match(source, /onLauncherShown\?\.\(restartMarquee\)/);
   assert.match(source, /visibilitychange/);
-  assert.match(source, /setMarqueeAnimationRun\(run => run \+ 1\)/);
+  assert.match(source, /setMarqueeRun\(run => run \+ 1\)/);
 });
 
-test('speech adds a finite facial signal without replacing the logo expression', () => {
+test('speech uses a finite chest signal without replacing the approved logo expression', () => {
   const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher' }));
   const speaking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher', speechKey: 'message:1' }));
   assert.match(silent, /data-cyberbot-speaking="false"/);
-  assert.doesNotMatch(silent, /data-cyberbot-speech-wave/);
   assert.match(speaking, /data-cyberbot-face="launcher"/);
   assert.match(speaking, /data-cyberbot-speaking="true"/);
-  assert.match(speaking, /data-cyberbot-speech-wave="true"/);
-  assert.match(speaking, /M 64 38 H 68 V 42 H 72/);
+  assert.match(speaking, /data-part="equalizerBars" class="speaking-eq"/);
+  assert.match(silent, /data-part="equalizerBars" class="standby-eq"/);
+  const source = readFileSync(new URL('../src/components/companion/CyberBotAvatar.tsx', import.meta.url), 'utf8');
+  assert.match(source, /SPEECH_CUE_MS = 1800/);
+  assert.match(source, /setTimeout\(\(\) => setSpeechActive\(false\), SPEECH_CUE_MS\)/);
 });
 
-test('speaking replaces each expression’s mouth instead of drawing a second one', () => {
-  const mouths = [
-    ['curious', 'M 46 51 H 55'],
-    ['delighted', 'M 44 51 Q 51 55 58 49'],
-    ['sparkle', 'M 45 51 Q 51 54 57 50'],
-    ['affectionate', 'M 45 51 Q 51 54 57 50'],
-    ['happy', 'M 45 51 Q 51 54 57 50'],
-    ['wink', 'M 45 51 Q 52 55 58 49'],
-    ['alert', 'data-cyberbot-mouth="alert"'],
-    ['storage', 'data-cyberbot-mouth="storage"'],
-    ['scared', '>o</text>'],
-    ['success', '‿'],
-    ['speaking', '‿'],
-    ['terminal', '>_</text>'],
-  ] as const;
-  for (const [emotion, mouth] of mouths) {
+test('speech keeps one unchanged face while using the separate chest equalizer', () => {
+  const selectedFace = (html: string, emotion: string) => {
+    const match = html.match(new RegExp(`<g id="[^"]+" data-part="face-${emotion}" style="display: inline;"[^>]*>([\\s\\S]*?)</g>`));
+    assert.ok(match, `Missing visible ${emotion} face`);
+    return match[1];
+  };
+  for (const emotion of ['curious', 'delighted', 'sparkle', 'affectionate', 'happy', 'wink', 'alert', 'storage', 'scared', 'success', 'speaking', 'terminal'] as const) {
     const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion }));
     const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, speechKey: `test:${emotion}` }));
-    assert.ok(silent.includes(mouth), `${emotion} should retain its resting mouth`);
-    assert.ok(!talking.includes(mouth), `${emotion} should hide its resting mouth while speaking`);
-    assert.match(talking, /data-cyberbot-speech-wave="true"/);
+    assert.equal(selectedFace(silent, emotion), selectedFace(talking, emotion));
+    assert.match(talking, /data-part="equalizerBars" class="speaking-eq"/);
+    assert.doesNotMatch(talking, /data-cyberbot-speech-wave/);
   }
   const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', speechKey: 'test:sleep' }));
   assert.match(sleeping, /data-cyberbot-speaking="false"/);
-  assert.doesNotMatch(sleeping, /data-cyberbot-speech-wave/);
+  assert.match(sleeping, /data-part="equalizerBars" class="standby-eq"/);
 });
 
 test('RAM alerts keep the alert face while storage notices get a dedicated face', () => {
@@ -257,10 +251,10 @@ test('RAM alerts keep the alert face while storage notices get a dedicated face'
 
   const ram = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'alert' }));
   const storage = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'storage' }));
-  assert.match(ram, /M 31 37 H 35 L 34 44 H 32 Z/);
+  assert.match(ram, /data-part="alert-variant-exclamation"/);
   assert.match(storage, /data-cyberbot-face="storage"/);
-  assert.match(storage, /x="43" y="51" width="14" height="6"/);
-  assert.match(storage, /rgba\(245, 158, 11, 0\.45\)/);
+  assert.match(storage, /x="43" y="44" width="14" height="5"/);
+  assert.match(storage, /--eq-glow-color:#f59e0b/);
 });
 
 test('announcement routing gives CyberBot priority with a banner fallback', () => {
@@ -919,4 +913,62 @@ test('greetings follow local morning, afternoon, and night boundaries', () => {
   assert.equal(getCyberBotGreetingTopic(at(12)), 'greeting_afternoon');
   assert.equal(getCyberBotGreetingTopic(at(19, 59)), 'greeting_afternoon');
   assert.equal(getCyberBotGreetingTopic(at(20)), 'greeting_evening');
+});
+
+test('the approved marquee chooses distinct real phrases and gives long text time to exit', () => {
+  assert.equal(nextApprovedMarquee(null, [], () => 0), '');
+  assert.equal(nextApprovedMarquee(null, ['online', 'online'], () => 0), 'online');
+  assert.equal(nextApprovedMarquee(null, ['online', 'ready'], () => 0), 'online   ◆   ready');
+  assert.equal(nextApprovedMarquee('online   ◆   ready', ['online', 'ready'], () => 0), 'ready   ◆   online');
+  const timing = approvedMarqueeTiming('á'.repeat(100));
+  assert.ok(timing.end <= 20 - 100 * 10.6);
+  assert.ok(timing.durationMs >= ((78 - timing.end) / 26) * 1000 + 1000);
+});
+
+test('approved SVG instances keep local references unique and marquee input cannot become markup', () => {
+  const attack = '<script>alert(1)</script>"&';
+  const svg = readFileSync(new URL('../src/components/companion/approved/cyberbot-approved.svg', import.meta.url), 'utf8');
+  const first = createApprovedMarkup(svg, 'one-', 'marquee', false, attack);
+  const second = createApprovedMarkup(svg, 'two-', 'marquee', false, attack);
+  assert.doesNotMatch(first, /<script>/);
+  assert.match(first, /&lt;script&gt;alert\(1\)&lt;\/script&gt;&quot;&amp;/);
+  const ids = [...(first + second).matchAll(/id="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const [, target] of (first + second).matchAll(/url\(#([\w-]+)\)/g)) assert.ok(ids.includes(target), target);
+});
+
+test('landed head touches the actual footer and drag offsets retain the same anchor', () => {
+  for (const [width, height, floorTop] of [[1440, 900, 843], [1000, 650, 570], [800, 600, 540]]) {
+    const anchor = getCyberBotAnchor(width, height, 'bottom-right', { x: 0, y: 0 }, floorTop);
+    assert.ok(Math.abs(anchor.top + CYBERBOT_LANDED_BOTTOM - floorTop) < 0.001);
+    assert.equal(anchor.left, width - 138);
+    const dragged = getCyberBotAnchor(width, height, 'bottom-right', { x: -120, y: -80 }, floorTop);
+    assert.equal(dragged.left, anchor.left - 120);
+    assert.equal(dragged.top, anchor.top - 80);
+    assert.equal(getCyberBotAnchor(width, height, 'top-right', { x: 0, y: 0 }, floorTop).top, 80);
+  }
+});
+
+test('a first marquee pass delays idle departure without resetting or starving its deadline', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: string[] = [];
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
+  context.mock.timers.tick(10_000);
+  cycle.setReading(true);
+  context.mock.timers.tick(30_000);
+  assert.deepEqual(changes, [], 'Do not interrupt a first reading pass');
+  cycle.setReading(false);
+  context.mock.timers.tick(0);
+  assert.deepEqual(changes, ['hidden'], 'Depart as soon as reading ends if already due');
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_AWAY_MS);
+  assert.deepEqual(changes, ['hidden', 'awake']);
+  cycle.setReading(true);
+  cycle.pause();
+  cycle.setReading(false);
+  context.mock.timers.tick(60_000);
+  assert.deepEqual(changes, ['hidden', 'awake'], 'Busy UI still suspends departures');
+  cycle.resume();
+  context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
+  assert.deepEqual(changes, ['hidden', 'awake', 'hidden']);
+  cycle.dispose();
 });
