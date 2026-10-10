@@ -1,3 +1,4 @@
+import { cyberBotSpeechLifetime } from './components/companion/cyberBotTyping';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
@@ -2523,7 +2524,7 @@ export default function App() {
     const ms = isLongToast ? 8000 : 4500;
     const timer = setTimeout(() => {
       setNotification(null);
-    }, ms);
+    }, cyberBotSpeechLifetime(ms, notification.message, notification.detail));
 
     const handleVisibilityChange = () => {
       if (!isElectron && document.hidden) {

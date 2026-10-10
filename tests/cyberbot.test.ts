@@ -6,6 +6,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
+import { createCyberBotTypewriter, cyberBotSpeechLifetime, cyberBotTypingDuration, CYBERBOT_CHARACTER_MS, type CyberBotTypingState } from '../src/components/companion/cyberBotTyping';
+import { CyberBotTypingText } from '../src/components/companion/CyberBotTypingText';
 import { DesktopCyberBotAvatar } from '../src/components/companion/desktop/DesktopCyberBotAvatar';
 import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup } from '../src/components/companion/approved/approvedCyberBotBehavior';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
@@ -211,17 +213,17 @@ test('the marquee animation restarts when the launcher returns from the tray', (
   assert.match(source, /setMarqueeRun\(run => run \+ 1\)/);
 });
 
-test('speech uses a finite chest signal without replacing the approved logo expression', () => {
+test('speech follows writing without replacing the approved logo expression', () => {
   const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher' }));
-  const speaking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher', speechKey: 'message:1' }));
+  const speaking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'launcher', isSpeaking: true }));
   assert.match(silent, /data-cyberbot-speaking="false"/);
   assert.match(speaking, /data-cyberbot-face="launcher"/);
   assert.match(speaking, /data-cyberbot-speaking="true"/);
   assert.match(speaking, /data-part="equalizerBars" class="speaking-eq"/);
   assert.match(silent, /data-part="equalizerBars" class="standby-eq"/);
   const source = readFileSync(new URL('../src/components/companion/CyberBotAvatar.tsx', import.meta.url), 'utf8');
-  assert.match(source, /SPEECH_CUE_MS = 1800/);
-  assert.match(source, /setTimeout\(\(\) => setSpeechActive\(false\), SPEECH_CUE_MS\)/);
+  assert.match(source, /const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion/);
+  assert.doesNotMatch(source, /SPEECH_CUE_MS|setSpeechActive/);
 });
 
 test('speech keeps one unchanged face while using the separate chest equalizer', () => {
@@ -232,12 +234,12 @@ test('speech keeps one unchanged face while using the separate chest equalizer',
   };
   for (const emotion of ['curious', 'delighted', 'sparkle', 'affectionate', 'happy', 'wink', 'alert', 'storage', 'scared', 'success', 'speaking', 'terminal'] as const) {
     const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion }));
-    const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, speechKey: `test:${emotion}` }));
+    const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, isSpeaking: true }));
     assert.equal(selectedFace(silent, emotion), selectedFace(talking, emotion));
     assert.match(talking, /data-part="equalizerBars" class="speaking-eq"/);
     assert.doesNotMatch(talking, /data-cyberbot-speech-wave/);
   }
-  const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', speechKey: 'test:sleep' }));
+  const sleeping = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'sleeping', isSpeaking: true }));
   assert.match(sleeping, /data-cyberbot-speaking="false"/);
   assert.match(sleeping, /data-part="equalizerBars" class="standby-eq"/);
 });
@@ -345,13 +347,14 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
     setAttribute: (name: string, value: string) => void;
   }>();
   let speechRestarts = 0;
+  let previousSpeechKey: string | null = null;
   const element = (id: string) => {
     if (!elements.has(id)) {
       const classes = new Set<string>(['hidden']);
       const listeners: Record<string, (event: { stopPropagation: () => void }) => void> = {};
       elements.set(id, {
         classList: {
-          add: (...names) => names.forEach(name => { if (id === 'cyberbotCard' && name === 'speaking') speechRestarts++; classes.add(name); }),
+          add: (...names) => names.forEach(name => classes.add(name)),
           remove: (...names) => names.forEach(name => classes.delete(name)),
           toggle: (name, force) => { if (force === undefined ? !classes.has(name) : force) classes.add(name); else classes.delete(name); },
           contains: name => classes.has(name),
@@ -363,13 +366,13 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
     }
     return elements.get(id)!;
   };
-  const avatarStates: Array<{ face: string; speechKey: string } | null> = [];
+  const avatarStates: Array<{ face: string; speechKey: string; title: string; detail: string } | null> = [];
   const actions: Array<[string, unknown]> = [];
   let receive: (data: Record<string, unknown>) => void = () => {};
   runInNewContext(source, {
     document: { getElementById: element },
     CustomEvent: class { constructor(public type: string, public options: { detail: unknown }) {} },
-    window: { dispatchEvent: (event: { options: { detail: { face: string; speechKey: string } | null } }) => avatarStates.push(event.options.detail), desktopToast: {
+    window: { dispatchEvent: (event: { options: { detail: { face: string; speechKey: string; title: string; detail: string } | null } }) => { const state = event.options.detail; if (state && state.speechKey !== previousSpeechKey) speechRestarts++; previousSpeechKey = state?.speechKey ?? null; avatarStates.push(state); }, desktopToast: {
       onData: (callback: typeof receive) => { receive = callback; },
       action: (name: string, payload: unknown) => actions.push([name, payload]),
       hide: () => {},
@@ -379,12 +382,12 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
 
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 9s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
-  assert.equal(element('cyberbotCard').classList.contains('speaking'), true);
+  assert.equal(avatarStates.at(-1)?.speechKey, 'imminent:task-1');
   assert.equal(speechRestarts, 1);
   assert.equal(element('standardCard').classList.contains('hidden'), true);
-  assert.equal(element('cyberbotTitle').textContent, 'Launching in 9s');
+  assert.equal(avatarStates.at(-1)?.title, 'Launching in 9s');
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 8s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
-  assert.equal(speechRestarts, 1, 'countdown updates should not restart the speaking cue');
+  assert.equal(speechRestarts, 1, 'countdown updates should keep the same writing session');
   assert.equal(avatarStates[0]?.face, 'alert');
   assert.equal(avatarStates[0]?.speechKey, avatarStates[1]?.speechKey);
   click('cyberbotActionBtn');
@@ -400,10 +403,9 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   receive({ presentation: 'bot', type: 'info', source: 'launch', title: 'Opening Editor' });
   assert.equal(speechRestarts, 3);
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
-  assert.equal(element('cyberbotTitle').textContent, 'Opening Editor');
+  assert.equal(avatarStates.at(-1)?.title, 'Opening Editor');
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
   receive({ type: 'hide' });
-  assert.equal(element('cyberbotCard').classList.contains('speaking'), false);
   assert.equal(avatarStates.at(-1), null, 'hidden notifications must unmount the avatar');
 
   receive({ presentation: 'bot', type: 'warning', action: 'open-hud-system', title: 'High RAM usage' });
@@ -431,7 +433,7 @@ test('floating notifications reuse the approved shell and preserve alert, disk a
   assert.match(html, /id="cyberbotAvatar" class="cyberbot-avatar"/);
   assert.doesNotMatch(html, /botBody|bot-face-logo|bot-speech-wave/);
   for (const face of ['launcher', 'alert', 'storage', 'success'] as const) {
-    const markup = renderToStaticMarkup(React.createElement(DesktopCyberBotAvatar, { face, speechKey: 'notice' }));
+    const markup = renderToStaticMarkup(React.createElement(DesktopCyberBotAvatar, { face, speaking: true }));
     assert.match(markup, /data-cyberbot-design="approved"/);
     assert.ok(markup.includes(`data-cyberbot-face="${face}"`));
     assert.match(markup, /width:84px;height:96\.6px/);
@@ -439,12 +441,101 @@ test('floating notifications reuse the approved shell and preserve alert, disk a
   }
 });
 
-test('floating speech uses a cancellable finite cue and honors reduced motion', () => {
-  const source = readFileSync(new URL('../src/components/companion/desktop/DesktopCyberBotAvatar.tsx', import.meta.url), 'utf8');
-  assert.match(source, /setTimeout\(\(\) => setSpeaking\(false\), 1800\)/);
-  assert.match(source, /clearTimeout\(timer\)/);
-  assert.match(source, /speaking=\{speaking && !reducedMotion\}/);
-  assert.match(source, /\[speechKey\]/);
+
+test('typing reveals whole graphemes, then details, and finishes its speaking state', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const states: CyberBotTypingState[] = [];
+  const writer = createCyberBotTypewriter(state => states.push(state));
+  const text = 'A\u0301👨‍👩‍👧‍👦👩🏽‍💻🚀';
+  writer.update('one', text, 'ñ🐈');
+  assert.equal(states.at(-1)?.text, '');
+  assert.equal(states.at(-1)?.part, 'text');
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS);
+  assert.equal(states.at(-1)?.text, 'A\u0301');
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS);
+  assert.equal(states.at(-1)?.text, 'A\u0301👨‍👩‍👧‍👦');
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS * 2);
+  assert.equal(states.at(-1)?.text, text);
+  assert.equal(states.at(-1)?.part, 'detail');
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS);
+  assert.equal(states.at(-1)?.detail, 'ñ');
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS);
+  assert.deepEqual(states.at(-1), { key: 'one', text, detail: 'ñ🐈', part: null, isTyping: false });
+  writer.dispose();
+});
+
+test('writing stays active past 1.8 seconds and identical payloads do not reset its deadline', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const states: CyberBotTypingState[] = [];
+  const writer = createCyberBotTypewriter(state => states.push(state));
+  writer.update('long', 'x'.repeat(100));
+  context.mock.timers.tick(1800);
+  assert.equal(states.at(-1)?.isTyping, true);
+  writer.update('long', 'x'.repeat(100));
+  assert.ok((states.at(-1)?.text.length ?? 0) > 60);
+  context.mock.timers.tick(1000);
+  assert.equal(states.at(-1)?.isTyping, false);
+  assert.equal(states.at(-1)?.text.length, 100);
+  writer.dispose();
+});
+
+test('replacement and disposal cancel old typing rather than leaking its text or callbacks', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const states: CyberBotTypingState[] = [];
+  const writer = createCyberBotTypewriter(state => states.push(state));
+  writer.update('old', 'x'.repeat(100));
+  context.mock.timers.tick(100);
+  writer.update('new', 'Hola');
+  assert.deepEqual(states.at(-1), { key: 'new', text: '', detail: '', part: 'text', isTyping: true });
+  context.mock.timers.tick(CYBERBOT_CHARACTER_MS * 4);
+  assert.equal(states.at(-1)?.text, 'Hola');
+  assert.equal(states.at(-1)?.isTyping, false);
+  writer.update('third', 'un mensaje muy largo');
+  writer.dispose();
+  const count = states.length;
+  context.mock.timers.tick(10000);
+  assert.equal(states.length, count);
+});
+
+test('live countdown updates and reduced motion show complete text without replaying speech', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const states: CyberBotTypingState[] = [];
+  const writer = createCyberBotTypewriter(state => states.push(state));
+  writer.update('countdown', 'Launch in 10s', 'Editor');
+  context.mock.timers.tick(56);
+  writer.update('countdown', 'Launch in 9s', 'Editor');
+  assert.deepEqual(states.at(-1), { key: 'countdown', text: 'Launch in 9s', detail: 'Editor', part: null, isTyping: false });
+  writer.update('motion', 'Un mensaje largo', '', true);
+  context.mock.timers.tick(56);
+  writer.update('motion', 'Un mensaje largo', '', false);
+  assert.equal(states.at(-1)?.text, 'Un mensaje largo');
+  assert.equal(states.at(-1)?.isTyping, false);
+  writer.update('motion', 'Un mensaje largo', '', true);
+  assert.equal(states.at(-1)?.isTyping, false);
+  writer.update('reduced-first', 'Texto completo', 'Detalle', false);
+  assert.equal(states.at(-1)?.detail, 'Detalle');
+  assert.equal(states.at(-1)?.isTyping, false);
+  writer.dispose();
+});
+
+test('message lifetime includes complete writing and reading, while persistent notices stay persistent', () => {
+  const text = 'Á'.repeat(200);
+  assert.equal(cyberBotTypingDuration('A\u0301👨‍👩‍👧‍👦'), 2 * CYBERBOT_CHARACTER_MS);
+  assert.equal(cyberBotSpeechLifetime(4500, text, 'Detalle'), cyberBotTypingDuration(text, 'Detalle') + 2500);
+  assert.equal(cyberBotSpeechLifetime(6500, 'Hola'), 6500);
+  assert.equal(cyberBotSpeechLifetime(0, text), 0);
+});
+
+test('typing has one accessible full message, hidden layout reserve and a safe visual caret', () => {
+  const markup = renderToStaticMarkup(React.createElement(CyberBotTypingText, {
+    text: '<img src=x>Hola', visible: '<img', caret: true, typing: true,
+  }));
+  assert.doesNotMatch(markup, /<img/);
+  assert.match(markup, /cyberbot-typing-accessible/);
+  assert.match(markup, /cyberbot-typing-reserve" aria-hidden="true"/);
+  assert.match(markup, /cyberbot-typing-visible" aria-hidden="true"/);
+  assert.match(markup, /data-cyberbot-written/);
+  assert.match(markup, /cyberbot-typing-caret/);
 });
 
 const message = (priority: CyberBotMessage['priority']): CyberBotMessage => ({

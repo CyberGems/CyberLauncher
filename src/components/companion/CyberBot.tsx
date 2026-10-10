@@ -63,6 +63,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragTilt, setDragTilt] = useState(0);
   const [marqueeReading, setMarqueeReading] = useState(false);
+  const [speechWriting, setSpeechWriting] = useState({ key: '', typing: false });
+  const onTypingChange = React.useCallback((key: string, typing: boolean) => {
+    setSpeechWriting(previous => previous.key === key && previous.typing === typing ? previous : { key, typing });
+  }, []);
   const [layoutReady, setLayoutReady] = useState(false);
   const [hoverCountdown, setHoverCountdown] = useState<number | null>(null);
   const dodgeTimerRef = useRef<number | null>(null);
@@ -302,6 +306,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
               onClose={activeMessage ? onDismissMessage : () => hoverAssistRef.current?.cancel()}
               position={placement.align === 'left' ? 'bottom-left' : 'bottom-right'}
               closeLabel={closeLabel}
+              onTypingChange={onTypingChange}
             />
           )}
         </AnimatePresence>
@@ -347,8 +352,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             away={idleAway}
             onMarqueeReadingChange={setMarqueeReading}
             marqueeStatusMessages={marqueeStatusMessages}
-            speechKey={displayedMessage && placement.bubbleVisible && !placement.hidden
-              ? `${displayedMessage.id}:${displayedMessage.timestamp}` : undefined}
+            isSpeaking={!!displayedMessage && speechWriting.key === displayedMessage.id && speechWriting.typing
+              && placement.bubbleVisible && !placement.hidden}
             size={80}
           />
         </button>

@@ -68,3 +68,17 @@ Verification: TypeScript, production build and all 56 CyberBot tests passed. The
 Scheduler launch/cancel buttons were clicked through the actual preload and main process using a deliberately nonexistent task ID in the isolated profile. IPC delivery was verified; no real scheduled application was executed. The storage HUD action was also delivered through that bridge. Release-link dispatch is covered by the controller test; opening an external browser was not part of native verification.
 
 Both rendering surfaces now share the approved artwork. The installed app, its profile and the untracked source laboratory remain untouched. Minor visual polish and a future installer/release remain separate work.
+
+## Stage four: progressive speech
+
+Launcher bubbles and native desktop CyberBot notices now share a typewriter controller. It reveals one Unicode grapheme every 28 milliseconds, writes the main message followed by its detail, and shows a single blinking caret beside the current text. The approved chest equalizer follows the actual writing state. This replaces the fixed 1.8-second speech cue from stages two and three without changing the chosen face or artwork.
+
+The complete text reserves the bubble's final footprint from the start, so its size and position remain stable during writing. Context tags and action buttons remain available immediately. Accessible text contains the complete message once; visual character updates and the invisible size reserve are hidden from assistive technology. Reduced motion displays the full message immediately without a caret or speech animation.
+
+New messages replace the writing session; closing a notice disposes its timer. Updates to live values such as countdown seconds keep their existing message identity and show the updated value immediately, rather than repeatedly animating stale numbers. Scheduler countdown lifetimes retain their original deadline. Other timed speech lasts at least the expected writing duration plus 2.5 seconds for reading; persistent messages remain persistent. The App notification timer also uses this minimum to avoid clearing a long CyberBot announcement prematurely. This can extend the corresponding long banner fallback's lifetime, although banners still render their text immediately.
+
+Native desktop messages retain their existing two-line title and single-line detail limits. During writing, the text viewport follows the caret; after completion, the original truncation returns. Launcher bubbles retain their normal wrapping.
+
+Verification: all 61 CyberBot tests, TypeScript and production build passed. Real Electron checks covered the mounted launcher component and an actual App interaction, sequential title/detail writing, Unicode text, writing beyond 1.8 seconds, message replacement, dismissal, live reduced-motion changes, priority face preservation and exact bubble geometry before and after writing. The launcher bubble stayed at 300 by 178.375 CSS pixels; the desktop bubble stayed at 382 by 95.03125 pixels in the corresponding controlled case. Native source and compiled file loading were both checked, including visible caret bounds, live countdown updates, literal HTML text and a long nonpersistent notice that finished writing before its reading interval and automatic dismissal. No renderer errors occurred in those checks. The build retains its existing chunk-size warning.
+
+The review runs in an isolated profile. The installed app, actual scheduled tasks, private control files and untracked laboratory are unchanged.

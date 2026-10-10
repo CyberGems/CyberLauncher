@@ -1,0 +1,8 @@
+.cyberbot-typing-text { display: block; position: relative; min-width: 0; }
+.cyberbot-typing-reserve { display: block; visibility: hidden; pointer-events: none; }
+.cyberbot-typing-visible { display: block; position: absolute; inset: 0; overflow: hidden; }
+.cyberbot-typing-accessible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cyberbot-typing-caret, .cyberbot-caret-space { display: inline-block; width: 1px; height: 1em; margin-left: 2px; vertical-align: -0.12em; }
+.cyberbot-typing-caret { background: currentColor; animation: cyberbotCaretBlink .8s step-end infinite; }
+@keyframes cyberbotCaretBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cyberbot-typing-caret { animation: none; } }

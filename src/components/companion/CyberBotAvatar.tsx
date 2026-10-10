@@ -13,17 +13,16 @@ interface CyberBotAvatarProps {
   dragTilt?: number;
   away?: boolean;
   onMarqueeReadingChange?: (reading: boolean) => void;
-  speechKey?: string;
+  isSpeaking?: boolean;
   marqueeStatusMessages?: readonly string[];
   size?: number;
   className?: string;
 }
-const SPEECH_CUE_MS = 1800;
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle', isHovered = false, isDragging = false, dragTilt = 0, away = false,
-  speechKey, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
+  isSpeaking = false, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
 }) => {
   const review = React.useContext(CyberBotReviewContext);
   const reducedMotion = useCyberBotReducedMotion();
@@ -35,7 +34,6 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [marqueeRun, setMarqueeRun] = useState(0);
   const [measuredMarquee, setMeasuredMarquee] = useState({ message: '', durationMs: 0 });
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
-  const [speechActive, setSpeechActive] = useState(!!speechKey && emotion !== 'sleeping' && !reducedMotion);
   const facesSinceMarquee = useRef(1);
   const dragFace = useRef<'curious' | 'flight'>('flight');
   const wasDragging = useRef(false);
@@ -81,13 +79,6 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (!speechKey || emotion === 'sleeping' || reducedMotion) { setSpeechActive(false); return; }
-    setSpeechActive(true);
-    const timer = window.setTimeout(() => setSpeechActive(false), SPEECH_CUE_MS);
-    return () => window.clearTimeout(timer);
-  }, [speechKey, emotion, reducedMotion]);
-
   const face = isDragging ? dragFace.current : approvedCyberBotFace(emotion === 'idle' ? idleExpression : emotion);
   useEffect(() => {
     if (review || face !== 'marquee' || away) {
@@ -101,7 +92,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     return () => { window.clearTimeout(timer); onMarqueeReadingChange?.(false); };
   }, [review, face, away, marqueeMessage, marqueeRun, measuredMarquee, onMarqueeReadingChange]);
 
-  const speaking = !!speechKey && speechActive && emotion !== 'sleeping' && !reducedMotion;
+  const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion;
   return <ApprovedCyberBotAvatar
     face={face} marqueeMode="screen" speaking={speaking} motion={!reducedMotion}
     {...review} isHovered={isHovered} isDragging={isDragging} dragTilt={dragTilt} away={away}

@@ -1,3 +1,4 @@
+import { cyberBotSpeechLifetime } from './cyberBotTyping';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TranslationKey } from '../../locales';
 import { createCyberBotPhraseDeck, cyberBotPhraseKeyForCount, getCyberBotGreetingTopic, type CyberBotTopic } from './cyberBotPhrases';
@@ -320,7 +321,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         activeMessageRef.current = null;
         dismissTimerRef.current = null;
         setActiveMessage(null);
-      }, duration);
+      }, msg.id?.startsWith('scheduled_countdown_') ? duration : cyberBotSpeechLifetime(duration, msg.text, msg.detail));
     }
     return true;
   }, [enabled, chatterLevel, quietHours, t]);

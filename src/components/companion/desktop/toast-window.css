@@ -546,3 +546,8 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
 }
+
+/* Reserve the complete message footprint while the caret follows live text. */
+.cyberbot-title { display: block; }
+.cyberbot-title .cyberbot-typing-reserve, .cyberbot-title .cyberbot-typing-text[data-cyberbot-typing="false"] .cyberbot-typing-visible { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.cyberbot-detail .cyberbot-typing-reserve, .cyberbot-detail .cyberbot-typing-text[data-cyberbot-typing="false"] .cyberbot-typing-visible { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

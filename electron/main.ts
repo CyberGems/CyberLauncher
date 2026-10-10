@@ -10,6 +10,7 @@ import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
+import { cyberBotSpeechLifetime } from '../src/components/companion/cyberBotTyping';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
 import { shouldClearToastForRendererCleanup, shouldHideLauncherAfterLaunch, type LaunchResult } from '../src/launchFlow';
 import {
@@ -2038,7 +2039,7 @@ function showDesktopToastInternal(payload: any) {
     const ms = payload.source === 'launch' ? 3000 : payload.action ? 8000 : 4500;
     desktopToastAutoDismissTimer = setTimeout(() => {
       hideDesktopToastInternal();
-    }, ms);
+    }, channel === 'bot' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
   }
 }
 

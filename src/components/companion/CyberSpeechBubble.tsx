@@ -2,6 +2,8 @@ import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, AlertTriangle, Bot, CircleCheck, ArrowRight } from 'lucide-react';
+import { useCyberBotTyping } from './useCyberBotTyping';
+import { CyberBotTypingText } from './CyberBotTypingText';
 import type { CyberBotMessage } from './companionTypes';
 
 interface CyberSpeechBubbleProps {
@@ -9,6 +11,7 @@ interface CyberSpeechBubbleProps {
   onClose: () => void;
   position?: 'bottom-right' | 'bottom-left' | 'top-right';
   closeLabel: string;
+  onTypingChange?: (key: string, typing: boolean) => void;
 }
 
 export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
@@ -16,8 +19,12 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   onClose,
   position = 'bottom-right',
   closeLabel,
+  onTypingChange,
 }) => {
   const reducedMotion = useCyberBotReducedMotion();
+  const typing = useCyberBotTyping(message.id, message.text, message.detail);
+  React.useLayoutEffect(() => { onTypingChange?.(message.id, typing.isTyping); }, [message.id, typing.isTyping, onTypingChange]);
+  React.useLayoutEffect(() => () => onTypingChange?.(message.id, false), [message.id, onTypingChange]);
   const isAlert = message.emotion === 'alert';
   const isSuccess = message.emotion === 'success';
 
@@ -49,6 +56,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       exit={reducedMotion ? undefined : { opacity: 0, y: 8, scale: 0.92 }}
       transition={reducedMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
       role={message.priority === 'high' ? 'alert' : 'status'}
+      aria-atomic="true"
       data-no-hide
       className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
@@ -75,11 +83,11 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
             </div>
           )}
           <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words">
-            {message.text}
+            <CyberBotTypingText text={message.text} visible={typing.text} caret={typing.part === 'text'} typing={typing.isTyping} />
           </div>
           {message.detail && (
             <p className="mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
-              {message.detail}
+              <CyberBotTypingText text={message.detail} visible={typing.detail} caret={typing.part === 'detail'} typing={typing.isTyping} />
             </p>
           )}
         </div>

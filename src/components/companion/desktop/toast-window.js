@@ -3,10 +3,8 @@
 let currentTaskId = null;
 let currentActionTarget = null;
 let currentReleaseUrl = null;
-let lastBotSpeechKey = null;
 
 const cyberbotCard = document.getElementById('cyberbotCard');
-const cyberbotTitle = document.getElementById('cyberbotTitle');
 const cyberbotDetail = document.getElementById('cyberbotDetail');
 const cyberbotBrandTag = document.getElementById('cyberbotBrandTag');
 const cyberbotActions = document.getElementById('cyberbotActions');
@@ -95,8 +93,6 @@ if (window.desktopToast) {
 
     if (data.type === 'hide') {
       window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: null }));
-      cyberbotCard.classList.remove('speaking');
-      lastBotSpeechKey = null;
       imminentCard.classList.add('exiting');
       standardCard.classList.add('exiting');
       cyberbotCard.classList.add('exiting');
@@ -118,24 +114,15 @@ if (window.desktopToast) {
       const speechKey = data.type === 'imminent'
         ? `${data.type}:${data.taskId || ''}`
         : `${data.type}:${data.source || ''}:${data.action || ''}:${data.title || ''}:${data.detail || ''}`;
-      if (cyberbotCard.classList.contains('hidden') || speechKey !== lastBotSpeechKey) {
-        cyberbotCard.classList.remove('speaking');
-        // Restart the finite cue when a different announcement replaces the current one.
-        void cyberbotCard.offsetWidth;
-        cyberbotCard.classList.add('speaking');
-      }
-      lastBotSpeechKey = speechKey;
       const face = data.action === 'open-hud-storage' ? 'storage'
         : ['warning', 'error', 'imminent'].includes(data.type) ? 'alert'
         : data.type === 'success' ? 'success' : 'launcher';
-      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: { face, speechKey } }));
+      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: { face, speechKey, title: data.title || '', detail: data.detail || '' } }));
       imminentCard.classList.add('hidden');
       standardCard.classList.add('hidden');
       cyberbotCard.classList.remove('hidden');
       cyberbotCard.classList.toggle('alert', data.type === 'warning' || data.type === 'error' || data.type === 'imminent');
       cyberbotCard.classList.toggle('storage', data.action === 'open-hud-storage');
-      cyberbotTitle.textContent = data.title || '';
-      cyberbotDetail.textContent = data.detail || '';
       cyberbotDetail.classList.toggle('hidden', !data.detail);
       cyberbotBrandTag.textContent = data.brandTag ? `/ ${data.brandTag}` : '';
 
@@ -167,8 +154,6 @@ if (window.desktopToast) {
 
     window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: null }));
     cyberbotCard.classList.add('hidden');
-    cyberbotCard.classList.remove('speaking');
-    lastBotSpeechKey = null;
 
     if (data.type === 'imminent') {
       standardCard.classList.add('hidden');
