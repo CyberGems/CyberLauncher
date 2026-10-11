@@ -44,10 +44,6 @@ export function approvedExpressionMarkup() {
 
 const hoverVisorMarkup = `<defs>
   <clipPath id="hoverVisorClip"><rect x="23" y="25" width="54" height="26" rx="8"/></clipPath>
-  <radialGradient id="hoverReflectionGradient">
-    <stop offset="0" stop-color="#e0fbff" stop-opacity="0.22"/>
-    <stop offset="1" stop-color="#e0fbff" stop-opacity="0"/>
-  </radialGradient>
   <linearGradient id="hoverScanGradient" gradientUnits="userSpaceOnUse" x1="24" y1="26" x2="76" y2="26">
     <stop offset="0" stop-color="#00f0ff" stop-opacity="0"/>
     <stop offset="0.5" stop-color="#a5f3fc" stop-opacity="0.8"/>
@@ -55,16 +51,41 @@ const hoverVisorMarkup = `<defs>
   </linearGradient>
 </defs>
 <g class="hover-visor-effects" clip-path="url(#hoverVisorClip)" pointer-events="none" aria-hidden="true">
-  <ellipse class="hover-visor-reflection" cx="47" cy="34" rx="17" ry="12" fill="url(#hoverReflectionGradient)"/>
   <path class="hover-visor-scan" d="M24 26 H76" stroke="url(#hoverScanGradient)" stroke-width="0.9"/>
 </g>
 `;
+
+const materialLightDefs = `<defs>
+  <radialGradient id="materialHelmetLight" gradientUnits="userSpaceOnUse" cx="42" cy="19" r="34">
+    <stop offset="0" stop-color="#cff4ff" stop-opacity="0.65"/>
+    <stop offset="0.38" stop-color="#6fc9e6" stop-opacity="0.38"/>
+    <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="materialTorsoLight" gradientUnits="userSpaceOnUse" cx="42" cy="66" r="29">
+    <stop offset="0" stop-color="#d5f5ff" stop-opacity="0.72"/>
+    <stop offset="0.4" stop-color="#73cde7" stop-opacity="0.42"/>
+    <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+  </radialGradient>
+</defs>`;
+const materialHelmetMarkup = `<g class="material-light material-helmet-light" pointer-events="none" aria-hidden="true" fill="none" stroke-linecap="round">
+  <path class="material-edge-base" d="M20 27 C24 19 35 15 50 15 C65 15 76 19 80 27 M17 34 C16 45 22 51 33 54 M83 34 C84 45 78 51 67 54"/>
+  <path d="M20 27 C24 19 35 15 50 15 C65 15 76 19 80 27 M17 34 C16 45 22 51 33 54 M83 34 C84 45 78 51 67 54" stroke="url(#materialHelmetLight)" stroke-width="0.85"/>
+</g>`;
+const materialTorsoMarkup = `<g class="material-light material-torso-light" pointer-events="none" aria-hidden="true">
+  <path d="M31 62 L39 62 L39.15 64 L32.6 64 L34 75.5 L33 76 Z M69 62 L61 62 L60.85 64 L67.4 64 L66 75.5 L67 76 Z" fill="url(#materialTorsoLight)"/>
+  <path class="material-edge-base" d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81" fill="none"/>
+  <path d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81 M34 78 L40 81 M66 78 L60 81" fill="none" stroke="url(#materialTorsoLight)" stroke-width="0.95" stroke-linecap="round"/>
+</g>`;
 
 export function createApprovedMarkup(artwork: string, prefix: string, face: ApprovedCyberBotFace, speaking: boolean, message = '') {
   const target = `face-${face === 'default' ? 'eyes-default' : face}`;
   const safeMessage = message.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
   const timing = approvedMarqueeTiming(message);
-  return artwork.replace('</g> <!-- end visorFaceContent -->', `${approvedExpressionMarkup()}</g> <!-- end visorFaceContent -->`)
+  return artwork
+    .replace('<!-- CREST & FOREHEAD VARIANTS -->', materialLightDefs + '<!-- CREST & FOREHEAD VARIANTS -->')
+    .replace('<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->', materialHelmetMarkup + '<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->')
+    .replace('<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->', materialTorsoMarkup + '<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->')
+    .replace('</g> <!-- end visorFaceContent -->', `${approvedExpressionMarkup()}</g> <!-- end visorFaceContent -->`)
     .replace('</g> <!-- end headFrontFace -->', hoverVisorMarkup + '</g> <!-- end headFrontFace -->')
     .replace(/(<g id="face-marquee-content">)[\s\S]*?<\/g>/,
       (_, open: string) => `${open}<text class="marquee-text-node" data-cyberbot-marquee="${safeMessage}" data-cyberbot-marquee-run="0" x="78" y="43" fill="#00f0ff" font-family="'JetBrains Mono', 'Segoe UI Emoji', monospace" font-size="17" font-weight="800" letter-spacing="0.04em" filter="url(#neonGlow)">${safeMessage}<animate attributeName="x" from="78" to="${timing.end}" dur="${timing.seconds}s" calcMode="linear" repeatCount="indefinite"/></text></g>`)

@@ -10,12 +10,6 @@
 .cyberbot-approved-avatar.hover-focus [data-part="headTurntable"] {
   transform: translate(var(--hover-head-x, 0px), -2px) rotate(var(--hover-head-tilt, 0deg));
 }
-.cyberbot-approved-avatar .hover-visor-reflection {
-  opacity: 0;
-  transform: translate(var(--hover-reflection-x, 0px), var(--hover-reflection-y, 0px));
-  transition: opacity 180ms ease, transform 130ms ease-out;
-}
-.cyberbot-approved-avatar.hover-focus .hover-visor-reflection { opacity: 1; }
 .cyberbot-approved-avatar .hover-visor-scan { opacity: 0; }
 .cyberbot-approved-avatar.hover-scan .hover-visor-scan { animation: cyberbotHoverScan 760ms ease-in-out 1; }
 .cyberbot-approved-avatar.hover-scan .helmet-sensor-light,
@@ -32,3 +26,6 @@
 }
 
 .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active [data-part="headTurntable"] { transition: none; }
+
+/* Thin material highlights remain visible without a hover or an idle animation. */
+.cyberbot-approved-avatar .material-edge-base { stroke: #65b5ce; stroke-width: 0.5; opacity: 0.12; }

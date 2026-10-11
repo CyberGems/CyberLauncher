@@ -19,18 +19,15 @@ export function useCyberBotHover(root: RefObject<HTMLDivElement | null>, hovered
         if (!bounds.width || !bounds.height) return;
         const clamp = (value: number) => Math.max(-1, Math.min(1, value));
         const x = clamp((event.clientX - bounds.left - bounds.width / 2) / (bounds.width / 2));
-        const y = clamp((event.clientY - bounds.top - bounds.height / 2) / (bounds.height / 2));
         container.style.setProperty('--hover-head-x', (x * 0.9).toFixed(2) + 'px');
         container.style.setProperty('--hover-head-tilt', (x * 2.4).toFixed(2) + 'deg');
-        container.style.setProperty('--hover-reflection-x', (x * 7).toFixed(2) + 'px');
-        container.style.setProperty('--hover-reflection-y', (y * 3).toFixed(2) + 'px');
       });
     };
     window.addEventListener('pointermove', move, { passive: true });
     return () => {
       window.removeEventListener('pointermove', move);
       if (frame !== undefined) cancelAnimationFrame(frame);
-      for (const name of ['--hover-head-x', '--hover-head-tilt', '--hover-reflection-x', '--hover-reflection-y']) {
+      for (const name of ['--hover-head-x', '--hover-head-tilt']) {
         container.style.removeProperty(name);
       }
     };
