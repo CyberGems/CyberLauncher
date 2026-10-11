@@ -250,7 +250,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         }
       }}
       onDrag={(_event, info) => {
-        setDragTilt(Math.max(-14, Math.min(14, info.offset.x * 0.14 + info.velocity.x * 0.009)));
+        // Motion also reports stationary frames; keep the last posture until the pointer moves.
+        if (info.delta.x === 0 && info.delta.y === 0) return;
+        // Follow this movement, not the distance from the grab point or averaged velocity.
+        setDragTilt(Math.max(-14, Math.min(14, info.delta.x * 1.4)));
       }}
       onDragEnd={(_event, info) => {
         setDragTilt(0);

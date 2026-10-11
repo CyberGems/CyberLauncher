@@ -1,3 +1,6 @@
 /* Application integration, kept separate from the unchanged laboratory styles. */
 .cyberbot-approved-avatar.portal-active [data-part="botAssembly"] { animation-play-state: running !important; }
 .cyberbot-approved-avatar.reduced-motion [data-part="botAssembly"].portal-hidden { opacity: 0; }
+
+/* Keep direction changes responsive without removing the flight transition. */
+.cyberbot-approved-avatar [data-part="botAssembly"].dragging-active { transition: transform 0.04s ease-out; }
