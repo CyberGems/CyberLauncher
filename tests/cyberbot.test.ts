@@ -9,7 +9,7 @@ import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { createCyberBotTypewriter, cyberBotSpeechLifetime, cyberBotTypingDuration, CYBERBOT_CHARACTER_MS, type CyberBotTypingState } from '../src/components/companion/cyberBotTyping';
 import { CyberBotTypingText } from '../src/components/companion/CyberBotTypingText';
 import { DesktopCyberBotAvatar } from '../src/components/companion/desktop/DesktopCyberBotAvatar';
-import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup } from '../src/components/companion/approved/approvedCyberBotBehavior';
+import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup, createCyberBotHoverReaction } from '../src/components/companion/approved/approvedCyberBotBehavior';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout, getCyberBotAnchor, CYBERBOT_LANDED_BOTTOM } from '../src/components/companion/cyberBotLayout';
@@ -1072,4 +1072,29 @@ test('a first marquee pass delays idle departure without resetting or starving i
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS);
   assert.deepEqual(changes, ['hidden', 'awake', 'hidden']);
   cycle.dispose();
+});
+
+test('hover alternates focus and scan only on fresh pointer entries', () => {
+  const hover = createCyberBotHoverReaction();
+  assert.equal(hover.update(false, true), null);
+  assert.equal(hover.update(true, true), 'focus');
+  for (let i = 0; i < 20; i++) assert.equal(hover.update(true, true), 'focus');
+  assert.equal(hover.update(false, true), null);
+  assert.equal(hover.update(true, true), 'scan');
+  for (let i = 0; i < 20; i++) assert.equal(hover.update(true, true), 'scan');
+  hover.update(false, true);
+  assert.equal(hover.update(true, true), 'focus');
+});
+
+test('blocked or interrupted hover does not consume or replay a reaction while held', () => {
+  const hover = createCyberBotHoverReaction();
+  assert.equal(hover.update(true, false), null);
+  assert.equal(hover.update(true, true), null, 'unblocking a held pointer must not trigger an effect');
+  hover.update(false, true);
+  assert.equal(hover.update(true, true), 'focus', 'a blocked entry must not consume focus');
+  assert.equal(hover.update(true, false), null, 'dragging, alerts or reduced motion cancel attention');
+  assert.equal(hover.update(true, true), null, 'cancelled attention must wait for a new entry');
+  hover.update(false, true);
+  assert.equal(hover.update(true, true), 'scan');
+  assert.equal(createCyberBotHoverReaction().update(true, true), 'focus', 'instances keep independent entry sequences');
 });

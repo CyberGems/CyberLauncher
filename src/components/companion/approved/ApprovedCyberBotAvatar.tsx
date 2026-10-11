@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useCyberBotReducedMotion } from '../useCyberBotReducedMotion';
 import artwork from './cyberbot-approved.svg?raw';
+import { useCyberBotHover } from './useCyberBotHover';
 import './cyberbot-approved.css';
 import './cyberbot-integration.css';
 import type { ApprovedCyberBotFace, CyberBotReviewState } from './CyberBotReviewContext';
@@ -33,9 +34,6 @@ export default function ApprovedCyberBotAvatar({
   const prefix = `approved-${useId().replace(/[^\w-]/g, '')}-`;
   const reducedMotion = useCyberBotReducedMotion() || !motionEnabled;
   const [portalPhase, setPortalPhase] = useState<'awake' | 'sinking' | 'hidden' | 'emerging'>('awake');
-  const [backFacing, setBackFacing] = useState(false);
-  const [turning, setTurning] = useState(false);
-  const backFacingRef = useRef(false);
   const wasAway = useRef(false);
   const wasDragging = useRef(false);
   const message = marqueeMessage ?? [`CYBERLAUNCHER v${APP_VERSION}`, marqueeStatusMessages?.[0]].filter(Boolean).join('   ◆   ');
@@ -46,6 +44,8 @@ export default function ApprovedCyberBotAvatar({
   // remains stable: React must not reset SVG mutations after ordinary rerenders.
   const markup = useMemo(() => createApprovedMarkup(artwork, prefix, initial.face, initial.speaking, initial.message), [prefix, initial]);
   const innerHTML = useMemo(() => ({ __html: markup }), [markup]);
+  const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !isDragging && !away && portalPhase === 'awake'
+    && !['marquee', 'sleeping', 'alert', 'storage'].includes(face));
   const canFloat = !reducedMotion && face !== 'marquee' && !isDragging && portalPhase === 'awake';
 
   useLayoutEffect(() => {
@@ -176,24 +176,6 @@ export default function ApprovedCyberBotAvatar({
   }, [face, away, marqueeMode, reducedMotion, message, prefix, marqueeRun]);
 
   useEffect(() => {
-    if (reducedMotion || face === 'marquee' || face === 'sleeping' || face === 'alert' || face === 'storage' || isDragging || away) {
-      backFacingRef.current = false;
-      setBackFacing(false);
-      setTurning(false);
-      return;
-    }
-    if (isHovered === backFacingRef.current) { setTurning(false); return; }
-    const turntable = root.current?.querySelector('[data-part="headTurntable"]');
-    turntable?.classList.remove('head-spinning');
-    turntable?.getBoundingClientRect();
-    turntable?.classList.add('head-spinning');
-    setTurning(true);
-    const halfway = window.setTimeout(() => { backFacingRef.current = isHovered; setBackFacing(isHovered); }, 140);
-    const finish = window.setTimeout(() => { turntable?.classList.remove('head-spinning'); setTurning(false); }, 280);
-    return () => { window.clearTimeout(halfway); window.clearTimeout(finish); turntable?.classList.remove('head-spinning'); };
-  }, [isHovered, reducedMotion, face, isDragging, away]);
-
-  useEffect(() => {
     if (reducedMotion || away || !['default', 'launcher', 'launcher-top', 'curious', 'flight', 'happy', 'delighted', 'affectionate', 'sparkle', 'speaking'].includes(face)) return;
     let timer: number;
     let reset: number;
@@ -211,11 +193,12 @@ export default function ApprovedCyberBotAvatar({
   const classes = ['cyberbot-approved-avatar', className,
     face === 'marquee' && 'marquee-active',
     face === 'marquee' && marqueeMode === 'screen' && !away && portalPhase === 'awake' && 'compact-screen-active',
-    speaking && 'speaking-active', backFacing && 'head-facing-back', turning && 'head-spinning-active',
+    speaking && 'speaking-active', hoverReaction && ('hover-' + hoverReaction),
     portalPhase !== 'awake' && 'portal-active', reducedMotion && 'reduced-motion',
   ].filter(Boolean).join(' ');
   return <div ref={root} aria-hidden="true" data-cyberbot-design="approved"
     data-cyberbot-face={face} data-cyberbot-speaking={speaking} data-cyberbot-presence={portalPhase}
+    data-cyberbot-hover={hoverReaction ?? 'none'}
     className={classes} style={{ width: size, height: size * 1.15,
       '--eq-glow-color': face === 'alert' || face === 'storage' ? '#f59e0b' : '#00f0ff',
       '--eq-peak-glow': face === 'alert' || face === 'storage' ? '#fef3c7' : '#cffafe',

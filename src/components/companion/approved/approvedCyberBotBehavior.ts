@@ -42,11 +42,30 @@ export function approvedExpressionMarkup() {
     `<g id="face-${face}" style="display: none;" filter="url(#neonGlow)" fill="none" stroke="${face === 'storage' ? '#f59e0b' : face === 'success' ? '#10b981' : '#00f0ff'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${content}</g>`).join('\n');
 }
 
+const hoverVisorMarkup = `<defs>
+  <clipPath id="hoverVisorClip"><rect x="23" y="25" width="54" height="26" rx="8"/></clipPath>
+  <radialGradient id="hoverReflectionGradient">
+    <stop offset="0" stop-color="#e0fbff" stop-opacity="0.22"/>
+    <stop offset="1" stop-color="#e0fbff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="hoverScanGradient" gradientUnits="userSpaceOnUse" x1="24" y1="26" x2="76" y2="26">
+    <stop offset="0" stop-color="#00f0ff" stop-opacity="0"/>
+    <stop offset="0.5" stop-color="#a5f3fc" stop-opacity="0.8"/>
+    <stop offset="1" stop-color="#00f0ff" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+<g class="hover-visor-effects" clip-path="url(#hoverVisorClip)" pointer-events="none" aria-hidden="true">
+  <ellipse class="hover-visor-reflection" cx="47" cy="34" rx="17" ry="12" fill="url(#hoverReflectionGradient)"/>
+  <path class="hover-visor-scan" d="M24 26 H76" stroke="url(#hoverScanGradient)" stroke-width="0.9"/>
+</g>
+`;
+
 export function createApprovedMarkup(artwork: string, prefix: string, face: ApprovedCyberBotFace, speaking: boolean, message = '') {
   const target = `face-${face === 'default' ? 'eyes-default' : face}`;
   const safeMessage = message.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
   const timing = approvedMarqueeTiming(message);
   return artwork.replace('</g> <!-- end visorFaceContent -->', `${approvedExpressionMarkup()}</g> <!-- end visorFaceContent -->`)
+    .replace('</g> <!-- end headFrontFace -->', hoverVisorMarkup + '</g> <!-- end headFrontFace -->')
     .replace(/(<g id="face-marquee-content">)[\s\S]*?<\/g>/,
       (_, open: string) => `${open}<text class="marquee-text-node" data-cyberbot-marquee="${safeMessage}" data-cyberbot-marquee-run="0" x="78" y="43" fill="#00f0ff" font-family="'JetBrains Mono', 'Segoe UI Emoji', monospace" font-size="17" font-weight="800" letter-spacing="0.04em" filter="url(#neonGlow)">${safeMessage}<animate attributeName="x" from="78" to="${timing.end}" dur="${timing.seconds}s" calcMode="linear" repeatCount="indefinite"/></text></g>`)
     .replace(/<g id="(face-(?:eyes-default|launcher-top|launcher|marquee|terminal|curious|flight|sleeping|alert|happy|delighted|affectionate|sparkle|wink|scared|storage|success|speaking))"(?: style="display: none;")?/g,
@@ -54,4 +73,24 @@ export function createApprovedMarkup(artwork: string, prefix: string, face: Appr
     .replace(/id="equalizerBars" class="[^"]*"/, `id="equalizerBars" class="${speaking ? 'speaking-eq' : 'standby-eq'}"`)
     .replace(/id="([\w-]+)"/g, (_, part: string) => `id="${prefix}${part}" data-part="${part}"`)
     .replace(/url\(#([\w-]+)\)/g, (_, part: string) => `url(#${prefix}${part})`);
+}
+
+export type CyberBotHoverReaction = 'focus' | 'scan';
+
+// Alternate actual pointer entries. Face changes and held hovers do not replay an effect.
+export function createCyberBotHoverReaction() {
+  let wasHovered = false;
+  let current: CyberBotHoverReaction | null = null;
+  let next: CyberBotHoverReaction = 'focus';
+  return {
+    update(hovered: boolean, eligible: boolean) {
+      if (!hovered || !eligible) current = null;
+      else if (!wasHovered) {
+        current = next;
+        next = next === 'focus' ? 'scan' : 'focus';
+      }
+      wasHovered = hovered;
+      return current;
+    },
+  };
 }

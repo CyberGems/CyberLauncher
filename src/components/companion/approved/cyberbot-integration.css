@@ -4,3 +4,31 @@
 
 /* Keep direction changes responsive without removing the flight transition. */
 .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active { transition: transform 0.04s ease-out; }
+
+/* Hover keeps the front artwork unflattened; the visor overlays are clipped. */
+.cyberbot-approved-avatar [data-part="headTurntable"] { transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+.cyberbot-approved-avatar.hover-focus [data-part="headTurntable"] {
+  transform: translate(var(--hover-head-x, 0px), -2px) rotate(var(--hover-head-tilt, 0deg));
+}
+.cyberbot-approved-avatar .hover-visor-reflection {
+  opacity: 0;
+  transform: translate(var(--hover-reflection-x, 0px), var(--hover-reflection-y, 0px));
+  transition: opacity 180ms ease, transform 130ms ease-out;
+}
+.cyberbot-approved-avatar.hover-focus .hover-visor-reflection { opacity: 1; }
+.cyberbot-approved-avatar .hover-visor-scan { opacity: 0; }
+.cyberbot-approved-avatar.hover-scan .hover-visor-scan { animation: cyberbotHoverScan 760ms ease-in-out 1; }
+.cyberbot-approved-avatar.hover-scan .helmet-sensor-light,
+.cyberbot-approved-avatar.hover-scan .ear-light { animation: cyberbotHoverSensorPulse 700ms ease-out 1; }
+@keyframes cyberbotHoverScan {
+  0% { opacity: 0; transform: translateY(0); }
+  18% { opacity: 0.85; }
+  75% { opacity: 0.65; }
+  100% { opacity: 0; transform: translateY(24px); }
+}
+@keyframes cyberbotHoverSensorPulse {
+  0%, 100% { opacity: 0.85; }
+  35% { opacity: 1; filter: drop-shadow(0 0 4px #00f0ff) drop-shadow(0 0 7px #38bdf8); }
+}
+
+.cyberbot-approved-avatar [data-part="botAssembly"].dragging-active [data-part="headTurntable"] { transition: none; }
