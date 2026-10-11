@@ -1,6 +1,6 @@
 # CyberBot design review and integration
 
-The approved design is extracted from the local `public/cyberbot-preview.html` laboratory. The review uses the real `App`, `CyberBot`, layout and speech bubble inside Electron, with the extracted avatar in its normal location. The first visual stage was accepted; normal launches now use the same approved component with the integration described below.
+The approved design is extracted from the private local `artifacts/cyberbot-preview.html` laboratory. The review uses the real `App`, `CyberBot`, layout and speech bubble inside Electron, with the extracted avatar in its normal location. The first visual stage was accepted; normal launches now use the same approved component with the integration described below.
 
 Run `npm run build`, then `node scripts/cyberbot-review.mjs`. The review creates a separate temporary portable profile. It copies appearance, launcher organization and the icon cache from the installed app, but does not copy scheduled tasks. Automatic updates, backups, system alerts, startup registration and hotspots are disabled in that profile. The production main process already skips Windows startup registration in development mode. Close this instance with its tray Exit command; closing the window hides it to the tray, as in CyberLauncher.
 
@@ -67,7 +67,7 @@ Verification: TypeScript, production build and all 56 CyberBot tests passed. The
 
 Scheduler launch/cancel buttons were clicked through the actual preload and main process using a deliberately nonexistent task ID in the isolated profile. IPC delivery was verified; no real scheduled application was executed. The storage HUD action was also delivered through that bridge. Release-link dispatch is covered by the controller test; opening an external browser was not part of native verification.
 
-Both rendering surfaces now share the approved artwork. The installed app, its profile and the untracked source laboratory remain untouched. Minor visual polish and a future installer/release remain separate work.
+Both rendering surfaces now share the approved artwork. The installed app, its profile and the private source laboratory remain untouched. Minor visual polish and a future installer/release remain separate work.
 
 ## Stage four: progressive speech
 
@@ -81,4 +81,4 @@ Native desktop messages retain their existing two-line title and single-line det
 
 Verification: all 61 CyberBot tests, TypeScript and production build passed. Real Electron checks covered the mounted launcher component and an actual App interaction, sequential title/detail writing, Unicode text, writing beyond 1.8 seconds, message replacement, dismissal, live reduced-motion changes, priority face preservation and exact bubble geometry before and after writing. The launcher bubble stayed at 300 by 178.375 CSS pixels; the desktop bubble stayed at 382 by 95.03125 pixels in the corresponding controlled case. Native source and compiled file loading were both checked, including visible caret bounds, live countdown updates, literal HTML text and a long nonpersistent notice that finished writing before its reading interval and automatic dismissal. No renderer errors occurred in those checks. The build retains its existing chunk-size warning.
 
-The review runs in an isolated profile. The installed app, actual scheduled tasks, private control files and untracked laboratory are unchanged.
+The review runs in an isolated profile. The installed app, actual scheduled tasks, private control files and private laboratory are unchanged.

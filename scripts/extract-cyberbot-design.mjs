@@ -5,7 +5,7 @@ import path from 'node:path';
 const require = createRequire(import.meta.url);
 const postcss = require('postcss');
 const project = path.resolve(import.meta.dirname, '..');
-const source = readFileSync(path.join(project, 'public/cyberbot-preview.html'), 'utf8');
+const source = readFileSync(path.join(project, 'artifacts/cyberbot-preview.html'), 'utf8');
 const svg = source.match(/<svg id="cyberBotV2"[\s\S]*?<\/svg>/)?.[0];
 const style = source.match(/<style>([\s\S]*?)<\/style>/)?.[1];
 if (!svg || !style) throw new Error('The approved laboratory SVG or styles are missing.');
