@@ -14536,6 +14536,9 @@ export default function App() {
           t('cyberbot_marquee_brand'),
           t('cyberbot_marquee_systems_ok'),
           t('cyberbot_marquee_ready'),
+          ...(scheduledTasks.length > 0
+            ? [t('cyberbot_marquee_scheduled_tasks', { count: String(scheduledTasks.length) })]
+            : []),
         ]}
         systemAttention={!!notification}
         onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
