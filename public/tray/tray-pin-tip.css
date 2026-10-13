@@ -87,22 +87,13 @@ html, body {
   flex: 1;
 }
 
-.head-icon-box {
+.head-icon {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-}
-
-.head-icon {
-  width: 17px;
-  height: 17px;
+  display: block;
   object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.2));
 }
 
 .head-title {
