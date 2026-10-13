@@ -253,7 +253,12 @@ test('RAM alerts keep the alert face while storage notices get a dedicated face'
   const storage = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'storage' }));
   assert.match(ram, /data-part="alert-variant-exclamation"/);
   assert.match(storage, /data-cyberbot-face="storage"/);
-  assert.match(storage, /x="43" y="44" width="14" height="5"/);
+  const storageFace = storage.match(/data-part="face-storage"[^>]*>([\s\S]*?)<\/g>/)?.[1];
+  assert.ok(storageFace);
+  assert.equal((storageFace.match(/<rect /g) ?? []).length, 2, 'two exclamation stems');
+  assert.equal((storageFace.match(/<circle /g) ?? []).length, 2, 'two separate exclamation dots');
+  assert.match(storageFace, /d="M45 46 H55"/, 'a neutral underscore mouth');
+  assert.doesNotMatch(storageFace, /width="14"|height="5"/, 'the obsolete disk glyph is gone');
   assert.match(storage, /--eq-glow-color:#f59e0b/);
 });
 

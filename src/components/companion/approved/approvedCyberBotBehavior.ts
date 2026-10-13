@@ -32,7 +32,7 @@ const expressions: Record<string, string> = {
   sparkle: '<path d="M36 29 L38 34 L43 36 L38 38 L36 43 L34 38 L29 36 L34 34 Z" fill="#00f0ff" stroke="none"/><path d="M58 35 Q64 31 70 35 M44 44 Q50 47 56 43"/>',
   wink: '<rect x="31" y="32" width="10" height="9" rx="4" fill="#00f0ff" stroke="none"/><path d="M58 36 Q64 32 70 36 M44 44 Q51 48 57 42"/>',
   scared: '<path d="M30 30 L40 36 L30 42 M70 30 L60 36 L70 42"/><ellipse cx="50" cy="44" rx="2" ry="2.5" stroke="#a5f3fc" stroke-width="1.6"/>',
-  storage: '<rect x="29" y="31" width="14" height="11" rx="3"/><rect x="57" y="31" width="14" height="11" rx="3"/><rect x="43" y="44" width="14" height="5" rx="1.5" stroke-width="1.4"/><circle cx="46" cy="46.5" r="0.8" fill="#fbbf24" stroke="none"/><path d="M50 46.5 H54" stroke-width="1.4"/>',
+  storage: '<rect x="34.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" stroke="none"/><circle cx="36" cy="41" r="1.6" fill="#f59e0b" stroke="none"/><rect x="62.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" stroke="none"/><circle cx="64" cy="41" r="1.6" fill="#f59e0b" stroke="none"/><path d="M45 46 H55" stroke-width="2"/>',
   success: '<path d="M29 35 L34 40 L43 30 M57 35 L62 40 L71 30"/><path d="M44 44 Q50 48 56 43" stroke-width="1.6"/>',
   speaking: '<circle cx="36" cy="36.5" r="4.2" fill="#00f0ff" stroke="none"/><circle cx="64" cy="36.5" r="4.2" fill="#00f0ff" stroke="none"/>',
 };
