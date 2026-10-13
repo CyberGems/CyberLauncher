@@ -862,7 +862,7 @@ test('the About panel has a bilingual phrase deck featuring the CyberLauncher fa
 });
 
 test('Cyber Terminal has a bilingual contextual phrase deck', () => {
-  assert.equal(cyberBotPhrases.terminal.length, 3);
+  assert.equal(cyberBotPhrases.terminal.length, 8);
   assert.ok(cyberBotPhrases.terminal.every(phrase => phrase.emotion === 'terminal'));
   for (const { key } of cyberBotPhrases.terminal) {
     assert.ok(translations.es[key]?.trim());

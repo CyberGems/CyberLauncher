@@ -78,6 +78,11 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_context_terminal', emotion: 'terminal' },
     { key: 'cyberbot_context_terminal_2', emotion: 'terminal' },
     { key: 'cyberbot_context_terminal_3', emotion: 'terminal' },
+    { key: 'cyberbot_context_terminal_4', emotion: 'terminal' },
+    { key: 'cyberbot_context_terminal_5', emotion: 'terminal' },
+    { key: 'cyberbot_context_terminal_6', emotion: 'terminal' },
+    { key: 'cyberbot_context_terminal_7', emotion: 'terminal' },
+    { key: 'cyberbot_context_terminal_8', emotion: 'terminal' },
   ],
   add_app: [
     { key: 'cyberbot_context_add_app', emotion: 'terminal' },

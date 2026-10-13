@@ -363,10 +363,10 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [enabled, ready, chatterLevel, quietHours, sayPhrase]);
 
   // Handle direct click on CyberBot
-  const handleClickBot = useCallback(() => {
+  const handleClickBot = useCallback((topic: 'interaction' | 'terminal' = 'interaction') => {
     playCyberBeep?.();
 
-    sayPhrase('interaction', {
+    sayPhrase(topic, {
       params: { count: String(dailyLaunchCount) },
       durationMs: 6500,
       priority: 'normal',

@@ -14513,7 +14513,7 @@ export default function App() {
         enabled={cyberBot.enabled}
         activeMessage={cyberBot.activeMessage}
         onDismissMessage={cyberBot.dismissMessage}
-        onClickBot={cyberBot.handleClickBot}
+        onClickBot={() => cyberBot.handleClickBot(isTerminalOpen ? 'terminal' : 'interaction')}
         position={cyberBot.position}
         dodgeEnabled={cyberBot.dodgeEnabled}
         hoverAssistEnabled={cyberBot.hoverAssistEnabled}
