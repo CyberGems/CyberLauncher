@@ -1,4 +1,5 @@
 import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
+import type { CyberBotReturnGesture } from './cyberBotReturn';
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue } from 'motion/react';
@@ -26,6 +27,7 @@ interface CyberBotProps {
   closeLabel: string;
   hoverAssistText: (count: number) => string;
   marqueeStatusMessages?: readonly string[];
+  returnGesture?: CyberBotReturnGesture;
   priorityEmotion?: CyberBotEmotion;
   systemAttention?: boolean;
   onSpeechVisibilityChange?: (visible: boolean) => void;
@@ -46,6 +48,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   closeLabel,
   hoverAssistText,
   marqueeStatusMessages,
+  returnGesture,
   priorityEmotion,
   systemAttention = false,
   onSpeechVisibilityChange,
@@ -349,6 +352,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         >
           <CyberBotAvatar
             emotion={currentEmotion}
+            returnGesture={reviewingDesign ? undefined : returnGesture}
             isHovered={isHovered}
             isDragging={isDragging}
             dragTilt={dragTilt}

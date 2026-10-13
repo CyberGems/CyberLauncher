@@ -62,3 +62,12 @@
   filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.65)) !important;
   opacity: 1 !important;
 }
+
+/* Brief return acknowledgement reuses the visor scan without turning the head. */
+.cyberbot-approved-avatar.return-scan .hover-visor-scan { animation: cyberbotHoverScan 760ms ease-in-out 1; }
+.cyberbot-approved-avatar.return-sensors .helmet-sensor-light,
+.cyberbot-approved-avatar.return-sensors .ear-light { animation: cyberbotReturnSensors 700ms ease-out 1 !important; }
+@keyframes cyberbotReturnSensors {
+  0%, 100% { opacity: 0.85; }
+  35% { opacity: 1; }
+}

@@ -27,7 +27,7 @@ let warmUpTimer: NodeJS.Timeout | null = null;
 let getMainWindowFn: () => BrowserWindow | null = () => null;
 let getAppIconPathFn: () => string = () => '';
 let showMainWindowFn: () => void = () => {};
-let showDesktopToastFn: ((payload: any) => void) | null = null;
+let showDesktopToastFn: ((payload: any) => boolean) | null = null;
 
 // State tracking for disk alerts
 let lastDiskTier: number | null = null;
@@ -55,9 +55,10 @@ function sendAlertNotification(options: {
   const icon = getAppIconPathFn();
   const isEs = currentConfig.language !== 'en';
 
+  let delivered = false;
   // 1. Direct standalone desktop toast (fast, independent)
   if (showDesktopToastFn) {
-    showDesktopToastFn({
+    delivered = showDesktopToastFn({
       type: options.level === 'critical' ? 'error' : 'warning',
       level: options.level,
       title: options.title,
@@ -80,6 +81,7 @@ function sendAlertNotification(options: {
       title: options.title,
       message: options.body,
       level: options.level,
+      delivered,
     });
   }
 
@@ -271,7 +273,7 @@ export function initSystemAlerts(
   getAppIconPath: () => string,
   showMainWindow: () => void,
   initialConfig?: Partial<SystemAlertsConfig>,
-  showDesktopToast?: (payload: any) => void
+  showDesktopToast?: (payload: any) => boolean
 ) {
   getMainWindowFn = getMainWindow;
   getAppIconPathFn = getAppIconPath;

@@ -910,6 +910,7 @@ function createWindow() {
   mainWindow.on('hide', () => {
     displayDiagnostics.write('window-hide', displayWindowState());
     console.log('[WM EVENT] hide');
+    mainWindow?.webContents.send('launcher-hidden');
     syncHotspotLockAfterWindowChange();
     applyRendererThrottling();
     // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
@@ -972,7 +973,10 @@ function createWindow() {
   });
 
   mainWindow.on('focus', () => displayDiagnostics.write('window-focus', displayWindowState()));
-  mainWindow.on('minimize', () => displayDiagnostics.write('window-minimize', displayWindowState()));
+  mainWindow.on('minimize', () => {
+    displayDiagnostics.write('window-minimize', displayWindowState());
+    mainWindow?.webContents.send('launcher-hidden');
+  });
 
   mainWindow.on('restore', () => {
     displayDiagnostics.write('window-restore', displayWindowState());
@@ -980,6 +984,7 @@ function createWindow() {
     if (inOwnRestoreCall === ownRestoreCallId) {
       inOwnRestoreCall = 0;
       console.log('[WM] Own restore confirmed');
+      mainWindow?.webContents.send('launcher-shown');
     } else {
       console.log('[WM] Window restored by OS (UAC?), re-hiding unconditionally');
       windowVisibilityState = 'hidden-os';
@@ -1986,7 +1991,7 @@ function ensureDesktopToastWin(): BrowserWindow {
 
 function showDesktopToastInternal(payload: any) {
   const launcherVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
-  if (payload.source === 'system-alert' && launcherVisible) return;
+  if (payload.source === 'system-alert' && launcherVisible) return false;
   const channel = chooseNotificationChannel(toastDeliverySettings, {
     critical: payload.level === 'critical',
     essential: payload.type === 'imminent' || payload.essential === true,
@@ -1995,12 +2000,12 @@ function showDesktopToastInternal(payload: any) {
   // Launch commentary is optional CyberBot chatter, never a banner fallback.
   // It must not replace a more important notification already on screen.
   if (payload.source === 'launch') {
-    if (launcherVisible || channel !== 'bot') return;
-    if (desktopToastWin?.isVisible() && latestToastPayload?.source !== 'launch') return;
+    if (launcherVisible || channel !== 'bot') return false;
+    if (desktopToastWin?.isVisible() && latestToastPayload?.source !== 'launch') return false;
   }
   if (channel === 'none' || (channel === 'bot' && launcherVisible)) {
     hideDesktopToastInternal();
-    return;
+    return false;
   }
   desktopToastVisibilityVersion++;
   latestToastPayload = { ...payload, presentation: channel };
@@ -2042,6 +2047,7 @@ function showDesktopToastInternal(payload: any) {
       hideDesktopToastInternal();
     }, channel === 'bot' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
   }
+  return true;
 }
 
 function hideDesktopToastInternal() {
@@ -3834,8 +3840,7 @@ function setupIpcHandlers() {
 
   // --- Desktop Toast Window IPC ---
   ipcMain.handle('show-desktop-toast', (_event, payload: any) => {
-    showDesktopToastInternal(payload);
-    return true;
+    return showDesktopToastInternal(payload);
   });
 
   ipcMain.handle('set-toast-preferences', (_event, settings: unknown) => {

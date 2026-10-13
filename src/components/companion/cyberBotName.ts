@@ -24,7 +24,7 @@ const namedPhrases: Partial<Record<TranslationKey, TranslationKey>> = {
   cyberbot_greeting_afternoon: 'cyberbot_greeting_afternoon_named',
   cyberbot_greeting_evening: 'cyberbot_greeting_evening_named',
   cyberbot_reaction_beep: 'cyberbot_reaction_beep_named',
-  cyberbot_last_launch_2: 'cyberbot_last_launch_named',
+  cyberbot_return: 'cyberbot_return_named',
 };
 
 export function cyberBotPhraseKeyWithName(key: TranslationKey, preferredName: string): TranslationKey {

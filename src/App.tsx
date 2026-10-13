@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { getCyberBotMarqueeStatusMessages } from './components/companion/cyberBotBehavior';
+import { createCyberBotReturnController, createCyberBotNoticeLedger, type CyberBotReturnGesture } from './components/companion/cyberBotReturn';
 import { cyberBotNotificationEmotion } from './components/companion/cyberBotNotice';
 import { CyberManagerRecommendation } from './components/CyberManagerRecommendation';
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
@@ -423,6 +424,7 @@ declare global {
       openDataFolder: () => Promise<void>;
       onReloadConfig: (callback: () => void) => () => void;
       onLauncherShown: (callback: () => void) => () => void;
+      onLauncherHidden?: (callback: () => void) => () => void;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
@@ -461,7 +463,7 @@ declare global {
       setAutoUpdate: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
-      onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => () => void;
+      onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical'; delivered?: boolean }) => void) => () => void;
       onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
       showDesktopToast?: (payload: {
         type: 'imminent' | 'success' | 'error' | 'warning' | 'info';
@@ -3393,9 +3395,12 @@ export default function App() {
   const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
   const [isWindowVisible, setIsWindowVisible] = useState(() => !document.hidden);
   useEffect(() => {
-    const updateVisibility = () => setIsWindowVisible(!document.hidden);
+    const nativeVisibility = isElectron && !!window.electronAPI?.onLauncherHidden;
+    const updateVisibility = () => { if (!nativeVisibility) setIsWindowVisible(!document.hidden); };
+    const shown = window.electronAPI?.onLauncherShown?.(() => setIsWindowVisible(true));
+    const hidden = window.electronAPI?.onLauncherHidden?.(() => setIsWindowVisible(false));
     document.addEventListener('visibilitychange', updateVisibility);
-    return () => document.removeEventListener('visibilitychange', updateVisibility);
+    return () => { shown?.(); hidden?.(); document.removeEventListener('visibilitychange', updateVisibility); };
   }, []);
 
   const lastPinnedLaunchAtRef = useRef(0);
@@ -3767,6 +3772,10 @@ export default function App() {
     }
 
     if (notification) {
+      const ongoing = notification.persistent || notification.level === 'critical'
+        || (notification.action === 'open-about' && updateStatus.state === 'available');
+      if (!ongoing && noticeLedgerRef.current.has(notification)) return;
+      let accepted = false;
       let actionLabel = '';
       let brandTag = notification.brandTag;
       if (notification.action === 'open-hud-clock') {
@@ -3799,7 +3808,7 @@ export default function App() {
         : undefined;
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
         if (isUpdateAvailable) {
-          cyberBot.say({
+          accepted = cyberBot.say({
             id: `update_available_${updateVersion}`,
             text: notification.message,
             detail: notification.detail,
@@ -3829,7 +3838,8 @@ export default function App() {
             essential: true,
           });
         } else {
-          cyberBot.say({
+          accepted = cyberBot.say({
+            id: noticeLedgerRef.current.id(notification),
             text: notification.message,
             detail: notification.detail,
             emotion: cyberBotNotificationEmotion(notification),
@@ -3840,7 +3850,7 @@ export default function App() {
             secondaryAction: actionHandler && notification.releaseUrl
               ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
               : undefined,
-            onDismiss: notification.persistent ? () => setNotification(null) : undefined,
+            onDismiss: () => setNotification(null),
             durationMs: notification.persistent ? 0 : notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
             priority: notification.level === 'critical' ? 'high' : 'normal',
             essential: notification.essential,
@@ -3848,7 +3858,8 @@ export default function App() {
         }
       }
 
-      if (showFloating && (notification.source !== 'system-alert' || isWindowVisible)) void window.electronAPI!.showDesktopToast!({
+      if (accepted) noticeLedgerRef.current.mark(notification);
+      if (showFloating && (notification.source !== 'system-alert' || isWindowVisible || ongoing)) void window.electronAPI!.showDesktopToast!({
         type: notification.type,
         level: notification.level,
         essential: notification.essential,
@@ -3862,7 +3873,9 @@ export default function App() {
         releaseLabel: notification.releaseUrl ? t('about_view_release') : undefined,
         dismissLabel: t('cyberbot_close_message'),
         persistent: notification.persistent,
-      });
+      }).then(delivered => {
+        if (delivered) noticeLedgerRef.current.mark(notification);
+      }).catch(error => console.error('[CYBERBOT] Notice delivery failed:', error));
       return;
     }
 
@@ -4624,14 +4637,27 @@ export default function App() {
   }, [isConfigLoaded]);
 
   // Al mostrar el launcher: reset ligero de vista (sin releer config del disco)
+  const noticeLedgerRef = useRef(createCyberBotNoticeLedger());
+  const returnControllerRef = useRef(createCyberBotReturnController());
+  const [cyberBotReturnGesture, setCyberBotReturnGesture] = useState<CyberBotReturnGesture>();
   const launcherShownContextRef = useRef<{
-    enabled: boolean;
-    sayPhrase: typeof cyberBot.sayPhrase;
-    latestLaunchName?: string;
-    modalOpen: boolean;
+    enabled: boolean; blocked: boolean; allowSpeech: boolean;
+    tasks: readonly ScheduledTask[];
+    say: typeof cyberBot.say; sayPhrase: typeof cyberBot.sayPhrase; t: typeof t;
   } | null>(null);
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onLauncherShown) return;
+    let returnTimer: number | null = null;
+    const hidden = () => {
+      returnControllerRef.current.hidden();
+      setCyberBotReturnGesture(undefined);
+      if (returnTimer !== null) window.clearTimeout(returnTimer);
+      returnTimer = null;
+    };
+    const cleanupHidden = window.electronAPI.onLauncherHidden?.(hidden);
+    const visibility = () => { if (document.hidden) hidden(); };
+    // Older hosts and browser visibility provide a fallback; native hide remains authoritative.
+    if (!window.electronAPI.onLauncherHidden) document.addEventListener('visibilitychange', visibility);
     const cleanup = window.electronAPI.onLauncherShown(() => {
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -4643,14 +4669,27 @@ export default function App() {
       setIsHelpSubmenuOpen(false);
       setIsCommandPaletteOpen(false);
 
-      const context = launcherShownContextRef.current;
-      if (context?.enabled && !context.modalOpen && context.latestLaunchName && Math.random() < 0.4) {
-        context.sayPhrase('last_launch', {
-          params: { name: context.latestLaunchName },
-          durationMs: 4500,
-          priority: 'low',
+      if (returnTimer !== null) window.clearTimeout(returnTimer);
+      // Let visibility, countdowns and pending notices settle before a decorative welcome.
+      returnTimer = window.setTimeout(() => {
+        returnTimer = null;
+        const context = launcherShownContextRef.current;
+        if (!context) return;
+        const gesture = returnControllerRef.current.shown({
+          enabled: context.enabled, blocked: context.blocked, allowSpeech: context.allowSpeech,
+          tasks: context.tasks,
+          greet: () => context.sayPhrase('return', { durationMs: 4500, priority: 'low' }),
+          announceTask: task => context.say({
+            id: 'return_task_' + task.id,
+            text: task.remainingSeconds <= 60
+              ? context.t('cyberbot_return_task_seconds', { name: task.name, seconds: String(Math.ceil(task.remainingSeconds)) })
+              : context.t('cyberbot_return_task_minutes', { name: task.name, minutes: String(Math.ceil(task.remainingSeconds / 60)) }),
+            emotion: 'terminal', priority: 'normal', durationMs: 6500,
+            action: { label: context.t('toast_action_view_clock'), onClick: () => setIsClockHUDOpen(true) },
+          }),
         });
-      }
+        setCyberBotReturnGesture(gesture ?? undefined);
+      }, 120);
 
       if (localStorage.getItem('resetOnLaunch') === 'false') return;
 
@@ -4666,7 +4705,11 @@ export default function App() {
         scrollContainerRef.current.scrollTop = 0;
       }
     });
-    return cleanup;
+    return () => {
+      cleanup(); cleanupHidden?.();
+      document.removeEventListener('visibilitychange', visibility);
+      if (returnTimer !== null) window.clearTimeout(returnTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -5005,15 +5048,17 @@ export default function App() {
     if (!isElectron || !window.electronAPI) return;
 
     const cleanupToast = window.electronAPI.onSystemAlertToast?.((data) => {
-      setNotification({
+      const notice = {
         message: data.title,
         detail: data.message,
-        type: data.level === 'critical' ? 'error' : 'warning',
+        type: data.level === 'critical' ? 'error' as const : 'warning' as const,
         level: data.level,
         brandTag: data.type === 'disk' ? (t('toast_brand_storage') || 'DISCO') : (t('toast_brand_memory') || 'MEMORIA'),
-        action: data.type === 'disk' ? 'open-hud-storage' : 'open-hud-system',
-        source: 'system-alert',
-      });
+        action: data.type === 'disk' ? 'open-hud-storage' as const : 'open-hud-system' as const,
+        source: 'system-alert' as const,
+      };
+      if (data.delivered) noticeLedgerRef.current.mark(notice);
+      setNotification(notice);
     });
 
     const cleanupAction = window.electronAPI.onSystemAlertAction?.((data) => {
@@ -6015,9 +6060,11 @@ export default function App() {
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
-    sayPhrase: cyberBot.sayPhrase,
-    latestLaunchName: launchHistory[0]?.name,
-    modalOpen: isAnyModalOpen,
+    blocked: isAnyModalOpen || !isCyberBotSpeechVisible
+      || (!!cyberBot.activeMessage && cyberBot.activeMessage.priority !== 'low') || !!notification || !!imminentTask,
+    allowSpeech: !isTerminalOpen && cyberBot.chatterLevel === 'full'
+      && (!cyberBot.quietHours.enabled || !isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)),
+    tasks: scheduledTasks, say: cyberBot.say, sayPhrase: cyberBot.sayPhrase, t,
   };
 
   const openTerminal = useCallback(() => {
@@ -14512,6 +14559,7 @@ export default function App() {
       <CyberBot
         enabled={cyberBot.enabled}
         activeMessage={cyberBot.activeMessage}
+        returnGesture={cyberBotReturnGesture}
         onDismissMessage={cyberBot.dismissMessage}
         onClickBot={() => cyberBot.handleClickBot(isTerminalOpen ? 'terminal' : 'interaction')}
         position={cyberBot.position}

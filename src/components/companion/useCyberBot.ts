@@ -289,6 +289,18 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     }
 
     if (!canReplaceCyberBotMessage(activeMessageRef.current, priority)) return false;
+    // A persistent/critical notice survives a return without restarting speech or reading time.
+    const current = activeMessageRef.current;
+    if (msg.id && current?.id === msg.id && current.text === msg.text && current.detail === msg.detail) {
+      const refreshed = {
+        ...current, emotion: msg.emotion || 'speaking', tag: msg.tag, priority,
+        action: msg.action, secondaryAction: msg.secondaryAction, tertiaryAction: msg.tertiaryAction,
+        onDismiss: msg.onDismiss,
+      };
+      activeMessageRef.current = refreshed;
+      setActiveMessage(refreshed);
+      return true;
+    }
 
     if (dismissTimerRef.current) {
       window.clearTimeout(dismissTimerRef.current);

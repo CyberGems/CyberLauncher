@@ -1,6 +1,8 @@
+import type { CyberBotReturnGesture } from '../cyberBotReturn';
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useCyberBotReducedMotion } from '../useCyberBotReducedMotion';
 import artwork from './cyberbot-approved.svg?raw';
+import { useCyberBotReturnGesture } from './useCyberBotReturnGesture';
 import { useCyberBotHover } from './useCyberBotHover';
 import { useCyberBotMaterialLight } from './useCyberBotMaterialLight';
 import { useCyberBotLevitation } from './useCyberBotLevitation';
@@ -18,6 +20,7 @@ interface Props extends CyberBotReviewState {
   marqueeRun?: number;
   onMarqueeDuration?: (message: string, durationMs: number) => void;
   marqueeStatusMessages?: readonly string[];
+  returnGesture?: CyberBotReturnGesture;
   className?: string;
   size?: number;
 }
@@ -30,7 +33,7 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev
 export default function ApprovedCyberBotAvatar({
   face, marqueeMode, speaking, motion: motionEnabled, isHovered = false,
   isDragging = false, dragTilt = 0, away = false, marqueeMessage, marqueeRun = 0,
-  onMarqueeDuration, marqueeStatusMessages, className = '', size = 80,
+  onMarqueeDuration, returnGesture, marqueeStatusMessages, className = '', size = 80,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const prefix = `approved-${useId().replace(/[^\w-]/g, '')}-`;
@@ -46,7 +49,10 @@ export default function ApprovedCyberBotAvatar({
   // remains stable: React must not reset SVG mutations after ordinary rerenders.
   const markup = useMemo(() => createApprovedMarkup(artwork, prefix, initial.face, initial.speaking, initial.message), [prefix, initial]);
   const innerHTML = useMemo(() => ({ __html: markup }), [markup]);
-  const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !isDragging && !away && portalPhase === 'awake'
+  const returnReaction = useCyberBotReturnGesture(root, returnGesture,
+    !away && portalPhase === 'awake' && face !== 'marquee' && face !== 'sleeping',
+    isDragging || speaking || ['alert', 'storage'].includes(face), reducedMotion);
+  const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !returnReaction && !isDragging && !away && portalPhase === 'awake'
     && !['marquee', 'sleeping', 'alert', 'storage'].includes(face));
   useCyberBotMaterialLight(root, !reducedMotion && !away);
   const canFloat = !reducedMotion && !away && face !== 'marquee' && !isDragging && portalPhase === 'awake';
@@ -199,12 +205,13 @@ export default function ApprovedCyberBotAvatar({
     face === 'marquee' && 'marquee-active',
     face === 'marquee' && marqueeMode === 'screen' && !away && portalPhase === 'awake' && 'compact-screen-active',
     (isHovered || isDragging) && !away && portalPhase === 'awake' && 'interaction-active',
+    returnReaction && ('return-' + returnReaction),
     speaking && 'speaking-active', hoverReaction && ('hover-' + hoverReaction),
     portalPhase !== 'awake' && 'portal-active', reducedMotion && 'reduced-motion',
   ].filter(Boolean).join(' ');
   return <div ref={root} aria-hidden="true" data-cyberbot-design="approved"
     data-cyberbot-face={face} data-cyberbot-speaking={speaking} data-cyberbot-presence={portalPhase}
-    data-cyberbot-hover={hoverReaction ?? 'none'}
+    data-cyberbot-hover={hoverReaction ?? 'none'} data-cyberbot-return={returnReaction ?? 'none'}
     className={classes} style={{ width: size, height: size * 1.15,
       '--eq-glow-color': face === 'alert' || face === 'storage' ? '#f59e0b' : '#00f0ff',
       '--eq-peak-glow': face === 'alert' || face === 'storage' ? '#fef3c7' : '#cffafe',

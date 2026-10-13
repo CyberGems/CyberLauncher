@@ -126,10 +126,11 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_pin_blur_2', emotion: 'launcher' },
     { key: 'cyberbot_pin_blur_3', emotion: 'curious' },
   ],
-  last_launch: [
-    { key: 'cyberbot_last_launch', emotion: 'terminal' },
-    { key: 'cyberbot_last_launch_2', emotion: 'launcher' },
-    { key: 'cyberbot_last_launch_3', emotion: 'curious' },
+  return: [
+    { key: 'cyberbot_return', emotion: 'launcher' },
+    { key: 'cyberbot_return_2', emotion: 'curious' },
+    { key: 'cyberbot_return_3', emotion: 'terminal' },
+    { key: 'cyberbot_return_4', emotion: 'launcher' },
   ],
   backup_success: [
     { key: 'cyberbot_backup_success', emotion: 'success' },

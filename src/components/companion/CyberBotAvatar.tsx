@@ -1,3 +1,4 @@
+import type { CyberBotReturnGesture } from './cyberBotReturn';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import type { CyberBotEmotion } from './companionTypes';
@@ -16,6 +17,7 @@ interface CyberBotAvatarProps {
   onMarqueeReadingChange?: (reading: boolean) => void;
   isSpeaking?: boolean;
   marqueeStatusMessages?: readonly string[];
+  returnGesture?: CyberBotReturnGesture;
   size?: number;
   className?: string;
 }
@@ -23,7 +25,7 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   emotion = 'idle', isHovered = false, isDragging = false, dragTilt = 0, away = false, canLand = false,
-  isSpeaking = false, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
+  isSpeaking = false, returnGesture, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
 }) => {
   const review = React.useContext(CyberBotReviewContext);
   const reducedMotion = useCyberBotReducedMotion();
@@ -93,9 +95,15 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
     return () => { window.clearTimeout(timer); onMarqueeReadingChange?.(false); };
   }, [review, face, away, marqueeMessage, marqueeRun, measuredMarquee, onMarqueeReadingChange]);
 
+  useEffect(() => {
+    if (!returnGesture || review) return;
+    setIdleExpression('launcher');
+    facesSinceMarquee.current = 1;
+  }, [returnGesture?.id, review]);
+
   const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion;
   return <ApprovedCyberBotAvatar
-    face={face} speaking={speaking} motion={!reducedMotion}
+    face={face} speaking={speaking} returnGesture={review ? undefined : returnGesture} motion={!reducedMotion}
     {...review} marqueeMode={canLand && (!review || review.marqueeMode === 'screen') ? 'screen' : 'paused'} isHovered={isHovered} isDragging={isDragging} dragTilt={dragTilt} away={away}
     marqueeMessage={review ? undefined : marqueeMessage} marqueeRun={marqueeRun}
     onMarqueeDuration={(message, durationMs) => setMeasuredMarquee(previous =>

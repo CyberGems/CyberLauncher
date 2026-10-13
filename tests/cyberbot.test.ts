@@ -10,6 +10,7 @@ import { createCyberBotTypewriter, cyberBotSpeechLifetime, cyberBotTypingDuratio
 import { CyberBotTypingText } from '../src/components/companion/CyberBotTypingText';
 import { DesktopCyberBotAvatar } from '../src/components/companion/desktop/DesktopCyberBotAvatar';
 import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup, createCyberBotHoverReaction } from '../src/components/companion/approved/approvedCyberBotBehavior';
+import { createCyberBotReturnController, createCyberBotNoticeLedger, CYBERBOT_RETURN_ABSENCE_MS, CYBERBOT_RETURN_GREETING_COOLDOWN_MS } from '../src/components/companion/cyberBotReturn';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
 import { getCyberBotLayout, getCyberBotAnchor, isCyberBotAtFloor, CYBERBOT_LANDED_BOTTOM } from '../src/components/companion/cyberBotLayout';
@@ -105,7 +106,7 @@ test('setup and add-app guidance is available in Spanish and English', () => {
 });
 
 test('only selected phrases use the preferred name and both languages have neutral fallbacks', () => {
-  for (const key of ['cyberbot_greeting_morning', 'cyberbot_greeting_afternoon', 'cyberbot_greeting_evening', 'cyberbot_reaction_beep', 'cyberbot_last_launch_2'] as const) {
+  for (const key of ['cyberbot_greeting_morning', 'cyberbot_greeting_afternoon', 'cyberbot_greeting_evening', 'cyberbot_reaction_beep', 'cyberbot_return'] as const) {
     const namedKey = cyberBotPhraseKeyWithName(key, 'Ana');
     assert.notEqual(namedKey, key);
     assert.equal(cyberBotPhraseKeyWithName(key, ''), key);
@@ -876,7 +877,7 @@ test('casual CyberBot commentary reserves cheerful faces for actual achievements
     'settings_general', 'settings_cyberbot', 'settings_backup', 'hud_system',
     'hud_storage', 'command_palette', 'terminal', 'add_app', 'add_app_drop',
     'add_category', 'launch', 'launch_admin', 'launch_pinned',
-    'launch_admin_pinned', 'pin_blur', 'last_launch',
+    'launch_admin_pinned', 'pin_blur', 'return',
   ] as const;
   const cheerful = new Set(['happy', 'wink', 'delighted', 'affectionate', 'sparkle', 'speaking']);
   const casualPhrases = casualTopics.flatMap(topic => [...cyberBotPhrases[topic]]) as CyberBotPhrase[];
@@ -990,8 +991,8 @@ test('hover assistance labels and countdown are translated in both languages', (
   }
 });
 
-test('launch and return variants retain the application name in both languages', () => {
-  for (const topic of ['launch', 'launch_admin', 'launch_pinned', 'launch_admin_pinned', 'last_launch'] as const) {
+test('launch variants retain the application name in both languages', () => {
+  for (const topic of ['launch', 'launch_admin', 'launch_pinned', 'launch_admin_pinned'] as const) {
     for (const { key } of cyberBotPhrases[topic]) {
       for (const language of ['es', 'en'] as const) {
         assert.ok(translations[language][key].includes('{name}'), `${language}: ${key}`);
@@ -1128,4 +1129,115 @@ test('elevated marquee keeps its body and scrolling text until landing is allowe
 test('a version-only or empty marquee catalog has a valid fallback', () => {
   assert.equal(nextCyberBotIdleMarqueeMessage('CYBERLAUNCHER v1.12.0', getCyberBotIdleMarqueeMessages('1.12.0')), 'CYBERLAUNCHER v1.12.0');
   assert.equal(nextCyberBotIdleMarqueeMessage(null, []), '');
+});
+
+test('returns ignore initial/duplicate shows and alternate two brief gestures', () => {
+  const controller = createCyberBotReturnController();
+  const options = { enabled: true, blocked: false, allowSpeech: true, tasks: [],
+    greet: () => { assert.fail('short returns must not greet'); }, announceTask: () => false };
+  assert.equal(controller.shown({ ...options, now: 0 }), null);
+  controller.hidden(100);
+  assert.deepEqual(controller.shown({ ...options, now: 600 }), { id: 1, kind: 'scan' });
+  assert.equal(controller.shown({ ...options, now: 700 }), null);
+  controller.hidden(1000);
+  assert.deepEqual(controller.shown({ ...options, now: 1300 }), { id: 2, kind: 'sensors' });
+});
+
+test('return greetings require ten minutes away and thirty minutes between accepted greetings', () => {
+  const controller = createCyberBotReturnController();
+  let greetings = 0;
+  const options = { enabled: true, blocked: false, allowSpeech: true, tasks: [],
+    greet: () => { greetings++; return true; }, announceTask: () => false };
+  controller.hidden(0);
+  controller.hidden(CYBERBOT_RETURN_ABSENCE_MS - 1); // Repeated hide must not reset the absence.
+  assert.equal(controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS }), null);
+  assert.equal(greetings, 1);
+  controller.hidden(CYBERBOT_RETURN_ABSENCE_MS);
+  assert.ok(controller.shown({ ...options, now: 2 * CYBERBOT_RETURN_ABSENCE_MS }));
+  assert.equal(greetings, 1);
+  controller.hidden(3 * CYBERBOT_RETURN_ABSENCE_MS);
+  assert.equal(controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS + CYBERBOT_RETURN_GREETING_COOLDOWN_MS }), null);
+  assert.equal(greetings, 2);
+});
+
+test('busy returns yield to notices/countdowns and muted speech keeps a silent acknowledgement', () => {
+  const controller = createCyberBotReturnController();
+  const options = { enabled: true, blocked: true, allowSpeech: true,
+    tasks: [{ id: 'task', name: 'Next', remainingSeconds: 50 }],
+    greet: () => { assert.fail('busy return greeted'); }, announceTask: () => { assert.fail('busy return announced a task'); } };
+  controller.hidden(0);
+  assert.equal(controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS }), null);
+  controller.hidden(1);
+  assert.equal(controller.shown({ ...options, enabled: false, blocked: false, now: CYBERBOT_RETURN_ABSENCE_MS }), null);
+  controller.hidden(0);
+  assert.deepEqual(controller.shown({ ...options, blocked: false, allowSpeech: false, now: CYBERBOT_RETURN_ABSENCE_MS }), { id: 1, kind: 'scan' });
+});
+
+test('return task notices use the nearest real future task once and leave imminent countdowns alone', () => {
+  const controller = createCyberBotReturnController();
+  const announced: string[] = [];
+  const tasks = [
+    { id: 'done', name: 'Done', remainingSeconds: 0 },
+    { id: 'imminent', name: 'Imminent', remainingSeconds: 10 },
+    { id: 'later', name: 'Later', remainingSeconds: 301 },
+    { id: 'invalid', name: 'Invalid', remainingSeconds: NaN },
+    { id: 'second', name: 'Second', remainingSeconds: 200 },
+    { id: 'first', name: 'First', remainingSeconds: 35 },
+  ];
+  const options = { enabled: true, blocked: false, allowSpeech: true, tasks,
+    greet: () => { assert.fail('task must precede greeting'); },
+    announceTask: task => { announced.push(task.id); return true; } };
+  controller.hidden(0);
+  assert.equal(controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS }), null);
+  controller.hidden(0);
+  assert.equal(controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS }), null);
+  assert.deepEqual(announced, ['first', 'second']);
+  controller.hidden(100);
+  const advancedTasks = tasks.map(task => ({ ...task, remainingSeconds: task.remainingSeconds - 1 }));
+  assert.equal(controller.shown({ ...options, now: 150, tasks: advancedTasks }), null);
+  assert.deepEqual(announced, ['first', 'second', 'later'], 'the formerly distant task has reached the five-minute boundary');
+  controller.hidden(200);
+  assert.ok(controller.shown({ ...options, now: 250, tasks: advancedTasks }));
+  assert.deepEqual(announced, ['first', 'second', 'later']);
+});
+
+test('rejected return speech does not consume a task or greeting opportunity', () => {
+  const controller = createCyberBotReturnController();
+  let accepted = false, attempts = 0;
+  const options = { enabled: true, blocked: false, allowSpeech: true,
+    tasks: [{ id: 'a', name: 'A', remainingSeconds: 40 }],
+    greet: () => { attempts++; return accepted; }, announceTask: () => { attempts++; return accepted; } };
+  controller.hidden(0); controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS });
+  accepted = true;
+  controller.hidden(0); controller.shown({ ...options, now: CYBERBOT_RETURN_ABSENCE_MS });
+  assert.equal(attempts, 2);
+  accepted = false;
+  controller.hidden(0); controller.shown({ ...options, tasks: [], now: CYBERBOT_RETURN_ABSENCE_MS });
+  accepted = true;
+  controller.hidden(0); controller.shown({ ...options, tasks: [], now: CYBERBOT_RETURN_ABSENCE_MS });
+  assert.equal(attempts, 4);
+});
+
+test('notice delivery tracks an accepted instance without suppressing a genuinely new identical alert', () => {
+  const ledger = createCyberBotNoticeLedger();
+  const first = { message: 'RAM warning' }, second = { message: 'RAM warning' };
+  assert.equal(ledger.has(first), false);
+  const id = ledger.id(first);
+  ledger.mark(first);
+  assert.equal(ledger.has(first), true);
+  assert.equal(ledger.id(first), id);
+  assert.equal(ledger.has(second), false);
+  assert.notEqual(ledger.id(second), id);
+});
+
+test('return greetings and task estimates are bilingual and contain no last-app reminders', () => {
+  assert.equal(cyberBotPhrases.return.length, 4);
+  for (const language of ['es', 'en'] as const) {
+    const greetings = cyberBotPhrases.return.map(phrase => translations[language][phrase.key]);
+    assert.equal(new Set(greetings).size, greetings.length);
+    assert.ok(greetings.every(text => !!text && !text.includes('{name}')));
+    assert.ok(translations[language].cyberbot_return_task_seconds.includes('{seconds}'));
+    assert.ok(translations[language].cyberbot_return_task_minutes.includes('{minutes}'));
+    assert.ok(translations[language].cyberbot_return_named.includes('{userName}'));
+  }
 });
