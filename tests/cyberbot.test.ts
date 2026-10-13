@@ -37,6 +37,7 @@ import {
   cyberBotNeutralIdleExpressions,
   getCyberBotIdleExpressionDuration,
   getCyberBotIdleMarqueeMessages,
+  getCyberBotMarqueeStatusMessages,
   nextCyberBotIdleExpression,
   nextCyberBotIdleMarqueeMessage,
   shouldCyberBotBlink,
@@ -187,10 +188,6 @@ test('the marquee face replaces the eyes with clipped, version-aware status text
   const messages = getCyberBotIdleMarqueeMessages(packageJson.version);
   assert.deepEqual(messages, [
     `CYBERLAUNCHER v${packageJson.version}`,
-    'CYBERBOT // ONLINE',
-    'CYBERGEMS',
-    'SYSTEMS // OK',
-    'READY // TO LAUNCH',
   ]);
 
   const marquee = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee' }));
@@ -802,7 +799,7 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
 });
 
 test('idle marquee messages vary without immediate repeats', () => {
-  const messages = getCyberBotIdleMarqueeMessages('1.12.0');
+  const messages = getCyberBotIdleMarqueeMessages('1.12.0', ['SHORTCUTS // 3', 'LAUNCHES TODAY // 7']);
   let previous: string | null = null;
   const seen = new Set<string>();
   for (let i = 0; i < 30; i++) {
@@ -814,25 +811,22 @@ test('idle marquee messages vary without immediate repeats', () => {
   assert.deepEqual(seen, new Set(messages));
 });
 
-test('idle marquee statuses are clear and translated in Spanish and English', () => {
-  const statusKeys = [
-    'cyberbot_marquee_online',
-    'cyberbot_marquee_brand',
-    'cyberbot_marquee_systems_ok',
-    'cyberbot_marquee_ready',
-  ] as const;
-  const greetingKeys = [
-    'cyberbot_marquee_greeting_morning',
-    'cyberbot_marquee_greeting_afternoon',
-    'cyberbot_marquee_greeting_evening',
-  ] as const;
+test('idle marquee reports real library, usage, shortcut and pending tasks in both languages', () => {
+  const state = { apps: [{ id: 1 }, { id: 2 }, { id: 3 }], favoriteIds: [2, 99, 2], dailyLaunchCount: 7,
+    scheduledTasks: [{ remainingSeconds: 60 }, { remainingSeconds: 0 }, { remainingSeconds: -3 }],
+    activationShortcut: 'Ctrl+Alt+L' };
   for (const language of ['es', 'en'] as const) {
-    const statuses = statusKeys.map(key => translations[language][key]);
-    const greetings = greetingKeys.map(key => translations[language][key]);
-    assert.ok([...statuses, ...greetings].every(Boolean));
-    assert.deepEqual(greetings.map(greeting => Array.from(greeting)[0]), ['☕', '☀', '☾']);
-    assert.doesNotMatch(statuses.join(' '), /CTRL|0101|1100/);
-    assert.equal(getCyberBotIdleMarqueeMessages('1.12.0', [statuses[0], greetings[0], ...statuses.slice(1)]).length, 6);
+    const translate: Parameters<typeof getCyberBotMarqueeStatusMessages>[1] = (key, values) =>
+      translations[language][key].replace(/\{(\w+)\}/g, (_, name: string) => values[name]);
+    const statuses = getCyberBotMarqueeStatusMessages(state, translate);
+    assert.deepEqual(statuses, language === 'es'
+      ? ['ACCESOS // 3', 'LANZAMIENTOS HOY // 7', 'ABRIR LAUNCHER // Ctrl+Alt+L', 'FAVORITOS // 1', 'LANZAMIENTOS PROGRAMADOS // 1']
+      : ['SHORTCUTS // 3', 'LAUNCHES TODAY // 7', 'OPEN LAUNCHER // Ctrl+Alt+L', 'FAVORITES // 1', 'SCHEDULED LAUNCHES // 1']);
+    assert.doesNotMatch(statuses.join(' '), /\{|READY|ONLINE|SYSTEMS|CYBERGEMS|LISTO|EN LÍNEA|SISTEMAS/);
+    const empty = getCyberBotMarqueeStatusMessages({ ...state, apps: [], favoriteIds: [], scheduledTasks: [], activationShortcut: '', dailyLaunchCount: 0 }, translate);
+    assert.equal(empty.length, 2);
+    assert.ok(empty.every(text => text.endsWith('0')));
+    assert.deepEqual(getCyberBotIdleMarqueeMessages('1.12.0', statuses), ['CYBERLAUNCHER v1.12.0', ...statuses]);
   }
 });
 
@@ -1123,4 +1117,10 @@ test('elevated marquee keeps its body and scrolling text until landing is allowe
   assert.doesNotMatch(elevated, /compact-screen-active/);
   const grounded = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee', canLand: true }));
   assert.match(grounded, /compact-screen-active/);
+});
+
+
+test('a version-only or empty marquee catalog has a valid fallback', () => {
+  assert.equal(nextCyberBotIdleMarqueeMessage('CYBERLAUNCHER v1.12.0', getCyberBotIdleMarqueeMessages('1.12.0')), 'CYBERLAUNCHER v1.12.0');
+  assert.equal(nextCyberBotIdleMarqueeMessage(null, []), '');
 });

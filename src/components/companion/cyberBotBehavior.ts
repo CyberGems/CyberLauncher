@@ -26,12 +26,30 @@ export const CYBERBOT_IDLE_EXPRESSIVE_MAX_MS = 4_800;
 export const CYBERBOT_IDLE_MARQUEE_MIN_MS = 11_000;
 export const CYBERBOT_IDLE_MARQUEE_MAX_MS = 14_000;
 
-export const cyberBotDefaultIdleMarqueeStatuses = [
-  'CYBERBOT // ONLINE',
-  'CYBERGEMS',
-  'SYSTEMS // OK',
-  'READY // TO LAUNCH',
-] as const;
+export const cyberBotDefaultIdleMarqueeStatuses: readonly string[] = [];
+
+type MarqueeStatusKey = 'cyberbot_marquee_apps' | 'cyberbot_marquee_favorites'
+  | 'cyberbot_marquee_launches_today' | 'cyberbot_marquee_shortcut' | 'cyberbot_marquee_scheduled_tasks';
+
+export function getCyberBotMarqueeStatusMessages({
+  apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut,
+}: {
+  apps: readonly { id: number }[];
+  favoriteIds: readonly number[];
+  dailyLaunchCount: number;
+  scheduledTasks: readonly { remainingSeconds: number }[];
+  activationShortcut: string;
+}, t: (key: MarqueeStatusKey, values: Record<string, string>) => string): string[] {
+  const favorites = apps.filter(app => favoriteIds.includes(app.id)).length;
+  const pending = scheduledTasks.filter(task => task.remainingSeconds > 0).length;
+  return [
+    t('cyberbot_marquee_apps', { count: String(apps.length) }),
+    t('cyberbot_marquee_launches_today', { count: String(dailyLaunchCount) }),
+    ...(activationShortcut.trim() ? [t('cyberbot_marquee_shortcut', { shortcut: activationShortcut })] : []),
+    ...(favorites ? [t('cyberbot_marquee_favorites', { count: String(favorites) })] : []),
+    ...(pending ? [t('cyberbot_marquee_scheduled_tasks', { count: String(pending) })] : []),
+  ];
+}
 
 export function getCyberBotIdleMarqueeMessages(
   appVersion: string,
@@ -49,7 +67,7 @@ export function nextCyberBotIdleMarqueeMessage(
   random = Math.random,
 ): string {
   const choices = messages.filter(message => message !== previous);
-  return choices[Math.floor(random() * choices.length)];
+  return choices.length ? choices[Math.floor(random() * choices.length)] : (messages[0] ?? '');
 }
 
 export function nextCyberBotIdleExpression(
