@@ -40,3 +40,6 @@
   transition: opacity 0.5s ease, filter 0.45s ease;
 }
 .cyberbot-approved-avatar .material-light { shape-rendering: geometricPrecision; }
+
+/* Keep torso reflections subordinate to the existing armor finish. */
+.cyberbot-approved-avatar .material-torso-light { opacity: 0.88; }

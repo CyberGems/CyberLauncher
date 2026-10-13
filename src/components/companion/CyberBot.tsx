@@ -353,6 +353,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             isDragging={isDragging}
             dragTilt={dragTilt}
             away={idleAway}
+            canLand={placement.canLand && !isDragging}
             onMarqueeReadingChange={setMarqueeReading}
             marqueeStatusMessages={marqueeStatusMessages}
             isSpeaking={!!displayedMessage && speechWriting.key === displayedMessage.id && speechWriting.typing

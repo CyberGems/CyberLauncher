@@ -24,6 +24,12 @@ export function getCyberBotAnchor(width: number, height: number, position: 'bott
     top: (position === 'top-right' ? 80 : floorTop - CYBERBOT_LANDED_BOTTOM) + offset.y,
   };
 }
+
+export function isCyberBotAtFloor(top: number, floorTop: number) {
+  return Number.isFinite(top) && Number.isFinite(floorTop)
+    && Math.abs(top + CYBERBOT_LANDED_BOTTOM - floorTop) <= 1;
+}
+
 const MARGIN = 12;
 const BUBBLE_GAP = 12;
 

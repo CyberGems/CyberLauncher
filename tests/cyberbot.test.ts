@@ -12,7 +12,7 @@ import { DesktopCyberBotAvatar } from '../src/components/companion/desktop/Deskt
 import { nextApprovedMarquee, approvedMarqueeTiming, createApprovedMarkup, createCyberBotHoverReaction } from '../src/components/companion/approved/approvedCyberBotBehavior';
 import { cyberBotNotificationEmotion } from '../src/components/companion/cyberBotNotice';
 import { CyberSpeechBubble } from '../src/components/companion/CyberSpeechBubble';
-import { getCyberBotLayout, getCyberBotAnchor, CYBERBOT_LANDED_BOTTOM } from '../src/components/companion/cyberBotLayout';
+import { getCyberBotLayout, getCyberBotAnchor, isCyberBotAtFloor, CYBERBOT_LANDED_BOTTOM } from '../src/components/companion/cyberBotLayout';
 import {
   createCyberBotHoverAssist,
   createCyberBotIdleCycle,
@@ -1097,4 +1097,30 @@ test('blocked or interrupted hover does not consume or replay a reaction while h
   hover.update(false, true);
   assert.equal(hover.update(true, true), 'scan');
   assert.equal(createCyberBotHoverReaction().update(true, true), 'focus', 'instances keep independent entry sequences');
+});
+
+test('screen landing follows the actual floor after moving or relocating the bot', () => {
+  const floorTop = 743;
+  const floorAnchor = getCyberBotAnchor(1200, 800, 'bottom-right', { x: 0, y: 0 }, floorTop);
+  assert.equal(isCyberBotAtFloor(floorAnchor.top, floorTop), true);
+  const horizontal = getCyberBotAnchor(1200, 800, 'bottom-right', { x: -200, y: 0 }, floorTop);
+  assert.equal(isCyberBotAtFloor(horizontal.top, floorTop), true);
+  const raised = getCyberBotAnchor(1200, 800, 'bottom-right', { x: -200, y: -80 }, floorTop);
+  assert.equal(isCyberBotAtFloor(raised.top, floorTop), false);
+  assert.equal(isCyberBotAtFloor(floorAnchor.top + 0.25, floorTop), true);
+  assert.equal(isCyberBotAtFloor(floorAnchor.top, floorTop - 40), false);
+  assert.equal(isCyberBotAtFloor(80, floorTop), false);
+  const relocated = getCyberBotLayout({ width: 1200, height: 800, preferred: floorAnchor, align: 'right',
+    bubbleHeight: 0, obstacles: [{ left: 0, top: 620, right: 1200, bottom: 800 }] });
+  assert.equal(relocated.hidden, false);
+  assert.equal(isCyberBotAtFloor(relocated.top, floorTop), false);
+});
+
+test('elevated marquee keeps its body and scrolling text until landing is allowed', () => {
+  const elevated = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee', canLand: false }));
+  assert.match(elevated, /data-cyberbot-face="marquee"/);
+  assert.match(elevated, /<animate attributeName="x"/);
+  assert.doesNotMatch(elevated, /compact-screen-active/);
+  const grounded = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'marquee', canLand: true }));
+  assert.match(grounded, /compact-screen-active/);
 });

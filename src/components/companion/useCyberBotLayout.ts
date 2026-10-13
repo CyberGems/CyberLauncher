@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
-import { getCyberBotLayout, getCyberBotAnchor, type CyberBotRect, type CyberBotLayout } from './cyberBotLayout';
+import { getCyberBotLayout, getCyberBotAnchor, isCyberBotAtFloor, type CyberBotRect, type CyberBotLayout } from './cyberBotLayout';
 import type { CyberBotPosition } from './companionTypes';
 
 const OBSTACLE = '[data-cyberbot-obstacle]';
@@ -12,8 +12,8 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
   messageId?: string;
   bubbleRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean; anchorLeft: number; anchorTop: number }>({
-    left: 0, top: 0, bubbleWidth: 300, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, anchorLeft: 0, anchorTop: 0,
+  const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean; canLand: boolean; anchorLeft: number; anchorTop: number }>({
+    left: 0, top: 0, bubbleWidth: 300, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, canLand: false, anchorLeft: 0, anchorTop: 0,
   });
 
   useLayoutEffect(() => {
@@ -27,7 +27,8 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
       const elements = [...document.querySelectorAll<HTMLElement>(OBSTACLE)];
       const floor = document.querySelector<HTMLElement>(FLOOR);
       const measurable = floor ? [...elements, floor] : elements;
-      const anchor = getCyberBotAnchor(width, height, position, offset, floor?.getBoundingClientRect().top);
+      const floorTop = floor?.getBoundingClientRect().top ?? height - 57;
+      const anchor = getCyberBotAnchor(width, height, position, offset, floorTop);
       const obstacles: CyberBotRect[] = elements.map(element => {
         const w = element.offsetWidth;
         const h = element.offsetHeight;
@@ -51,14 +52,16 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
           resizeObserver.observe(element);
         }
       }
+      const positioned = getCyberBotLayout({
+        width, height,
+        preferred: anchor,
+        align: position === 'bottom-left' ? 'left' : 'right',
+        bubbleHeight: messageId ? (bubbleRef.current?.offsetHeight || 140) : 0,
+        obstacles,
+      });
       const next = {
-        ...getCyberBotLayout({
-          width, height,
-          preferred: anchor,
-          align: position === 'bottom-left' ? 'left' : 'right',
-          bubbleHeight: messageId ? (bubbleRef.current?.offsetHeight || 140) : 0,
-          obstacles,
-        }),
+        ...positioned,
+        canLand: !positioned.hidden && isCyberBotAtFloor(positioned.top, floorTop),
         hasObstacles: obstacles.length > 0,
         anchorLeft: anchor.left, anchorTop: anchor.top,
       };

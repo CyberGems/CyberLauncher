@@ -12,6 +12,7 @@ interface CyberBotAvatarProps {
   isDragging?: boolean;
   dragTilt?: number;
   away?: boolean;
+  canLand?: boolean;
   onMarqueeReadingChange?: (reading: boolean) => void;
   isSpeaking?: boolean;
   marqueeStatusMessages?: readonly string[];
@@ -21,7 +22,7 @@ interface CyberBotAvatarProps {
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
-  emotion = 'idle', isHovered = false, isDragging = false, dragTilt = 0, away = false,
+  emotion = 'idle', isHovered = false, isDragging = false, dragTilt = 0, away = false, canLand = false,
   isSpeaking = false, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
 }) => {
   const review = React.useContext(CyberBotReviewContext);
@@ -94,8 +95,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
 
   const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion;
   return <ApprovedCyberBotAvatar
-    face={face} marqueeMode="screen" speaking={speaking} motion={!reducedMotion}
-    {...review} isHovered={isHovered} isDragging={isDragging} dragTilt={dragTilt} away={away}
+    face={face} speaking={speaking} motion={!reducedMotion}
+    {...review} marqueeMode={canLand && (!review || review.marqueeMode === 'screen') ? 'screen' : 'paused'} isHovered={isHovered} isDragging={isDragging} dragTilt={dragTilt} away={away}
     marqueeMessage={review ? undefined : marqueeMessage} marqueeRun={marqueeRun}
     onMarqueeDuration={(message, durationMs) => setMeasuredMarquee(previous =>
       previous.message === message && previous.durationMs === durationMs ? previous : { message, durationMs })}
