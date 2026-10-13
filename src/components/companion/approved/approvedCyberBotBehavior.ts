@@ -69,12 +69,12 @@ const materialLightDefs = `<defs>
 </defs>`;
 const materialHelmetMarkup = `<g class="material-light material-helmet-light" pointer-events="none" aria-hidden="true" fill="none" stroke-linecap="round">
   <path class="material-edge-base" d="M20 27 C24 19 35 15 50 15 C65 15 76 19 80 27 M17 34 C16 45 22 51 33 54 M83 34 C84 45 78 51 67 54"/>
-  <path d="M20 27 C24 19 35 15 50 15 C65 15 76 19 80 27 M17 34 C16 45 22 51 33 54 M83 34 C84 45 78 51 67 54" stroke="url(#materialHelmetLight)" stroke-width="0.85"/>
+  <path d="M20 27 C24 19 35 15 50 15 C65 15 76 19 80 27 M17 34 C16 45 22 51 33 54 M83 34 C84 45 78 51 67 54" stroke="url(#materialHelmetLight)" stroke-width="1.4" opacity="0.65"/>
 </g>`;
 const materialTorsoMarkup = `<g class="material-light material-torso-light" pointer-events="none" aria-hidden="true">
   <path d="M31 62 L39 62 L39.15 64 L32.6 64 L34 75.5 L33 76 Z M69 62 L61 62 L60.85 64 L67.4 64 L66 75.5 L67 76 Z" fill="url(#materialTorsoLight)"/>
   <path class="material-edge-base" d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81" fill="none"/>
-  <path d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81 M34 78 L40 81 M66 78 L60 81" fill="none" stroke="url(#materialTorsoLight)" stroke-width="0.95" stroke-linecap="round"/>
+  <path d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81 M34 78 L40 81 M66 78 L60 81" fill="none" stroke="url(#materialTorsoLight)" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
 </g>`;
 
 export function createApprovedMarkup(artwork: string, prefix: string, face: ApprovedCyberBotFace, speaking: boolean, message = '') {
@@ -82,6 +82,7 @@ export function createApprovedMarkup(artwork: string, prefix: string, face: Appr
   const safeMessage = message.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
   const timing = approvedMarqueeTiming(message);
   return artwork
+    .replace("<g id=\"botAssembly\" class=\"levitating\">", "<g id=\"botAssembly\" class=\"levitating\"><animateTransform id=\"vectorLevitation\" attributeName=\"transform\" type=\"translate\" values=\"0 0;0 -8;0 0\" dur=\"3.2s\" repeatCount=\"indefinite\" calcMode=\"spline\" keyTimes=\"0;0.5;1\" keySplines=\"0.42 0 0.58 1;0.42 0 0.58 1\" begin=\"indefinite\"/>")
     .replace('<!-- CREST & FOREHEAD VARIANTS -->', materialLightDefs + '<!-- CREST & FOREHEAD VARIANTS -->')
     .replace('<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->', materialHelmetMarkup + '<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->')
     .replace('<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->', materialTorsoMarkup + '<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->')

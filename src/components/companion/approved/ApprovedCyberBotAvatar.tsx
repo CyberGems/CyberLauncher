@@ -3,6 +3,7 @@ import { useCyberBotReducedMotion } from '../useCyberBotReducedMotion';
 import artwork from './cyberbot-approved.svg?raw';
 import { useCyberBotHover } from './useCyberBotHover';
 import { useCyberBotMaterialLight } from './useCyberBotMaterialLight';
+import { useCyberBotLevitation } from './useCyberBotLevitation';
 import './cyberbot-approved.css';
 import './cyberbot-integration.css';
 import type { ApprovedCyberBotFace, CyberBotReviewState } from './CyberBotReviewContext';
@@ -48,7 +49,9 @@ export default function ApprovedCyberBotAvatar({
   const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !isDragging && !away && portalPhase === 'awake'
     && !['marquee', 'sleeping', 'alert', 'storage'].includes(face));
   useCyberBotMaterialLight(root, !reducedMotion && !away);
-  const canFloat = !reducedMotion && face !== 'marquee' && !isDragging && portalPhase === 'awake';
+  const canFloat = !reducedMotion && !away && face !== 'marquee' && !isDragging && portalPhase === 'awake';
+
+  useCyberBotLevitation(root, canFloat);
 
   useLayoutEffect(() => {
     const container = root.current;
