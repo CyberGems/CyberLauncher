@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import * as pty from 'node-pty';
+import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
 import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
 import { initUpdater } from './updater';
@@ -3381,15 +3382,9 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
 
     const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
     if (isUwp) {
-      console.log(`[LAUNCH] Lanzando app de Windows Store via AUMID: ${trimmedPath}`);
-      const command = `explorer.exe shell:AppsFolder\\${trimmedPath}`;
-      const launchError = await new Promise<Error | null>(resolve => {
-        exec(command, { windowsHide: true }, err => resolve(err));
-      });
-      if (launchError) {
-        console.error('[LAUNCH] Error al lanzar app de Windows Store via AUMID:', launchError);
-        return { success: false, error: launchError.message, code: 'launch-failed' };
-      }
+      const helperPath = resolveStoreAppLauncher(app.isPackaged, process.resourcesPath, app.getAppPath(), __dirname);
+      const processId = await activateStoreApp(trimmedPath, helperPath);
+      console.log(`[LAUNCH] Windows Store app activated: ${trimmedPath} (PID ${processId})`);
       return finishSuccessfulLaunch(keepWindowOpen);
     }
 

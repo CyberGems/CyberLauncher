@@ -19,7 +19,9 @@
     "test:cyberbot": "node --import ./scripts/cyberbot-test-assets.mjs --import tsx --test tests/cyberbot.test.ts",
     "test:cybermanager": "node --import tsx --test tests/cybermanager-recommendation.test.ts",
     "icons": "node scripts/generate-icons.mjs",
-    "installer-graphics": "node scripts/generate-installer-graphics.mjs"
+    "installer-graphics": "node scripts/generate-installer-graphics.mjs",
+    "build:store-launcher": "node scripts/build-store-launcher.mjs",
+    "test:store-launcher": "node --import tsx --test tests/store-app-launch.test.ts"
   },
   "build": {
     "appId": "com.cybergems.cyberlauncher",
@@ -45,6 +47,10 @@
       {
         "from": "electron/check-fullscreen.exe",
         "to": "check-fullscreen.exe"
+      },
+      {
+        "from": "electron/launch-store-app.exe",
+        "to": "launch-store-app.exe"
       }
     ],
     "win": {
