@@ -117,23 +117,28 @@ test('only selected phrases use the preferred name and both languages have neutr
   }
   assert.equal(cyberBotPhraseKeyWithName('cyberbot_greeting_morning_2', 'Ana'), 'cyberbot_greeting_morning_2');
   for (const language of ['es', 'en'] as const) {
-    for (const key of ['cyberbot_name_title', 'cyberbot_name_invite', 'cyberbot_name_invite_set', 'cyberbot_name_invite_later', 'cyberbot_name_invite_never'] as const) {
+    for (const key of ['cyberbot_name_title', 'cyberbot_name_invite', 'cyberbot_name_placeholder', 'cyberbot_name_save', 'cyberbot_name_invite_later', 'cyberbot_name_invite_never'] as const) {
       assert.ok(translations[language][key]?.trim());
     }
   }
 });
 
-test('the name invitation exposes its three explicit choices', () => {
+test('the name invitation offers an inline field, saving, and both opt-out choices', () => {
   const html = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
     message: {
       id: 'name-invite', text: 'What should I call you?', timestamp: 0,
-      action: { label: 'Choose a name', onClick: () => {} },
+      nameEntry: { label: 'Your name', placeholder: 'Name or nickname', submitLabel: 'Save name', onSubmit: () => {} },
       secondaryAction: { label: 'Not now', onClick: () => {} },
       tertiaryAction: { label: "Don't ask again", onClick: () => {} },
     },
     onClose: () => {}, closeLabel: 'Dismiss',
   }));
-  assert.match(html, /Choose a name/);
+  assert.match(html, /<form/);
+  assert.match(html, /<label[^>]*>Your name<\/label>/);
+  assert.match(html, /autoComplete="nickname"/);
+  assert.match(html, /placeholder="Name or nickname"/);
+  assert.match(html, /type="submit" disabled=""/);
+  assert.match(html, /Save name/);
   assert.match(html, /Not now/);
   assert.match(html, /Don&#x27;t ask again/);
 });

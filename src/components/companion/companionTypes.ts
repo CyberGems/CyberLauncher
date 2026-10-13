@@ -58,6 +58,12 @@ export interface CyberBotMessage {
     label: string;
     onClick: () => void;
   };
+  nameEntry?: {
+    label: string;
+    placeholder: string;
+    submitLabel: string;
+    onSubmit: (name: string) => void;
+  };
   onDismiss?: () => void;
   durationMs?: number; // 0 or undefined for persistent until dismissed
   timestamp: number;

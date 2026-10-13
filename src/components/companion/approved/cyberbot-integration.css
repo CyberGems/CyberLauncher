@@ -27,6 +27,13 @@
 
 .cyberbot-approved-avatar [data-part="botAssembly"].dragging-active [data-part="headTurntable"] { transition: none; }
 
+/* A small in-plane resting tilt preserves the helmet's depth and finish. */
+.cyberbot-approved-avatar[data-cyberbot-face="sleeping"] [data-part="headTurntable"] {
+  transform: rotate(6deg);
+  transform-origin: 50px 57px;
+  transition: transform 600ms ease-in-out;
+}
+
 /* Thin material highlights remain visible without a hover or an idle animation. */
 .cyberbot-approved-avatar .material-edge-base { stroke: #65b5ce; stroke-width: 1.1; opacity: 0.07; }
 

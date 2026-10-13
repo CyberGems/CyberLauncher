@@ -55,7 +55,7 @@ export default function ApprovedCyberBotAvatar({
   const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !returnReaction && !isDragging && !away && portalPhase === 'awake'
     && !['marquee', 'sleeping', 'alert', 'storage'].includes(face));
   useCyberBotMaterialLight(root, !reducedMotion && !away);
-  const canFloat = !reducedMotion && !away && face !== 'marquee' && !isDragging && portalPhase === 'awake';
+  const canFloat = !reducedMotion && !away && face !== 'marquee' && face !== 'sleeping' && !isDragging && portalPhase === 'awake';
 
   useCyberBotLevitation(root, canFloat);
 
@@ -137,7 +137,7 @@ export default function ApprovedCyberBotAvatar({
         assembly.classList.add('drop-settling');
         timer = window.setTimeout(() => {
           assembly.classList.remove('drop-settling');
-          if (face !== 'marquee') assembly.classList.add('levitating');
+          if (face !== 'marquee' && face !== 'sleeping') assembly.classList.add('levitating');
         }, 520);
       }
     }

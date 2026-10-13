@@ -3366,20 +3366,9 @@ export default function App() {
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
-  const cyberBotNameInputRef = useRef<HTMLInputElement>(null);
-  const focusCyberBotNameRef = useRef(false);
   useEffect(() => {
     setCyberBotNameDraft(cyberBot.preferredName);
   }, [cyberBot.preferredName]);
-  useEffect(() => {
-    if (!isSettingsOpen || settingsTab !== 'cyberbot' || !focusCyberBotNameRef.current) return;
-    const timer = window.setTimeout(() => {
-      cyberBotNameInputRef.current?.focus();
-      cyberBotNameInputRef.current?.select();
-      focusCyberBotNameRef.current = false;
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [isSettingsOpen, settingsTab]);
   const saveCyberBotName = () => {
     const name = normalizeCyberBotName(cyberBotNameDraft);
     if (name === cyberBot.preferredName) return;
@@ -6036,16 +6025,21 @@ export default function App() {
         text: t('cyberbot_name_invite'),
         detail: t('cyberbot_name_invite_detail'),
         emotion: 'curious',
-        priority: 'low',
+        priority: 'normal',
         durationMs: 0,
         onDismiss: cyberBot.advanceNamePrompt,
-        action: {
-          label: t('cyberbot_name_invite_set'),
-          onClick: () => {
-            focusCyberBotNameRef.current = true;
-            cyberBot.completeNamePrompt();
-            setSettingsTab('cyberbot');
-            setIsSettingsOpen(true);
+        nameEntry: {
+          label: t('cyberbot_name_title'),
+          placeholder: t('cyberbot_name_placeholder'),
+          submitLabel: t('cyberbot_name_save'),
+          onSubmit: (value) => {
+            const name = normalizeCyberBotName(value);
+            if (!name) return;
+            cyberBot.updatePreferredName(name);
+            cyberBot.say({
+              text: t('cyberbot_name_confirmed', { userName: name }),
+              emotion: 'happy', priority: 'normal', durationMs: 5000,
+            });
           },
         },
         secondaryAction: { label: t('cyberbot_name_invite_later'), onClick: cyberBot.advanceNamePrompt },
@@ -6056,7 +6050,7 @@ export default function App() {
 
     timer = window.setTimeout(offer, 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.completeNamePrompt, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, setupInviteDue, namePromptCheckTick, t]);
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, setupInviteDue, namePromptCheckTick, t]);
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
@@ -11948,7 +11942,6 @@ export default function App() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:pl-[52px]">
                         <input
-                          ref={cyberBotNameInputRef}
                           id="cyberbot-preferred-name"
                           type="text"
                           autoComplete="off"

@@ -5,6 +5,7 @@ import { X, AlertTriangle, Bot, CircleCheck, ArrowRight } from 'lucide-react';
 import { useCyberBotTyping } from './useCyberBotTyping';
 import { CyberBotTypingText } from './CyberBotTypingText';
 import type { CyberBotMessage } from './companionTypes';
+import { CYBERBOT_NAME_MAX_LENGTH, normalizeCyberBotName } from './cyberBotName';
 
 interface CyberSpeechBubbleProps {
   message: CyberBotMessage;
@@ -22,6 +23,10 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   onTypingChange,
 }) => {
   const reducedMotion = useCyberBotReducedMotion();
+  const [nameDraft, setNameDraft] = React.useState('');
+  const nameInputId = React.useId();
+  React.useEffect(() => { setNameDraft(''); }, [message.id]);
+  const normalizedName = normalizeCyberBotName(nameDraft);
   const typing = useCyberBotTyping(message.id, message.text, message.detail);
   React.useLayoutEffect(() => { onTypingChange?.(message.id, typing.isTyping); }, [message.id, typing.isTyping, onTypingChange]);
   React.useLayoutEffect(() => () => onTypingChange?.(message.id, false), [message.id, onTypingChange]);
@@ -58,6 +63,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       role={message.priority === 'high' ? 'alert' : 'status'}
       aria-atomic="true"
       data-no-hide
+      onPointerDown={(event) => event.stopPropagation()}
       className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
       <button
@@ -92,6 +98,46 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
           )}
         </div>
       </div>
+
+      {message.nameEntry && (
+        <form
+          className="mt-3 flex flex-wrap items-center gap-2"
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              message.onDismiss?.();
+              onClose();
+            }
+          }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!normalizedName) return;
+            // Close the invitation before its callback opens the confirmation.
+            onClose();
+            message.nameEntry?.onSubmit(normalizedName);
+          }}
+        >
+          <label htmlFor={nameInputId} className="sr-only">{message.nameEntry.label}</label>
+          <input
+            id={nameInputId}
+            type="text"
+            value={nameDraft}
+            placeholder={message.nameEntry.placeholder}
+            autoComplete="nickname"
+            onChange={(event) => setNameDraft(Array.from(event.target.value).slice(0, CYBERBOT_NAME_MAX_LENGTH).join(''))}
+            className="min-w-0 flex-1 basis-32 rounded-lg border border-cyan-500/40 bg-slate-950/70 px-2.5 py-1.5 text-xs text-white select-text outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40"
+          />
+          <button
+            type="submit"
+            disabled={!normalizedName}
+            className="rounded-lg border border-cyan-500/40 bg-cyan-500/20 px-2.5 py-1.5 text-[11px] font-cyber font-bold text-cyan-300 hover:bg-cyan-500/30 disabled:opacity-40 disabled:cursor-default cursor-pointer"
+          >
+            {message.nameEntry.submitLabel}
+          </button>
+        </form>
+      )}
 
       {/* Contextual Action Button */}
       {(message.action || message.secondaryAction || message.tertiaryAction) && (

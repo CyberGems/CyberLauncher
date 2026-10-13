@@ -82,7 +82,7 @@ export function createApprovedMarkup(artwork: string, prefix: string, face: Appr
   const safeMessage = message.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
   const timing = approvedMarqueeTiming(message);
   return artwork
-    .replace("<g id=\"botAssembly\" class=\"levitating\">", "<g id=\"botAssembly\" class=\"levitating\"><animateTransform id=\"vectorLevitation\" attributeName=\"transform\" type=\"translate\" values=\"0 0;0 -8;0 0\" dur=\"3.2s\" repeatCount=\"indefinite\" calcMode=\"spline\" keyTimes=\"0;0.5;1\" keySplines=\"0.42 0 0.58 1;0.42 0 0.58 1\" begin=\"indefinite\"/>")
+    .replace("<g id=\"botAssembly\" class=\"levitating\">", "<g id=\"botAssembly\" class=\"levitating\"><animateTransform id=\"vectorLevitation\" attributeName=\"transform\" type=\"translate\" values=\"0 0;0 -6.8;0 0\" dur=\"3.2s\" repeatCount=\"indefinite\" calcMode=\"spline\" keyTimes=\"0;0.5;1\" keySplines=\"0.42 0 0.58 1;0.42 0 0.58 1\" begin=\"indefinite\"/>")
     .replace('<!-- CREST & FOREHEAD VARIANTS -->', materialLightDefs + '<!-- CREST & FOREHEAD VARIANTS -->')
     .replace('<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->', materialHelmetMarkup + '<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->')
     .replace('<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->', materialTorsoMarkup + '<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->')

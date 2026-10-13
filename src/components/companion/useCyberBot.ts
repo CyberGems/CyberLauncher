@@ -269,6 +269,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     action?: { label: string; onClick: () => void };
     secondaryAction?: { label: string; onClick: () => void };
     tertiaryAction?: { label: string; onClick: () => void };
+    nameEntry?: CyberBotMessage['nameEntry'];
     onDismiss?: () => void;
     durationMs?: number;
     priority?: 'low' | 'normal' | 'high';
@@ -295,7 +296,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       const refreshed = {
         ...current, emotion: msg.emotion || 'speaking', tag: msg.tag, priority,
         action: msg.action, secondaryAction: msg.secondaryAction, tertiaryAction: msg.tertiaryAction,
-        onDismiss: msg.onDismiss,
+        nameEntry: msg.nameEntry, onDismiss: msg.onDismiss,
       };
       activeMessageRef.current = refreshed;
       setActiveMessage(refreshed);
@@ -318,6 +319,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       action: msg.action,
       secondaryAction: msg.secondaryAction,
       tertiaryAction: msg.tertiaryAction,
+      nameEntry: msg.nameEntry,
       onDismiss: msg.onDismiss,
       durationMs: duration,
       timestamp: Date.now(),
