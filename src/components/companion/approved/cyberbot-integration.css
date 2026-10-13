@@ -3,7 +3,7 @@
 .cyberbot-approved-avatar.reduced-motion [data-part="botAssembly"].portal-hidden { opacity: 0; }
 
 /* Keep direction changes responsive without removing the flight transition. */
-.cyberbot-approved-avatar [data-part="botAssembly"].dragging-active { transition: transform 0.04s ease-out; }
+.cyberbot-approved-avatar [data-part="botAssembly"].dragging-active { transition: transform 0.04s ease-out, filter 0.25s ease; }
 
 /* Hover keeps the front artwork unflattened; the visor overlays are clipped. */
 .cyberbot-approved-avatar [data-part="headTurntable"] { transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1); }
@@ -37,9 +37,28 @@
 .cyberbot-approved-avatar [data-part="torsoChassisGroup"] { will-change: auto; }
 .cyberbot-approved-avatar [data-part="botAssembly"].levitating {
   animation: none;
-  transition: opacity 0.5s ease, filter 0.45s ease;
+  transition: opacity 0.5s ease, filter 0.25s ease;
 }
 .cyberbot-approved-avatar .material-light { shape-rendering: geometricPrecision; }
 
 /* Keep torso reflections subordinate to the existing armor finish. */
 .cyberbot-approved-avatar .material-torso-light { opacity: 0.88; }
+
+/* Pointer hover and a held drag share the same subdued outer light. */
+.cyberbot-approved-avatar [data-part="botAssembly"] {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, filter 0.25s ease;
+}
+.cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) [data-part="botAssembly"]:not(.dragging-active),
+.cyberbot-approved-avatar.interaction-active [data-part="botAssembly"] {
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.18));
+}
+.cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .helmet-sensor-light,
+.cyberbot-approved-avatar.interaction-active .helmet-sensor-light {
+  filter: drop-shadow(0 0 3px rgba(0, 240, 255, 0.65)) !important;
+  opacity: 1 !important;
+}
+.cyberbot-approved-avatar [data-part="cyberBotV2"]:hover:not(.dragging-active) .ear-light,
+.cyberbot-approved-avatar.interaction-active .ear-light {
+  filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.65)) !important;
+  opacity: 1 !important;
+}

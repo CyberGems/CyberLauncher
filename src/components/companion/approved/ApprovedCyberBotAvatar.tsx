@@ -198,6 +198,7 @@ export default function ApprovedCyberBotAvatar({
   const classes = ['cyberbot-approved-avatar', className,
     face === 'marquee' && 'marquee-active',
     face === 'marquee' && marqueeMode === 'screen' && !away && portalPhase === 'awake' && 'compact-screen-active',
+    (isHovered || isDragging) && !away && portalPhase === 'awake' && 'interaction-active',
     speaking && 'speaking-active', hoverReaction && ('hover-' + hoverReaction),
     portalPhase !== 'awake' && 'portal-active', reducedMotion && 'reduced-motion',
   ].filter(Boolean).join(' ');
