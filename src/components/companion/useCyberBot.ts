@@ -167,8 +167,16 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, []);
 
   const updatePreferredName = useCallback((value: string) => {
-    persistPreferredName(value);
-    completeNamePrompt();
+    const name = persistPreferredName(value);
+    if (name) {
+      completeNamePrompt();
+    } else {
+      // Explicitly clearing the saved name also reopens the optional invitation.
+      setNamePromptState('unseen');
+      setNamePromptAfter(0);
+      localStorage.setItem('cyberbot_name_prompt_state', 'unseen');
+      localStorage.setItem('cyberbot_name_prompt_after', '0');
+    }
   }, [persistPreferredName, completeNamePrompt]);
 
   const advanceNamePrompt = useCallback(() => {
