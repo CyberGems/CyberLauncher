@@ -118,7 +118,7 @@ test('only selected phrases use the preferred name and both languages have neutr
   }
   assert.equal(cyberBotPhraseKeyWithName('cyberbot_greeting_morning_2', 'Ana'), 'cyberbot_greeting_morning_2');
   for (const language of ['es', 'en'] as const) {
-    for (const key of ['cyberbot_name_title', 'cyberbot_name_invite', 'cyberbot_name_placeholder', 'cyberbot_name_save', 'cyberbot_name_invite_later', 'cyberbot_name_invite_never'] as const) {
+    for (const key of ['cyberbot_name_title', 'cyberbot_name_invite', 'cyberbot_name_placeholder', 'cyberbot_name_save', 'cyberbot_name_ask_again', 'cyberbot_name_invite_later', 'cyberbot_name_invite_never'] as const) {
       assert.ok(translations[language][key]?.trim());
     }
   }

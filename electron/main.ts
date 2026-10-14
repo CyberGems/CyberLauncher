@@ -4071,6 +4071,8 @@ foreach (\$app in \$startApps) {
   });
 
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
+  ipcMain.handle('is-launcher-visible', () => isLauncherWindowVisible());
+
   ipcMain.handle('window-minimize', () => {
     windowVisibilityState = 'hidden-intentional';
     hideMainWindow();
@@ -4918,6 +4920,13 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('saveConfig', async (_event, config) => {
     isSavingConfig = true;
     try {
+      // This preference belongs to the native tray popup, not the renderer's settings snapshot.
+      if (typeof config?.hasSeenTrayPinTip !== 'boolean' && fs.existsSync(CONFIG_FILE)) {
+        const persisted = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        if (typeof persisted.hasSeenTrayPinTip === 'boolean') {
+          config = { ...config, hasSeenTrayPinTip: persisted.hasSeenTrayPinTip };
+        }
+      }
       const json = JSON.stringify(config, null, 2);
       await fs.promises.writeFile(CONFIG_FILE, json, 'utf-8');
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial

@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowMaximizeToggle: () => ipcRenderer.invoke('window-maximize-toggle'),
   windowClose: () => ipcRenderer.invoke('window-close'),
   windowHideToTray: () => ipcRenderer.invoke('window-hide-to-tray'),
+  isLauncherVisible: () => ipcRenderer.invoke('is-launcher-visible'),
 
   // --- Auto-launch (Iniciar con Windows) ---
   setAutoLaunch: (enabled: boolean, startMinimized?: boolean) =>

@@ -28,6 +28,7 @@ import { createCyberBotReturnController, createCyberBotNoticeLedger, type CyberB
 import { cyberBotNotificationEmotion } from './components/companion/cyberBotNotice';
 import { CyberManagerRecommendation } from './components/CyberManagerRecommendation';
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
+import { useLauncherVisibility } from './useLauncherVisibility';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from './components/companion/cyberBotSetup';
 import { chooseNotificationChannel } from './notificationRouting';
@@ -384,6 +385,7 @@ declare global {
       windowMaximizeToggle: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowHideToTray: () => Promise<void>;
+      isLauncherVisible?: () => Promise<boolean>;
       setAutoLaunch: (enabled: boolean, startMinimized?: boolean) => Promise<{ success: boolean; enabled: boolean; startMinimized?: boolean }>;
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       setUiModalOpen: (open: boolean) => Promise<{ success: boolean; open: boolean }>;
@@ -3366,14 +3368,17 @@ export default function App() {
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
+  const [nameEntryRequested, setNameEntryRequested] = useState(false);
   useEffect(() => {
     setCyberBotNameDraft(cyberBot.preferredName);
+    if (cyberBot.preferredName) setNameEntryRequested(false);
   }, [cyberBot.preferredName]);
   const saveCyberBotName = () => {
     const name = normalizeCyberBotName(cyberBotNameDraft);
     if (name === cyberBot.preferredName) return;
     cyberBot.updatePreferredName(name);
     setCyberBotNameDraft(name);
+    setNameEntryRequested(!name);
     if (name) cyberBot.say({
       text: t('cyberbot_name_confirmed', { userName: name }),
       emotion: 'happy',
@@ -3382,15 +3387,7 @@ export default function App() {
     });
   };
   const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
-  const [isWindowVisible, setIsWindowVisible] = useState(() => !document.hidden);
-  useEffect(() => {
-    const nativeVisibility = isElectron && !!window.electronAPI?.onLauncherHidden;
-    const updateVisibility = () => { if (!nativeVisibility) setIsWindowVisible(!document.hidden); };
-    const shown = window.electronAPI?.onLauncherShown?.(() => setIsWindowVisible(true));
-    const hidden = window.electronAPI?.onLauncherHidden?.(() => setIsWindowVisible(false));
-    document.addEventListener('visibilitychange', updateVisibility);
-    return () => { shown?.(); hidden?.(); document.removeEventListener('visibilitychange', updateVisibility); };
-  }, []);
+  const isWindowVisible = useLauncherVisibility();
 
   const lastPinnedLaunchAtRef = useRef(0);
   const lastPinnedLaunchHintAtRef = useRef(0);
@@ -6001,14 +5998,16 @@ export default function App() {
   }, [cyberBot.enabled, cyberBot.preferredName, cyberBot.namePromptState]);
 
   useEffect(() => {
-    if (!isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full' || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage || setupInviteDue) return;
-    if (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)) return;
+    if (!isConfigLoaded || !cyberBot.enabled || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || isTerminalOpen || notification) return;
+    if (cyberBot.activeMessage && (!nameEntryRequested || cyberBot.activeMessage.priority !== 'low')) return;
+    if (!nameEntryRequested && (cyberBot.chatterLevel !== 'full' || setupInviteDue
+      || (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)))) return;
     if (!isCyberBotNamePromptDue(cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter)) return;
 
     let disposed = false;
     let timer: number;
     const offer = async () => {
-      if (isElectron && window.electronAPI?.isTrayPinTipVisible) {
+      if (!nameEntryRequested && isElectron && window.electronAPI?.isTrayPinTipVisible) {
         try {
           if (await window.electronAPI.isTrayPinTipVisible()) {
             if (!disposed) timer = window.setTimeout(offer, 3000);
@@ -6027,6 +6026,7 @@ export default function App() {
         emotion: 'curious',
         priority: 'normal',
         durationMs: 0,
+        essential: nameEntryRequested,
         onDismiss: cyberBot.advanceNamePrompt,
         nameEntry: {
           label: t('cyberbot_name_title'),
@@ -6038,19 +6038,20 @@ export default function App() {
             cyberBot.updatePreferredName(name);
             cyberBot.say({
               text: t('cyberbot_name_confirmed', { userName: name }),
-              emotion: 'happy', priority: 'normal', durationMs: 5000,
+              emotion: 'happy', priority: 'normal', durationMs: 5000, essential: true,
             });
           },
         },
         secondaryAction: { label: t('cyberbot_name_invite_later'), onClick: cyberBot.advanceNamePrompt },
         tertiaryAction: { label: t('cyberbot_name_invite_never'), onClick: cyberBot.dismissNamePromptForever },
       });
-      if (!shown) timer = window.setTimeout(offer, 15000);
+      if (shown) setNameEntryRequested(false);
+      else timer = window.setTimeout(offer, 15000);
     };
 
-    timer = window.setTimeout(offer, 8000);
+    timer = window.setTimeout(offer, nameEntryRequested ? 1500 : 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, setupInviteDue, namePromptCheckTick, t]);
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, isTerminalOpen, notification, setupInviteDue, namePromptCheckTick, nameEntryRequested, t]);
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
@@ -11965,10 +11966,23 @@ export default function App() {
                         </button>
                         {cyberBot.preferredName && <button
                           type="button"
-                          onClick={() => { setCyberBotNameDraft(''); cyberBot.updatePreferredName(''); }}
+                          onClick={() => { setCyberBotNameDraft(''); cyberBot.updatePreferredName(''); setNameEntryRequested(true); }}
                           className="px-2 py-2 text-slate-400 hover:text-rose-300 text-xs cursor-pointer"
                         >
                           {t('cyberbot_name_remove')}
+                        </button>}
+                        {!cyberBot.preferredName && !normalizeCyberBotName(cyberBotNameDraft) && <button
+                          type="button"
+                          onClick={() => {
+                            setCyberBotNameDraft('');
+                            cyberBot.updatePreferredName('');
+                            if (cyberBot.activeMessage?.id === 'cyberbot_name_invitation') cyberBot.dismissMessage();
+                            setNameEntryRequested(true);
+                            setIsSettingsOpen(false);
+                          }}
+                          className="px-3 py-2 rounded-lg border border-cyan-400/30 text-cyan-200 text-xs hover:bg-cyan-500/15 cursor-pointer"
+                        >
+                          {t('cyberbot_name_ask_again')}
                         </button>}
                       </div>
                       <p className="text-[11px] text-slate-500 sm:pl-[52px]">{t('cyberbot_name_limit')}</p>
