@@ -17,8 +17,8 @@ export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal', 'curious'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
 export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
-export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.25;
-export const CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE = 2;
+export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.05;
+export const CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS = 120_000;
 export const CYBERBOT_IDLE_NEUTRAL_MIN_MS = 5_500;
 export const CYBERBOT_IDLE_NEUTRAL_MAX_MS = 8_500;
 export const CYBERBOT_IDLE_EXPRESSIVE_MIN_MS = 3_200;
@@ -73,17 +73,14 @@ export function nextCyberBotIdleMarqueeMessage(
 export function nextCyberBotIdleExpression(
   previous: CyberBotEmotion,
   random = Math.random,
-  facesSinceMarquee = 0,
+  marqueeAllowed = true,
 ): CyberBotEmotion {
-  if (previous !== 'marquee' && facesSinceMarquee >= CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE) {
-    return 'marquee';
-  }
-
   const roll = random();
   if (
     roll >= CYBERBOT_IDLE_EXPRESSIVE_CHANCE
     && roll < CYBERBOT_IDLE_EXPRESSIVE_CHANCE + CYBERBOT_IDLE_MARQUEE_CHANCE
     && previous !== 'marquee'
+    && marqueeAllowed
   ) {
     return 'marquee';
   }
@@ -93,6 +90,21 @@ export function nextCyberBotIdleExpression(
     : cyberBotNeutralIdleExpressions;
   const choices = pool.filter(emotion => emotion !== previous);
   return choices[Math.floor(random() * choices.length)];
+}
+
+// Keep the status screen occasional even across interrupted expressions.
+export function createCyberBotIdleExpressionPicker(random = Math.random, now = Date.now) {
+  let marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
+  return {
+    next(previous: CyberBotEmotion): CyberBotEmotion {
+      const next = nextCyberBotIdleExpression(previous, random, now() >= marqueeEligibleAt);
+      if (next === 'marquee') marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
+      return next;
+    },
+    postponeMarquee() {
+      marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
+    },
+  };
 }
 
 export function getCyberBotIdleExpressionDuration(expression: CyberBotEmotion, random = Math.random): number {

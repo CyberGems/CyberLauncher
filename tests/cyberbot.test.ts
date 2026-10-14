@@ -22,7 +22,8 @@ import {
   CYBERBOT_IDLE_EXPRESSIVE_CHANCE,
   CYBERBOT_IDLE_EXPRESSIVE_MAX_MS,
   CYBERBOT_IDLE_EXPRESSIVE_MIN_MS,
-  CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE,
+  CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS,
+  createCyberBotIdleExpressionPicker,
   CYBERBOT_IDLE_MARQUEE_CHANCE,
   CYBERBOT_IDLE_MARQUEE_MAX_MS,
   CYBERBOT_IDLE_MARQUEE_MIN_MS,
@@ -798,15 +799,38 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   }
 
   assert.ok(neutralCount > expressiveCount * 4, 'neutral faces should dominate the idle loop');
-  assert.ok(marqueeCount > expressiveCount, 'marquee statuses should be occasional but easier to encounter than smiles');
+  assert.ok(marqueeCount > 0 && marqueeCount < 40, 'marquee stays rare even without its time guard');
   assert.equal(neutralCount + expressiveCount + marqueeCount, 500);
   assert.deepEqual(neutralFaces, new Set(cyberBotNeutralIdleExpressions));
   assert.equal(CYBERBOT_IDLE_EXPRESSIVE_CHANCE, 0.02);
-  assert.equal(CYBERBOT_IDLE_MARQUEE_CHANCE, 0.25);
-  assert.equal(
-    nextCyberBotIdleExpression('curious', () => 0.999999, CYBERBOT_IDLE_MAX_FACES_BEFORE_MARQUEE),
-    'marquee',
-  );
+  assert.equal(CYBERBOT_IDLE_MARQUEE_CHANCE, 0.05);
+  assert.notEqual(nextCyberBotIdleExpression('curious', () => 0.999999), 'marquee');
+  assert.notEqual(nextCyberBotIdleExpression('curious', () => 0.03, false), 'marquee');
+});
+
+test('marquee eligibility waits two minutes, survives interruptions and postpones on return', () => {
+  let now = 0;
+  // Always request a screen: the cadence must still prevent early/repeated passes.
+  const picker = createCyberBotIdleExpressionPicker(() => 0.03, () => now);
+  let face: NonNullable<CyberBotMessage['emotion']> = 'launcher';
+  for (now = 0; now < CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS; now += 1000) {
+    face = picker.next(face);
+    assert.notEqual(face, 'marquee');
+  }
+  assert.equal(picker.next(face), 'marquee');
+  now += 7000;
+  assert.notEqual(picker.next('marquee'), 'marquee');
+  assert.notEqual(picker.next('launcher'), 'marquee', 'an interruption cannot resume a new screen immediately');
+  now = CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS * 2 - 1;
+  assert.notEqual(picker.next('curious'), 'marquee');
+  now += 1;
+  assert.equal(picker.next('curious'), 'marquee');
+  now += 60_000;
+  picker.postponeMarquee();
+  now += CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS - 1;
+  assert.notEqual(picker.next('launcher'), 'marquee');
+  now += 1;
+  assert.equal(picker.next('launcher'), 'marquee');
 });
 
 test('idle marquee messages vary without immediate repeats', () => {

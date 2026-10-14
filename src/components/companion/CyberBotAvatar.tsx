@@ -5,7 +5,7 @@ import type { CyberBotEmotion } from './companionTypes';
 import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 import ApprovedCyberBotAvatar from './approved/ApprovedCyberBotAvatar';
 import { approvedCyberBotFace, approvedMarqueeTiming, nextApprovedMarquee } from './approved/approvedCyberBotBehavior';
-import { getCyberBotIdleExpressionDuration, getCyberBotIdleMarqueeMessages, nextCyberBotIdleExpression } from './cyberBotBehavior';
+import { getCyberBotIdleExpressionDuration, getCyberBotIdleMarqueeMessages, createCyberBotIdleExpressionPicker } from './cyberBotBehavior';
 
 interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
@@ -37,7 +37,8 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   const [marqueeRun, setMarqueeRun] = useState(0);
   const [measuredMarquee, setMeasuredMarquee] = useState({ message: '', durationMs: 0 });
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
-  const facesSinceMarquee = useRef(1);
+  const expressionPicker = useRef<ReturnType<typeof createCyberBotIdleExpressionPicker> | null>(null);
+  if (!expressionPicker.current) expressionPicker.current = createCyberBotIdleExpressionPicker();
   const dragFace = useRef<'curious' | 'flight'>('flight');
   const wasDragging = useRef(false);
   if (isDragging && !wasDragging.current) dragFace.current = Math.random() < 0.5 ? 'curious' : 'flight';
@@ -50,11 +51,10 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
         measuredMarquee.message === marqueeMessage ? measuredMarquee.durationMs : approvedMarqueeTiming(marqueeMessage).durationMs)
       : getCyberBotIdleExpressionDuration(idleExpression);
     const timer = window.setTimeout(() => {
-      const next = nextCyberBotIdleExpression(idleExpression, Math.random, facesSinceMarquee.current);
+      const next = expressionPicker.current!.next(idleExpression);
       if (next === 'marquee') {
         setMarqueeMessage(previous => nextApprovedMarquee(previous, messages));
-        facesSinceMarquee.current = 0;
-      } else facesSinceMarquee.current += 1;
+      }
       setIdleExpression(next);
     }, duration);
     return () => window.clearTimeout(timer);
@@ -98,8 +98,14 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   useEffect(() => {
     if (!returnGesture || review) return;
     setIdleExpression('launcher');
-    facesSinceMarquee.current = 1;
+    expressionPicker.current?.postponeMarquee();
   }, [returnGesture?.id, review]);
+
+  useEffect(() => {
+    if (review || idleExpression !== 'marquee') return;
+    // A screen interrupted by speech, sleep, departure or dragging is not a new pass.
+    if (emotion !== 'idle' || away || isDragging) setIdleExpression('launcher');
+  }, [review, idleExpression, emotion, away, isDragging]);
 
   const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion;
   return <ApprovedCyberBotAvatar
