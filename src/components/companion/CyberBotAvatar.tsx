@@ -11,6 +11,7 @@ interface CyberBotAvatarProps {
   emotion?: CyberBotEmotion;
   isHovered?: boolean;
   isDragging?: boolean;
+  isTraveling?: boolean;
   dragTilt?: number;
   away?: boolean;
   canLand?: boolean;
@@ -24,7 +25,7 @@ interface CyberBotAvatarProps {
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
 export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
-  emotion = 'idle', isHovered = false, isDragging = false, dragTilt = 0, away = false, canLand = false,
+  emotion = 'idle', isHovered = false, isDragging = false, isTraveling = false, dragTilt = 0, away = false, canLand = false,
   isSpeaking = false, returnGesture, marqueeStatusMessages, onMarqueeReadingChange, size = 80, className = '',
 }) => {
   const review = React.useContext(CyberBotReviewContext);
@@ -45,7 +46,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   wasDragging.current = isDragging;
 
   useEffect(() => {
-    if (review || emotion !== 'idle' || isHovered || isDragging || away || !visible) return;
+    if (review || emotion !== 'idle' || isHovered || isDragging || isTraveling || away || !visible) return;
     const duration = idleExpression === 'marquee'
       ? Math.max(getCyberBotIdleExpressionDuration('marquee'),
         measuredMarquee.message === marqueeMessage ? measuredMarquee.durationMs : approvedMarqueeTiming(marqueeMessage).durationMs)
@@ -58,7 +59,7 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
       setIdleExpression(next);
     }, duration);
     return () => window.clearTimeout(timer);
-  }, [review, emotion, isHovered, isDragging, away, visible, idleExpression, marqueeMessage, measuredMarquee, messages, marqueeRun]);
+  }, [review, emotion, isHovered, isDragging, isTraveling, away, visible, idleExpression, marqueeMessage, measuredMarquee, messages, marqueeRun]);
 
   useEffect(() => {
     setMarqueeMessage(previous => nextApprovedMarquee(previous, messages));
@@ -104,13 +105,13 @@ export const CyberBotAvatar: React.FC<CyberBotAvatarProps> = ({
   useEffect(() => {
     if (review || idleExpression !== 'marquee') return;
     // A screen interrupted by speech, sleep, departure or dragging is not a new pass.
-    if (emotion !== 'idle' || away || isDragging) setIdleExpression('launcher');
-  }, [review, idleExpression, emotion, away, isDragging]);
+    if (emotion !== 'idle' || away || isDragging || isTraveling) setIdleExpression('launcher');
+  }, [review, idleExpression, emotion, away, isDragging, isTraveling]);
 
   const speaking = isSpeaking && emotion !== 'sleeping' && !reducedMotion;
   return <ApprovedCyberBotAvatar
     face={face} speaking={speaking} returnGesture={review ? undefined : returnGesture} motion={!reducedMotion}
-    {...review} marqueeMode={canLand && (!review || review.marqueeMode === 'screen') ? 'screen' : 'paused'} isHovered={isHovered} isDragging={isDragging} dragTilt={dragTilt} away={away}
+    {...review} marqueeMode={canLand && (!review || review.marqueeMode === 'screen') ? 'screen' : 'paused'} isHovered={isHovered} isDragging={isDragging} isTraveling={isTraveling} dragTilt={dragTilt} away={away}
     marqueeMessage={review ? undefined : marqueeMessage} marqueeRun={marqueeRun}
     onMarqueeDuration={(message, durationMs) => setMeasuredMarquee(previous =>
       previous.message === message && previous.durationMs === durationMs ? previous : { message, durationMs })}

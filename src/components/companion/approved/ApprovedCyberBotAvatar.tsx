@@ -14,6 +14,7 @@ import { approvedMarqueeTiming, createApprovedMarkup } from './approvedCyberBotB
 interface Props extends CyberBotReviewState {
   isHovered?: boolean;
   isDragging?: boolean;
+  isTraveling?: boolean;
   dragTilt?: number;
   away?: boolean;
   marqueeMessage?: string;
@@ -32,7 +33,7 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev
 
 export default function ApprovedCyberBotAvatar({
   face, marqueeMode, speaking, motion: motionEnabled, isHovered = false,
-  isDragging = false, dragTilt = 0, away = false, marqueeMessage, marqueeRun = 0,
+  isDragging = false, isTraveling = false, dragTilt = 0, away = false, marqueeMessage, marqueeRun = 0,
   onMarqueeDuration, returnGesture, marqueeStatusMessages, className = '', size = 80,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
@@ -40,7 +41,8 @@ export default function ApprovedCyberBotAvatar({
   const reducedMotion = useCyberBotReducedMotion() || !motionEnabled;
   const [portalPhase, setPortalPhase] = useState<'awake' | 'sinking' | 'hidden' | 'emerging'>('awake');
   const wasAway = useRef(false);
-  const wasDragging = useRef(false);
+  const wasMoving = useRef(false);
+  const moving = !away && (isDragging || isTraveling);
   const message = marqueeMessage ?? [`CYBERLAUNCHER v${APP_VERSION}`, marqueeStatusMessages?.[0]].filter(Boolean).join('   ◆   ');
   const initial = useRef({ face, speaking, message }).current;
   const durationCallback = useRef(onMarqueeDuration);
@@ -51,11 +53,11 @@ export default function ApprovedCyberBotAvatar({
   const innerHTML = useMemo(() => ({ __html: markup }), [markup]);
   const returnReaction = useCyberBotReturnGesture(root, returnGesture,
     !away && portalPhase === 'awake' && face !== 'marquee' && face !== 'sleeping',
-    isDragging || speaking || ['alert', 'storage'].includes(face), reducedMotion);
-  const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !returnReaction && !isDragging && !away && portalPhase === 'awake'
+    moving || speaking || ['alert', 'storage'].includes(face), reducedMotion);
+  const hoverReaction = useCyberBotHover(root, isHovered, !reducedMotion && !returnReaction && !moving && !away && portalPhase === 'awake'
     && !['marquee', 'sleeping', 'alert', 'storage'].includes(face));
   useCyberBotMaterialLight(root, !reducedMotion && !away);
-  const canFloat = !reducedMotion && !away && face !== 'marquee' && face !== 'sleeping' && !isDragging && portalPhase === 'awake';
+  const canFloat = !reducedMotion && !away && face !== 'marquee' && face !== 'sleeping' && !moving && portalPhase === 'awake';
 
   useCyberBotLevitation(root, canFloat);
 
@@ -125,13 +127,13 @@ export default function ApprovedCyberBotAvatar({
   useLayoutEffect(() => {
     const assembly = root.current?.querySelector<SVGElement>('[data-part="botAssembly"]');
     if (!assembly) return;
-    assembly.classList.toggle('dragging-active', isDragging && !reducedMotion);
+    assembly.classList.toggle('dragging-active', moving && !reducedMotion);
     let timer: number | undefined;
-    if (isDragging) {
+    if (moving) {
       assembly.classList.remove('drop-settling', 'levitating');
-      wasDragging.current = true;
-    } else if (wasDragging.current) {
-      wasDragging.current = false;
+      wasMoving.current = true;
+    } else if (wasMoving.current) {
+      wasMoving.current = false;
       assembly.style.transform = '';
       if (!reducedMotion && !away) {
         assembly.classList.add('drop-settling');
@@ -142,12 +144,12 @@ export default function ApprovedCyberBotAvatar({
       }
     }
     return () => { window.clearTimeout(timer); assembly.classList.remove('drop-settling'); };
-  }, [isDragging, reducedMotion, away, face]);
+  }, [moving, reducedMotion, away, face]);
 
   useLayoutEffect(() => {
     const assembly = root.current?.querySelector<SVGElement>('[data-part="botAssembly"]');
-    if (assembly && isDragging && !reducedMotion) assembly.style.transform = `rotate(${Math.max(-14, Math.min(14, dragTilt))}deg)`;
-  }, [dragTilt, isDragging, reducedMotion]);
+    if (assembly && moving && !reducedMotion) assembly.style.transform = `rotate(${Math.max(-14, Math.min(14, dragTilt))}deg)`;
+  }, [dragTilt, moving, reducedMotion]);
 
   useLayoutEffect(() => {
     if (face !== 'marquee' || away) return;
@@ -204,13 +206,13 @@ export default function ApprovedCyberBotAvatar({
   const classes = ['cyberbot-approved-avatar', className,
     face === 'marquee' && 'marquee-active',
     face === 'marquee' && marqueeMode === 'screen' && !away && portalPhase === 'awake' && 'compact-screen-active',
-    (isHovered || isDragging) && !away && portalPhase === 'awake' && 'interaction-active',
+    (isHovered || moving) && !away && portalPhase === 'awake' && 'interaction-active',
     returnReaction && ('return-' + returnReaction),
     speaking && 'speaking-active', hoverReaction && ('hover-' + hoverReaction),
     portalPhase !== 'awake' && 'portal-active', reducedMotion && 'reduced-motion',
   ].filter(Boolean).join(' ');
   return <div ref={root} aria-hidden="true" data-cyberbot-design="approved"
-    data-cyberbot-face={face} data-cyberbot-speaking={speaking} data-cyberbot-presence={portalPhase}
+    data-cyberbot-face={face} data-cyberbot-speaking={speaking} data-cyberbot-traveling={isTraveling} data-cyberbot-presence={portalPhase}
     data-cyberbot-hover={hoverReaction ?? 'none'} data-cyberbot-return={returnReaction ?? 'none'}
     className={classes} style={{ width: size, height: size * 1.15,
       '--eq-glow-color': face === 'alert' || face === 'storage' ? '#f59e0b' : '#00f0ff',

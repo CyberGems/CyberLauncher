@@ -1,7 +1,8 @@
+import { CYBERBOT_TRAVEL_DURATION_MS, cyberBotMotionTilt } from './cyberBotMotion';
 import type { CyberBotFarewellState } from './cyberBotFarewell';
 import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import type { CyberBotReturnGesture } from './cyberBotReturn';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue } from 'motion/react';
 import { CyberBotAvatar } from './CyberBotAvatar';
@@ -70,6 +71,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const controlRef = useRef<HTMLElement>(null);
   const [currentPos, setCurrentPos] = useState<CyberBotPosition>(position);
   const [manualOffset, setManualOffset] = useState({ x: 0, y: 0 });
   const [temporaryEmotion, setTemporaryEmotion] = useState<CyberBotEmotion | null>(null);
@@ -77,6 +79,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTilt, setDragTilt] = useState(0);
+  const [travelTilt, setTravelTilt] = useState(0);
   const [marqueeReading, setMarqueeReading] = useState(false);
   const [speechWriting, setSpeechWriting] = useState({ key: '', typing: false });
   const onTypingChange = React.useCallback((key: string, typing: boolean) => {
@@ -108,7 +111,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   useEffect(() => { onContextParkedChange?.(contextAway); }, [contextAway, onContextParkedChange]);
   const { sleeping, vanished } = useCyberBotPresence(
     enabled,
-    reviewingDesign || contextOpen || contextAway || !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
+    reviewingDesign || contextOpen || contextAway || !!displayedMessage || systemAttention || isHovered || isDragging || travelTilt !== 0 || placement.hasObstacles || placement.hidden,
     activeMessage?.id,
     systemAttention,
     marqueeReading,
@@ -177,6 +180,32 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     return () => window.cancelAnimationFrame(frame);
   }, [farewellActive, farewell?.message?.id, placement.hidden, placement.bubbleVisible, onFarewellUnavailable]);
 
+  useEffect(() => {
+    if (!enabled || reducedMotion || isDragging || placement.hidden || idleAway) setTravelTilt(0);
+  }, [enabled, reducedMotion, isDragging, placement.hidden, idleAway]);
+
+  // Listen on the DOM node: transitionrun/cancel are not forwarded by every React/Motion version.
+  useLayoutEffect(() => {
+    const node = controlRef.current;
+    if (!node) return;
+    const onRun = (event: TransitionEvent) => {
+      if (event.target !== node || event.propertyName !== 'left'
+        || !enabled || isDragging || reducedMotion || placement.hidden || idleAway || !layoutReady) return;
+      setTravelTilt(cyberBotMotionTilt(placement.left - node.getBoundingClientRect().left));
+    };
+    const onFinish = (event: TransitionEvent) => {
+      if (event.target === node && event.propertyName === 'left') setTravelTilt(0);
+    };
+    node.addEventListener('transitionrun', onRun);
+    node.addEventListener('transitionend', onFinish);
+    node.addEventListener('transitioncancel', onFinish);
+    return () => {
+      node.removeEventListener('transitionrun', onRun);
+      node.removeEventListener('transitionend', onFinish);
+      node.removeEventListener('transitioncancel', onFinish);
+    };
+  }, [visualEnabled, enabled, isDragging, reducedMotion, placement.hidden, placement.left, idleAway, layoutReady]);
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -242,6 +271,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   return (
     <motion.aside
+      ref={controlRef}
       aria-label="CyberBot"
       aria-hidden={placement.hidden || idleAway || undefined}
       data-cyberbot-control
@@ -266,9 +296,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         visibility: placement.hidden ? 'hidden' : 'visible',
         transition: isDragging || reducedMotion || placement.hidden || !layoutReady
           ? 'none'
-          : 'left 360ms cubic-bezier(0.22, 1, 0.36, 1), top 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+          : `left ${CYBERBOT_TRAVEL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), top ${CYBERBOT_TRAVEL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
       }}
       onDragStart={() => {
+        setTravelTilt(0);
         isDraggingRef.current = true;
         setIsDragging(true);
         setIsDodgeCooldown(true);
@@ -286,7 +317,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         // Motion also reports stationary frames; keep the last posture until the pointer moves.
         if (info.delta.x === 0 && info.delta.y === 0) return;
         // Follow this movement, not the distance from the grab point or averaged velocity.
-        setDragTilt(Math.max(-14, Math.min(14, info.delta.x * 1.4)));
+        setDragTilt(cyberBotMotionTilt(info.delta.x));
       }}
       onDragEnd={(_event, info) => {
         setDragTilt(0);
@@ -385,7 +416,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             returnGesture={reviewingDesign ? undefined : returnGesture}
             isHovered={isHovered}
             isDragging={isDragging}
-            dragTilt={dragTilt}
+            isTraveling={travelTilt !== 0}
+            dragTilt={isDragging ? dragTilt : travelTilt}
             away={idleAway}
             canLand={placement.canLand && !isDragging}
             onMarqueeReadingChange={setMarqueeReading}
