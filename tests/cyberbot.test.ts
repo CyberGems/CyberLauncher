@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
+import { createCyberBotContextPresence, CYBERBOT_CONTEXT_RETIRE_MS, CYBERBOT_CONTEXT_RETURN_MS } from '../src/components/companion/cyberBotContextPresence';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { createCyberBotTypewriter, cyberBotSpeechLifetime, cyberBotTypingDuration, CYBERBOT_CHARACTER_MS, type CyberBotTypingState } from '../src/components/companion/cyberBotTyping';
 import { CyberBotTypingText } from '../src/components/companion/CyberBotTypingText';
@@ -1269,4 +1270,83 @@ test('return greetings and task estimates are bilingual and contain no last-app 
     assert.ok(translations[language].cyberbot_return_task_minutes.includes('{minutes}'));
     assert.ok(translations[language].cyberbot_return_named.includes('{userName}'));
   }
+});
+
+test('context retirement waits for speech and reading, then returns after closing', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: boolean[] = [];
+  const cycle = createCyberBotContextPresence(away => changes.push(away));
+  cycle.update({ open: true, busy: true, attention: false });
+  context.mock.timers.tick(20_000);
+  assert.deepEqual(changes, []);
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETIRE_MS - 1);
+  assert.deepEqual(changes, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, [true]);
+  context.mock.timers.tick(60_000);
+  assert.deepEqual(changes, [true]);
+  cycle.update({ open: false, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETURN_MS - 1);
+  assert.deepEqual(changes, [true]);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, [true, false]);
+  cycle.dispose();
+});
+
+test('quick contexts do not flash and reopening cancels a pending return', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: boolean[] = [];
+  const cycle = createCyberBotContextPresence(away => changes.push(away));
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(500);
+  cycle.update({ open: false, busy: false, attention: false });
+  context.mock.timers.tick(5000);
+  assert.deepEqual(changes, []);
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETIRE_MS);
+  cycle.update({ open: false, busy: false, attention: false });
+  context.mock.timers.tick(700);
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(5000);
+  assert.deepEqual(changes, [true]);
+  cycle.update({ open: false, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETURN_MS);
+  assert.deepEqual(changes, [true, false]);
+  cycle.dispose();
+});
+
+test('important attention can wake a parked bot and disposal cancels pending work', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: boolean[] = [];
+  const cycle = createCyberBotContextPresence(away => changes.push(away));
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETIRE_MS);
+  cycle.update({ open: true, busy: true, attention: true });
+  assert.deepEqual(changes, [true, false]);
+  context.mock.timers.tick(20_000);
+  assert.deepEqual(changes, [true, false]);
+  cycle.update({ open: true, busy: false, attention: false });
+  context.mock.timers.tick(CYBERBOT_CONTEXT_RETIRE_MS);
+  cycle.update({ open: false, busy: false, attention: false });
+  cycle.dispose();
+  context.mock.timers.tick(20_000);
+  assert.deepEqual(changes, [true, false, true]);
+});
+
+test('repeated context activity neither postpones retirement nor restarts return', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: boolean[] = [];
+  const cycle = createCyberBotContextPresence(away => changes.push(away));
+  for (let i = 0; i < 3; i++) {
+    cycle.update({ open: true, busy: false, attention: false });
+    context.mock.timers.tick(1000);
+  }
+  assert.deepEqual(changes, [true]);
+  for (let i = 0; i < 3; i++) {
+    cycle.update({ open: false, busy: false, attention: false });
+    context.mock.timers.tick(500);
+  }
+  assert.deepEqual(changes, [true, false]);
+  cycle.dispose();
 });

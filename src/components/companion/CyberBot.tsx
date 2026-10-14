@@ -9,6 +9,7 @@ import type { CyberBotPosition, CyberBotMessage, CyberBotEmotion, CyberBotChatte
 import { createCyberBotHoverAssist } from './cyberBotBehavior';
 import { isInQuietHours } from './useCyberBot';
 import { useCyberBotPresence } from './useCyberBotPresence';
+import { useCyberBotContextPresence } from './useCyberBotContextPresence';
 import { useCyberBotLayout } from './useCyberBotLayout';
 import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 
@@ -30,6 +31,8 @@ interface CyberBotProps {
   returnGesture?: CyberBotReturnGesture;
   priorityEmotion?: CyberBotEmotion;
   systemAttention?: boolean;
+  contextOpen?: boolean;
+  onContextParkedChange?: (parked: boolean) => void;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
 
@@ -51,6 +54,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   returnGesture,
   priorityEmotion,
   systemAttention = false,
+  contextOpen = false,
+  onContextParkedChange,
   onSpeechVisibilityChange,
 }) => {
   const reducedMotion = useCyberBotReducedMotion();
@@ -88,15 +93,19 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   };
   const displayedMessage = activeMessage || hoverMessage;
   const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
+  const contextChatterAllowed = chatterLevel === 'full' && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
+  const contextAttention = (systemAttention && contextChatterAllowed) || isDragging || (!!displayedMessage && displayedMessage.priority !== 'low');
+  const contextAway = useCyberBotContextPresence(enabled && !reviewingDesign, contextOpen, !!displayedMessage || isDragging, contextAttention);
+  useEffect(() => { onContextParkedChange?.(contextAway); }, [contextAway, onContextParkedChange]);
   const { sleeping, vanished } = useCyberBotPresence(
     enabled,
-    reviewingDesign || !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
+    reviewingDesign || contextOpen || contextAway || !!displayedMessage || systemAttention || isHovered || isDragging || placement.hasObstacles || placement.hidden,
     activeMessage?.id,
     systemAttention,
     marqueeReading,
   );
-  const idleAway = vanished && !displayedMessage && !systemAttention;
-  const canHoverAssist = !reviewingDesign && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
+  const idleAway = (contextAway && !contextAttention) || (vanished && !displayedMessage && !systemAttention);
+  const canHoverAssist = !reviewingDesign && !contextOpen && !contextAway && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
     && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
 
   moveForHoverRef.current = () => {
@@ -165,7 +174,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
-    if (!dodgeEnabled || placement.hasObstacles || isDodgeCooldown || isDraggingRef.current) return;
+    if (contextOpen || contextAway || !dodgeEnabled || placement.hasObstacles || isDodgeCooldown || isDraggingRef.current) return;
 
     // Show surprised/scared reaction first
     setTemporaryEmotion('scared');
@@ -217,6 +226,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       aria-label="CyberBot"
       aria-hidden={placement.hidden || idleAway || undefined}
       data-cyberbot-control
+      data-cyberbot-context-parked={contextAway}
       drag
       // Numeric bounds avoid Motion's ref-resize handler retaining a second offset
       // after the layout hook has already repositioned the companion.
@@ -298,8 +308,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       <div
         ref={bubbleRef}
         data-no-hide
-        aria-hidden={!placement.bubbleVisible || undefined}
-        style={{ width: placement.bubbleWidth, visibility: placement.bubbleVisible && !placement.hidden ? 'visible' : 'hidden' }}
+        aria-hidden={!placement.bubbleVisible || idleAway || undefined}
+        style={{ width: placement.bubbleWidth, visibility: placement.bubbleVisible && !placement.hidden && !idleAway ? 'visible' : 'hidden' }}
         className={`absolute bottom-full mb-3 pointer-events-auto ${
           placement.align === 'left' ? 'left-0' : 'right-0'
         }`}

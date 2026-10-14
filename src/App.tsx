@@ -3387,6 +3387,12 @@ export default function App() {
     });
   };
   const [isCyberBotSpeechVisible, setIsCyberBotSpeechVisible] = useState(true);
+  const [isCyberBotContextParked, setIsCyberBotContextParked] = useState(false);
+  const cyberBotContextParkedRef = useRef(false);
+  const handleCyberBotContextParked = useCallback((parked: boolean) => {
+    cyberBotContextParkedRef.current = parked;
+    setIsCyberBotContextParked(parked);
+  }, []);
   const isWindowVisible = useLauncherVisibility();
 
   const lastPinnedLaunchAtRef = useRef(0);
@@ -3475,11 +3481,12 @@ export default function App() {
       targetTopic = 'add_category';
     }
 
-    if (!targetTopic) return;
+    if (!targetTopic || cyberBotContextParkedRef.current) return;
 
     // Snappy debounce (160ms): fast and fluid when navigating, prevents flicker on sub-frame clicks
     const timer = window.setTimeout(() => {
       const now = Date.now();
+      if (cyberBotContextParkedRef.current) return;
       const lastSpoken = topicCooldownsRef.current[targetTopic] || 0;
       // Per-topic cooldown (18s) to avoid repeating the exact same message if user toggles the same panel
       // Switching between DIFFERENT panels triggers immediately!
@@ -5990,6 +5997,11 @@ export default function App() {
   }, [setupInviteDue, isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours,
     cyberBot.activeMessage, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, t]);
 
+  // Opening a work context suspends optional name entry without spending an opt-out.
+  useEffect(() => {
+    if ((isAnyModalOpen || isTerminalOpen) && cyberBot.activeMessage?.id === 'cyberbot_name_invitation') cyberBot.dismissMessage();
+  }, [isAnyModalOpen, isTerminalOpen, cyberBot.activeMessage?.id, cyberBot.dismissMessage]);
+
   const [namePromptCheckTick, setNamePromptCheckTick] = useState(0);
   useEffect(() => {
     if (!cyberBot.enabled || cyberBot.preferredName || cyberBot.namePromptState === 'completed' || cyberBot.namePromptState === 'dismissed') return;
@@ -5998,7 +6010,7 @@ export default function App() {
   }, [cyberBot.enabled, cyberBot.preferredName, cyberBot.namePromptState]);
 
   useEffect(() => {
-    if (!isConfigLoaded || !cyberBot.enabled || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || isTerminalOpen || notification) return;
+    if (!isConfigLoaded || !cyberBot.enabled || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || isTerminalOpen || isCyberBotContextParked || notification) return;
     if (cyberBot.activeMessage && (!nameEntryRequested || cyberBot.activeMessage.priority !== 'low')) return;
     if (!nameEntryRequested && (cyberBot.chatterLevel !== 'full' || setupInviteDue
       || (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)))) return;
@@ -6051,11 +6063,11 @@ export default function App() {
 
     timer = window.setTimeout(offer, nameEntryRequested ? 1500 : 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, isTerminalOpen, notification, setupInviteDue, namePromptCheckTick, nameEntryRequested, t]);
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, isTerminalOpen, isCyberBotContextParked, notification, setupInviteDue, namePromptCheckTick, nameEntryRequested, t]);
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
-    blocked: isAnyModalOpen || !isCyberBotSpeechVisible
+    blocked: isAnyModalOpen || isTerminalOpen || isCyberBotContextParked || !isCyberBotSpeechVisible
       || (!!cyberBot.activeMessage && cyberBot.activeMessage.priority !== 'low') || !!notification || !!imminentTask,
     allowSpeech: !isTerminalOpen && cyberBot.chatterLevel === 'full'
       && (!cyberBot.quietHours.enabled || !isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)),
@@ -14583,6 +14595,8 @@ export default function App() {
           apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut,
         }, t)}
         systemAttention={!!notification}
+        contextOpen={isAnyModalOpen || isTerminalOpen}
+        onContextParkedChange={handleCyberBotContextParked}
         onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
       />
 
