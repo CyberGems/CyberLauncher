@@ -809,23 +809,24 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   assert.notEqual(nextCyberBotIdleExpression('curious', () => 0.03, false), 'marquee');
 });
 
-test('idle rounds show eyes, logo and curiosity evenly with occasional Terminal', () => {
+test('idle rounds favor eyes, logo and flight over Terminal and curiosity', () => {
   const picker = createCyberBotIdleExpressionPicker(() => 0.5, () => 0);
   let previous: NonNullable<CyberBotMessage['emotion']> = 'launcher';
   const faces: string[] = [];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 230; i++) {
     const face = picker.next(previous);
     assert.notEqual(face, previous);
     faces.push(face);
     previous = face;
   }
-  assert.deepEqual(new Set(faces.slice(0, 3)), new Set(['default', 'launcher', 'curious']));
-  for (const face of ['default', 'launcher', 'curious']) {
-    assert.equal(faces.filter(value => value === face).length, 20);
+  assert.deepEqual(new Set(faces.slice(0, 3)), new Set(['default', 'launcher', 'flight']));
+  for (const face of ['default', 'launcher', 'flight']) {
+    assert.equal(faces.filter(value => value === face).length, 60);
   }
-  assert.equal(faces.filter(face => face === 'terminal').length, 10);
-  for (let i = 0; i < faces.length; i += 7) {
-    assert.deepEqual(new Set(faces.slice(i, i + 7)), new Set(['default', 'launcher', 'curious', 'terminal']));
+  assert.equal(faces.filter(face => face === 'terminal').length, 30);
+  assert.equal(faces.filter(face => face === 'curious').length, 20);
+  for (let i = 0; i < faces.length; i += 23) {
+    assert.deepEqual(new Set(faces.slice(i, i + 23)), new Set(['default', 'launcher', 'flight', 'curious', 'terminal']));
   }
 });
 
@@ -841,7 +842,7 @@ test('rare gestures do not consume unseen composed expressions', () => {
   assert.equal(picker.next('happy'), 'launcher');
   now = CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
   assert.equal(picker.next('launcher'), 'marquee');
-  assert.equal(picker.next('marquee'), 'curious');
+  assert.equal(picker.next('marquee'), 'flight');
   assert.equal(rolls.length, 0);
 });
 
