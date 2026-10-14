@@ -1,3 +1,4 @@
+import type { CyberBotFarewellState } from './cyberBotFarewell';
 import { useCyberBotReducedMotion } from './useCyberBotReducedMotion';
 import type { CyberBotReturnGesture } from './cyberBotReturn';
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,6 +16,9 @@ import { CyberBotReviewContext } from './approved/CyberBotReviewContext';
 
 interface CyberBotProps {
   enabled: boolean;
+  farewell?: CyberBotFarewellState;
+  onDismissFarewell?: () => void;
+  onFarewellUnavailable?: () => void;
   activeMessage: CyberBotMessage | null;
   onDismissMessage: () => void;
   onClickBot?: () => void;
@@ -38,6 +42,9 @@ interface CyberBotProps {
 
 export const CyberBot: React.FC<CyberBotProps> = ({
   enabled,
+  farewell,
+  onDismissFarewell,
+  onFarewellUnavailable,
   activeMessage,
   onDismissMessage,
   onClickBot,
@@ -91,8 +98,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     timestamp: 0,
     priority: 'low',
   };
-  const displayedMessage = activeMessage || hoverMessage;
-  const placement = useCyberBotLayout({ enabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
+  const farewellActive = !enabled && !!(farewell?.message || farewell?.departing);
+  const visualEnabled = enabled || farewellActive;
+  const displayedMessage = farewellActive ? farewell?.message || null : activeMessage || hoverMessage;
+  const placement = useCyberBotLayout({ enabled: visualEnabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
   const contextChatterAllowed = chatterLevel === 'full' && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
   const contextAttention = (systemAttention && contextChatterAllowed) || isDragging || (!!displayedMessage && displayedMessage.priority !== 'low');
   const contextAway = useCyberBotContextPresence(enabled && !reviewingDesign, contextOpen, !!displayedMessage || isDragging, contextAttention);
@@ -104,8 +113,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     systemAttention,
     marqueeReading,
   );
-  const idleAway = (contextAway && !contextAttention) || (vanished && !displayedMessage && !systemAttention);
-  const canHoverAssist = !reviewingDesign && !contextOpen && !contextAway && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
+  const idleAway = farewellActive ? !!farewell?.departing : (contextAway && !contextAttention) || (vanished && !displayedMessage && !systemAttention);
+  const canHoverAssist = enabled && !reviewingDesign && !contextOpen && !contextAway && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
     && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
 
   moveForHoverRef.current = () => {
@@ -158,6 +167,16 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     }
   }, [enabled, canHoverAssist, placement.hidden, activeMessage, isDragging]);
 
+  // The layout only allocates speech space once a message exists. Check after it measures.
+  useEffect(() => {
+    if (!farewellActive || !farewell?.message) return;
+    const frame = window.requestAnimationFrame(() => {
+      const bubble = bubbleRef.current;
+      if (!bubble || getComputedStyle(bubble).visibility !== 'visible') onFarewellUnavailable?.();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [farewellActive, farewell?.message?.id, placement.hidden, placement.bubbleVisible, onFarewellUnavailable]);
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -170,7 +189,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
 
   // A contextual priority can intentionally own the face, such as Terminal mode.
   const currentEmotion: CyberBotEmotion =
-    priorityEmotion || displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
+    farewellActive ? 'launcher' : priorityEmotion || displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
@@ -219,15 +238,16 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     onClickBot?.();
   };
 
-  if (!enabled) return null;
+  if (!visualEnabled) return null;
 
   return (
     <motion.aside
       aria-label="CyberBot"
       aria-hidden={placement.hidden || idleAway || undefined}
       data-cyberbot-control
+      data-cyberbot-farewell={farewellActive ? farewell?.departing ? 'departing' : 'speaking' : undefined}
       data-cyberbot-context-parked={contextAway}
-      drag
+      drag={enabled}
       // Numeric bounds avoid Motion's ref-resize handler retaining a second offset
       // after the layout hook has already repositioned the companion.
       dragConstraints={{
@@ -319,7 +339,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             <CyberSpeechBubble
               key={displayedMessage.id}
               message={displayedMessage}
-              onClose={activeMessage ? onDismissMessage : () => hoverAssistRef.current?.cancel()}
+              onClose={farewellActive ? onDismissFarewell || (() => {}) : activeMessage ? onDismissMessage : () => hoverAssistRef.current?.cancel()}
               position={placement.align === 'left' ? 'bottom-left' : 'bottom-right'}
               closeLabel={closeLabel}
               onTypingChange={onTypingChange}
@@ -331,11 +351,11 @@ export const CyberBot: React.FC<CyberBotProps> = ({
       {/* Interactive Avatar Area with Dodge Hitbox and Drag */}
       <div
         className="relative w-[94px] h-[94px]"
-        style={{ pointerEvents: idleAway ? 'none' : 'auto' }}
+        style={{ pointerEvents: idleAway || !enabled ? 'none' : 'auto' }}
       >
         <button
           type="button"
-          disabled={idleAway}
+          disabled={idleAway || !enabled}
           aria-label={interactLabel}
           onMouseEnter={() => {
             setIsHovered(true);

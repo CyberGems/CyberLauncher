@@ -754,6 +754,8 @@ export const translations = {
     // CyberBot Companion
     cyberbot_toggle_active: "CyberBot: Activo (Clic para ocultar)",
     cyberbot_toggle_inactive: "CyberBot: Inactivo (Clic para activar)",
+    cyberbot_farewell: "Hasta luego.",
+    cyberbot_disabled_confirmation: "CyberBot desactivado.",
     cyberbot_tag_name: "CYBERBOT",
     cyberbot_interact: "Interactuar con CyberBot",
     cyberbot_close_message: "Cerrar mensaje de CyberBot",
@@ -1657,6 +1659,8 @@ export const translations = {
     // CyberBot Companion
     cyberbot_toggle_active: "CyberBot: Active (Click to hide)",
     cyberbot_toggle_inactive: "CyberBot: Inactive (Click to activate)",
+    cyberbot_farewell: "See you later.",
+    cyberbot_disabled_confirmation: "CyberBot disabled.",
     cyberbot_tag_name: "CYBERBOT",
     cyberbot_interact: "Interact with CyberBot",
     cyberbot_close_message: "Dismiss CyberBot message",

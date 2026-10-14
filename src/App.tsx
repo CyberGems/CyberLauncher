@@ -23,6 +23,7 @@ import {
   Bot, BotOff
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
+import { useCyberBotFarewell } from './components/companion/useCyberBotFarewell';
 import { getCyberBotMarqueeStatusMessages } from './components/companion/cyberBotBehavior';
 import { createCyberBotReturnController, createCyberBotNoticeLedger, type CyberBotReturnGesture } from './components/companion/cyberBotReturn';
 import { cyberBotNotificationEmotion } from './components/companion/cyberBotNotice';
@@ -3394,6 +3395,23 @@ export default function App() {
     setIsCyberBotContextParked(parked);
   }, []);
   const isWindowVisible = useLauncherVisibility();
+  const cyberBotFarewell = useCyberBotFarewell(cyberBot.enabled);
+  const handleCyberBotToggle = () => {
+    if (cyberBot.enabled) {
+      const control = document.querySelector<HTMLElement>('[data-cyberbot-control]');
+      const avatar = control?.querySelector<HTMLElement>('[data-cyberbot-presence]');
+      const assembly = control?.querySelector<SVGElement>('[data-part="botAssembly"]');
+      // Read actual presence at the user's click: hidden/retiring portraits stay hidden.
+      const visible = isWindowVisible && !document.hidden && !!control && !!avatar && !!assembly
+        && control.getAttribute('aria-hidden') !== 'true'
+        && getComputedStyle(control).visibility === 'visible'
+        && avatar.dataset.cyberbotPresence === 'awake'
+        && Number(getComputedStyle(assembly).opacity) > 0.9;
+      cyberBotFarewell.start(t('cyberbot_farewell'), visible);
+    } else cyberBotFarewell.cancel();
+    cyberBot.toggleEnabled();
+  };
+  useEffect(() => { if (!isWindowVisible) cyberBotFarewell.cancel(); }, [isWindowVisible, cyberBotFarewell.cancel]);
 
   const lastPinnedLaunchAtRef = useRef(0);
   const lastPinnedLaunchHintAtRef = useRef(0);
@@ -9077,28 +9095,35 @@ export default function App() {
             )}
 
             {/* CyberBot Companion Quick Toggle */}
-            <Tooltip
-              label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
-              placement={rightSidebarCollapsed ? 'left' : 'bottom'}
-            >
-              <button
-                type="button"
-                onClick={cyberBot.toggleEnabled}
-                aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
-                aria-pressed={cyberBot.enabled}
-                className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
-                  cyberBot.enabled
-                    ? 'text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.25)] hover:bg-cyan-500/25'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
-                }`}
+            <div className="relative">
+              <Tooltip
+                label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                placement={rightSidebarCollapsed ? 'left' : 'bottom'}
               >
-                {cyberBot.enabled ? (
-                  <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                ) : (
-                  <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                )}
-              </button>
-            </Tooltip>
+                <button
+                  type="button"
+                  onClick={handleCyberBotToggle}
+                  aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                  aria-pressed={cyberBot.enabled}
+                  className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
+                    cyberBot.enabled
+                      ? 'text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.25)] hover:bg-cyan-500/25'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  {cyberBot.enabled ? (
+                    <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                  ) : (
+                    <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+                  )}
+                </button>
+              </Tooltip>
+              {cyberBotFarewell.state.confirmation && !isSettingsOpen && (
+                <span role="status" className="absolute top-full right-0 mt-2 whitespace-nowrap rounded-lg border border-cyan-500/30 bg-slate-950 px-3 py-2 text-xs text-slate-300 pointer-events-none">
+                  {t('cyberbot_disabled_confirmation')}
+                </span>
+              )}
+            </div>
 
             <Tooltip label={withShortcut(t('tooltip_settings'), 'Ctrl+,')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
@@ -11926,12 +11951,12 @@ export default function App() {
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_desc')}</p>
+                          <p role={cyberBotFarewell.state.confirmation ? 'status' : undefined} className="text-xs text-slate-500 leading-relaxed">{t(cyberBotFarewell.state.confirmation ? 'cyberbot_disabled_confirmation' : 'cyberbot_settings_desc')}</p>
                         </div>
                       </div>
                       <button 
                         type="button"
-                        onClick={cyberBot.toggleEnabled}
+                        onClick={handleCyberBotToggle}
                         role="switch"
                         aria-checked={cyberBot.enabled}
                         aria-label={t('cyberbot_settings_enable')}
@@ -14577,6 +14602,9 @@ export default function App() {
       {/* --- CYBERBOT COMPANION --- */}
       <CyberBot
         enabled={cyberBot.enabled}
+        farewell={cyberBotFarewell.state}
+        onDismissFarewell={cyberBotFarewell.depart}
+        onFarewellUnavailable={cyberBotFarewell.confirm}
         activeMessage={cyberBot.activeMessage}
         returnGesture={cyberBotReturnGesture}
         onDismissMessage={cyberBot.dismissMessage}

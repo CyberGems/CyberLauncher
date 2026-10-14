@@ -6,6 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CyberBot } from '../src/components/companion/CyberBot';
 import { createCyberBotContextPresence, CYBERBOT_CONTEXT_RETIRE_MS, CYBERBOT_CONTEXT_RETURN_MS } from '../src/components/companion/cyberBotContextPresence';
+import { createCyberBotFarewell, emptyCyberBotFarewell, CYBERBOT_FAREWELL_EXIT_MS, CYBERBOT_FAREWELL_CONFIRM_MS, type CyberBotFarewellState } from '../src/components/companion/cyberBotFarewell';
 import { CyberBotAvatar } from '../src/components/companion/CyberBotAvatar';
 import { createCyberBotTypewriter, cyberBotSpeechLifetime, cyberBotTypingDuration, CYBERBOT_CHARACTER_MS, type CyberBotTypingState } from '../src/components/companion/cyberBotTyping';
 import { CyberBotTypingText } from '../src/components/companion/CyberBotTypingText';
@@ -1386,4 +1387,80 @@ test('repeated context activity neither postpones retirement nor restarts return
   }
   assert.deepEqual(changes, [true, false]);
   cycle.dispose();
+});
+
+
+test('visible disable finishes farewell writing and reading before the portal exit', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: CyberBotFarewellState[] = [];
+  const farewell = createCyberBotFarewell(state => changes.push(state));
+  farewell.start('Hasta luego.', true);
+  assert.equal(changes.at(-1)?.message?.text, 'Hasta luego.');
+  assert.equal(changes.at(-1)?.departing, false);
+  context.mock.timers.tick(cyberBotSpeechLifetime(1000, 'Hasta luego.') - 1);
+  assert.equal(changes.length, 1);
+  context.mock.timers.tick(1);
+  assert.equal(changes.at(-1)?.message, null);
+  assert.equal(changes.at(-1)?.departing, true);
+  context.mock.timers.tick(CYBERBOT_FAREWELL_EXIT_MS - 1);
+  assert.equal(changes.length, 2);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes.at(-1), emptyCyberBotFarewell);
+  farewell.dispose();
+});
+
+test('hidden disable confirms without scheduling speech or bringing the bot back', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: CyberBotFarewellState[] = [];
+  const farewell = createCyberBotFarewell(state => changes.push(state));
+  farewell.start('See you later.', false);
+  assert.deepEqual(changes.at(-1), { message: null, departing: false, confirmation: true });
+  farewell.depart();
+  context.mock.timers.tick(CYBERBOT_FAREWELL_CONFIRM_MS);
+  assert.deepEqual(changes, [{ message: null, departing: false, confirmation: true }, emptyCyberBotFarewell]);
+  farewell.dispose();
+});
+
+test('reenabling cancels either farewell phase and disposal cannot fire later', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const duringExit of [false, true]) {
+    const changes: CyberBotFarewellState[] = [];
+    const farewell = createCyberBotFarewell(state => changes.push(state));
+    farewell.start('See you later.', true);
+    if (duringExit) farewell.depart();
+    farewell.cancel();
+    const count = changes.length;
+    context.mock.timers.tick(20_000);
+    assert.equal(changes.length, count);
+    assert.deepEqual(changes.at(-1), emptyCyberBotFarewell);
+    farewell.start('See you later.', true);
+    farewell.dispose();
+    const disposedCount = changes.length;
+    context.mock.timers.tick(20_000);
+    farewell.start('See you later.', true);
+    assert.equal(changes.length, disposedCount);
+  }
+});
+
+test('farewell and hidden confirmation are translated in both languages', () => {
+  for (const language of ['es', 'en'] as const) {
+    assert.ok(translations[language].cyberbot_farewell);
+    assert.ok(translations[language].cyberbot_disabled_confirmation);
+  }
+});
+
+test('an obstructed farewell switches to confirmation and cancels its old departure', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const changes: CyberBotFarewellState[] = [];
+  const farewell = createCyberBotFarewell(state => changes.push(state));
+  farewell.start('Hasta luego.', true);
+  context.mock.timers.tick(500);
+  farewell.start('', false);
+  context.mock.timers.tick(2400);
+  assert.equal(changes.at(-1)?.confirmation, true);
+  assert.equal(changes.at(-1)?.departing, false);
+  context.mock.timers.tick(600);
+  assert.deepEqual(changes.at(-1), emptyCyberBotFarewell);
+  assert.equal(changes.length, 3);
+  farewell.dispose();
 });
