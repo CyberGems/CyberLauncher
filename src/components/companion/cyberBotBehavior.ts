@@ -14,7 +14,9 @@ export type CyberBotIdleState = 'awake' | 'sleeping' | 'hidden';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // Idle rotates slowly through composed faces. Visibly cheerful gestures remain rare.
-export const cyberBotNeutralIdleExpressions = ['launcher', 'terminal', 'curious'] as const;
+export const cyberBotNeutralIdleExpressions = ['default', 'launcher', 'curious', 'terminal'] as const;
+const coreIdleExpressions = ['default', 'launcher', 'curious'] as const;
+const weightedNeutralIdleExpressions = [...coreIdleExpressions, ...coreIdleExpressions, 'terminal'] as const;
 export const cyberBotExpressiveIdleExpressions = ['happy', 'wink', 'delighted', 'affectionate', 'sparkle'] as const;
 export const CYBERBOT_IDLE_EXPRESSIVE_CHANCE = 0.02;
 export const CYBERBOT_IDLE_MARQUEE_CHANCE = 0.05;
@@ -74,6 +76,7 @@ export function nextCyberBotIdleExpression(
   previous: CyberBotEmotion,
   random = Math.random,
   marqueeAllowed = true,
+  neutralChoices: readonly CyberBotEmotion[] = weightedNeutralIdleExpressions,
 ): CyberBotEmotion {
   const roll = random();
   if (
@@ -87,17 +90,26 @@ export function nextCyberBotIdleExpression(
 
   const pool = roll < CYBERBOT_IDLE_EXPRESSIVE_CHANCE
     ? cyberBotExpressiveIdleExpressions
-    : cyberBotNeutralIdleExpressions;
+    : neutralChoices;
   const choices = pool.filter(emotion => emotion !== previous);
   return choices[Math.floor(random() * choices.length)];
 }
 
-// Keep the status screen occasional even across interrupted expressions.
+// Exhaust each composed-face round before refilling; Terminal joins every second round.
+// The occasional status screen keeps its independent guard across interruptions.
 export function createCyberBotIdleExpressionPicker(random = Math.random, now = Date.now) {
   let marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
+  let round = 0;
+  let remaining: CyberBotEmotion[] = [];
   return {
     next(previous: CyberBotEmotion): CyberBotEmotion {
-      const next = nextCyberBotIdleExpression(previous, random, now() >= marqueeEligibleAt);
+      if (!remaining.some(face => face !== previous)) {
+        round += 1;
+        remaining = [...coreIdleExpressions, ...(round % 2 === 0 ? ['terminal' as const] : [])];
+      }
+      const next = nextCyberBotIdleExpression(previous, random, now() >= marqueeEligibleAt, remaining);
+      const index = remaining.indexOf(next);
+      if (index !== -1) remaining.splice(index, 1);
       if (next === 'marquee') marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
       return next;
     },

@@ -809,6 +809,42 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   assert.notEqual(nextCyberBotIdleExpression('curious', () => 0.03, false), 'marquee');
 });
 
+test('idle rounds show eyes, logo and curiosity evenly with occasional Terminal', () => {
+  const picker = createCyberBotIdleExpressionPicker(() => 0.5, () => 0);
+  let previous: NonNullable<CyberBotMessage['emotion']> = 'launcher';
+  const faces: string[] = [];
+  for (let i = 0; i < 70; i++) {
+    const face = picker.next(previous);
+    assert.notEqual(face, previous);
+    faces.push(face);
+    previous = face;
+  }
+  assert.deepEqual(new Set(faces.slice(0, 3)), new Set(['default', 'launcher', 'curious']));
+  for (const face of ['default', 'launcher', 'curious']) {
+    assert.equal(faces.filter(value => value === face).length, 20);
+  }
+  assert.equal(faces.filter(face => face === 'terminal').length, 10);
+  for (let i = 0; i < faces.length; i += 7) {
+    assert.deepEqual(new Set(faces.slice(i, i + 7)), new Set(['default', 'launcher', 'curious', 'terminal']));
+  }
+});
+
+test('rare gestures do not consume unseen composed expressions', () => {
+  let now = 0;
+  const rolls = [0.5, 0, 0.01, 0, 0.5, 0, 0.03, 0.5, 0];
+  const picker = createCyberBotIdleExpressionPicker(() => {
+    assert.ok(rolls.length, 'unexpected random draw');
+    return rolls.shift()!;
+  }, () => now);
+  assert.equal(picker.next('launcher'), 'default');
+  assert.equal(picker.next('default'), 'happy');
+  assert.equal(picker.next('happy'), 'launcher');
+  now = CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
+  assert.equal(picker.next('launcher'), 'marquee');
+  assert.equal(picker.next('marquee'), 'curious');
+  assert.equal(rolls.length, 0);
+});
+
 test('marquee eligibility waits two minutes, survives interruptions and postpones on return', () => {
   let now = 0;
   // Always request a screen: the cadence must still prevent early/repeated passes.
