@@ -21,7 +21,9 @@
     "icons": "node scripts/generate-icons.mjs",
     "installer-graphics": "node scripts/generate-installer-graphics.mjs",
     "build:store-launcher": "node scripts/build-store-launcher.mjs",
-    "test:store-launcher": "node --import tsx --test tests/store-app-launch.test.ts"
+    "test:store-launcher": "node --import tsx --test tests/store-app-launch.test.ts",
+    "cyberbot:review": "node scripts/cyberbot-review.mjs",
+    "cyberbot:review:inspect": "node scripts/cyberbot-review.mjs --inspect"
   },
   "build": {
     "appId": "com.cybergems.cyberlauncher",

@@ -1,5 +1,7 @@
 # CyberBot design review and integration
 
+For a new session, start with [the reusable CyberBot workflow](cyberbot-workflow.md).
+
 The approved design is extracted from the private local `artifacts/cyberbot-preview.html` laboratory. The review uses the real `App`, `CyberBot`, layout and speech bubble inside Electron, with the extracted avatar in its normal location. The first visual stage was accepted; normal launches now use the same approved component with the integration described below.
 
 Run `npm run build`, then `node scripts/cyberbot-review.mjs`. The review creates a separate temporary portable profile. It copies appearance, launcher organization and the icon cache from the installed app, but does not copy scheduled tasks. Automatic updates, backups, system alerts, startup registration and hotspots are disabled in that profile. The production main process already skips Windows startup registration in development mode. Close this instance with its tray Exit command; closing the window hides it to the tray, as in CyberLauncher.
