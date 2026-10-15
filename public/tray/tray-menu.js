@@ -33,7 +33,7 @@ const exitDividerEl = document.getElementById('exitDivider');
 const exitGroupEl = document.getElementById('exitGroup');
 
 let currentState = {
-  version: '1.12.0',
+  version: '1.13.0',
   lang: 'es',
   isVisible: false,
   shortcut: 'Alt+Shift+L',
@@ -208,7 +208,7 @@ function renderHead() {
 
   if (currentView === 'main') {
     headDividerEl.style.display = 'block';
-    const version = (currentState && currentState.version) || '1.12.0';
+    const version = (currentState && currentState.version) || '1.13.0';
     headEl.className = 'head';
     headEl.setAttribute('role', 'button');
     headEl.setAttribute('tabindex', '0');

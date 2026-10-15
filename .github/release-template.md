@@ -8,7 +8,7 @@
 
 <!-- Maintainer: Rewrite the marked paragraph for every release. Use 25-45 words, lead with user-facing changes, and do not repeat the app name or version. -->
 <!-- changelog-summary:start -->
-Meet CyberBot, an animated companion that shares launch feedback, system notices, and practical tips; set the name CyberBot uses for you, choose its position, quiet hours, and interaction level. This release also adds an interactive PowerShell or CMD terminal, improves app launch guidance, and refines monitoring and scheduled-task alerts.
+CyberBot gains a refined layered design, typed speech, smoother movement, richer idle expressions, inline naming, contextual returns, and graceful farewells. Useful status screens appear less often, dialogs receive quieter behavior, and Microsoft Store apps open without false failure notices.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
@@ -17,50 +17,60 @@ Meet CyberBot, an animated companion that shares launch feedback, system notices
 
 ### ✨ Key Features & Highlights
 
-- 🤖 **CyberBot Companion**:
-  - Animated expressions and contextual messages for launches, system notices, scheduled-task countdowns, and tips.
-  - Choose what CyberBot calls you and set its position, quiet hours, and interaction level, or disable the companion and use backup banners.
+- 🤖 **Refined CyberBot design**:
+  - The launcher and floating desktop notices share the approved avatar, with subtle material reflections and alternating focus/scan hover reactions.
+  - Speech appears with a typing caret, while the chest equalizer runs during writing.
+  - Automatic travel is 20% slower and uses the same directional tilt as dragging. Resting motion is gentler, and sleeping stops levitation with a slight head tilt.
 
-- 💻 **Interactive Cyber Terminal**:
-  - Open a persistent PowerShell or CMD session from the search field with `>`; use shell history and interactive programs, and switch shells from the toolbar.
+- 🧭 **More purposeful companion behavior**:
+  - Idle rotation includes horizontal and round eyes; Terminal and curiosity appear less often. Occasional status screens show useful live information and respect the bot's height above the floor.
+  - After its contextual message, CyberBot retires while dialogs or the terminal remain open, then returns after a brief delay.
+  - Turning CyberBot off gives a short farewell and portal exit when visible, or a confirmation beside the control when already hidden.
 
-- 🧭 **Smoother Launcher Workflow**:
-  - Guided first-run setup, clearer app-add and pinned-launch behavior, and improved visibility when apps open.
-  - System monitoring now highlights critical memory use and can recommend CyberManager from the resource panel.
+- ✍️ **Inline naming and useful returns**:
+  - Enter your name directly in the invitation bubble. Clearing a name reopens the invitation, and Settings provides Ask me again when the name is empty.
+  - Returning uses brief scan/sensor gestures, occasional varied greetings and relevant pending-task information instead of repeating the last launched app.
+  - Terminal tips vary, memory alerts use clear exclamation eyes, and desktop bubbles identify the launcher without repeating its name in the title.
 
-- 🔔 **More Reliable Notifications**:
-  - Route launcher notices through CyberBot when available, with configurable banners and protected delivery for critical alerts.
-  - CyberBot's idle animations and speech cues are refined to stay clear and responsive.
+- 🛠️ **Launch and notification fixes**:
+  - Microsoft Store activation, including WhatsApp, no longer reports a failure when Windows opens the app successfully.
+  - Persistent notices retain their typing progress and reading deadline across returns, while new identical alerts can still appear.
+  - The system-tray guidance keeps its saved Don't show again preference, and its logo is easier to see.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-Conoce a CyberBot, un compañero animado que comparte avisos al abrir apps, novedades del sistema y consejos; elige cómo te llama, su posición, horario silencioso e interacción. Esta versión también incorpora una terminal interactiva de PowerShell o CMD, mejora la guía para abrir apps y refina la monitorización y las alertas de tareas programadas.
+CyberBot estrena un diseño con mayor profundidad visual, texto progresivo, movimiento más suave, expresiones variadas, entrada del nombre en el globo, regresos contextuales y despedidas animadas. Las pantallas informativas aparecen menos, los diálogos tienen menos distracciones y las apps de Microsoft Store se abren sin falsos avisos de error.
 
 ---
 
 ### ✨ Novedades destacadas
 
-- 🤖 **Compañero CyberBot**:
-  - Gestos animados y mensajes contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos.
-  - Elige cómo te llama CyberBot y define su posición, horario silencioso e interacción, o desactiva el compañero y usa banners de respaldo.
+- 🤖 **Diseño refinado de CyberBot**:
+  - El lanzador y los avisos flotantes comparten el avatar aprobado, con reflejos sutiles y reacciones de enfoque y escaneo alternadas al acercar el cursor.
+  - El texto aparece con caret y el ecualizador del cuerpo se activa mientras se escribe.
+  - El desplazamiento automático es un 20% más lento y usa la inclinación direccional del arrastre. La levitación es más suave; al dormir se detiene y la cabeza se inclina ligeramente.
 
-- 💻 **Cyber Terminal interactiva**:
-  - Abre una sesión persistente de PowerShell o CMD desde el buscador con `>`; usa el historial y programas interactivos, y cambia de consola desde la barra.
+- 🧭 **Comportamiento más útil**:
+  - La rotación incorpora ojos horizontales y redondos, con menos presencia de Terminal y Curioso. Las pantallas ocasionales muestran información real y respetan la altura del bot sobre el piso.
+  - Tras su intervención contextual, CyberBot se retira mientras un diálogo o la terminal estén abiertos y regresa con una pequeña demora al cerrarlos.
+  - Al desactivarlo se despide y sale por el portal si está visible; si ya está oculto, muestra una confirmación junto al control.
 
-- 🧭 **Flujo del lanzador más claro**:
-  - Guía inicial, instrucciones más claras para agregar apps y usar el modo PIN, y mejor visibilidad al abrir aplicaciones.
-  - El monitor del sistema destaca el uso crítico de memoria y puede recomendar CyberManager desde el panel de recursos.
+- ✍️ **Nombre inline y regresos contextuales**:
+  - Introduce tu nombre directamente en el globo. Borrarlo vuelve a habilitar la invitación y Configuración ofrece Preguntarme de nuevo cuando el nombre está vacío.
+  - Al regresar aparecen gestos breves, saludos ocasionales variados e información sobre tareas pendientes, en lugar de repetir la última app abierta.
+  - Los consejos de la terminal varían, las alertas de memoria usan ojos de admiración y las burbujas flotantes identifican el lanzador sin repetirlo en el título.
 
-- 🔔 **Avisos más confiables**:
-  - Los avisos del lanzador llegan a CyberBot cuando está disponible, con banners configurables y entrega protegida para alertas críticas.
-  - Se refinan las animaciones en reposo y las señales al hablar para mantener a CyberBot claro y ágil.
+- 🛠️ **Correcciones de apertura y avisos**:
+  - Las apps de Microsoft Store, incluido WhatsApp, dejan de mostrar un error cuando Windows las abre correctamente.
+  - Los avisos persistentes conservan el progreso del texto y el tiempo de lectura al regresar, sin impedir nuevos avisos idénticos.
+  - La guía de la bandeja conserva No mostrar más y su icono se ve con mayor claridad.
 
 </details>
 
---- 
+---
 
 ### 📦 Downloads & Packages
 
