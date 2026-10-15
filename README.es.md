@@ -69,9 +69,11 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Ocultar al perder el foco**: el lanzador se oculta automáticamente al cambiar a otra ventana
 
 ### 🤖 Compañero CyberBot
-- **Compañero animado**: CyberBot comparte comentarios contextuales al abrir apps, avisos del sistema, cuentas regresivas de tareas programadas y consejos desde el lanzador.
-- **Personaliza la experiencia**: Elige cómo te llama CyberBot, muévelo, ajusta su nivel de interacción y define un horario silencioso. Descansa tras 90 segundos sin actividad en el lanzador y despierta cuando vuelves.
-- **No es un chatbot**: CyberBot usa mensajes contextuales integrados. Puedes desactivarlo en `Ajustes → CyberBot`; los banners de respaldo pueden mostrar avisos en su lugar.
+- **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
+- **Mensajes progresivos**: Los comentarios al abrir apps, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
+- **Personaliza la experiencia**: Introduce tu nombre en el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.
+- **Comportamiento más tranquilo**: Expresiones variadas, pantallas informativas ocasionales, descanso suave y regresos contextuales. CyberBot se retira tras hablar en diálogos o la terminal y vuelve con una pequeña demora al cerrarlos.
+- **Compañero opcional**: CyberBot usa mensajes contextuales integrados. Desactívalo desde Configuración o su toggle rápido; si está visible, se despide brevemente. Los banners de respaldo pueden mostrar avisos en su lugar.
 
 ### 📊 Sistema y monitorización
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior

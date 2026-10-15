@@ -69,9 +69,11 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
 
 ### 🤖 CyberBot Companion
-- **Animated desktop companion**: CyberBot shares contextual launch feedback, system notices, scheduled-task countdowns, and tips from the launcher.
-- **Personalize the experience**: Set the name CyberBot uses for you, move it, set an interaction level, and schedule quiet hours. It rests after 90 seconds without launcher activity and wakes when you return.
-- **Not a chatbot**: CyberBot uses built-in contextual messages. You can turn it off in `Settings → CyberBot`; backup banners can show notices in its place.
+- **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
+- **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
+- **Personalize the experience**: Enter your name directly in its invitation, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
+- **Calmer behavior**: Varied idle expressions, occasional useful status screens, gentle sleep and contextual returns. CyberBot retires after speaking in dialogs or the terminal and returns after a short delay when they close.
+- **Optional companion**: CyberBot uses built-in contextual messages. Disable it through Settings or its quick toggle; a visible bot gives a short farewell. Backup banners can show notices in its place.
 
 ### 📊 System & Monitoring
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
