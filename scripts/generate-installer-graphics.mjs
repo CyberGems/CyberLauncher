@@ -41,9 +41,14 @@ function encodeBMP(width, height, rawRGBBuffer) {
   return buf;
 }
 
-async function main() {
-  const sourceImage = 'C:/Users/CARLOS/.gemini/antigravity-ide/brain/4f9f9372-119e-4584-b48c-9742d774645f/installer_sidebar_graphic_1790960044181.jpg';
-  const outDir = path.resolve('public');
+  async function main() {
+    const sourceImage = path.resolve('assets/installer-sidebar-master.jpg');
+    const outDir = path.resolve('public');
+
+    if (!fs.existsSync(sourceImage)) {
+      throw new Error(`Master sidebar image not found at: ${sourceImage}`);
+    }
+
 
   console.log('Generating installer sidebar (164x314)...');
   // Resize source image to 164x314 with cover / center fit
@@ -63,49 +68,6 @@ async function main() {
   const sidebarBmp = encodeBMP(sidebarInfo.width, sidebarInfo.height, rawSidebar);
   fs.writeFileSync(path.join(outDir, 'installerSidebar.bmp'), sidebarBmp);
   console.log(`Saved installerSidebar.bmp (${sidebarBmp.length} bytes) and installerSidebar.png`);
-
-  console.log('Generating installer header (150x57)...');
-  // For header, create a clean modern 150x57 banner:
-  // soft tech gradient on white/pale cyan with logo on right
-  const logoSharp = sharp(path.resolve('public/icon.png'))
-    .resize(44, 44, { fit: 'contain' });
-  const logoBuf = await logoSharp.png().toBuffer();
-
-  const svgHeader = `
-    <svg width="150" height="57" viewBox="0 0 150 57" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#FFFFFF" />
-          <stop offset="60%" stop-color="#F6F9FD" />
-          <stop offset="100%" stop-color="#E8F1FC" />
-        </linearGradient>
-      </defs>
-      <rect width="150" height="57" fill="url(#headerGrad)" />
-      <circle cx="126" cy="28" r="24" fill="#06B6D4" opacity="0.08" />
-      <circle cx="126" cy="28" r="16" fill="#3B82F6" opacity="0.06" />
-    </svg>
-  `;
-
-  const headerSharp = sharp(Buffer.from(svgHeader))
-    .composite([
-      {
-        input: logoBuf,
-        top: 6,
-        left: 98,
-      },
-    ]);
-
-  await headerSharp.clone().png().toFile(path.join(outDir, 'installerHeader.png'));
-
-  const { data: rawHeader, info: headerInfo } = await headerSharp
-    .clone()
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const headerBmp = encodeBMP(headerInfo.width, headerInfo.height, rawHeader);
-  fs.writeFileSync(path.join(outDir, 'installerHeader.bmp'), headerBmp);
-  console.log(`Saved installerHeader.bmp (${headerBmp.length} bytes) and installerHeader.png`);
 }
 
 main().catch(console.error);
