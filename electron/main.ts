@@ -3057,13 +3057,11 @@ async function extractAndCacheIcon(
     }
   }
 
-  // 3. Extracción nativa: si es un acceso directo (.lnk), usar extractShellItemIcon para evitar badge de flecha;
-  // de lo contrario usar getFileIcon de Electron (extrae el icono real embebido en el .exe)
+  // 3. Extracción nativa: usar extractShellItemIcon para alta resolución (256x256) sin badges;
+  // si no está disponible, recurrir a getFileIcon de Electron
   if (!pngBuffer && fs.existsSync(resolvedPath)) {
     try {
-      if (path.extname(resolvedPath).toLowerCase() === '.lnk') {
-        pngBuffer = await extractShellItemIcon(resolvedPath);
-      }
+      pngBuffer = await extractShellItemIcon(resolvedPath);
       if (!pngBuffer) {
         let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
         if (!icon || icon.isEmpty()) {
