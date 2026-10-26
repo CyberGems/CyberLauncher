@@ -14684,6 +14684,16 @@ export default function App() {
               setIsAddingCategory(true);
             }}
             onOpenPowerMenu={() => setIsPowerMenuOpen(true)}
+            onOpenSettings={(tab) => {
+              setSettingsTab(tab || 'general');
+              setIsSettingsOpen(true);
+            }}
+            onOpenAbout={() => setIsAboutOpen(true)}
+            onRefreshIcons={() => {
+              void handleRefreshAllIcons();
+            }}
+            onTogglePin={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
+            isPinned={isAlwaysOnTop}
             quietHours={cyberBot.quietHours}
             onToggleQuietHours={() => {
               cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled });

@@ -17,6 +17,11 @@ import {
   FolderPlus,
   CornerDownLeft,
   Sparkles,
+  Settings,
+  ScanSearch,
+  RefreshCw,
+  Info,
+  Pin,
 } from 'lucide-react';
 import type { TranslationKey } from '../../locales';
 import type { CyberBotQuietHoursConfig } from './companionTypes';
@@ -53,6 +58,11 @@ export interface CyberBotPromptProps {
   onAddNewApp: (prefillName?: string) => void;
   onAddNewCategory?: () => void;
   onOpenPowerMenu?: () => void;
+  onOpenSettings?: (tab?: 'general' | 'cyberbot' | 'backup' | 'uwp') => void;
+  onOpenAbout?: () => void;
+  onRefreshIcons?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
   quietHours?: CyberBotQuietHoursConfig;
   onToggleQuietHours?: () => void;
   playBeep?: () => void;
@@ -63,6 +73,7 @@ interface PromptActionItem {
   id: string;
   type: 'action';
   label: string;
+  shortLabel?: string;
   description?: string;
   keywords: string;
   shortcut?: string;
@@ -82,6 +93,15 @@ interface PromptAppItem {
 
 type SelectableItem = PromptActionItem | PromptAppItem;
 
+// Normalize accents/diacritics and case for resilient search
+function normalizeSearch(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   isOpen,
   onClose,
@@ -100,6 +120,11 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   onAddNewApp,
   onAddNewCategory,
   onOpenPowerMenu,
+  onOpenSettings,
+  onOpenAbout,
+  onRefreshIcons,
+  onTogglePin,
+  isPinned = false,
   quietHours,
   onToggleQuietHours,
   playBeep,
@@ -121,120 +146,227 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     onActionExecuted?.(item.label);
   }, [playBeep, onClose, onActionExecuted]);
 
-  // System actions list
+  // Complete system actions list with extensive multilingual keywords
   const systemActions = useMemo<PromptActionItem[]>(() => [
+    // 1. Configuración General (Ajustes / Settings)
+    ...(onOpenSettings ? [{
+      id: 'action-settings',
+      type: 'action' as const,
+      label: t('cyberbot_prompt_action_settings'),
+      shortLabel: t('cyberbot_prompt_action_settings'),
+      description: t('cyberbot_prompt_action_settings_desc'),
+      keywords: 'settings configuracion configuracion ajustes config opciones preferences preferencias tema general hotkeys atajos teclado idioma language personalizacion',
+      shortcut: 'Ctrl+,',
+      icon: <Settings className="w-3.5 h-3.5 text-slate-300" />,
+      color: 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
+      run: () => onOpenSettings('general'),
+    }] : []),
+
+    // 2. Monitor de Sistema
     {
       id: 'action-system',
       type: 'action',
       label: t('cyberbot_prompt_action_system'),
+      shortLabel: 'Monitor Sistema',
       description: t('cyberbot_prompt_action_system_desc'),
-      keywords: 'system sistema monitor cpu ram memoria hardware recursos monitoreo performance',
+      keywords: 'system sistema monitor cpu ram memoria hardware recursos monitoreo performance rendimiento procesador diagnostico',
       shortcut: 'Ctrl+H',
       icon: <Cpu className="w-3.5 h-3.5 text-cyan-400" />,
       color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
       run: onOpenSystemHUD,
     },
-    {
-      id: 'action-storage',
-      type: 'action',
-      label: t('cyberbot_prompt_action_storage'),
-      description: t('cyberbot_prompt_action_storage_desc'),
-      keywords: 'storage almacenamiento disco hard drive disk space espacio discos',
-      shortcut: 'Ctrl+D',
-      icon: <HardDrive className="w-3.5 h-3.5 text-sky-400" />,
-      color: 'border-sky-500/30 text-sky-300 hover:border-sky-400 hover:bg-sky-500/15',
-      run: onOpenStorageHUD,
-    },
+
+    // 3. Cyber Terminal
     {
       id: 'action-terminal',
       type: 'action',
       label: t('cyberbot_prompt_action_terminal'),
+      shortLabel: t('cyberbot_prompt_action_terminal'),
       description: t('cyberbot_prompt_action_terminal_desc'),
-      keywords: 'terminal consola cmd powershell cli shell bash',
+      keywords: 'terminal consola cmd powershell cli shell bash consola comandos powershell',
       shortcut: 'Ctrl+J',
       icon: <Terminal className="w-3.5 h-3.5 text-emerald-400" />,
       color: 'border-emerald-500/30 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-500/15',
       run: onOpenTerminal,
     },
+
+    // 4. Reloj y Tareas
     {
       id: 'action-clock',
       type: 'action',
       label: t('cyberbot_prompt_action_clock'),
+      shortLabel: t('cyberbot_prompt_action_clock'),
       description: t('cyberbot_prompt_action_clock_desc'),
-      keywords: 'reloj alarma temporizador timer cron scheduler programador tareas clock',
+      keywords: 'reloj alarma alarmas temporizador timer cron scheduler programador tareas clock programar cronometro lanzamientos',
       shortcut: 'Ctrl+T',
       icon: <Clock className="w-3.5 h-3.5 text-amber-400" />,
       color: 'border-amber-500/30 text-amber-300 hover:border-amber-400 hover:bg-amber-500/15',
       run: onOpenClockHUD,
     },
+
+    // 5. Respaldar Ahora
     {
       id: 'action-backup',
       type: 'action',
       label: t('cyberbot_prompt_action_backup'),
+      shortLabel: t('cyberbot_prompt_action_backup'),
       description: t('cyberbot_prompt_action_backup_desc'),
-      keywords: 'backup respaldo copia seguridad snapshot guardar exportar',
+      keywords: 'backup respaldo respaldos copia copias seguridad snapshot guardar exportar restaurar snapshot backup',
       icon: <Archive className="w-3.5 h-3.5 text-teal-400" />,
       color: 'border-teal-500/30 text-teal-300 hover:border-teal-400 hover:bg-teal-500/15',
       run: onBackupNow,
     },
+
+    // 6. Paleta de Comandos
     {
       id: 'action-palette',
       type: 'action',
       label: t('cyberbot_prompt_action_palette'),
+      shortLabel: 'Paleta Comandos',
       description: t('cyberbot_prompt_action_palette_desc'),
-      keywords: 'paleta palette comandos commands ctrl+k buscar acciones',
+      keywords: 'paleta palette comandos commands ctrl+k buscar acciones todo atajos menu',
       shortcut: 'Ctrl+K',
       icon: <Command className="w-3.5 h-3.5 text-purple-400" />,
       color: 'border-purple-500/30 text-purple-300 hover:border-purple-400 hover:bg-purple-500/15',
       run: onOpenCommandPalette,
     },
+
+    // 7. Almacenamiento
+    {
+      id: 'action-storage',
+      type: 'action',
+      label: t('cyberbot_prompt_action_storage'),
+      shortLabel: t('cyberbot_prompt_action_storage'),
+      description: t('cyberbot_prompt_action_storage_desc'),
+      keywords: 'storage almacenamiento disco discos hard drive disk space espacio unidades c d disco duro particiones',
+      shortcut: 'Ctrl+D',
+      icon: <HardDrive className="w-3.5 h-3.5 text-sky-400" />,
+      color: 'border-sky-500/30 text-sky-300 hover:border-sky-400 hover:bg-sky-500/15',
+      run: onOpenStorageHUD,
+    },
+
+    // 8. Ajustes de CyberBot
+    ...(onOpenSettings ? [{
+      id: 'action-cyberbot-settings',
+      type: 'action' as const,
+      label: t('cyberbot_prompt_action_cyberbot_settings'),
+      shortLabel: 'Ajustes CyberBot',
+      description: t('cyberbot_prompt_action_cyberbot_settings_desc'),
+      keywords: 'cyberbot bot ajustes config asistente companion avatar nombre name silencio quiet horas silenciosas chatter comportamiento',
+      icon: <Bot className="w-3.5 h-3.5 text-cyan-400" />,
+      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      run: () => onOpenSettings('cyberbot'),
+    }] : []),
+
+    // 9. Nuevo Acceso Directo
     {
       id: 'action-add-app',
       type: 'action',
       label: t('cyberbot_prompt_action_add_app'),
+      shortLabel: t('cyberbot_prompt_action_add_app'),
       description: t('cyberbot_prompt_action_add_app_desc'),
-      keywords: 'nueva nuevo shortcut add agregar acceso directo app executable exe link crear',
+      keywords: 'nueva nuevo shortcut add agregar acceso directo app executable exe link crear programa link url',
       shortcut: 'Ctrl+N',
       icon: <Plus className="w-3.5 h-3.5 text-blue-400" />,
       color: 'border-blue-500/30 text-blue-300 hover:border-blue-400 hover:bg-blue-500/15',
       run: () => onAddNewApp(),
     },
+
+    // 10. Nueva Categoría
     ...(onAddNewCategory ? [{
       id: 'action-add-cat',
       type: 'action' as const,
       label: t('cmd_palette_action_add_cat'),
       description: t('cmd_palette_action_add_cat_desc'),
-      keywords: 'category categoria new nueva folder carpeta group grupo crear',
+      keywords: 'category categoria new nueva folder carpeta group grupo crear organizar clasificar',
       shortcut: 'Ctrl+Shift+N',
       icon: <FolderPlus className="w-3.5 h-3.5 text-cyan-400" />,
       color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
       run: onAddNewCategory,
     }] : []),
+
+    // 11. Escanear Apps UWP
+    ...(onOpenSettings ? [{
+      id: 'action-uwp',
+      type: 'action' as const,
+      label: t('cyberbot_prompt_action_uwp'),
+      description: t('cyberbot_prompt_action_uwp_desc'),
+      keywords: 'uwp store windows microsoft games scan escanear tienda juegos apps microsoft store import importar',
+      icon: <ScanSearch className="w-3.5 h-3.5 text-cyan-400" />,
+      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      run: () => onOpenSettings('uwp'),
+    }] : []),
+
+    // 12. Refrescar Iconos
+    ...(onRefreshIcons ? [{
+      id: 'action-refresh-icons',
+      type: 'action' as const,
+      label: t('cyberbot_prompt_action_refresh_icons'),
+      description: t('cyberbot_prompt_action_refresh_icons_desc'),
+      keywords: 'icons iconos refresh refrescar actualizar reload cache extraer recargar cache',
+      icon: <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />,
+      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      run: onRefreshIcons,
+    }] : []),
+
+    // 13. Acerca de CyberLauncher
+    ...(onOpenAbout ? [{
+      id: 'action-about',
+      type: 'action' as const,
+      label: t('cyberbot_prompt_action_about'),
+      description: t('cyberbot_prompt_action_about_desc'),
+      keywords: 'about acerca version updates novedades creditos ayuda docs wiki informacion info f1 creditos version changelog',
+      shortcut: 'F1',
+      icon: <Info className="w-3.5 h-3.5 text-cyan-400" />,
+      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      run: onOpenAbout,
+    }] : []),
+
+    // 14. Anclar / Desanclar Ventana (PIN)
+    ...(onTogglePin ? [{
+      id: 'action-pin',
+      type: 'action' as const,
+      label: isPinned ? t('cyberbot_prompt_action_pin_off') : t('cyberbot_prompt_action_pin_on'),
+      description: t('cyberbot_prompt_action_pin_desc'),
+      keywords: 'pin anclar desanclar fijar ventana al frente topmost siempre visible toggle pin',
+      shortcut: 'Ctrl+P',
+      icon: <Pin className={`w-3.5 h-3.5 ${isPinned ? 'text-amber-400' : 'text-slate-400'}`} />,
+      color: isPinned
+        ? 'border-amber-500/30 text-amber-300 hover:border-amber-400 hover:bg-amber-500/15'
+        : 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
+      run: onTogglePin,
+    }] : []),
+
+    // 15. Alternar Modo Silencio
     ...(onToggleQuietHours ? [{
       id: 'action-quiet',
       type: 'action' as const,
       label: isQuietHoursActive ? t('cyberbot_prompt_action_quiet_disable') : t('cyberbot_prompt_action_quiet_enable'),
+      shortLabel: isQuietHoursActive ? 'Activar Sonido' : 'Modo Silencio',
       description: t('cyberbot_prompt_action_quiet_desc'),
-      keywords: 'silencio quiet mute callar modo horas silenciosas sonido notificaciones',
+      keywords: 'silencio quiet mute callar modo horas silenciosas sonido notificaciones dormir no molestar',
       icon: isQuietHoursActive ? <Volume2 className="w-3.5 h-3.5 text-rose-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />,
       color: isQuietHoursActive
         ? 'border-rose-500/30 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15'
         : 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
       run: onToggleQuietHours,
     }] : []),
+
+    // 16. Opciones de Energía
     ...(onOpenPowerMenu ? [{
       id: 'action-power',
       type: 'action' as const,
       label: t('cyberbot_prompt_action_power'),
       description: t('cyberbot_prompt_action_power_desc'),
-      keywords: 'power energia apagar reiniciar suspender bloquear shutdown restart sleep lock signout',
+      keywords: 'power energia apagar reiniciar suspender bloquear shutdown restart sleep lock signout pc equipo cerrar sesion',
       icon: <Power className="w-3.5 h-3.5 text-rose-400" />,
       color: 'border-rose-500/30 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15',
       run: onOpenPowerMenu,
     }] : []),
   ], [
-    t, isQuietHoursActive, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal, onOpenClockHUD,
-    onBackupNow, onOpenCommandPalette, onAddNewApp, onAddNewCategory, onToggleQuietHours, onOpenPowerMenu,
+    t, isQuietHoursActive, isPinned, onOpenSettings, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal,
+    onOpenClockHUD, onBackupNow, onOpenCommandPalette, onAddNewApp, onAddNewCategory,
+    onRefreshIcons, onOpenAbout, onTogglePin, onToggleQuietHours, onOpenPowerMenu,
   ]);
 
   // Frequent / Favorite apps
@@ -248,7 +380,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       return (b.usage || 0) - (a.usage || 0);
     });
 
-    return sorted.slice(0, 4).map(app => ({
+    return sorted.slice(0, 3).map(app => ({
       id: `frequent-app-${app.id}`,
       type: 'app' as const,
       app,
@@ -258,25 +390,27 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     }));
   }, [apps, favoriteIds, onLaunchApp]);
 
-  // Filtered lists based on search query
-  const trimmed = query.trim().toLocaleLowerCase();
+  // Normalized search query
+  const normalizedQuery = normalizeSearch(query);
 
+  // Filtered action results with accent-insensitive matching
   const matchingActions = useMemo<PromptActionItem[]>(() => {
-    if (!trimmed) return [];
+    if (!normalizedQuery) return [];
     return systemActions.filter(action => {
-      const haystack = `${action.label} ${action.description || ''} ${action.keywords} ${action.shortcut || ''}`.toLocaleLowerCase();
-      return haystack.includes(trimmed);
+      const haystack = normalizeSearch(`${action.label} ${action.shortLabel || ''} ${action.description || ''} ${action.keywords} ${action.shortcut || ''}`);
+      return haystack.includes(normalizedQuery);
     });
-  }, [trimmed, systemActions]);
+  }, [normalizedQuery, systemActions]);
 
+  // Filtered app results with accent-insensitive matching
   const matchingApps = useMemo<PromptAppItem[]>(() => {
-    if (!trimmed) return [];
+    if (!normalizedQuery) return [];
     return apps
       .filter(app => {
-        const haystack = `${app.name} ${app.category || ''} ${app.path || ''}`.toLocaleLowerCase();
-        return haystack.includes(trimmed);
+        const haystack = normalizeSearch(`${app.name} ${app.category || ''} ${app.path || ''}`);
+        return haystack.includes(normalizedQuery);
       })
-      .slice(0, 6)
+      .slice(0, 5)
       .map(app => ({
         id: `search-app-${app.id}`,
         type: 'app' as const,
@@ -285,23 +419,27 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         description: app.category,
         run: () => onLaunchApp(app),
       }));
-  }, [trimmed, apps, onLaunchApp]);
+  }, [normalizedQuery, apps, onLaunchApp]);
+
+  // Initial curated grid actions (6 top actions that fit perfectly)
+  const initialGridActions = useMemo<PromptActionItem[]>(() => {
+    return systemActions.slice(0, 6);
+  }, [systemActions]);
 
   // Combined selectable items for keyboard navigation
   const selectableItems = useMemo<SelectableItem[]>(() => {
-    if (!trimmed) {
-      // When empty: quick chips (first 6) + frequent apps
-      return [...systemActions.slice(0, 6), ...frequentApps];
+    if (!normalizedQuery) {
+      return [...initialGridActions, ...frequentApps];
     }
     return [...matchingActions, ...matchingApps];
-  }, [trimmed, systemActions, frequentApps, matchingActions, matchingApps]);
+  }, [normalizedQuery, initialGridActions, frequentApps, matchingActions, matchingApps]);
 
   // Auto-focus input on open
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setActiveIndex(0);
-      const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 40);
       return () => window.clearTimeout(timer);
     }
   }, [isOpen]);
@@ -360,7 +498,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       e.preventDefault();
       if (selectableItems.length > 0 && activeIndex >= 0 && activeIndex < selectableItems.length) {
         executeItem(selectableItems[activeIndex]);
-      } else if (trimmed) {
+      } else if (normalizedQuery) {
         // If no results, pressing enter creates the app
         playBeep?.();
         onClose();
@@ -379,12 +517,12 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       aria-label={t('cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
-      className="relative w-full max-w-[340px] rounded-2xl bg-[#070d1d]/95 backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_30px_rgba(34,211,238,0.22)] p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5 max-h-[440px]"
+      className="relative w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-[#070d1d]/95 backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_35px_rgba(34,211,238,0.25)] p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5"
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-5 h-5 rounded-md bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shrink-0">
+          <div className="w-5 h-5 rounded-md bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.3)]">
             <Bot className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
           </div>
           <span className="text-[10px] font-cyber font-bold tracking-widest text-cyan-300 uppercase truncate">
@@ -412,7 +550,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('cyberbot_prompt_placeholder')}
-          className="w-full rounded-xl border border-cyan-500/30 bg-slate-950/70 pl-8 pr-7 py-1.5 text-xs text-white placeholder:text-slate-500 select-text outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 font-cyber transition-all"
+          className="w-full rounded-xl border border-cyan-500/35 bg-slate-950/75 pl-8 pr-7 py-2 text-xs text-white placeholder:text-slate-500 select-text outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 font-cyber transition-all"
         />
         {query && (
           <button
@@ -430,9 +568,12 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div ref={listRef} className="overflow-y-auto custom-scrollbar flex-1 pr-0.5 space-y-3 max-h-[300px]">
+      <div
+        ref={listRef}
+        className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-2.5 max-h-[min(480px,68vh)]"
+      >
         {/* VIEW A: Empty Query (Quick Chips & Frequent Apps) */}
-        {!trimmed && (
+        {!normalizedQuery && (
           <>
             {/* Quick Actions Grid */}
             <div>
@@ -441,7 +582,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                 <span>{t('cyberbot_prompt_quick_actions')}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                {systemActions.slice(0, 6).map((action, idx) => {
+                {initialGridActions.map((action, idx) => {
                   const isSelected = activeIndex === idx;
                   return (
                     <button
@@ -449,18 +590,20 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                       type="button"
                       onClick={() => executeItem(action)}
                       onMouseEnter={() => setActiveIndex(idx)}
-                      className={`flex items-center gap-2 p-1.5 rounded-lg border text-left text-xs font-cyber transition-all cursor-pointer ${
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left font-cyber transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-cyan-400 bg-cyan-500/25 text-white shadow-[0_0_12px_rgba(34,211,238,0.3)] scale-[1.02]'
+                          ? 'border-cyan-400 bg-cyan-500/25 text-white shadow-[0_0_12px_rgba(34,211,238,0.3)] scale-[1.01]'
                           : action.color || 'border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07]'
                       }`}
                     >
                       <div className="shrink-0">{action.icon}</div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-bold truncate leading-tight">{action.label}</div>
+                        <div className="text-[11px] font-bold tracking-tight truncate leading-snug">
+                          {action.shortLabel || action.label}
+                        </div>
                       </div>
                       {action.shortcut && (
-                        <span className="text-[9px] text-slate-400 font-mono shrink-0 hidden sm:inline">
+                        <span className="text-[9px] text-slate-400/90 font-mono shrink-0 px-1 py-0.5 rounded bg-black/40 border border-white/10 leading-none">
                           {action.shortcut}
                         </span>
                       )}
@@ -479,7 +622,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                 </div>
                 <div className="space-y-1">
                   {frequentApps.map((item, idx) => {
-                    const itemIndex = 6 + idx;
+                    const itemIndex = initialGridActions.length + idx;
                     const isSelected = activeIndex === itemIndex;
                     return (
                       <button
@@ -519,7 +662,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         )}
 
         {/* VIEW B: Filtered Search Results */}
-        {trimmed && (
+        {normalizedQuery && (
           <>
             {/* Matching System Commands */}
             {matchingActions.length > 0 && (
@@ -536,13 +679,13 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         type="button"
                         onClick={() => executeItem(action)}
                         onMouseEnter={() => setActiveIndex(idx)}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
                             ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.25)]'
                             : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
                         }`}
                       >
-                        <div className="shrink-0">{action.icon}</div>
+                        <div className="shrink-0 p-1 rounded-lg bg-black/40 border border-white/10">{action.icon}</div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-cyber font-bold truncate text-white">{action.label}</div>
                           {action.description && (
@@ -550,7 +693,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                           )}
                         </div>
                         {action.shortcut && (
-                          <span className="text-[9px] text-slate-400 font-mono shrink-0 px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
+                          <span className="text-[9px] text-cyan-300/90 font-mono shrink-0 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/20">
                             {action.shortcut}
                           </span>
                         )}
@@ -619,7 +762,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                     onClose();
                     onAddNewApp(query.trim());
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-cyber font-bold transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-cyber font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(34,211,238,0.2)]"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{t('cyberbot_prompt_create_app', { name: query.trim() })}</span>
@@ -632,7 +775,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
 
       {/* Speech Bubble Tail Pointing Down To CyberBot */}
       <div
-        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#070d1d] border-r border-b border-cyan-500/40 transform rotate-45 pointer-events-none`}
+        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#070d1d] border-r border-b border-cyan-500/40 transform rotate-45 pointer-events-none z-10`}
       />
     </div>
   );

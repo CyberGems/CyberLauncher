@@ -14,7 +14,7 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, isProm
   bubbleRef: RefObject<HTMLDivElement | null>;
 }) {
   const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean; canLand: boolean; anchorLeft: number; anchorTop: number }>({
-    left: 0, top: 0, bubbleWidth: 340, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, canLand: false, anchorLeft: 0, anchorTop: 0,
+    left: 0, top: 0, bubbleWidth: 390, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, canLand: false, anchorLeft: 0, anchorTop: 0,
   });
 
   useLayoutEffect(() => {
