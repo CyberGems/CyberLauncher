@@ -37,6 +37,8 @@ interface CyberBotProps {
   priorityEmotion?: CyberBotEmotion;
   systemAttention?: boolean;
   contextOpen?: boolean;
+  isPromptOpen?: boolean;
+  renderPrompt?: () => React.ReactNode;
   onContextParkedChange?: (parked: boolean) => void;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
@@ -63,6 +65,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   priorityEmotion,
   systemAttention = false,
   contextOpen = false,
+  isPromptOpen = false,
+  renderPrompt,
   onContextParkedChange,
   onSpeechVisibilityChange,
 }) => {
@@ -104,20 +108,20 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const farewellActive = !enabled && !!(farewell?.message || farewell?.departing);
   const visualEnabled = enabled || farewellActive;
   const displayedMessage = farewellActive ? farewell?.message || null : activeMessage || hoverMessage;
-  const placement = useCyberBotLayout({ enabled: visualEnabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, bubbleRef });
+  const placement = useCyberBotLayout({ enabled: visualEnabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, isPromptOpen, bubbleRef });
   const contextChatterAllowed = chatterLevel === 'full' && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
-  const contextAttention = (systemAttention && contextChatterAllowed) || isDragging || (!!displayedMessage && displayedMessage.priority !== 'low');
-  const contextAway = useCyberBotContextPresence(enabled && !reviewingDesign, contextOpen, !!displayedMessage || isDragging, contextAttention);
+  const contextAttention = (systemAttention && contextChatterAllowed) || isDragging || isPromptOpen || (!!displayedMessage && displayedMessage.priority !== 'low');
+  const contextAway = useCyberBotContextPresence(enabled && !reviewingDesign, contextOpen, !!displayedMessage || isDragging || isPromptOpen, contextAttention);
   useEffect(() => { onContextParkedChange?.(contextAway); }, [contextAway, onContextParkedChange]);
   const { sleeping, vanished } = useCyberBotPresence(
     enabled,
-    reviewingDesign || contextOpen || contextAway || !!displayedMessage || systemAttention || isHovered || isDragging || travelTilt !== 0 || placement.hasObstacles || placement.hidden,
+    reviewingDesign || contextOpen || contextAway || isPromptOpen || !!displayedMessage || systemAttention || isHovered || isDragging || travelTilt !== 0 || placement.hasObstacles || placement.hidden,
     activeMessage?.id,
     systemAttention,
     marqueeReading,
   );
-  const idleAway = farewellActive ? !!farewell?.departing : (contextAway && !contextAttention) || (vanished && !displayedMessage && !systemAttention);
-  const canHoverAssist = enabled && !reviewingDesign && !contextOpen && !contextAway && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
+  const idleAway = farewellActive ? !!farewell?.departing : (contextAway && !contextAttention) || (vanished && !displayedMessage && !isPromptOpen && !systemAttention);
+  const canHoverAssist = enabled && !reviewingDesign && !contextOpen && !contextAway && !isPromptOpen && hoverAssistEnabled && !dodgeEnabled && chatterLevel === 'full'
     && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
 
   moveForHoverRef.current = () => {
@@ -148,8 +152,8 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   useEffect(() => {
     // An idle disappearance can reverse immediately, so it must not reroute
     // system speech away from CyberBot as an actually obstructed layout would.
-    onSpeechVisibilityChange?.(enabled && !placement.hidden && (!displayedMessage || placement.bubbleVisible));
-  }, [enabled, placement.hidden, placement.bubbleVisible, !!displayedMessage, onSpeechVisibilityChange]);
+    onSpeechVisibilityChange?.(enabled && !placement.hidden && ((!displayedMessage && !isPromptOpen) || placement.bubbleVisible));
+  }, [enabled, placement.hidden, placement.bubbleVisible, !!displayedMessage, isPromptOpen, onSpeechVisibilityChange]);
 
   useEffect(() => {
     if (placement.hidden || layoutReady) return;
@@ -216,13 +220,13 @@ export const CyberBot: React.FC<CyberBotProps> = ({
     };
   }, []);
 
-  // A contextual priority can intentionally own the face, such as Terminal mode.
+  // A contextual priority can intentionally own the face, such as Terminal mode or prompt open.
   const currentEmotion: CyberBotEmotion =
-    farewellActive ? 'launcher' : priorityEmotion || displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle');
+    farewellActive ? 'launcher' : priorityEmotion || (isPromptOpen ? 'curious' : displayedMessage?.emotion || temporaryEmotion || (sleeping ? 'sleeping' : 'idle'));
 
   // Handle evasive dodge when mouse approaches (if dodgeEnabled is true)
   const handleMouseEnter = () => {
-    if (contextOpen || contextAway || !dodgeEnabled || placement.hasObstacles || isDodgeCooldown || isDraggingRef.current) return;
+    if (contextOpen || contextAway || isPromptOpen || !dodgeEnabled || placement.hasObstacles || isDodgeCooldown || isDraggingRef.current) return;
 
     // Show surprised/scared reaction first
     setTemporaryEmotion('scared');
@@ -366,7 +370,18 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         }`}
       >
         <AnimatePresence mode="wait">
-          {displayedMessage && (
+          {isPromptOpen && renderPrompt ? (
+            <motion.div
+              key="cyberbot-prompt"
+              initial={reducedMotion ? false : { opacity: 0, y: 10, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: 8, scale: 0.94 }}
+              transition={reducedMotion ? { duration: 0 } : { duration: 0.18, ease: 'easeOut' }}
+              className="w-full pointer-events-auto"
+            >
+              {renderPrompt()}
+            </motion.div>
+          ) : displayedMessage ? (
             <CyberSpeechBubble
               key={displayedMessage.id}
               message={displayedMessage}
@@ -375,7 +390,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
               closeLabel={closeLabel}
               onTypingChange={onTypingChange}
             />
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
 

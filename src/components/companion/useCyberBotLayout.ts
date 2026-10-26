@@ -5,15 +5,16 @@ import type { CyberBotPosition } from './companionTypes';
 const OBSTACLE = '[data-cyberbot-obstacle]';
 const FLOOR = '[data-cyberbot-floor]';
 
-export function useCyberBotLayout({ enabled, position, offset, messageId, bubbleRef }: {
+export function useCyberBotLayout({ enabled, position, offset, messageId, isPromptOpen = false, bubbleRef }: {
   enabled: boolean;
   position: CyberBotPosition;
   offset: { x: number; y: number };
   messageId?: string;
+  isPromptOpen?: boolean;
   bubbleRef: RefObject<HTMLDivElement | null>;
 }) {
   const [layout, setLayout] = useState<CyberBotLayout & { hasObstacles: boolean; canLand: boolean; anchorLeft: number; anchorTop: number }>({
-    left: 0, top: 0, bubbleWidth: 300, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, canLand: false, anchorLeft: 0, anchorTop: 0,
+    left: 0, top: 0, bubbleWidth: 340, bubbleVisible: false, hidden: true, align: 'right', hasObstacles: false, canLand: false, anchorLeft: 0, anchorTop: 0,
   });
 
   useLayoutEffect(() => {
@@ -52,11 +53,12 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
           resizeObserver.observe(element);
         }
       }
+      const hasBubble = !!messageId || isPromptOpen;
       const positioned = getCyberBotLayout({
         width, height,
         preferred: anchor,
         align: position === 'bottom-left' ? 'left' : 'right',
-        bubbleHeight: messageId ? (bubbleRef.current?.offsetHeight || 140) : 0,
+        bubbleHeight: hasBubble ? (bubbleRef.current?.offsetHeight || (isPromptOpen ? 260 : 140)) : 0,
         obstacles,
       });
       const next = {
@@ -85,7 +87,7 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, bubble
       observer.disconnect();
       window.removeEventListener('resize', schedule);
     };
-  }, [enabled, position, offset.x, offset.y, messageId, bubbleRef]);
+  }, [enabled, position, offset.x, offset.y, messageId, isPromptOpen, bubbleRef]);
 
   return layout;
 }

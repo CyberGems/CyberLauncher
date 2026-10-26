@@ -66,7 +66,7 @@ export function getCyberBotLayout({
     for (const region of regions) {
       const availableWidth = region.right - region.left;
       if (availableWidth < (withBubble ? 180 : CYBERBOT_SIZE)) continue;
-      const bubbleWidth = Math.min(300, availableWidth);
+      const bubbleWidth = Math.min(340, availableWidth);
       const footprintWidth = withBubble ? bubbleWidth : CYBERBOT_SIZE;
       const footprintHeight = CYBERBOT_SIZE + (withBubble ? bubbleHeight + BUBBLE_GAP : 0);
       if (region.bottom - region.top < footprintHeight) continue;
@@ -84,5 +84,5 @@ export function getCyberBotLayout({
     }
     if (best) return best.layout;
   }
-  return { ...preferred, align, bubbleWidth: 300, bubbleVisible: false, hidden: true };
+  return { ...preferred, align, bubbleWidth: 340, bubbleVisible: false, hidden: true };
 }

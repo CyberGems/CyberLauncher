@@ -23,6 +23,7 @@ import {
   Bot, BotOff
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
+import { CyberBotPrompt } from './components/companion/CyberBotPrompt';
 import { useCyberBotFarewell } from './components/companion/useCyberBotFarewell';
 import { getCyberBotMarqueeStatusMessages } from './components/companion/cyberBotBehavior';
 import { createCyberBotReturnController, createCyberBotNoticeLedger, type CyberBotReturnGesture } from './components/companion/cyberBotReturn';
@@ -2365,6 +2366,7 @@ export default function App() {
   const powerMenuRef = useRef<HTMLDivElement>(null);
   const lastContextMenuDismissedRef = useRef(0);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isCyberBotPromptOpen, setIsCyberBotPromptOpen] = useState(false);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -4679,6 +4681,7 @@ export default function App() {
       setIsMoreMenuOpen(false);
       setIsHelpSubmenuOpen(false);
       setIsCommandPaletteOpen(false);
+      setIsCyberBotPromptOpen(false);
 
       if (returnTimer !== null) window.clearTimeout(returnTimer);
       // Let visibility, countdowns and pending notices settle before a decorative welcome.
@@ -5947,7 +5950,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
     try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
@@ -6192,6 +6195,18 @@ export default function App() {
           setRightSidebarCollapsed(prev => !prev);
         },
       },
+      {
+        id: 'action-cyberbot-prompt',
+        group: t('cmd_palette_group_actions'),
+        label: t('cyberbot_prompt_tag'),
+        description: t('cyberbot_prompt_placeholder'),
+        keywords: 'cyberbot bot prompt comandos commands asistente assistant companion casilla',
+        icon: <Bot className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          if (!cyberBot.enabled) cyberBot.toggleEnabled();
+          setIsCyberBotPromptOpen(true);
+        },
+      },
 
       // 2. Navegación y Categorías (Navigation & Categories)
       {
@@ -6395,6 +6410,18 @@ export default function App() {
         icon: <Info className="w-4 h-4 text-cyan-400" />,
         onSelect: () => {
           setIsAboutOpen(true);
+        },
+      },
+      {
+        id: 'setting-cyberbot',
+        group: t('cmd_palette_group_settings'),
+        label: t('cyberbot_settings_title'),
+        description: t('cyberbot_settings_desc'),
+        keywords: 'cyberbot bot settings configuracion asistente avatar compañero companion',
+        icon: <Bot className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => {
+          setSettingsTab('cyberbot');
+          setIsSettingsOpen(true);
         },
       }
     );
@@ -7137,6 +7164,10 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
+        if (isCyberBotPromptOpen) {
+          setIsCyberBotPromptOpen(false);
+          return;
+        }
         if (isCommandPaletteOpen) {
           setIsCommandPaletteOpen(false);
           return;
@@ -14608,7 +14639,66 @@ export default function App() {
         activeMessage={cyberBot.activeMessage}
         returnGesture={cyberBotReturnGesture}
         onDismissMessage={cyberBot.dismissMessage}
-        onClickBot={() => cyberBot.handleClickBot(isTerminalOpen ? 'terminal' : 'interaction')}
+        onClickBot={() => {
+          if (isCyberBotPromptOpen) {
+            setIsCyberBotPromptOpen(false);
+          } else {
+            cyberBot.dismissMessage();
+            playCyberBeep();
+            setIsCyberBotPromptOpen(true);
+          }
+        }}
+        isPromptOpen={isCyberBotPromptOpen}
+        renderPrompt={() => (
+          <CyberBotPrompt
+            isOpen={isCyberBotPromptOpen}
+            onClose={() => setIsCyberBotPromptOpen(false)}
+            position={cyberBot.position}
+            t={t}
+            apps={apps}
+            favoriteIds={favoriteIds}
+            onLaunchApp={(app) => {
+              void handleLaunchApp(app);
+            }}
+            renderAppIcon={(app, className) => <AppIcon app={app} className={className} />}
+            onOpenSystemHUD={() => setIsSystemHUDOpen(true)}
+            onOpenStorageHUD={() => setIsStorageHUDOpen(true)}
+            onOpenClockHUD={() => setIsClockHUDOpen(true)}
+            onOpenTerminal={openTerminal}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onBackupNow={() => {
+              void handleBackupNow();
+            }}
+            onAddNewApp={(prefillName) => {
+              setOpenedViaDrop(false);
+              const form = emptyEditForm();
+              if (prefillName) {
+                form.name = prefillName;
+              }
+              setEditForm(form);
+              setIsResolvingIcon(false);
+              setIsAddingApp(true);
+            }}
+            onAddNewCategory={() => {
+              setNewCategoryForm({ name: '', color: '#38bdf8' });
+              setIsAddingCategory(true);
+            }}
+            onOpenPowerMenu={() => setIsPowerMenuOpen(true)}
+            quietHours={cyberBot.quietHours}
+            onToggleQuietHours={() => {
+              cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled });
+            }}
+            playBeep={playCyberBeep}
+            onActionExecuted={(label) => {
+              cyberBot.say({
+                text: t('cyberbot_prompt_executed'),
+                detail: label,
+                emotion: 'happy',
+                durationMs: 2500,
+              });
+            }}
+          />
+        )}
         position={cyberBot.position}
         dodgeEnabled={cyberBot.dodgeEnabled}
         hoverAssistEnabled={cyberBot.hoverAssistEnabled}
@@ -14623,7 +14713,7 @@ export default function App() {
           apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut,
         }, t)}
         systemAttention={!!notification}
-        contextOpen={isAnyModalOpen || isTerminalOpen}
+        contextOpen={isAnyModalOpen || isTerminalOpen || isCyberBotPromptOpen}
         onContextParkedChange={handleCyberBotContextParked}
         onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
       />
