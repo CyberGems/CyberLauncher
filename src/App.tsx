@@ -14649,11 +14649,11 @@ export default function App() {
           }
         }}
         isPromptOpen={isCyberBotPromptOpen}
-        renderPrompt={() => (
+        renderPrompt={(align) => (
           <CyberBotPrompt
             isOpen={isCyberBotPromptOpen}
             onClose={() => setIsCyberBotPromptOpen(false)}
-            position={cyberBot.position}
+            position={align === 'left' ? 'bottom-left' : 'bottom-right'}
             t={t}
             apps={apps}
             favoriteIds={favoriteIds}

@@ -43,7 +43,7 @@ export interface PromptLauncherApp {
 export interface CyberBotPromptProps {
   isOpen: boolean;
   onClose: () => void;
-  position?: 'bottom-right' | 'bottom-left' | 'top-right';
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'left' | 'right';
   t: (key: TranslationKey, params?: Record<string, string>) => string;
   apps: PromptLauncherApp[];
   favoriteIds?: (string | number)[];
@@ -222,7 +222,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       id: 'action-palette',
       type: 'action',
       label: t('cyberbot_prompt_action_palette'),
-      shortLabel: 'Paleta Comandos',
+      shortLabel: t('cyberbot_prompt_action_palette_short') || 'Paleta',
       description: t('cyberbot_prompt_action_palette_desc'),
       keywords: 'paleta palette comandos commands ctrl+k buscar acciones todo atajos menu',
       shortcut: 'Ctrl+K',
@@ -507,7 +507,8 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     }
   };
 
-  const tailPositionClass = position === 'bottom-left' ? 'left-[40px]' : 'right-[40px]';
+  const isLeft = position === 'bottom-left' || position === 'left';
+  const tailPositionClass = isLeft ? 'left-[40px]' : 'right-[40px]';
 
   return (
     <div
@@ -534,9 +535,9 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           type="button"
           aria-label={t('cyberbot_prompt_esc_hint')}
           onClick={onClose}
-          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1 text-[10px] font-cyber"
+          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber"
         >
-          <span className="text-[9px] text-slate-500 hidden sm:inline">ESC</span>
+          <kbd className="tooltip-shortcut">Esc</kbd>
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -570,7 +571,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       {/* Main Content Area */}
       <div
         ref={listRef}
-        className="overflow-y-auto custom-scrollbar flex-1 pr-1 space-y-2.5 max-h-[min(480px,68vh)]"
+        className="overflow-y-auto custom-scrollbar flex-1 px-1.5 space-y-2.5 max-h-[min(480px,68vh)]"
       >
         {/* VIEW A: Empty Query (Quick Chips & Frequent Apps) */}
         {!normalizedQuery && (
@@ -592,7 +593,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                       onMouseEnter={() => setActiveIndex(idx)}
                       className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left font-cyber transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-cyan-400 bg-cyan-500/25 text-white shadow-[0_0_12px_rgba(34,211,238,0.3)] scale-[1.01]'
+                          ? 'border-cyan-400 bg-cyan-500/25 text-white shadow-[inset_0_0_12px_rgba(34,211,238,0.2),0_0_8px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
                           : action.color || 'border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07]'
                       }`}
                     >
@@ -603,9 +604,9 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         </div>
                       </div>
                       {action.shortcut && (
-                        <span className="text-[9px] text-slate-400/90 font-mono shrink-0 px-1 py-0.5 rounded bg-black/40 border border-white/10 leading-none">
+                        <kbd className="tooltip-shortcut shrink-0 self-center">
                           {action.shortcut}
-                        </span>
+                        </kbd>
                       )}
                     </button>
                   );
@@ -632,7 +633,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         onMouseEnter={() => setActiveIndex(itemIndex)}
                         className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[inset_0_0_10px_rgba(34,211,238,0.18),0_0_8px_rgba(34,211,238,0.22)] ring-1 ring-cyan-400/35'
                             : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
                         }`}
                       >
@@ -681,7 +682,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         onMouseEnter={() => setActiveIndex(idx)}
                         className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[inset_0_0_10px_rgba(34,211,238,0.18),0_0_8px_rgba(34,211,238,0.22)] ring-1 ring-cyan-400/35'
                             : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
                         }`}
                       >
@@ -693,9 +694,9 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                           )}
                         </div>
                         {action.shortcut && (
-                          <span className="text-[9px] text-cyan-300/90 font-mono shrink-0 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/20">
+                          <kbd className="tooltip-shortcut shrink-0 self-center">
                             {action.shortcut}
-                          </span>
+                          </kbd>
                         )}
                       </button>
                     );
@@ -722,7 +723,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         onMouseEnter={() => setActiveIndex(itemIndex)}
                         className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[inset_0_0_10px_rgba(34,211,238,0.18),0_0_8px_rgba(34,211,238,0.22)] ring-1 ring-cyan-400/35'
                             : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
                         }`}
                       >

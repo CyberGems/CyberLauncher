@@ -38,7 +38,7 @@ interface CyberBotProps {
   systemAttention?: boolean;
   contextOpen?: boolean;
   isPromptOpen?: boolean;
-  renderPrompt?: () => React.ReactNode;
+  renderPrompt?: (align: 'left' | 'right') => React.ReactNode;
   onContextParkedChange?: (parked: boolean) => void;
   onSpeechVisibilityChange?: (visible: boolean) => void;
 }
@@ -379,7 +379,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
               transition={reducedMotion ? { duration: 0 } : { duration: 0.18, ease: 'easeOut' }}
               className="w-full pointer-events-auto"
             >
-              {renderPrompt()}
+              {renderPrompt(placement.align)}
             </motion.div>
           ) : displayedMessage ? (
             <CyberSpeechBubble
