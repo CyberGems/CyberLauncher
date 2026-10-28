@@ -188,7 +188,7 @@ function makeItem(def) {
     e.stopPropagation();
     if (def.localAction) {
       currentView = def.localAction;
-      renderView(true);
+      renderView();
     } else if (def.action) {
       const api = getApi();
       console.log('[TRAY-CLICK] action:', def.action, 'api present:', Boolean(api));
@@ -253,7 +253,7 @@ function renderHead() {
       e.preventDefault();
       e.stopPropagation();
       currentView = 'main';
-      renderView(false);
+      renderView();
     };
 
     headEl.appendChild(backBtn);
@@ -489,10 +489,10 @@ function renderRecentsView() {
   exitGroupEl.style.display = 'none';
 }
 
-function renderView(slideRight = false) {
+function renderView() {
   renderHead();
 
-  groupEl.className = 'group ' + (slideRight ? 'view-enter-right' : 'view-enter-left');
+  groupEl.className = 'group';
 
   if (currentView === 'help') {
     renderHelpView();
@@ -530,7 +530,7 @@ function reportSize() {
 
 function hideMenu() {
   currentView = 'main';
-  renderView(false);
+  renderView();
   const api = getApi();
   if (api && api.hide) {
     api.hide();
@@ -542,7 +542,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (currentView !== 'main') {
       currentView = 'main';
-      renderView(false);
+      renderView();
     } else {
       hideMenu();
     }
@@ -573,7 +573,7 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 // Blur dismiss
 window.addEventListener('blur', () => {
   currentView = 'main';
-  renderView(false);
+  renderView();
   setTimeout(() => {
     const api = getApi();
     if (api && api.hide) api.hide();
@@ -581,11 +581,11 @@ window.addEventListener('blur', () => {
 });
 
 // Initial immediate render so card is never empty
-renderView(false);
+renderView();
 
 function resetToMain() {
   currentView = 'main';
-  renderView(false);
+  renderView();
 }
 
 // Subscribe to IPC
@@ -603,7 +603,7 @@ function initIpc() {
         currentState = { ...currentState, ...state };
         if (state.resetView) currentView = 'main';
       }
-      renderView(false);
+      renderView();
     });
   }
 

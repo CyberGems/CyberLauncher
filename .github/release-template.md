@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="https://raw.githubusercontent.com/CyberGems/CyberLauncher/main/public/icon.png" width="120" alt="CyberLauncher">
 </p>
 
@@ -6,7 +6,7 @@
 
 ### 🚀 What's new in this release
 
-<!-- Maintainer: Rewrite the marked paragraph for every release. Use 25-45 words, lead with user-facing changes, and do not repeat the app name or version. -->
+<!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. -->
 <!-- changelog-summary:start -->
 CyberBot gains a refined layered design, typed speech, smoother movement, richer idle expressions, inline naming, contextual returns, and graceful farewells. Useful status screens appear less often, dialogs receive quieter behavior, and Microsoft Store apps open without false failure notices.
 <!-- changelog-summary:end -->
