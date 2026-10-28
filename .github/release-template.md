@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="https://raw.githubusercontent.com/CyberGems/CyberLauncher/main/public/icon.png" width="120" alt="CyberLauncher">
 </p>
 
@@ -8,7 +8,7 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. -->
 <!-- changelog-summary:start -->
-CyberBot gains a refined layered design, typed speech, smoother movement, richer idle expressions, inline naming, contextual returns, and graceful farewells. Useful status screens appear less often, dialogs receive quieter behavior, and Microsoft Store apps open without false failure notices.
+Companion gains an interactive quick command prompt on click, global shortcut activation, and stays visible on the main panel during routine idle. Automated backups support custom destination folders with flexible retention, while tray branding and settings controls receive refined polish.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
@@ -17,56 +17,56 @@ CyberBot gains a refined layered design, typed speech, smoother movement, richer
 
 ### ✨ Key Features & Highlights
 
-- 🤖 **Refined CyberBot design**:
-  - The launcher and floating desktop notices share the approved avatar, with subtle material reflections and alternating focus/scan hover reactions.
-  - Speech appears with a typing caret, while the chest equalizer runs during writing.
-  - Automatic travel is 20% slower and uses the same directional tilt as dragging. Resting motion is gentler, and sleeping stops levitation with a slight head tilt.
+- ⚡ **Interactive CyberBot Command Prompt**:
+  - Click CyberBot or press `Ctrl+Alt+B` (customizable) to summon an interactive quick command prompt anchored directly above the companion.
+  - Search launcher actions, launch apps, trigger system power operations, or jump to settings with smart ranking, hotkey badges, and chip highlights.
+  - Full keyboard navigation, dynamic bubble alignment, and click-outside dismissal.
 
-- 🧭 **More purposeful companion behavior**:
-  - Idle rotation includes horizontal and round eyes; Terminal and curiosity appear less often. Occasional status screens show useful live information and respect the bot's height above the floor.
-  - After its contextual message, CyberBot retires while dialogs or the terminal remain open, then returns after a brief delay.
-  - Turning CyberBot off gives a short farewell and portal exit when visible, or a confirmation beside the control when already hidden.
+- 🤖 **Refined Companion Presence**:
+  - CyberBot now stays visible on the main panel during routine idle instead of vanishing, performing facial expressions, status tickers, blinking, and quiet naps.
+  - Retains contextual retirement: steps aside after speaking when dialogs, settings, or the terminal are open, and returns smoothly when closed.
 
-- ✍️ **Inline naming and useful returns**:
-  - Enter your name directly in the invitation bubble. Clearing a name reopens the invitation, and Settings provides Ask me again when the name is empty.
-  - Returning uses brief scan/sensor gestures, occasional varied greetings and relevant pending-task information instead of repeating the last launched app.
-  - Terminal tips vary, memory alerts use clear exclamation eyes, and desktop bubbles identify the launcher without repeating its name in the title.
+- 💾 **Customizable Automated Backups**:
+  - Set a custom backup destination folder outside the system drive, with integrated folder picker and quick reset.
+  - Flexible retention choices: choose to keep 1, 3, 5, or 7 backup copies (default: 3).
+  - Standardized switches and updated section labels for clarity and consistency.
 
-- 🛠️ **Launch and notification fixes**:
-  - Microsoft Store activation, including WhatsApp, no longer reports a failure when Windows opens the app successfully.
-  - Persistent notices retain their typing progress and reading deadline across returns, while new identical alerts can still appear.
-  - The system-tray guidance keeps its saved Don't show again preference, and its logo is easier to see.
+- 🎨 **Visual & Tray Polish**:
+  - Tray menu branding logo desaturation in idle reduced from 100% to 50% for clearer visibility.
+  - User icon replaces heart icon in the preferred name settings card.
+  - Alternative banners card relocated to the end of CyberBot settings.
+  - Synchronized high-resolution suite recommendation icons and metadata.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-CyberBot estrena un diseño con mayor profundidad visual, texto progresivo, movimiento más suave, expresiones variadas, entrada del nombre en el globo, regresos contextuales y despedidas animadas. Las pantallas informativas aparecen menos, los diálogos tienen menos distracciones y las apps de Microsoft Store se abren sin falsos avisos de error.
+El compañero añade una paleta interactiva de comandos al hacer clic, activación por atajo global y permanece visible en el panel principal durante la inactividad. Los respaldos automáticos admiten carpeta personalizada con retención flexible, y los ajustes y el menú de bandeja se perfeccionan.
 
 ---
 
 ### ✨ Novedades destacadas
 
-- 🤖 **Diseño refinado de CyberBot**:
-  - El lanzador y los avisos flotantes comparten el avatar aprobado, con reflejos sutiles y reacciones de enfoque y escaneo alternadas al acercar el cursor.
-  - El texto aparece con caret y el ecualizador del cuerpo se activa mientras se escribe.
-  - El desplazamiento automático es un 20% más lento y usa la inclinación direccional del arrastre. La levitación es más suave; al dormir se detiene y la cabeza se inclina ligeramente.
+- ⚡ **Paleta rápida interactiva de comandos**:
+  - Haz clic en CyberBot o pulsa `Ctrl+Alt+B` (personalizable) para abrir una paleta rápida de comandos anclada directamente sobre el compañero.
+  - Busca acciones del lanzador, abre apps, ejecuta operaciones de energía o accede a ajustes con orden inteligente e insignias de atajos.
+  - Navegación completa por teclado, alineación dinámica del globo y cierre al pulsar fuera.
 
-- 🧭 **Comportamiento más útil**:
-  - La rotación incorpora ojos horizontales y redondos, con menos presencia de Terminal y Curioso. Las pantallas ocasionales muestran información real y respetan la altura del bot sobre el piso.
-  - Tras su intervención contextual, CyberBot se retira mientras un diálogo o la terminal estén abiertos y regresa con una pequeña demora al cerrarlos.
-  - Al desactivarlo se despide y sale por el portal si está visible; si ya está oculto, muestra una confirmación junto al control.
+- 🤖 **Presencia refinada del compañero**:
+  - CyberBot permanece visible en el panel principal durante la inactividad en lugar de desaparecer, mostrando expresiones, marquesina, parpadeo y siestas tranquilas.
+  - Conserva el retiro contextual: se aparta tras hablar cuando hay diálogos, ajustes o la terminal abiertos, y regresa con suavidad al cerrarlos.
 
-- ✍️ **Nombre inline y regresos contextuales**:
-  - Introduce tu nombre directamente en el globo. Borrarlo vuelve a habilitar la invitación y Configuración ofrece Preguntarme de nuevo cuando el nombre está vacío.
-  - Al regresar aparecen gestos breves, saludos ocasionales variados e información sobre tareas pendientes, en lugar de repetir la última app abierta.
-  - Los consejos de la terminal varían, las alertas de memoria usan ojos de admiración y las burbujas flotantes identifican el lanzador sin repetirlo en el título.
+- 💾 **Respaldos automáticos personalizables**:
+  - Configura una carpeta de destino personalizada fuera del disco del sistema, con selector de carpetas y restablecimiento rápido.
+  - Opciones de retención flexibles: elige conservar 1, 3, 5 o 7 copias de respaldo (predeterminado: 3).
+  - Conmutadores estandarizados y etiquetas de sección renombradas para mayor claridad.
 
-- 🛠️ **Correcciones de apertura y avisos**:
-  - Las apps de Microsoft Store, incluido WhatsApp, dejan de mostrar un error cuando Windows las abre correctamente.
-  - Los avisos persistentes conservan el progreso del texto y el tiempo de lectura al regresar, sin impedir nuevos avisos idénticos.
-  - La guía de la bandeja conserva No mostrar más y su icono se ve con mayor claridad.
+- 🎨 **Ajustes visuales y de bandeja**:
+  - Desaturación del logo en el menú de la bandeja reducida del 100% al 50% en reposo para mayor visibilidad.
+  - Icono de usuario en lugar del corazón en la tarjeta de nombre preferido.
+  - Tarjeta de banners alternativos reubicada al final de los ajustes de CyberBot.
+  - Iconos de recomendaciones de la suite y metadatos sincronizados en alta resolución.
 
 </details>
 
