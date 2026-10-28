@@ -23,6 +23,7 @@ import {
   selectBackupsToPrune,
   DEFAULT_AUTO_BACKUP_HOURS,
   DEFAULT_AUTO_BACKUP_KEEP,
+  normalizeBackupFolder,
   type BackupItem,
 } from '../shared/backup';
 
@@ -390,13 +391,28 @@ function isCursorNearTrayIcon(): boolean {
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.json');
-const backupsDir = path.join(app.getPath('userData'), 'backups');
+
+function getDefaultBackupsDir(): string {
+  return path.join(app.getPath('userData'), 'backups');
+}
+
+function getActiveBackupsDir(): string {
+  const cfg = getAutoBackupConfig();
+  if (cfg.customFolder) {
+    try {
+      return path.resolve(cfg.customFolder);
+    } catch {
+      // fallback to default
+    }
+  }
+  return getDefaultBackupsDir();
+}
 
 // ─── Respaldo automático programado ─────────────────────────────────────
 let autoBackupTimer: NodeJS.Timeout | null = null;
 let autoBackupRunning = false;
 
-function getAutoBackupConfig(): { enabled: boolean; hours: number; keep: number; last: string | null } {
+function getAutoBackupConfig(): { enabled: boolean; hours: number; keep: number; last: string | null; customFolder: string | null } {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
@@ -405,6 +421,7 @@ function getAutoBackupConfig(): { enabled: boolean; hours: number; keep: number;
         hours: parseBackupHours(config.autoBackupHours),
         keep: parseBackupKeep(config.autoBackupKeep),
         last: typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null,
+        customFolder: normalizeBackupFolder(config.autoBackupFolder),
       };
     }
   } catch (err) {
@@ -415,6 +432,7 @@ function getAutoBackupConfig(): { enabled: boolean; hours: number; keep: number;
     hours: DEFAULT_AUTO_BACKUP_HOURS,
     keep: DEFAULT_AUTO_BACKUP_KEEP,
     last: null,
+    customFolder: null,
   };
 }
 
@@ -423,17 +441,18 @@ async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise
   autoBackupRunning = true;
   try {
     if (!fs.existsSync(CONFIG_FILE)) return { ok: false, error: 'Config file does not exist' };
-    fs.mkdirSync(backupsDir, { recursive: true });
+    const targetDir = getActiveBackupsDir();
+    fs.mkdirSync(targetDir, { recursive: true });
     const file = backupFileName(new Date());
-    const targetPath = path.join(backupsDir, file);
+    const targetPath = path.join(targetDir, file);
 
     fs.copyFileSync(CONFIG_FILE, targetPath);
 
     const cfg = getAutoBackupConfig();
-    const files = fs.readdirSync(backupsDir);
+    const files = fs.readdirSync(targetDir);
     for (const old of selectBackupsToPrune(files, cfg.keep)) {
       try {
-        fs.unlinkSync(path.join(backupsDir, old));
+        fs.unlinkSync(path.join(targetDir, old));
       } catch { /* ignore */ }
     }
 
@@ -447,7 +466,7 @@ async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise
       console.error('[BACKUP] Failed to record autoBackupLast in config:', err);
     }
 
-    console.log(`[BACKUP] (${reason}) saved as ${file}`);
+    console.log(`[BACKUP] (${reason}) saved as ${file} in ${targetDir}`);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('backup:completed', { at: now, file });
     }
@@ -4449,15 +4468,16 @@ foreach (\$app in \$startApps) {
 
   ipcMain.handle('backup:list', () => {
     try {
-      if (!fs.existsSync(backupsDir)) return [];
+      const targetDir = getActiveBackupsDir();
+      if (!fs.existsSync(targetDir)) return [];
       return fs
-        .readdirSync(backupsDir)
+        .readdirSync(targetDir)
         .filter(isBackupFile)
         .sort()
         .reverse()
         .map((file) => {
           try {
-            const stat = fs.statSync(path.join(backupsDir, file));
+            const stat = fs.statSync(path.join(targetDir, file));
             return { file, size: stat.size, mtime: stat.mtime.toISOString() };
           } catch {
             return null;
@@ -4470,16 +4490,37 @@ foreach (\$app in \$startApps) {
   });
 
   ipcMain.handle('backup:openFolder', async () => {
+    const targetDir = getActiveBackupsDir();
     try {
-      fs.mkdirSync(backupsDir, { recursive: true });
+      fs.mkdirSync(targetDir, { recursive: true });
     } catch { /* ignore */ }
-    return shell.openPath(backupsDir);
+    return shell.openPath(targetDir);
+  });
+
+  ipcMain.handle('backup:selectFolder', async () => {
+    if (!mainWindow) return null;
+    isDialogOpen = true;
+    const isEn = getTrayLanguage() === 'en';
+    try {
+      const active = getActiveBackupsDir();
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory', 'createDirectory'],
+        title: isEn ? 'Select Backups Folder' : 'Seleccionar carpeta de respaldos',
+        defaultPath: fs.existsSync(active) ? active : undefined,
+      });
+      if (result.canceled || result.filePaths.length === 0) return null;
+      return result.filePaths[0];
+    } finally {
+      isDialogOpen = false;
+      showMainWindow();
+    }
   });
 
   ipcMain.handle('backup:restore', async (_event, fileName: string) => {
     try {
+      const targetDir = getActiveBackupsDir();
       const safeFile = path.basename(fileName);
-      const backupPath = path.join(backupsDir, safeFile);
+      const backupPath = path.join(targetDir, safeFile);
       if (!fs.existsSync(backupPath) || !isBackupFile(safeFile)) {
         return { success: false, error: 'Backup file not found' };
       }
@@ -4493,8 +4534,9 @@ foreach (\$app in \$startApps) {
 
   ipcMain.handle('backup:delete', async (_event, fileName: string) => {
     try {
+      const targetDir = getActiveBackupsDir();
       const safeFile = path.basename(fileName);
-      const backupPath = path.join(backupsDir, safeFile);
+      const backupPath = path.join(targetDir, safeFile);
       if (fs.existsSync(backupPath) && isBackupFile(safeFile)) {
         await fs.promises.unlink(backupPath);
         return { success: true };
@@ -4508,7 +4550,8 @@ foreach (\$app in \$startApps) {
   ipcMain.handle('backup:get-status', () => {
     return {
       config: getAutoBackupConfig(),
-      backupsDir,
+      backupsDir: getActiveBackupsDir(),
+      defaultBackupsDir: getDefaultBackupsDir(),
     };
   });
 

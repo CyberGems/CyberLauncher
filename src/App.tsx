@@ -43,6 +43,7 @@ import {
 } from './launchFlow';
 import type { CyberBotTopic } from './components/companion/cyberBotPhrases';
 import {
+  DEFAULT_AUTO_BACKUP_KEEP,
   parseBackupHours,
   parseBackupKeep,
   type BackupItem,
@@ -420,9 +421,10 @@ declare global {
       backupNow?: () => Promise<{ ok: boolean; file?: string; error?: string }>;
       listBackups?: () => Promise<Array<BackupItem>>;
       openBackupsFolder?: () => Promise<string>;
+      selectBackupsFolder?: () => Promise<string | null>;
       restoreBackup?: (fileName: string) => Promise<{ success: boolean; content?: string; error?: string }>;
       deleteBackup?: (fileName: string) => Promise<{ success: boolean; error?: string }>;
-      getBackupStatus?: () => Promise<{ config: { enabled: boolean; hours: number; keep: number; last: string | null }; backupsDir: string }>;
+      getBackupStatus?: () => Promise<{ config: { enabled: boolean; hours: number; keep: number; last: string | null; customFolder: string | null }; backupsDir: string; defaultBackupsDir: string }>;
       onBackupCompleted?: (callback: (data: { at: string; file: string }) => void) => () => void;
       saveConfig: (config: any) => Promise<boolean>;
       loadConfig: () => Promise<any | null>;
@@ -2484,8 +2486,11 @@ export default function App() {
   // --- Scheduled Auto Backup State ---
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
   const [autoBackupHours, setAutoBackupHours] = useState(24);
-  const [autoBackupKeep, setAutoBackupKeep] = useState(7);
+  const [autoBackupKeep, setAutoBackupKeep] = useState(DEFAULT_AUTO_BACKUP_KEEP);
   const [autoBackupLast, setAutoBackupLast] = useState<string | null>(null);
+  const [autoBackupFolder, setAutoBackupFolder] = useState<string>('');
+  const [resolvedBackupsDir, setResolvedBackupsDir] = useState<string>('');
+  const [defaultBackupsDir, setDefaultBackupsDir] = useState<string>('');
   const [backupsList, setBackupsList] = useState<BackupItem[]>([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupToRestore, setBackupToRestore] = useState<BackupItem | null>(null);
@@ -4476,6 +4481,9 @@ export default function App() {
           if (source.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(source.autoBackupHours));
           if (source.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(source.autoBackupKeep));
           if (source.autoBackupLast !== undefined) setAutoBackupLast(typeof source.autoBackupLast === 'string' ? source.autoBackupLast : null);
+          if (source.autoBackupFolder !== undefined && typeof source.autoBackupFolder === 'string') {
+            setAutoBackupFolder(source.autoBackupFolder);
+          }
           if (source.showTrayRecents !== undefined) setShowTrayRecents(source.showTrayRecents !== false);
           if (source.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(source.showSuiteRecommendations !== false);
           if (source.cyberBotSettings) cyberBot.restoreSettings(source.cyberBotSettings);
@@ -4531,8 +4539,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4562,7 +4570,7 @@ export default function App() {
           showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
-          autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
+          autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
           showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings
         }));
       } catch (e) {
@@ -4590,7 +4598,7 @@ export default function App() {
     showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches,
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
-    autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast,
+    autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
     showTrayRecents, showSuiteRecommendations, cyberBot.settings,
     isConfigLoaded
   ]);
@@ -4848,7 +4856,7 @@ export default function App() {
       'leftSidebarWidth', 'leftSidebarCollapsed', 'rightSidebarWidth', 'rightSidebarCollapsed',
       'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
       'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
-      'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast',
+      'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast', 'autoBackupFolder',
       'showTrayRecents', 'showSuiteRecommendations', 'cyberBotSettings'
     ] as const;
 
@@ -5061,6 +5069,9 @@ export default function App() {
       }
       if (config.autoBackupLast !== undefined) {
         setAutoBackupLast(typeof config.autoBackupLast === 'string' ? config.autoBackupLast : null);
+      }
+      if (config.autoBackupFolder !== undefined) {
+        setAutoBackupFolder(typeof config.autoBackupFolder === 'string' ? config.autoBackupFolder : '');
       }
       if (config.cyberBotSettings) cyberBot.restoreSettings(config.cyberBotSettings);
       if (config.showTrayRecents !== undefined) {
@@ -5669,6 +5680,9 @@ export default function App() {
         if (data.settings.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(data.settings.autoBackupHours));
         if (data.settings.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(data.settings.autoBackupKeep));
         if (data.settings.autoBackupLast !== undefined) setAutoBackupLast(data.settings.autoBackupLast || null);
+        if (data.settings.autoBackupFolder !== undefined) {
+          setAutoBackupFolder(typeof data.settings.autoBackupFolder === 'string' ? data.settings.autoBackupFolder : '');
+        }
         if (isElectron && (data.settings.startWithWindows !== undefined || data.settings.startMinimized !== undefined)) {
           const auto = data.settings.startWithWindows !== undefined ? !!data.settings.startWithWindows : startWithWindows;
           const mini = data.settings.startMinimized !== undefined ? !!data.settings.startMinimized : startMinimized;
@@ -5707,8 +5721,17 @@ export default function App() {
   }, [isElectron, settingsTab, cyberBot.enabled, cyberBot.sayPhrase]);
 
   useEffect(() => {
-    if (settingsTab === 'backup' && isElectron && window.electronAPI?.listBackups) {
-      window.electronAPI.listBackups().then(list => setBackupsList(list || [])).catch(console.error);
+    if (settingsTab === 'backup' && isElectron) {
+      window.electronAPI?.listBackups?.().then(list => setBackupsList(list || [])).catch(console.error);
+      window.electronAPI?.getBackupStatus?.().then(status => {
+        if (status) {
+          if (status.backupsDir) setResolvedBackupsDir(status.backupsDir);
+          if (status.defaultBackupsDir) setDefaultBackupsDir(status.defaultBackupsDir);
+          if (status.config?.customFolder !== undefined) {
+            setAutoBackupFolder(status.config.customFolder || '');
+          }
+        }
+      }).catch(console.error);
     }
   }, [settingsTab, isElectron]);
 
@@ -5742,6 +5765,51 @@ export default function App() {
       });
     } finally {
       setIsBackingUp(false);
+    }
+  };
+
+  const handleSelectBackupFolder = async () => {
+    if (!isElectron || !window.electronAPI?.selectBackupsFolder) return;
+    try {
+      const selected = await window.electronAPI.selectBackupsFolder();
+      if (selected && selected !== autoBackupFolder) {
+        setAutoBackupFolder(selected);
+        setResolvedBackupsDir(selected);
+        if (window.electronAPI?.saveConfig) {
+          const clean = JSON.parse(JSON.stringify({ ...configRef.current, autoBackupFolder: selected }));
+          await window.electronAPI.saveConfig(clean);
+        }
+        const list = await window.electronAPI.listBackups?.();
+        if (list) setBackupsList(list);
+        setNotification({
+          message: t('backup_auto_folder_notif_changed'),
+          type: 'info'
+        });
+      }
+    } catch (err: any) {
+      console.error('Error selecting backup folder:', err);
+    }
+  };
+
+  const handleResetBackupFolder = async () => {
+    if (!isElectron) return;
+    try {
+      setAutoBackupFolder('');
+      if (defaultBackupsDir) {
+        setResolvedBackupsDir(defaultBackupsDir);
+      }
+      if (window.electronAPI?.saveConfig) {
+        const clean = JSON.parse(JSON.stringify({ ...configRef.current, autoBackupFolder: '' }));
+        await window.electronAPI.saveConfig(clean);
+      }
+      const list = await window.electronAPI?.listBackups?.();
+      if (list) setBackupsList(list);
+      setNotification({
+        message: t('backup_auto_folder_notif_changed'),
+        type: 'info'
+      });
+    } catch (err: any) {
+      console.error('Error resetting backup folder:', err);
     }
   };
 
@@ -12651,13 +12719,71 @@ export default function App() {
                             disabled={!autoBackupEnabled}
                             className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                           >
+                            <option value={1}>1</option>
                             <option value={3}>3</option>
                             <option value={5}>5</option>
                             <option value={7}>7</option>
-                            <option value={14}>14</option>
-                            <option value={30}>30</option>
                           </select>
                         </div>
+
+                        {/* Selector de Carpeta de Destino */}
+                        {isElectron && (
+                          <div className="pt-3 border-t border-white/5 space-y-2">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                                  <Folder className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-slate-200 leading-tight mb-1 flex items-center gap-2">
+                                    <span>{t('backup_auto_folder_label')}</span>
+                                    {autoBackupFolder ? (
+                                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        {t('backup_auto_folder_custom_badge')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                                        {t('backup_auto_folder_default_badge')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-500 leading-relaxed">
+                                    {t('backup_auto_folder_desc')}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {autoBackupFolder && (
+                                  <button
+                                    type="button"
+                                    onClick={handleResetBackupFolder}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                    title={t('backup_auto_folder_btn_reset')}
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">{t('backup_auto_folder_btn_reset')}</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={handleSelectBackupFolder}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:text-cyan-200 bg-cyan-500/15 hover:bg-cyan-500/25 rounded-lg border border-cyan-500/30 transition-colors cursor-pointer shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                                >
+                                  <FolderOpen className="w-3.5 h-3.5" />
+                                  <span>{t('backup_auto_folder_btn_change')}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Ruta visible */}
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 font-mono text-[11px] text-slate-300 break-all select-text">
+                              <span className="text-slate-500 shrink-0 select-none">📁</span>
+                              <span className="truncate flex-1" title={resolvedBackupsDir || autoBackupFolder || defaultBackupsDir}>
+                                {resolvedBackupsDir || autoBackupFolder || defaultBackupsDir || '...'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Fila Último Respaldo + Botón Respaldar Ahora */}
                         <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">

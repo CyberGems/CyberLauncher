@@ -1,9 +1,9 @@
 // Pure logic for scheduled automatic backups: testable and shared between Electron and React.
 
 export const AUTO_BACKUP_INTERVALS_HOURS: readonly number[] = [6, 12, 24, 168];
-export const AUTO_BACKUP_KEEP_OPTIONS: readonly number[] = [3, 5, 7, 14, 30];
+export const AUTO_BACKUP_KEEP_OPTIONS: readonly number[] = [1, 3, 5, 7];
 export const DEFAULT_AUTO_BACKUP_HOURS = 24;
-export const DEFAULT_AUTO_BACKUP_KEEP = 7;
+export const DEFAULT_AUTO_BACKUP_KEEP = 3;
 export const BACKUP_FILE_PREFIX = 'cyberlauncher-backup-';
 
 export interface BackupItem {
@@ -17,6 +17,15 @@ export interface AutoBackupConfig {
   hours: number;
   keep: number;
   last: string | null;
+  customFolder?: string | null;
+}
+
+/** Normalizes custom backup directory path or returns null if not specified. */
+export function normalizeBackupFolder(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
+  }
+  return null;
 }
 
 /** Normalizes the interval value in hours. Default is 24 hours (daily). */

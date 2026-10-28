@@ -80,6 +80,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   backupNow: () => ipcRenderer.invoke('backup:now'),
   listBackups: () => ipcRenderer.invoke('backup:list'),
   openBackupsFolder: () => ipcRenderer.invoke('backup:openFolder'),
+  selectBackupsFolder: () => ipcRenderer.invoke('backup:selectFolder'),
   restoreBackup: (fileName: string) => ipcRenderer.invoke('backup:restore', fileName),
   deleteBackup: (fileName: string) => ipcRenderer.invoke('backup:delete', fileName),
   getBackupStatus: () => ipcRenderer.invoke('backup:get-status'),
