@@ -18,7 +18,7 @@ import {
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, ScanSearch,
-  MoreHorizontal, Heart, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
+  MoreHorizontal, Heart, User, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
   Bot, BotOff
 } from 'lucide-react';
@@ -12267,7 +12267,7 @@ export default function App() {
                     <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-rose-500/10 rounded-lg border border-rose-500/20 shrink-0">
-                          <Heart className="w-5 h-5 text-rose-300" />
+                          <User className="w-5 h-5 text-rose-300" />
                         </div>
                         <div className="min-w-0">
                           <label htmlFor="cyberbot-preferred-name" className="text-sm font-medium text-slate-200 leading-tight mb-1 block">{t('cyberbot_name_title')}</label>
@@ -12663,18 +12663,25 @@ export default function App() {
                           </div>
                           <button
                             type="button"
+                            onClick={() => handleToggleAutoBackup(!autoBackupEnabled)}
                             role="switch"
                             aria-checked={autoBackupEnabled}
-                            onClick={() => handleToggleAutoBackup(!autoBackupEnabled)}
-                            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
-                              autoBackupEnabled ? 'bg-cyan-500' : 'bg-white/10'
+                            aria-label={t('backup_auto_enabled_label')}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
+                              autoBackupEnabled ? 'bg-cyan-500' : 'bg-slate-700'
                             }`}
                           >
                             <div
-                              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
                                 autoBackupEnabled ? 'translate-x-5' : 'translate-x-0'
                               }`}
-                            />
+                            >
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  autoBackupEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
+                                }`}
+                              />
+                            </div>
                           </button>
                         </div>
 
@@ -12901,20 +12908,27 @@ export default function App() {
                             type="button"
                             role="switch"
                             aria-checked={autoCheckIconsOnStartup}
+                            aria-label={t('settings_icons_auto_check')}
                             onClick={() => {
                               const next = !autoCheckIconsOnStartup;
                               setAutoCheckIconsOnStartup(next);
                               localStorage.setItem('cyber_auto_check_icons', String(next));
                             }}
-                            className={`w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer ${
-                              autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-white/10'
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
+                              autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-slate-700'
                             }`}
                           >
                             <div
-                              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
                                 autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
                               }`}
-                            />
+                            >
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  autoCheckIconsOnStartup ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
+                                }`}
+                              />
+                            </div>
                           </button>
                         </div>
                       </div>
