@@ -1,6 +1,7 @@
 {
   "destinations": [
-    "public/suite"
+    "public/suite",
+    "public/assets/suite"
   ],
   "catalogs": [
     {
