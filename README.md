@@ -69,11 +69,12 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
 
 ### 🤖 CyberBot Companion
+- **Interactive Quick Command Prompt**: Click CyberBot or press `Ctrl+Alt+B` to summon a sleek command prompt anchored right above the companion with smart search, action ranking, and hotkey badges.
 - **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
 - **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
 - **Personalize the experience**: Enter your name directly in its invitation, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
-- **Calmer behavior**: Varied idle expressions, occasional useful status screens, gentle sleep and contextual returns. CyberBot retires after speaking in dialogs or the terminal and returns after a short delay when they close.
-- **Optional companion**: CyberBot uses built-in contextual messages. Disable it through Settings or its quick toggle; a visible bot gives a short farewell. Backup banners can show notices in its place.
+- **Calmer and persistent presence**: Stays visible on the main panel during routine idle with facial expressions, status screens, and peaceful naps. CyberBot retires after speaking in dialogs or the terminal and returns after a short delay when they close.
+- **Optional companion**: CyberBot uses built-in contextual messages. Disable it through Settings or its quick toggle; a visible bot gives a short farewell. Alternative banners can show notices in its place.
 
 ### 📊 System & Monitoring
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
@@ -81,7 +82,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Storage HUD**: View free space and status of all system drives
 - **Execution Scheduler**: Schedule app launches or console commands with standalone desktop alert countdowns
 - **Execution History**: Track and reopen everything you've launched, with clear-history option
-- **Scheduled Auto-Backups**: Automated recurring configuration backups with custom retention policies
+- **Scheduled Auto-Backups**: Automated recurring configuration backups with custom destination folder and flexible retention policies (1, 3, 5, or 7 copies)
 
 ### 🎨 Customization
 - **Theming**: Background images, gradients, solid colors, glass intensity, and opacity controls

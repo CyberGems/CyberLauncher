@@ -69,11 +69,12 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Ocultar al perder el foco**: el lanzador se oculta automáticamente al cambiar a otra ventana
 
 ### 🤖 Compañero CyberBot
+- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Ctrl+Alt+B` para abrir una paleta rápida de comandos anclada directamente sobre el compañero con búsqueda inteligente, orden de acciones e insignias de atajos.
 - **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
 - **Mensajes progresivos**: Los comentarios al abrir apps, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
 - **Personaliza la experiencia**: Introduce tu nombre en el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.
-- **Comportamiento más tranquilo**: Expresiones variadas, pantallas informativas ocasionales, descanso suave y regresos contextuales. CyberBot se retira tras hablar en diálogos o la terminal y vuelve con una pequeña demora al cerrarlos.
-- **Compañero opcional**: CyberBot usa mensajes contextuales integrados. Desactívalo desde Configuración o su toggle rápido; si está visible, se despide brevemente. Los banners de respaldo pueden mostrar avisos en su lugar.
+- **Presencia más tranquila y permanente**: Permanece visible en el panel principal durante la inactividad rutinaria con expresiones, pantallas de estado y siestas tranquilas. CyberBot se retira tras hablar en diálogos o la terminal y vuelve con una pequeña demora al cerrarlos.
+- **Compañero opcional**: CyberBot usa mensajes contextuales integrados. Desactívalo desde Configuración o su toggle rápido; si está visible, se despide brevemente. Los banners alternativos pueden mostrar avisos en su lugar.
 
 ### 📊 Sistema y monitorización
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior
@@ -81,7 +82,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **HUD de almacenamiento**: espacio libre y estado de todas las unidades del sistema
 - **Programador de ejecuciones**: programa lanzamientos de apps o comandos con alertas flotantes independientes en el escritorio
 - **Historial de ejecución**: registra y reabre todo lo que has lanzado, con opción de limpiar el historial
-- **Copias de seguridad automáticas**: copias de seguridad recurrentes programables con políticas de retención
+- **Copias de seguridad automáticas**: copias de seguridad recurrentes programables con carpeta personalizada y retención flexible (1, 3, 5 o 7 copias)
 
 ### 🎨 Personalización
 - **Temas**: imágenes de fondo, degradados, colores sólidos, intensidad del cristal y controles de opacidad
