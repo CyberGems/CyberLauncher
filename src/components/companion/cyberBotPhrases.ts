@@ -26,6 +26,7 @@ export const cyberBotPhrases = {
     { key: 'cyberbot_tip_resources', emotion: 'launcher' },
     { key: 'cyberbot_tip_quiet_hours', emotion: 'launcher' },
     { key: 'cyberbot_tip_position', emotion: 'curious' },
+    { key: 'cyberbot_tip_cyberbot_shortcut', emotion: 'curious' },
     { key: 'cyberbot_chat_click_3', emotion: 'terminal' },
     { key: 'cyberbot_chat_click_2', emotion: 'launcher' },
   ],

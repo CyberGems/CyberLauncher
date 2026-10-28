@@ -99,6 +99,8 @@ function requestVisibleRepaint(trigger: 'show' | 'periodic') {
 let tray: Tray | null = null;
 let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
+let currentCyberBotShortcut = 'Alt+Shift+B';
+let cyberBotShortcutEnabled = true;
 let hotspotCorners: string[] = [];
 let hotspotDelay = 300;
 let hotspotsDisableInFullscreen = true;
@@ -1469,6 +1471,9 @@ function getSuiteAppsList(lang: 'es' | 'en') {
 let trayMenuWin: BrowserWindow | null = null;
 let trayMenuAnchor: any = null;
 let trayMenuHideTimer: ReturnType<typeof setTimeout> | null = null;
+let trayMenuShowPending = false;
+let trayMenuShowFallback: ReturnType<typeof setTimeout> | null = null;
+let trayMenuRevealTimer: ReturnType<typeof setTimeout> | null = null;
 let trayMenuLastShown = 0;
 const TRAY_MENU_CARD_WIDTH = 292;
 const TRAY_MENU_SHADOW_PAD = 24;
@@ -1640,6 +1645,7 @@ function ensureTrayMenuWin(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
     },
   });
 
@@ -1680,6 +1686,27 @@ function ensureTrayMenuWin(): BrowserWindow {
   return trayMenuWin;
 }
 
+function revealTrayMenuWin() {
+  if (!trayMenuWin || trayMenuWin.isDestroyed()) return;
+  if (trayMenuShowFallback) { clearTimeout(trayMenuShowFallback); trayMenuShowFallback = null; }
+  trayMenuShowPending = false;
+  if (!trayMenuWin.isVisible()) {
+    try { trayMenuWin.setOpacity(0); } catch { /* ignore */ }
+    trayMenuWin.show();
+    if (trayMenuRevealTimer) clearTimeout(trayMenuRevealTimer);
+    trayMenuRevealTimer = setTimeout(() => {
+      trayMenuRevealTimer = null;
+      if (trayMenuWin && !trayMenuWin.isDestroyed()) {
+        try { trayMenuWin.setOpacity(1); } catch { /* ignore */ }
+      }
+    }, 40);
+  } else {
+    try { trayMenuWin.setOpacity(1); } catch { /* ignore */ }
+  }
+  trayMenuWin.focus();
+  trayMenuLastShown = Date.now();
+}
+
 function showCustomTrayMenu(eventBounds?: any) {
   if (!tray || tray.isDestroyed()) return;
   let b = (eventBounds && typeof eventBounds.x === 'number' && (eventBounds.width || eventBounds.height))
@@ -1702,22 +1729,30 @@ function showCustomTrayMenu(eventBounds?: any) {
   const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
   const initialH = mainViewHeight || lastTrayMenuHeight || TRAY_MENU_EST_HEIGHT;
   const geo = trayMenuGeometry(trayMenuAnchor, windowW, initialH);
-  w.setBounds(geo);
-  if (!w.isVisible()) w.show();
-  w.focus();
-  trayMenuLastShown = Date.now();
+  const current = w.getBounds();
+  if (current.x !== geo.x || current.y !== geo.y || current.width !== geo.width || current.height !== geo.height) {
+    w.setBounds(geo);
+  }
 
-  const freshState = buildTrayMenuState(true);
-  w.webContents.send('tray-menu-state', freshState);
-  w.webContents.send('tray-menu-show');
-  w.webContents.send('tray-menu-reset');
+  trayMenuShowPending = true;
+  if (trayMenuShowFallback) { clearTimeout(trayMenuShowFallback); trayMenuShowFallback = null; }
+  trayMenuShowFallback = setTimeout(() => {
+    trayMenuShowFallback = null;
+    if (trayMenuShowPending) revealTrayMenuWin();
+  }, 500);
+
+  w.webContents.send('tray-menu-state', buildTrayMenuState(true));
 }
 
 function hideCustomTrayMenu() {
   if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
+  if (trayMenuShowFallback) { clearTimeout(trayMenuShowFallback); trayMenuShowFallback = null; }
+  if (trayMenuRevealTimer) { clearTimeout(trayMenuRevealTimer); trayMenuRevealTimer = null; }
+  trayMenuShowPending = false;
   trayMenuOpen = false;
   armTrayMenuGuard(400);
   if (trayMenuWin && !trayMenuWin.isDestroyed()) {
+    try { trayMenuWin.setOpacity(1); } catch { /* ignore */ }
     if (trayMenuWin.isVisible()) {
       trayMenuWin.hide();
     }
@@ -2291,6 +2326,7 @@ ipcMain.on('tray-menu-ready', (_event, rect) => {
       }
     }
   }
+  if (trayMenuShowPending) revealTrayMenuWin();
 });
 
 ipcMain.on('tray-menu-request-state', (event) => {
@@ -2358,6 +2394,7 @@ function toggleWindow(forceShow = false) {
     mainWindow = null;
     createWindow();
     registerGlobalShortcut(currentShortcut);
+    registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
     return;
   }
   
@@ -2640,15 +2677,36 @@ function stopUACGuard() {
 // =====================================
 // GLOBAL SHORTCUT REGISTRATION
 // =====================================
-function registerGlobalShortcut(shortcut: string) {
-  // Desregistrar el atajo anterior
-  globalShortcut.unregisterAll();
-
-  // Convertir formato "Alt+Shift+L" al formato de Electron
-  // El formato de Electron usa: CommandOrControl, Alt, Shift, Super, etc.
-  const electronShortcut = shortcut
+function toElectronAccelerator(shortcut: string): string {
+  return shortcut
     .replace(/Meta/g, 'Super')
     .replace(/Ctrl/g, 'CommandOrControl');
+}
+
+function unregisterMainShortcut() {
+  if (currentShortcut) {
+    try {
+      globalShortcut.unregister(toElectronAccelerator(currentShortcut));
+    } catch (err) {
+      console.error('[SHORTCUT] Error unregistering main shortcut:', err);
+    }
+  }
+}
+
+function unregisterCyberBotShortcut() {
+  if (currentCyberBotShortcut) {
+    try {
+      globalShortcut.unregister(toElectronAccelerator(currentCyberBotShortcut));
+    } catch (err) {
+      console.error('[SHORTCUT] Error unregistering CyberBot shortcut:', err);
+    }
+  }
+}
+
+function registerGlobalShortcut(shortcut: string) {
+  unregisterMainShortcut();
+
+  const electronShortcut = toElectronAccelerator(shortcut);
 
   try {
     const success = globalShortcut.register(electronShortcut, () => {
@@ -2666,6 +2724,66 @@ function registerGlobalShortcut(shortcut: string) {
     currentShortcut = shortcut;
   } catch (err) {
     console.error('Error registrando atajo global:', err);
+  }
+}
+
+function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
+  unregisterCyberBotShortcut();
+  cyberBotShortcutEnabled = enabled;
+  if (shortcut && shortcut.trim()) {
+    currentCyberBotShortcut = shortcut;
+  }
+
+  if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
+    return;
+  }
+
+  const electronShortcut = toElectronAccelerator(currentCyberBotShortcut);
+
+  try {
+    const success = globalShortcut.register(electronShortcut, () => {
+      try {
+        toggleWindowForCyberBot();
+      } catch (err) {
+        console.error('[SHORTCUT] Error in CyberBot shortcut callback:', err);
+      }
+    });
+
+    if (!success) {
+      console.warn(`No se pudo registrar el atajo global de CyberBot: ${electronShortcut}`);
+    }
+  } catch (err) {
+    console.error('Error registrando atajo global de CyberBot:', err);
+  }
+}
+
+function toggleWindowForCyberBot() {
+  if (!cyberBotShortcutEnabled) return;
+
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    console.log('[TOGGLE-BOT] Window destroyed, recreating...');
+    mainWindow = null;
+    createWindow();
+    registerGlobalShortcut(currentShortcut);
+    registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
+    mainWindow?.webContents.once('did-finish-load', () => {
+      mainWindow?.webContents.send('open-cyberbot-prompt');
+    });
+    return;
+  }
+
+  if (mainWindow.isVisible()) {
+    if (trayMenuOpen) {
+      return;
+    }
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+    mainWindow.webContents.send('open-cyberbot-prompt');
+  } else {
+    mainWindow.webContents.send('open-cyberbot-prompt');
+    showMainWindow();
   }
 }
 
@@ -4068,6 +4186,11 @@ foreach (\$app in \$startApps) {
     return { success: true, shortcut: currentShortcut };
   });
 
+  ipcMain.handle('register-cyberbot-shortcut', (_event, shortcut: string, enabled: boolean) => {
+    registerCyberBotGlobalShortcut(shortcut, enabled);
+    return { success: true, shortcut: currentCyberBotShortcut };
+  });
+
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
   ipcMain.handle('is-launcher-visible', () => isLauncherWindowVisible());
 
@@ -5076,6 +5199,13 @@ app.whenReady().then(() => {
         currentShortcut = config.activationShortcut;
         console.log('Atajo cargado desde configuración central:', currentShortcut);
       }
+      if (config.cyberBotShortcut) {
+        currentCyberBotShortcut = config.cyberBotShortcut;
+        console.log('Atajo CyberBot cargado desde configuración central:', currentCyberBotShortcut);
+      }
+      if (config.cyberBotSettings && typeof config.cyberBotSettings.enabled === 'boolean') {
+        cyberBotShortcutEnabled = config.cyberBotSettings.enabled;
+      }
       if (config.hotspotCorners && Array.isArray(config.hotspotCorners)) {
         hotspotCorners = config.hotspotCorners;
         console.log('Hotspots cargados desde configuración central:', hotspotCorners);
@@ -5292,6 +5422,7 @@ app.whenReady().then(() => {
 
   // Registrar atajo global
   registerGlobalShortcut(currentShortcut);
+  registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

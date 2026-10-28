@@ -64,7 +64,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       aria-atomic="true"
       data-no-hide
       onPointerDown={(event) => event.stopPropagation()}
-      className={`relative w-full min-w-0 rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
+      className={`relative w-fit max-w-full min-w-[200px] rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
       <button
         type="button"

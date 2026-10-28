@@ -45,6 +45,7 @@ interface UseCyberBotProps {
   dailyLaunchCount?: number;
   playCyberBeep?: () => void;
   ready?: boolean;
+  cyberBotShortcut?: string;
 }
 
 interface CyberBotPhraseOptions {
@@ -53,7 +54,7 @@ interface CyberBotPhraseOptions {
   priority?: CyberBotMessage['priority'];
 }
 
-export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = true }: UseCyberBotProps) {
+export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = true, cyberBotShortcut }: UseCyberBotProps) {
   const [enabled, setEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('cyberbot_enabled');
     return saved === null ? true : saved === 'true';
@@ -353,9 +354,13 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     params: Record<string, string> | undefined,
     deliver: (text: string, emotion: CyberBotEmotion) => boolean,
   ) => phraseDeckRef.current!.tryNext(topic, phrase => deliver(
-    t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, params?.count), preferredName), { ...params, userName: preferredName }),
+    t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, params?.count), preferredName), {
+      shortcut: cyberBotShortcut || 'Alt+Shift+B',
+      ...params,
+      userName: preferredName,
+    }),
     phrase.emotion,
-  )), [t, preferredName]);
+  )), [t, preferredName, cyberBotShortcut]);
 
   const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
     return deliverPhrase(topic, options.params, (text, emotion) => say({

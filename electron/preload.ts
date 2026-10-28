@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // --- Atajo global ---
   registerShortcut: (shortcut: string) => ipcRenderer.invoke('register-shortcut', shortcut),
+  registerCyberBotShortcut: (shortcut: string, enabled: boolean) =>
+    ipcRenderer.invoke('register-cyberbot-shortcut', shortcut, enabled),
 
   // --- Controles de ventana ---
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
@@ -179,6 +181,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: any, opts?: { checkUpdates?: boolean }) => callback(opts);
     ipcRenderer.on('open-about', handler);
     return () => { ipcRenderer.removeListener('open-about', handler); };
+  },
+  onOpenCyberBotPrompt: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('open-cyberbot-prompt', handler);
+    return () => { ipcRenderer.removeListener('open-cyberbot-prompt', handler); };
   },
   setTrayRecents: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) =>
     ipcRenderer.invoke('tray:set-recents', items),

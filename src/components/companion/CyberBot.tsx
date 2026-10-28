@@ -364,9 +364,13 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         ref={bubbleRef}
         data-no-hide
         aria-hidden={!placement.bubbleVisible || idleAway || undefined}
-        style={{ width: placement.bubbleWidth, visibility: placement.bubbleVisible && !placement.hidden && !idleAway ? 'visible' : 'hidden' }}
-        className={`absolute bottom-full mb-3 pointer-events-auto ${
-          placement.align === 'left' ? 'left-0' : 'right-0'
+        style={{
+          width: isPromptOpen ? Math.min(440, placement.bubbleWidth) : undefined,
+          maxWidth: placement.bubbleWidth,
+          visibility: placement.bubbleVisible && !placement.hidden && !idleAway ? 'visible' : 'hidden',
+        }}
+        className={`absolute bottom-full mb-3 pointer-events-auto flex flex-col ${
+          placement.align === 'left' ? 'left-0 items-start' : 'right-0 items-end'
         }`}
       >
         <AnimatePresence mode="wait">

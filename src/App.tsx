@@ -51,6 +51,7 @@ import {
 // (CyberTray import removed)
 
 const DEFAULT_ACTIVATION_SHORTCUT = 'Alt+Shift+L';
+const DEFAULT_CYBERBOT_SHORTCUT = 'Alt+Shift+B';
 
 export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { className?: string, animated?: boolean }) => (
   <img 
@@ -383,6 +384,7 @@ declare global {
       getMonitors: () => Promise<Array<{ id: string; label: string; isPrimary: boolean; bounds: any; size: any }>>;
       setMonitor: (monitorId: string) => Promise<void>;
       registerShortcut: (shortcut: string) => Promise<{ success: boolean; shortcut: string }>;
+      registerCyberBotShortcut?: (shortcut: string, enabled: boolean) => Promise<{ success: boolean; shortcut: string }>;
       windowMinimize: () => Promise<void>;
       windowMaximizeToggle: () => Promise<void>;
       windowClose: () => Promise<void>;
@@ -453,6 +455,7 @@ declare global {
       onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
+      onOpenCyberBotPrompt?: (callback: () => void) => () => void;
       setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) => Promise<{ success: boolean }>;
       updateTraySettings?: (settings: { showTrayRecents?: boolean; showSuiteRecommendations?: boolean }) => Promise<{ success: boolean }>;
       getAppVersions: () => Promise<{
@@ -2370,6 +2373,8 @@ export default function App() {
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
+  const [cyberBotShortcut, setCyberBotShortcut] = useState(() => localStorage.getItem('cyberBotShortcut') || DEFAULT_CYBERBOT_SHORTCUT);
+  const [isRecordingCyberBotShortcut, setIsRecordingCyberBotShortcut] = useState(false);
   const [hotspotCorners, setHotspotCorners] = useState<string[]>(() => {
     const saved = localStorage.getItem('hotspotCorners');
     return saved ? JSON.parse(saved) : [];
@@ -3369,7 +3374,10 @@ export default function App() {
     }
   });
 
-  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
+  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded, cyberBotShortcut });
+  const cyberBotRef = useRef(cyberBot);
+  cyberBotRef.current = cyberBot;
+  const cyberBotPromptRequestedAtRef = useRef<number>(0);
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
   const [nameEntryRequested, setNameEntryRequested] = useState(false);
   useEffect(() => {
@@ -4043,6 +4051,15 @@ export default function App() {
         setIsAboutOpen(true);
       }));
     }
+    if (window.electronAPI.onOpenCyberBotPrompt) {
+      unsubs.push(window.electronAPI.onOpenCyberBotPrompt(() => {
+        cyberBotPromptRequestedAtRef.current = Date.now();
+        if (!cyberBotRef.current.enabled) {
+          cyberBotRef.current.toggleEnabled();
+        }
+        setIsCyberBotPromptOpen(prev => !prev);
+      }));
+    }
     return () => unsubs.forEach((u) => u());
   }, []);
 
@@ -4514,8 +4531,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
+  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4538,7 +4555,7 @@ export default function App() {
           apps: appsClean, categories, favoriteIds, taskbarAppIds,
           bgType, bgImage, customImageUrl, customSlotImage, bgColor,
           bgGradient, glassIntensity, bgOpacity,
-          startWithWindows, startMinimized, activationShortcut,
+          startWithWindows, startMinimized, activationShortcut, cyberBotShortcut,
           hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen,
           leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed,
           hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
@@ -4566,7 +4583,7 @@ export default function App() {
     apps, categories, favoriteIds, taskbarAppIds,
     bgType, bgImage, customImageUrl, customSlotImage, bgColor,
     bgGradient, glassIntensity, bgOpacity,
-    startWithWindows, startMinimized, activationShortcut,
+    startWithWindows, startMinimized, activationShortcut, cyberBotShortcut,
     hotspotCorners, hotspotDelay,
     leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed,
     hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips,
@@ -4672,16 +4689,26 @@ export default function App() {
     // Older hosts and browser visibility provide a fallback; native hide remains authoritative.
     if (!window.electronAPI.onLauncherHidden) document.addEventListener('visibilitychange', visibility);
     const cleanup = window.electronAPI.onLauncherShown(() => {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }, 50);
+      const isForCyberBot = Date.now() - cyberBotPromptRequestedAtRef.current < 1500;
 
-      setKeyboardNav(null);
-      setIsMoreMenuOpen(false);
-      setIsHelpSubmenuOpen(false);
-      setIsCommandPaletteOpen(false);
-      setIsCyberBotPromptOpen(false);
+      if (!isForCyberBot) {
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        }, 50);
+
+        setKeyboardNav(null);
+        setIsMoreMenuOpen(false);
+        setIsHelpSubmenuOpen(false);
+        setIsCommandPaletteOpen(false);
+        setIsCyberBotPromptOpen(false);
+      } else {
+        setKeyboardNav(null);
+        setIsMoreMenuOpen(false);
+        setIsHelpSubmenuOpen(false);
+        setIsCommandPaletteOpen(false);
+        setIsCyberBotPromptOpen(true);
+      }
 
       if (returnTimer !== null) window.clearTimeout(returnTimer);
       // Let visibility, countdowns and pending notices settle before a decorative welcome.
@@ -4950,6 +4977,10 @@ export default function App() {
       if (config.activationShortcut) {
         setActivationShortcut(config.activationShortcut);
         localStorage.setItem('activationShortcut', config.activationShortcut);
+      }
+      if (config.cyberBotShortcut) {
+        setCyberBotShortcut(config.cyberBotShortcut);
+        localStorage.setItem('cyberBotShortcut', config.cyberBotShortcut);
       }
       if (config.hotspotCorners) {
         setHotspotCorners(config.hotspotCorners);
@@ -5561,6 +5592,7 @@ export default function App() {
         rightSidebarWidth,
         rightSidebarCollapsed,
         activationShortcut,
+        cyberBotShortcut,
         hotspotCorners,
         hotspotDelay,
         hotspotsDisableInFullscreen,
@@ -5624,6 +5656,7 @@ export default function App() {
         if (data.settings.rightSidebarWidth !== undefined) setRightSidebarWidth(data.settings.rightSidebarWidth);
         if (data.settings.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!data.settings.rightSidebarCollapsed);
         if (data.settings.activationShortcut !== undefined) setActivationShortcut(data.settings.activationShortcut);
+        if (data.settings.cyberBotShortcut !== undefined) setCyberBotShortcut(data.settings.cyberBotShortcut);
         if (data.settings.hotspotCorners !== undefined) setHotspotCorners(data.settings.hotspotCorners);
         if (data.settings.hotspotCorner !== undefined && data.settings.hotspotCorner !== 'none') {
            setHotspotCorners([data.settings.hotspotCorner]);
@@ -5950,7 +5983,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
     try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
@@ -10958,6 +10991,87 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
+                {/* CyberBot Keyboard Shortcut Config */}
+                <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Bot className={`w-4 h-4 ${cyberBot.enabled ? 'text-cyan-400' : 'text-slate-500'}`} />
+                      {t('general_cyberbot_shortcut')}
+                    </span>
+                    {!cyberBot.enabled && (
+                      <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full font-normal">
+                        {t('cyberbot_disabled_tag')}
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!cyberBot.enabled}
+                      onClick={() => {
+                        if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (isRecordingCyberBotShortcut && cyberBot.enabled) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+                          
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                            const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                            keys.push(keyName);
+                            const newShortcut = keys.join('+');
+                            setCyberBotShortcut(newShortcut);
+                            setIsRecordingCyberBotShortcut(false);
+                            if (isElectron) {
+                              window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
+                            }
+                          }
+                        }
+                      }}
+                      onBlur={() => setIsRecordingCyberBotShortcut(false)}
+                      className={`flex-1 text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                        !cyberBot.enabled
+                          ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
+                          : isRecordingCyberBotShortcut 
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
+                            : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
+                      }`}
+                    >
+                      {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                    </button>
+                    <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
+                      <button
+                        type="button"
+                        disabled={!cyberBot.enabled}
+                        onClick={() => {
+                          if (!cyberBot.enabled) return;
+                          setIsRecordingCyberBotShortcut(false);
+                          setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                          if (isElectron) {
+                            window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
+                          }
+                        }}
+                        className={`flex-shrink-0 p-3 rounded-xl border border-white/10 transition-all ${
+                          !cyberBot.enabled
+                            ? 'bg-black/20 text-slate-600 cursor-not-allowed'
+                            : 'bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                  <p className={`text-xs ${!cyberBot.enabled ? 'text-amber-400/90' : 'text-slate-500'}`}>
+                    {!cyberBot.enabled
+                      ? t('general_cyberbot_shortcut_disabled_desc')
+                      : t('general_cyberbot_shortcut_desc')}
+                  </p>
+                </div>
+
                 {/* Scale Selection */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -11997,6 +12111,89 @@ export default function App() {
                           <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
                         </div>
                       </button>
+                    </div>
+
+                    {/* Card: Atajo para CyberBot */}
+                    <div className={`flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                            <Keyboard className="w-5 h-5 text-cyan-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_cyberbot_shortcut')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                              {!cyberBot.enabled ? t('general_cyberbot_shortcut_disabled_desc') : t('general_cyberbot_shortcut_desc')}
+                            </p>
+                          </div>
+                        </div>
+                        {!cyberBot.enabled && (
+                          <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
+                            {t('cyberbot_disabled_tag')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 sm:pl-[52px]">
+                        <button
+                          type="button"
+                          disabled={!cyberBot.enabled}
+                          onClick={() => {
+                            if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (isRecordingCyberBotShortcut && cyberBot.enabled) {
+                              e.preventDefault();
+                              const keys = [];
+                              if (e.ctrlKey) keys.push('Ctrl');
+                              if (e.altKey) keys.push('Alt');
+                              if (e.shiftKey) keys.push('Shift');
+                              if (e.metaKey) keys.push('Meta');
+                              
+                              if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                                const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                                keys.push(keyName);
+                                const newShortcut = keys.join('+');
+                                setCyberBotShortcut(newShortcut);
+                                setIsRecordingCyberBotShortcut(false);
+                                if (isElectron) {
+                                  window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
+                                }
+                              }
+                            }
+                          }}
+                          onBlur={() => setIsRecordingCyberBotShortcut(false)}
+                          className={`flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all ${
+                            !cyberBot.enabled
+                              ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
+                              : isRecordingCyberBotShortcut 
+                                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
+                                : 'bg-[#0f172a] text-slate-200 hover:bg-white/5 border border-white/10 shadow-inner'
+                          }`}
+                        >
+                          {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                        </button>
+                        <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
+                          <button
+                            type="button"
+                            disabled={!cyberBot.enabled}
+                            onClick={() => {
+                              if (!cyberBot.enabled) return;
+                              setIsRecordingCyberBotShortcut(false);
+                              setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                              if (isElectron) {
+                                window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
+                              }
+                            }}
+                            className={`flex-shrink-0 p-2.5 rounded-xl border border-white/10 transition-all ${
+                              !cyberBot.enabled
+                                ? 'bg-black/20 text-slate-600 cursor-not-allowed'
+                                : 'bg-[#0f172a] text-slate-400 hover:text-cyan-300 hover:bg-white/5'
+                            }`}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -14656,6 +14853,7 @@ export default function App() {
             position={align === 'left' ? 'bottom-left' : 'bottom-right'}
             t={t}
             apps={apps}
+            recentHistory={launchHistory}
             favoriteIds={favoriteIds}
             onLaunchApp={(app) => {
               void handleLaunchApp(app);
@@ -14720,7 +14918,7 @@ export default function App() {
         closeLabel={t('cyberbot_close_message')}
         hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
         marqueeStatusMessages={getCyberBotMarqueeStatusMessages({
-          apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut,
+          apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut, cyberBotShortcut,
         }, t)}
         systemAttention={!!notification}
         contextOpen={isAnyModalOpen || isTerminalOpen || isCyberBotPromptOpen}

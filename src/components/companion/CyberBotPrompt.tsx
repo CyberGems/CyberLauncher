@@ -15,13 +15,13 @@ import {
   Power,
   ArrowRight,
   FolderPlus,
-  CornerDownLeft,
   Sparkles,
   Settings,
   ScanSearch,
   RefreshCw,
   Info,
   Pin,
+  Flame,
 } from 'lucide-react';
 import type { TranslationKey } from '../../locales';
 import type { CyberBotQuietHoursConfig } from './companionTypes';
@@ -46,6 +46,7 @@ export interface CyberBotPromptProps {
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'left' | 'right';
   t: (key: TranslationKey, params?: Record<string, string>) => string;
   apps: PromptLauncherApp[];
+  recentHistory?: Array<{ id?: string; name: string; path?: string; icon?: string; timestamp?: number; type?: string }>;
   favoriteIds?: (string | number)[];
   onLaunchApp: (app: PromptLauncherApp) => void;
   renderAppIcon?: (app: PromptLauncherApp, className?: string) => React.ReactNode;
@@ -78,7 +79,6 @@ interface PromptActionItem {
   keywords: string;
   shortcut?: string;
   icon: React.ReactNode;
-  color?: string;
   run: () => void;
 }
 
@@ -108,6 +108,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   position = 'bottom-right',
   t,
   apps,
+  recentHistory = [],
   favoriteIds = [],
   onLaunchApp,
   renderAppIcon,
@@ -157,8 +158,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_settings_desc'),
       keywords: 'settings configuracion configuracion ajustes config opciones preferences preferencias tema general hotkeys atajos teclado idioma language personalizacion',
       shortcut: 'Ctrl+,',
-      icon: <Settings className="w-3.5 h-3.5 text-slate-300" />,
-      color: 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
+      icon: <Settings className="w-3.5 h-3.5" />,
       run: () => onOpenSettings('general'),
     }] : []),
 
@@ -171,8 +171,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_system_desc'),
       keywords: 'system sistema monitor cpu ram memoria hardware recursos monitoreo performance rendimiento procesador diagnostico',
       shortcut: 'Ctrl+H',
-      icon: <Cpu className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <Cpu className="w-3.5 h-3.5" />,
       run: onOpenSystemHUD,
     },
 
@@ -185,8 +184,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_terminal_desc'),
       keywords: 'terminal consola cmd powershell cli shell bash consola comandos powershell',
       shortcut: 'Ctrl+J',
-      icon: <Terminal className="w-3.5 h-3.5 text-emerald-400" />,
-      color: 'border-emerald-500/30 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-500/15',
+      icon: <Terminal className="w-3.5 h-3.5" />,
       run: onOpenTerminal,
     },
 
@@ -199,8 +197,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_clock_desc'),
       keywords: 'reloj alarma alarmas temporizador timer cron scheduler programador tareas clock programar cronometro lanzamientos',
       shortcut: 'Ctrl+T',
-      icon: <Clock className="w-3.5 h-3.5 text-amber-400" />,
-      color: 'border-amber-500/30 text-amber-300 hover:border-amber-400 hover:bg-amber-500/15',
+      icon: <Clock className="w-3.5 h-3.5" />,
       run: onOpenClockHUD,
     },
 
@@ -212,8 +209,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       shortLabel: t('cyberbot_prompt_action_backup'),
       description: t('cyberbot_prompt_action_backup_desc'),
       keywords: 'backup respaldo respaldos copia copias seguridad snapshot guardar exportar restaurar snapshot backup',
-      icon: <Archive className="w-3.5 h-3.5 text-teal-400" />,
-      color: 'border-teal-500/30 text-teal-300 hover:border-teal-400 hover:bg-teal-500/15',
+      icon: <Archive className="w-3.5 h-3.5" />,
       run: onBackupNow,
     },
 
@@ -226,8 +222,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_palette_desc'),
       keywords: 'paleta palette comandos commands ctrl+k buscar acciones todo atajos menu',
       shortcut: 'Ctrl+K',
-      icon: <Command className="w-3.5 h-3.5 text-purple-400" />,
-      color: 'border-purple-500/30 text-purple-300 hover:border-purple-400 hover:bg-purple-500/15',
+      icon: <Command className="w-3.5 h-3.5" />,
       run: onOpenCommandPalette,
     },
 
@@ -240,8 +235,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_storage_desc'),
       keywords: 'storage almacenamiento disco discos hard drive disk space espacio unidades c d disco duro particiones',
       shortcut: 'Ctrl+D',
-      icon: <HardDrive className="w-3.5 h-3.5 text-sky-400" />,
-      color: 'border-sky-500/30 text-sky-300 hover:border-sky-400 hover:bg-sky-500/15',
+      icon: <HardDrive className="w-3.5 h-3.5" />,
       run: onOpenStorageHUD,
     },
 
@@ -253,8 +247,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       shortLabel: 'Ajustes CyberBot',
       description: t('cyberbot_prompt_action_cyberbot_settings_desc'),
       keywords: 'cyberbot bot ajustes config asistente companion avatar nombre name silencio quiet horas silenciosas chatter comportamiento',
-      icon: <Bot className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <Bot className="w-3.5 h-3.5" />,
       run: () => onOpenSettings('cyberbot'),
     }] : []),
 
@@ -267,8 +260,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_add_app_desc'),
       keywords: 'nueva nuevo shortcut add agregar acceso directo app executable exe link crear programa link url',
       shortcut: 'Ctrl+N',
-      icon: <Plus className="w-3.5 h-3.5 text-blue-400" />,
-      color: 'border-blue-500/30 text-blue-300 hover:border-blue-400 hover:bg-blue-500/15',
+      icon: <Plus className="w-3.5 h-3.5" />,
       run: () => onAddNewApp(),
     },
 
@@ -280,8 +272,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cmd_palette_action_add_cat_desc'),
       keywords: 'category categoria new nueva folder carpeta group grupo crear organizar clasificar',
       shortcut: 'Ctrl+Shift+N',
-      icon: <FolderPlus className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <FolderPlus className="w-3.5 h-3.5" />,
       run: onAddNewCategory,
     }] : []),
 
@@ -292,8 +283,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       label: t('cyberbot_prompt_action_uwp'),
       description: t('cyberbot_prompt_action_uwp_desc'),
       keywords: 'uwp store windows microsoft games scan escanear tienda juegos apps microsoft store import importar',
-      icon: <ScanSearch className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <ScanSearch className="w-3.5 h-3.5" />,
       run: () => onOpenSettings('uwp'),
     }] : []),
 
@@ -304,8 +294,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       label: t('cyberbot_prompt_action_refresh_icons'),
       description: t('cyberbot_prompt_action_refresh_icons_desc'),
       keywords: 'icons iconos refresh refrescar actualizar reload cache extraer recargar cache',
-      icon: <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <RefreshCw className="w-3.5 h-3.5" />,
       run: onRefreshIcons,
     }] : []),
 
@@ -317,8 +306,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_about_desc'),
       keywords: 'about acerca version updates novedades creditos ayuda docs wiki informacion info f1 creditos version changelog',
       shortcut: 'F1',
-      icon: <Info className="w-3.5 h-3.5 text-cyan-400" />,
-      color: 'border-cyan-500/30 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/15',
+      icon: <Info className="w-3.5 h-3.5" />,
       run: onOpenAbout,
     }] : []),
 
@@ -330,10 +318,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       description: t('cyberbot_prompt_action_pin_desc'),
       keywords: 'pin anclar desanclar fijar ventana al frente topmost siempre visible toggle pin',
       shortcut: 'Ctrl+P',
-      icon: <Pin className={`w-3.5 h-3.5 ${isPinned ? 'text-amber-400' : 'text-slate-400'}`} />,
-      color: isPinned
-        ? 'border-amber-500/30 text-amber-300 hover:border-amber-400 hover:bg-amber-500/15'
-        : 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
+      icon: <Pin className="w-3.5 h-3.5" />,
       run: onTogglePin,
     }] : []),
 
@@ -345,10 +330,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       shortLabel: isQuietHoursActive ? 'Activar Sonido' : 'Modo Silencio',
       description: t('cyberbot_prompt_action_quiet_desc'),
       keywords: 'silencio quiet mute callar modo horas silenciosas sonido notificaciones dormir no molestar',
-      icon: isQuietHoursActive ? <Volume2 className="w-3.5 h-3.5 text-rose-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />,
-      color: isQuietHoursActive
-        ? 'border-rose-500/30 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15'
-        : 'border-slate-500/30 text-slate-300 hover:border-slate-400 hover:bg-slate-500/15',
+      icon: isQuietHoursActive ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />,
       run: onToggleQuietHours,
     }] : []),
 
@@ -359,8 +341,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       label: t('cyberbot_prompt_action_power'),
       description: t('cyberbot_prompt_action_power_desc'),
       keywords: 'power energia apagar reiniciar suspender bloquear shutdown restart sleep lock signout pc equipo cerrar sesion',
-      icon: <Power className="w-3.5 h-3.5 text-rose-400" />,
-      color: 'border-rose-500/30 text-rose-300 hover:border-rose-400 hover:bg-rose-500/15',
+      icon: <Power className="w-3.5 h-3.5" />,
       run: onOpenPowerMenu,
     }] : []),
   ], [
@@ -389,6 +370,74 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       run: () => onLaunchApp(app),
     }));
   }, [apps, favoriteIds, onLaunchApp]);
+
+  // Recent apps (up to 3 from launch history or user library)
+  const recentApps = useMemo<PromptAppItem[]>(() => {
+    const frequentAppIds = new Set(frequentApps.map(f => String(f.app.id)));
+    const seen = new Set<string>();
+    const list: PromptAppItem[] = [];
+
+    if (recentHistory && recentHistory.length > 0) {
+      for (const item of recentHistory) {
+        const itemKey = (item.path || item.name).toLowerCase();
+        if (seen.has(itemKey)) continue;
+        seen.add(itemKey);
+
+        const matchedApp = apps.find(a =>
+          (a.path && item.path && a.path.toLowerCase() === item.path.toLowerCase()) ||
+          a.name.toLowerCase() === item.name.toLowerCase()
+        );
+
+        if (matchedApp) {
+          list.push({
+            id: `recent-app-${matchedApp.id}`,
+            type: 'app' as const,
+            app: matchedApp,
+            label: matchedApp.name,
+            description: matchedApp.category,
+            run: () => onLaunchApp(matchedApp),
+          });
+        } else if (item.path || item.name) {
+          const adHocApp: PromptLauncherApp = {
+            id: Math.abs(item.name.split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)),
+            name: item.name,
+            category: t('cyberbot_prompt_recent_apps'),
+            path: item.path,
+            iconPath: item.icon,
+          };
+          list.push({
+            id: `recent-adhoc-${list.length}`,
+            type: 'app' as const,
+            app: adHocApp,
+            label: adHocApp.name,
+            description: adHocApp.category,
+            run: () => onLaunchApp(adHocApp),
+          });
+        }
+
+        if (list.length >= 3) break;
+      }
+    }
+
+    if (list.length < 3) {
+      for (const app of apps) {
+        if (!frequentAppIds.has(String(app.id)) && !seen.has(app.name.toLowerCase())) {
+          seen.add(app.name.toLowerCase());
+          list.push({
+            id: `recent-fallback-${app.id}`,
+            type: 'app' as const,
+            app,
+            label: app.name,
+            description: app.category,
+            run: () => onLaunchApp(app),
+          });
+          if (list.length >= 3) break;
+        }
+      }
+    }
+
+    return list;
+  }, [recentHistory, apps, frequentApps, onLaunchApp, t]);
 
   // Normalized search query
   const normalizedQuery = normalizeSearch(query);
@@ -429,10 +478,10 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   // Combined selectable items for keyboard navigation
   const selectableItems = useMemo<SelectableItem[]>(() => {
     if (!normalizedQuery) {
-      return [...initialGridActions, ...frequentApps];
+      return [...initialGridActions, ...frequentApps, ...recentApps];
     }
     return [...matchingActions, ...matchingApps];
-  }, [normalizedQuery, initialGridActions, frequentApps, matchingActions, matchingApps]);
+  }, [normalizedQuery, initialGridActions, frequentApps, recentApps, matchingActions, matchingApps]);
 
   // Auto-focus input on open
   useEffect(() => {
@@ -518,7 +567,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       aria-label={t('cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
-      className="relative w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-[#070d1d]/95 backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_35px_rgba(34,211,238,0.25)] p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5"
+      className="relative w-[440px] max-w-[calc(100vw-32px)] rounded-2xl bg-[#080d1a]/95 backdrop-blur-2xl border border-cyan-500/30 shadow-[0_12px_36px_rgba(0,0,0,0.65),0_0_20px_rgba(34,211,238,0.12)] p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5"
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
@@ -578,8 +627,8 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           <>
             {/* Quick Actions Grid */}
             <div>
-              <div className="text-[10px] font-cyber font-semibold tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-cyan-400" />
+              <div className="text-[10px] font-cyber font-medium tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-slate-400" />
                 <span>{t('cyberbot_prompt_quick_actions')}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -591,20 +640,26 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                       type="button"
                       onClick={() => executeItem(action)}
                       onMouseEnter={() => setActiveIndex(idx)}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left font-cyber transition-all cursor-pointer ${
+                      className={`group flex items-center gap-1.5 px-2 py-2 rounded-xl border text-left font-cyber transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-cyan-400 bg-cyan-500/25 text-white shadow-[inset_0_0_12px_rgba(34,211,238,0.2),0_0_8px_rgba(34,211,238,0.25)] ring-1 ring-cyan-400/40'
-                          : action.color || 'border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07]'
+                          ? 'border-cyan-400/80 bg-cyan-500/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.2)] ring-1 ring-cyan-400/40'
+                          : 'border-white/10 bg-slate-900/60 text-slate-200 hover:border-cyan-500/40 hover:bg-slate-800/80 hover:text-white'
                       }`}
                     >
-                      <div className="shrink-0">{action.icon}</div>
+                      <div className={`shrink-0 transition-colors ${isSelected ? 'text-cyan-300' : 'text-slate-400 group-hover:text-cyan-300'}`}>
+                        {action.icon}
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-bold tracking-tight truncate leading-snug">
+                        <div className="text-[11px] font-medium tracking-tight truncate leading-snug">
                           {action.shortLabel || action.label}
                         </div>
                       </div>
                       {action.shortcut && (
-                        <kbd className="tooltip-shortcut shrink-0 self-center">
+                        <kbd className={`tooltip-shortcut shrink-0 self-center text-[9.5px] px-1.5 py-0.5 rounded font-cyber border transition-colors ${
+                          isSelected
+                            ? 'border-cyan-400/40 bg-cyan-950/60 text-cyan-200'
+                            : 'border-white/10 bg-black/40 text-slate-400 group-hover:border-cyan-500/30 group-hover:text-slate-300'
+                        }`}>
                           {action.shortcut}
                         </kbd>
                       )}
@@ -614,48 +669,115 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
               </div>
             </div>
 
-            {/* Frequent / Favorite Shortcuts */}
-            {frequentApps.length > 0 && (
-              <div>
-                <div className="text-[10px] font-cyber font-semibold tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
-                  <CornerDownLeft className="w-3 h-3 text-cyan-400" />
-                  <span>{t('cyberbot_prompt_quick_apps')}</span>
+            {/* Apps: 2 Columns (Frequent & Recent) */}
+            {(frequentApps.length > 0 || recentApps.length > 0) && (
+              <div className="grid grid-cols-2 gap-2">
+                {/* Column 1: Más Usadas */}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-cyber font-medium tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5 truncate">
+                    <Flame className="w-3 h-3 text-amber-400/80 shrink-0" />
+                    <span className="truncate">{t('cyberbot_prompt_frequent_apps')}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {frequentApps.map((item, idx) => {
+                      const itemIndex = initialGridActions.length + idx;
+                      const isSelected = activeIndex === itemIndex;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => executeItem(item)}
+                          onMouseEnter={() => setActiveIndex(itemIndex)}
+                          className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-cyan-400/80 bg-cyan-500/20 text-white shadow-[0_0_10px_rgba(34,211,238,0.18)] ring-1 ring-cyan-400/35'
+                              : 'border-white/5 bg-slate-900/40 text-slate-200 hover:border-white/15 hover:bg-slate-800/60 hover:text-white'
+                          }`}
+                        >
+                          <div className="w-6 h-6 shrink-0 rounded flex items-center justify-center overflow-hidden bg-black/40 border border-white/10">
+                            {renderAppIcon ? (
+                              renderAppIcon(item.app, 'w-4 h-4 object-contain')
+                            ) : item.app.iconPath ? (
+                              <img src={item.app.iconPath} alt="" className="w-4 h-4 object-contain" />
+                            ) : (
+                              <Bot className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-300 transition-colors" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-cyber font-medium truncate text-slate-200 group-hover:text-white leading-tight">
+                              {item.label}
+                            </div>
+                            {item.description && (
+                              <div className="text-[9.5px] text-slate-400 truncate font-cyber leading-tight">
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                          <kbd className={`tooltip-shortcut shrink-0 self-center text-[9px] px-1.5 py-0.5 rounded font-cyber border transition-all ${
+                            isSelected
+                              ? 'border-cyan-400/50 bg-cyan-950/70 text-cyan-200 shadow-[0_0_6px_rgba(34,211,238,0.25)]'
+                              : 'border-white/10 bg-black/40 text-slate-500 group-hover:text-slate-300'
+                          }`}>
+                            ↵
+                          </kbd>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  {frequentApps.map((item, idx) => {
-                    const itemIndex = initialGridActions.length + idx;
-                    const isSelected = activeIndex === itemIndex;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => executeItem(item)}
-                        onMouseEnter={() => setActiveIndex(itemIndex)}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[inset_0_0_10px_rgba(34,211,238,0.18),0_0_8px_rgba(34,211,238,0.22)] ring-1 ring-cyan-400/35'
-                            : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
-                        }`}
-                      >
-                        <div className="w-6 h-6 shrink-0 rounded flex items-center justify-center overflow-hidden bg-black/40 border border-white/10">
-                          {renderAppIcon ? (
-                            renderAppIcon(item.app, 'w-4 h-4 object-contain')
-                          ) : item.app.iconPath ? (
-                            <img src={item.app.iconPath} alt="" className="w-4 h-4 object-contain" />
-                          ) : (
-                            <Bot className="w-3.5 h-3.5 text-cyan-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-cyber font-bold truncate text-slate-100">{item.label}</div>
-                          {item.description && (
-                            <div className="text-[10px] text-slate-400 truncate font-cyber">{item.description}</div>
-                          )}
-                        </div>
-                        <ArrowRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isSelected ? 'translate-x-0.5 text-cyan-300' : 'text-slate-500'}`} />
-                      </button>
-                    );
-                  })}
+
+                {/* Column 2: Recientes */}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-cyber font-medium tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5 truncate">
+                    <Clock className="w-3 h-3 text-cyan-400/80 shrink-0" />
+                    <span className="truncate">{t('cyberbot_prompt_recent_apps')}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {recentApps.map((item, idx) => {
+                      const itemIndex = initialGridActions.length + frequentApps.length + idx;
+                      const isSelected = activeIndex === itemIndex;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => executeItem(item)}
+                          onMouseEnter={() => setActiveIndex(itemIndex)}
+                          className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-cyan-400/80 bg-cyan-500/20 text-white shadow-[0_0_10px_rgba(34,211,238,0.18)] ring-1 ring-cyan-400/35'
+                              : 'border-white/5 bg-slate-900/40 text-slate-200 hover:border-white/15 hover:bg-slate-800/60 hover:text-white'
+                          }`}
+                        >
+                          <div className="w-6 h-6 shrink-0 rounded flex items-center justify-center overflow-hidden bg-black/40 border border-white/10">
+                            {renderAppIcon ? (
+                              renderAppIcon(item.app, 'w-4 h-4 object-contain')
+                            ) : item.app.iconPath ? (
+                              <img src={item.app.iconPath} alt="" className="w-4 h-4 object-contain" />
+                            ) : (
+                              <Bot className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-300 transition-colors" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-cyber font-medium truncate text-slate-200 group-hover:text-white leading-tight">
+                              {item.label}
+                            </div>
+                            {item.description && (
+                              <div className="text-[9.5px] text-slate-400 truncate font-cyber leading-tight">
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                          <kbd className={`tooltip-shortcut shrink-0 self-center text-[9px] px-1.5 py-0.5 rounded font-cyber border transition-all ${
+                            isSelected
+                              ? 'border-cyan-400/50 bg-cyan-950/70 text-cyan-200 shadow-[0_0_6px_rgba(34,211,238,0.25)]'
+                              : 'border-white/10 bg-black/40 text-slate-500 group-hover:text-slate-300'
+                          }`}>
+                            ↵
+                          </kbd>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -680,21 +802,25 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                         type="button"
                         onClick={() => executeItem(action)}
                         onMouseEnter={() => setActiveIndex(idx)}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border text-left transition-all cursor-pointer ${
+                        className={`group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
-                            ? 'border-cyan-400 bg-cyan-500/20 text-white shadow-[inset_0_0_10px_rgba(34,211,238,0.18),0_0_8px_rgba(34,211,238,0.22)] ring-1 ring-cyan-400/35'
-                            : 'border-white/5 bg-white/[0.02] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]'
+                            ? 'border-cyan-400/80 bg-cyan-500/20 text-white shadow-[0_0_10px_rgba(34,211,238,0.18)] ring-1 ring-cyan-400/35'
+                            : 'border-white/5 bg-slate-900/40 text-slate-200 hover:border-white/15 hover:bg-slate-800/60 hover:text-white'
                         }`}
                       >
-                        <div className="shrink-0 p-1 rounded-lg bg-black/40 border border-white/10">{action.icon}</div>
+                        <div className={`shrink-0 p-1 rounded-lg bg-black/40 border border-white/10 transition-colors ${
+                          isSelected ? 'text-cyan-300 border-cyan-400/40' : 'text-slate-400 group-hover:text-cyan-300'
+                        }`}>
+                          {action.icon}
+                        </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-cyber font-bold truncate text-white">{action.label}</div>
+                          <div className="text-xs font-cyber font-semibold truncate text-white">{action.label}</div>
                           {action.description && (
                             <div className="text-[10px] text-slate-400 truncate font-cyber">{action.description}</div>
                           )}
                         </div>
                         {action.shortcut && (
-                          <kbd className="tooltip-shortcut shrink-0 self-center">
+                          <kbd className="tooltip-shortcut shrink-0 self-center text-[10px] px-1.5 py-0.5 rounded font-cyber border border-white/10 bg-black/40 text-slate-400">
                             {action.shortcut}
                           </kbd>
                         )}
@@ -742,7 +868,13 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                             <div className="text-[10px] text-slate-400 truncate font-cyber">{item.description}</div>
                           )}
                         </div>
-                        <ArrowRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isSelected ? 'translate-x-0.5 text-cyan-300' : 'text-slate-500'}`} />
+                        <kbd className={`tooltip-shortcut shrink-0 self-center text-[9px] px-1.5 py-0.5 rounded font-cyber border transition-all ${
+                          isSelected
+                            ? 'border-cyan-400/50 bg-cyan-950/70 text-cyan-200 shadow-[0_0_6px_rgba(34,211,238,0.25)]'
+                            : 'border-white/10 bg-black/40 text-slate-500 group-hover:text-slate-300'
+                        }`}>
+                          ↵
+                        </kbd>
                       </button>
                     );
                   })}
@@ -776,7 +908,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
 
       {/* Speech Bubble Tail Pointing Down To CyberBot */}
       <div
-        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#070d1d] border-r border-b border-cyan-500/40 transform rotate-45 pointer-events-none z-10`}
+        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#080d1a] border-r border-b border-cyan-500/30 transform rotate-45 pointer-events-none z-10`}
       />
     </div>
   );

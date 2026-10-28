@@ -896,6 +896,10 @@ test('idle marquee reports real library, usage, shortcut and pending tasks in bo
     assert.deepEqual(statuses, language === 'es'
       ? ['ACCESOS // 3', 'LANZAMIENTOS HOY // 7', 'ABRIR LAUNCHER // Ctrl+Alt+L', 'FAVORITOS // 1', 'LANZAMIENTOS PROGRAMADOS // 1']
       : ['SHORTCUTS // 3', 'LAUNCHES TODAY // 7', 'OPEN LAUNCHER // Ctrl+Alt+L', 'FAVORITES // 1', 'SCHEDULED LAUNCHES // 1']);
+    const withBotShortcut = getCyberBotMarqueeStatusMessages({ ...state, cyberBotShortcut: 'Alt+Shift+B' }, translate);
+    assert.deepEqual(withBotShortcut, language === 'es'
+      ? ['ACCESOS // 3', 'LANZAMIENTOS HOY // 7', 'ABRIR LAUNCHER // Ctrl+Alt+L', 'ABRIR CYBERBOT // Alt+Shift+B', 'FAVORITOS // 1', 'LANZAMIENTOS PROGRAMADOS // 1']
+      : ['SHORTCUTS // 3', 'LAUNCHES TODAY // 7', 'OPEN LAUNCHER // Ctrl+Alt+L', 'OPEN CYBERBOT // Alt+Shift+B', 'FAVORITES // 1', 'SCHEDULED LAUNCHES // 1']);
     assert.doesNotMatch(statuses.join(' '), /\{|READY|ONLINE|SYSTEMS|CYBERGEMS|LISTO|EN LÍNEA|SISTEMAS/);
     const empty = getCyberBotMarqueeStatusMessages({ ...state, apps: [], favoriteIds: [], scheduledTasks: [], activationShortcut: '', dailyLaunchCount: 0 }, translate);
     assert.equal(empty.length, 2);

@@ -48,7 +48,7 @@ function subtractObstacle(region: CyberBotRect, obstacle: CyberBotRect): CyberBo
 }
 
 export function getCyberBotLayout({
-  width, height, preferred, align, bubbleHeight, obstacles,
+  width, height, preferred, align, bubbleHeight, obstacles, maxBubbleWidth = 390,
 }: {
   width: number;
   height: number;
@@ -56,6 +56,7 @@ export function getCyberBotLayout({
   align: 'left' | 'right';
   bubbleHeight: number;
   obstacles: CyberBotRect[];
+  maxBubbleWidth?: number;
 }): CyberBotLayout {
   let regions: CyberBotRect[] = [{ left: MARGIN, top: MARGIN, right: width - MARGIN, bottom: height - MARGIN }];
   for (const obstacle of obstacles) regions = regions.flatMap(region => subtractObstacle(region, obstacle));
@@ -66,7 +67,7 @@ export function getCyberBotLayout({
     for (const region of regions) {
       const availableWidth = region.right - region.left;
       if (availableWidth < (withBubble ? 180 : CYBERBOT_SIZE)) continue;
-      const bubbleWidth = Math.min(390, availableWidth);
+      const bubbleWidth = Math.min(maxBubbleWidth, availableWidth);
       const footprintWidth = withBubble ? bubbleWidth : CYBERBOT_SIZE;
       const footprintHeight = CYBERBOT_SIZE + (withBubble ? bubbleHeight + BUBBLE_GAP : 0);
       if (region.bottom - region.top < footprintHeight) continue;
@@ -84,5 +85,5 @@ export function getCyberBotLayout({
     }
     if (best) return best.layout;
   }
-  return { ...preferred, align, bubbleWidth: 390, bubbleVisible: false, hidden: true };
+  return { ...preferred, align, bubbleWidth: maxBubbleWidth, bubbleVisible: false, hidden: true };
 }

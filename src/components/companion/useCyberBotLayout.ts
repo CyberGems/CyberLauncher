@@ -60,6 +60,7 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, isProm
         align: position === 'bottom-left' ? 'left' : 'right',
         bubbleHeight: hasBubble ? (bubbleRef.current?.offsetHeight || (isPromptOpen ? 260 : 140)) : 0,
         obstacles,
+        maxBubbleWidth: isPromptOpen ? 440 : 390,
       });
       const next = {
         ...positioned,
