@@ -143,12 +143,19 @@ export function shouldCyberBotBlink(emotion: CyberBotEmotion): boolean {
   return !['launcher', 'terminal', 'marquee', 'sleeping', 'scared', 'alert', 'storage'].includes(emotion);
 }
 
+export interface CyberBotIdleCycleOptions {
+  allowVanish?: boolean;
+}
+
 // One idle cycle chooses a gesture instead of running overlapping sleep and
-// vanish timers. Two consecutive departures guarantee a sleep next time.
+// vanish timers. By default, CyberBot stays visible on the main panel and
+// routine idle gestures transition to sleeping without vanishing.
 export function createCyberBotIdleCycle(
   onChange: (state: CyberBotIdleState, style: CyberBotVanishStyle) => void,
   random = Math.random,
+  options: CyberBotIdleCycleOptions = {},
 ) {
+  const { allowVanish = false } = options;
   let lastActivity = Date.now();
   let state: CyberBotIdleState = 'awake';
   let paused = false;
@@ -165,6 +172,11 @@ export function createCyberBotIdleCycle(
     timer = null;
   }
   function chooseNextGesture() {
+    if (!allowVanish) {
+      nextGesture = 'sleep';
+      idleDelay = randomDelay(CYBERBOT_SLEEP_MIN_IDLE_MS, CYBERBOT_SLEEP_MAX_IDLE_MS, random);
+      return;
+    }
     nextGesture = consecutiveVanish >= 2 || random() >= CYBERBOT_VANISH_CHANCE ? 'sleep' : 'vanish';
     idleDelay = nextGesture === 'vanish'
       ? randomDelay(CYBERBOT_VANISH_MIN_IDLE_MS, CYBERBOT_VANISH_MAX_IDLE_MS, random)

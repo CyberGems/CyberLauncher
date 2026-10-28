@@ -651,10 +651,24 @@ test('centered dialogs and overlapping panels both remain unobstructed', () => {
   }
 });
 
-test('idle cycle favors 15–30 second departures and eventually takes a 45–60 second sleep', context => {
+test('by default the idle cycle keeps CyberBot visible on the main panel without vanishing', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: string[] = [];
   const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_IDLE_MS - 1);
+  assert.deepEqual(changes, []);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, ['sleeping']);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_REST_MS);
+  assert.deepEqual(changes, ['sleeping', 'awake']);
+  assert.ok(!changes.includes('hidden'));
+  cycle.dispose();
+});
+
+test('idle cycle favors 15–30 second departures and eventually takes a 45–60 second sleep when vanishing is enabled', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: string[] = [];
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0, { allowVanish: true });
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
   cycle.wake();
   context.mock.timers.tick(CYBERBOT_VANISH_MIN_IDLE_MS - 1);
@@ -681,7 +695,7 @@ test('the random idle windows reach their upper limits and either state wakes on
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: Array<{ state: string; style: string }> = [];
   const sequence = [0, 0.999999, 0.999999, 0, 0];
-  const cycle = createCyberBotIdleCycle((state, style) => changes.push({ state, style }), () => sequence.shift() ?? 0);
+  const cycle = createCyberBotIdleCycle((state, style) => changes.push({ state, style }), () => sequence.shift() ?? 0, { allowVanish: true });
   context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS - 1);
   assert.deepEqual(changes, []);
   context.mock.timers.tick(1);
@@ -704,7 +718,7 @@ test('the random idle windows reach their upper limits and either state wakes on
 test('messages or busy UI interrupt and suspend either idle gesture', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: string[] = [];
-  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0, { allowVanish: true });
   cycle.pause();
   context.mock.timers.tick(CYBERBOT_VANISH_MAX_IDLE_MS * 2);
   assert.deepEqual(changes, []);
@@ -1125,7 +1139,7 @@ test('landed head touches the actual footer and drag offsets retain the same anc
 test('a first marquee pass delays idle departure without resetting or starving its deadline', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: string[] = [];
-  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0);
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0, { allowVanish: true });
   context.mock.timers.tick(10_000);
   cycle.setReading(true);
   context.mock.timers.tick(30_000);

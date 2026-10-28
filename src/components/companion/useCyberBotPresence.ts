@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCyberBotIdleCycle, type CyberBotIdleState, type CyberBotVanishStyle } from './cyberBotBehavior';
 
-export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?: string, systemAttention = false, reading = false) {
+export function useCyberBotPresence(
+  enabled: boolean,
+  busy: boolean,
+  messageId?: string,
+  systemAttention = false,
+  reading = false,
+  options?: { allowVanish?: boolean },
+) {
   const [idleState, setIdleState] = useState<CyberBotIdleState>('awake');
   const [vanishStyle, setVanishStyle] = useState<CyberBotVanishStyle>('phase');
   const [documentVisible, setDocumentVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
@@ -14,7 +21,7 @@ export function useCyberBotPresence(enabled: boolean, busy: boolean, messageId?:
     const cycle = createCyberBotIdleCycle((state, style) => {
       setIdleState(state);
       setVanishStyle(style);
-    });
+    }, Math.random, { allowVanish: options?.allowVanish ?? false });
     cycleRef.current = cycle;
     const wake = () => cycle.wake();
     const unsubscribe = window.electronAPI?.onLauncherShown?.(() => {
