@@ -2122,11 +2122,15 @@ function hideDesktopToastInternal() {
 }
 
 
+function formatTrayTooltip(shortcut?: string): string {
+  const clean = String(shortcut || '').trim();
+  return clean ? `CyberLauncher · ${clean}` : 'CyberLauncher';
+}
+
 function rebuildTrayMenu(): void {
   if (!tray) return;
-  const version = app.getVersion();
   tray.setImage(getTrayIcon());
-  tray.setToolTip(`CyberLauncher v${version}`);
+  tray.setToolTip(formatTrayTooltip(currentShortcut));
   updateCustomTrayMenuState();
 }
 
