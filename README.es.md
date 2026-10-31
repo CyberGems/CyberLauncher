@@ -22,6 +22,31 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [¿Qué es CyberLauncher?](#qué-es-cyberlauncher)
+- [🚀 ¿Por qué CyberLauncher?](#-por-qué-cyberlauncher)
+- [✨ Funciones principales](#-funciones-principales)
+- [🚀 Primeros pasos](#-primeros-pasos)
+- [🛠️ Stack tecnológico y arquitectura](#️-stack-tecnológico-y-arquitectura)
+- [⌨️ Atajos de teclado](#️-atajos-de-teclado)
+- [❤️ Donar](#️-donar)
+- [📄 Licencia](#-licencia)
+- [❓ Preguntas frecuentes](#-preguntas-frecuentes)
+- [🔗 Ver también](#-ver-también)
+
+<details>
+<summary><strong>🔗 Related links (outside this README)</strong></summary>
+
+- 🌐 [CyberLauncher en la web](https://cybergems.org/apps/cyberlauncher/) — resumen, descarga y guía de SmartScreen
+- 📚 [Documentación y FAQ — Wiki](https://github.com/CyberGems/CyberLauncher/wiki) — solución de problemas y guías detalladas
+- 💾 [Releases](https://github.com/CyberGems/CyberLauncher/releases) — instaladores, versiones portátiles y changelog
+- 🟣 [Suite CyberGems](https://github.com/CyberGems) — todas las apps de código abierto
+
+</details>
+
+---
+
 ## ¿Qué es CyberLauncher?
 
 CyberLauncher es un lanzador de aplicaciones a pantalla completa que convierte buscar y abrir cosas en Windows en un flujo de trabajo rápido y con teclado. Busca aplicaciones y archivos, organiza favoritos y categorías, invoca el lanzador con un atajo global o esquinas calientes, y automatiza lanzamientos recurrentes con el programador. El monitor de sistema integrado, las herramientas de comandos, los extensos controles de apariencia y una elegante interfaz de cristal lo convierten tanto en una alternativa práctica al menú Inicio como en un centro de comandos de escritorio personalizable. Construido con **Electron + React + TypeScript**.
@@ -222,9 +247,7 @@ npm run lint
 
 ## ❤️ Donar
 
-Tras incontables horas construyendo y perfeccionando **CyberLauncher** para mi propio uso, decidí recientemente compartirlo con el mundo junto a mis otras herramientas de código abierto en [CyberGems](https://github.com/CyberGems#-all-apps--repositories).
-
-Si te gustaría apoyar las futuras actualizaciones, te lo agradecería de verdad. Tu donación ayuda a mantener el desarrollo, lanzar nuevas funciones, acelerar la resolución de actualizaciones y errores, y mejorar la calidad de la documentación. También puedes mostrar tu apoyo [poniendo una estrella al repo en GitHub](https://github.com/CyberGems/CyberLauncher). ¡Gracias! 🙏
+**CyberLauncher** es 100% gratis y de código abierto. Si te resulta útil, por favor considera [donar](https://cybergems.org/donate) o [dar una estrella al repo en GitHub](https://github.com/CyberGems/CyberLauncher) para apoyar el desarrollo continuo. [Lee la historia completa](https://cybergems.org/about/) del proyecto. ¡Gracias! 🙏
 
 <p align="center">
   <a href="https://www.paypal.com/donate/?hosted_button_id=M4PY3UPJA5Y6Q"><img src="https://img.shields.io/badge/Donar-PayPal-0070BA?style=for-the-badge&logo=paypal" alt="Donar con PayPal" /></a>
