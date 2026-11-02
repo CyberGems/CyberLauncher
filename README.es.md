@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### Un lanzador rápido y personalizable de apps, archivos y comandos
+### Apps, archivos, comandos y una terminal real a un atajo de distancia, con las estadísticas del sistema en el mismo panel
 
 </div>
 
@@ -58,7 +58,7 @@
 
 ## 👋 Introducción
 
-CyberLauncher es un lanzador de aplicaciones a pantalla completa que convierte buscar y abrir cosas en Windows en un flujo de trabajo rápido y con teclado. Busca aplicaciones y archivos, organiza favoritos y categorías, invoca el lanzador con un atajo global o esquinas calientes, y automatiza lanzamientos recurrentes con el programador. El monitor de sistema integrado, las herramientas de comandos, los extensos controles de apariencia y una elegante interfaz de cristal lo convierten tanto en una alternativa práctica al menú Inicio como en un centro de comandos de escritorio personalizable. Construido con **Electron + React + TypeScript**.
+El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de tus apps, ignora tus archivos y entierra todo a tres clics. CyberLauncher se abre a pantalla completa con un atajo y busca apps, accesos directos, paquetes UWP y archivos de todas las unidades mientras escribes. Escribe `>` y el mismo panel se convierte en una sesión real de PowerShell o CMD; programa lanzamientos y comandos con avisos de cuenta atrás; mantén RAM, CPU y disco en la barra superior, consulta el espacio libre de cada unidad en el HUD de almacenamiento y deja que CyberBot cuente lo que pasa desde una esquina. El modo portátil, los atajos por app y las copias automáticas de la configuración completan el conjunto. Construido con **Electron + React + TypeScript**.
 
 *Gratuito y de código abierto (GPLv3): sin anuncios, sin rastreo y sin recogida de datos. Solo disfrútalo.*
 
@@ -75,6 +75,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 | Mantente organizado | Categorías con código de color, barra de favoritos, reordenar con arrastrar, anclajes a la barra de tareas |
 | Lanza desde cualquier lugar | Atajo global, esquinas calientes, atajos personalizados por app |
 | Sigue tu flujo de trabajo | Historial de ejecución, lanzamientos programados, ejecutor de comandos de consola |
+| Vigila el equipo | RAM, CPU y disco en la barra superior, HUD de almacenamiento para cada unidad y un centro de energía para apagar, reiniciar, suspender o bloquear |
 | Hazlo tuyo | Imágenes de fondo, degradados, efectos de cristal, opacidad, escala de la interfaz |
 
 ---

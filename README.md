@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### A fast and customizable launcher for apps, files and commands
+### Apps, files, commands and a real terminal, one hotkey away — with your system stats in the same panel
 
 </div>
 
@@ -58,7 +58,7 @@
 
 ## 👋 Introduction
 
-CyberLauncher is a full-screen application launcher that turns finding and opening things on Windows into a fast, keyboard-driven workflow. Search applications and files, organize favorites and categories, summon the launcher with a global hotkey or hot corners, and automate recurring launches with the scheduler. Integrated system monitoring, command tools, extensive appearance controls, and a sleek glass interface make it both a practical Start Menu alternative and a customizable desktop command center. Built with **Electron + React + TypeScript**.
+The Start menu was never built to find things: it searches a subset of your apps, ignores your files and buries everything three clicks deep. CyberLauncher opens full-screen on a hotkey and searches apps, shortcuts, UWP packages and files across every drive as you type. Type `>` and the same panel becomes a real PowerShell or CMD session; schedule launches and commands with countdown alerts; keep RAM, CPU and disk in the top bar, check every drive's free space in the Storage HUD, and let CyberBot narrate what is happening from the corner. Portable mode, per-app shortcuts and automatic configuration backups round it out. Built with **Electron + React + TypeScript**.
 
 *Free and open source (GPLv3): no ads, no tracking, and no data collection. Just enjoy it.*
 
@@ -75,6 +75,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 | Stay organized | Color-coded categories, favorites bar, drag-to-reorder, taskbar pins |
 | Launch from anywhere | Global hotkey, hot corners, per-app custom shortcuts |
 | Track your workflow | Execution history, scheduled launches, console command runner |
+| Keep an eye on the PC | RAM, CPU and disk in the top bar, a Storage HUD for every drive, and a power hub for shutdown, restart, sleep or lock |
 | Make it yours | Background images, gradients, glass effects, opacity, UI scale |
 
 ---
