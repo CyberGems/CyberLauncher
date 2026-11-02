@@ -58,7 +58,7 @@
 
 ## 👋 Introducción
 
-El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de tus apps, ignora tus archivos y entierra todo a tres clics. CyberLauncher se abre a pantalla completa con un atajo y busca apps, accesos directos, paquetes UWP y archivos de todas las unidades mientras escribes. Escribe `>` y el mismo panel se convierte en una sesión real de PowerShell o CMD; programa lanzamientos y comandos con avisos de cuenta atrás; mantén RAM, CPU y disco en la barra superior, consulta el espacio libre de cada unidad en el HUD de almacenamiento y deja que CyberBot cuente lo que pasa desde una esquina. El modo portátil, los atajos por app y las copias automáticas de la configuración completan el conjunto. Construido con **Electron + React + TypeScript**.
+El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de tus apps, ignora tus archivos y entierra todo a tres clics. CyberLauncher se abre a pantalla completa con un atajo y busca apps, accesos directos, apps de Microsoft Store y archivos de todas las unidades mientras escribes. Escribe `>` y el mismo panel se convierte en una sesión real de PowerShell o CMD; programa lanzamientos y comandos con avisos de cuenta atrás; mantén RAM, CPU y disco en la barra superior, consulta el espacio libre de cada unidad en el HUD de almacenamiento y deja que CyberBot cuente lo que pasa desde una esquina. El modo portátil, los atajos por app y las copias automáticas de la configuración completan el conjunto. Construido con **Electron + React + TypeScript**.
 
 *Gratuito y de código abierto (GPLv3): sin anuncios, sin rastreo y sin recogida de datos. Solo disfrútalo.*
 
@@ -87,7 +87,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Búsqueda difusa**: empieza a escribir para filtrar al instante tu biblioteca de apps (sin necesidad de coincidencia exacta)
 - **Paleta de comandos**: presiona `Ctrl+K` para ejecutar comandos del lanzador y navegar al instante
 - **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y apps en todas las unidades
-- **Soporte UWP / Windows Store**: escanea, importa y lanza apps UWP y MSIX de forma nativa mediante AUMID
+- **Apps de Microsoft Store**: escanea, importa y lanza apps de la Tienda (UWP y MSIX) de forma nativa mediante AUMID
 - **Cyber Terminal**: escribe `>` en la búsqueda para abrir una sesión persistente e interactiva de PowerShell o CMD dentro del panel. Escribe en el prompt, usa el historial nativo y programas interactivos, y cambia de shell desde la barra.
 
 ### 📂 Organización

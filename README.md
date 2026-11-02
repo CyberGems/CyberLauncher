@@ -58,7 +58,7 @@
 
 ## 👋 Introduction
 
-The Start menu was never built to find things: it searches a subset of your apps, ignores your files and buries everything three clicks deep. CyberLauncher opens full-screen on a hotkey and searches apps, shortcuts, UWP packages and files across every drive as you type. Type `>` and the same panel becomes a real PowerShell or CMD session; schedule launches and commands with countdown alerts; keep RAM, CPU and disk in the top bar, check every drive's free space in the Storage HUD, and let CyberBot narrate what is happening from the corner. Portable mode, per-app shortcuts and automatic configuration backups round it out. Built with **Electron + React + TypeScript**.
+The Start menu was never built to find things: it searches a subset of your apps, ignores your files and buries everything three clicks deep. CyberLauncher opens full-screen on a hotkey and searches apps, shortcuts, Microsoft Store apps and files across every drive as you type. Type `>` and the same panel becomes a real PowerShell or CMD session; schedule launches and commands with countdown alerts; keep RAM, CPU and disk in the top bar, check every drive's free space in the Storage HUD, and let CyberBot narrate what is happening from the corner. Portable mode, per-app shortcuts and automatic configuration backups round it out. Built with **Electron + React + TypeScript**.
 
 *Free and open source (GPLv3): no ads, no tracking, and no data collection. Just enjoy it.*
 
@@ -87,7 +87,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Fuzzy Search**: Start typing to instantly filter your app library (no exact match needed)
 - **Command Palette**: Press `Ctrl+K` for instant launcher command execution and quick navigation
 - **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
-- **UWP / Windows Store Support**: Natively scan, import, and launch UWP & MSIX apps via AUMID
+- **Microsoft Store Apps**: Natively scan, import and launch Store apps (UWP and MSIX) via AUMID
 - **Cyber Terminal**: Type `>` in search to open a persistent, interactive PowerShell or CMD session in the panel. Type at the shell prompt, use native history and interactive programs, and switch shells from the toolbar.
 
 ### 📂 Organization
