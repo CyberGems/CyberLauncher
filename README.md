@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://cybergems.org/apps/cyberlauncher/">
-    <img src="https://cybergems.org/banners/cyberlauncher.png" alt="Find and launch anything in seconds" />
+    <img src="https://cybergems.org/banners/cyberlauncher.png" alt="Find and launch anything on your PC in seconds" />
   </a>
 </p>
 
