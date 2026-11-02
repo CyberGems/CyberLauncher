@@ -4,27 +4,36 @@
 
 <p align="center">
   <a href="https://cybergems.org/apps/cyberlauncher/">
-    <img src="https://cybergems.org/banners/es/cyberlauncher.png" alt="CyberLauncher: lanzador rápido y personalizable de apps, archivos y comandos" />
+    <img src="https://cybergems.org/banners/es/cyberlauncher.png" alt="Encuentra y abre todo en segundos" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/CyberGems/CyberLauncher/releases/latest"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FCyberGems%2FCyberLauncher%2Fmain%2Fpackage.json&query=%24.version&prefix=%20Descargar%20CyberLauncher%20v&suffix=%20&style=for-the-badge&label=&labelColor=0891B2&color=0891B2" alt="Descargar la última versión" /><img src="https://img.shields.io/badge/Windows_10%2F11_(64--bit)-2563EB?style=for-the-badge" alt="Windows 10/11 (64 bits)" /></a>
-  &nbsp;<a href="https://github.com/CyberGems/CyberLauncher/releases"><img src="https://img.shields.io/badge/Todas_las_versiones-30363D?style=for-the-badge&logo=github&logoColor=white" alt="Todas las versiones" /><img src="https://img.shields.io/badge/Notas_de_la_versi%C3%B3n-475569?style=for-the-badge" alt="Notas de la versión" /></a>
+  <a href="https://github.com/CyberGems/CyberLauncher/releases/latest"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FCyberGems%2FCyberLauncher%2Fmain%2Fpackage.json&query=%24.version&prefix=%20Descargar%20v&suffix=%20&style=for-the-badge&label=&labelColor=0891B2&color=0891B2" alt="Descargar la última versión" /><img src="https://img.shields.io/badge/Windows_10%2F11_(64--bit)-2563EB?style=for-the-badge" alt="Windows 10/11 (64 bits)" /></a>
+  &nbsp;<a href="https://github.com/CyberGems/CyberLauncher/releases"><img src="https://img.shields.io/badge/Todas_las_versiones-30363D?style=for-the-badge&logo=github&logoColor=white" alt="Todas las versiones" /></a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Licencia-GPL--3.0-1F2428.svg?style=flat-square&color=334155" alt="Licencia" />&nbsp;
   <img src="https://img.shields.io/badge/Plataforma-Windows_10%2F11-1F2428.svg?style=flat-square&color=334155" alt="Plataforma" />&nbsp;
   <img src="https://img.shields.io/badge/Electron-42-1F2428.svg?style=flat-square&logo=electron&logoColor=white&color=334155" alt="Electron" />&nbsp;
-  <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/Wiki-Documentaci%C3%B3n-1F2428?style=flat-square&logo=gitbook&logoColor=white&color=334155" alt="Wiki" /></a>
+  <a href="https://github.com/CyberGems/CyberLauncher/wiki"><img src="https://img.shields.io/badge/Wiki-Documentaci%C3%B3n-1F2428?style=flat-square&logo=gitbook&logoColor=white&color=334155" alt="Wiki" /></a>&nbsp;
+  <a href="https://github.com/CyberGems/CyberLauncher/releases"><img src="https://img.shields.io/badge/Notas_de_la_versi%C3%B3n-475569?style=flat-square" alt="Notas de la versión" /></a>
 </p>
+
+---
+
+<div align="center">
+
+### Un lanzador rápido y personalizable de apps, archivos y comandos
+
+</div>
 
 ---
 
 ## 📑 Table of Contents
 
-- [¿Qué es CyberLauncher?](#qué-es-cyberlauncher)
+- [👋 Introducción](#-introducción)
 - [🚀 ¿Por qué CyberLauncher?](#-por-qué-cyberlauncher)
 - [✨ Funciones principales](#-funciones-principales)
 - [🚀 Primeros pasos](#-primeros-pasos)
@@ -47,7 +56,7 @@
 
 ---
 
-## ¿Qué es CyberLauncher?
+## 👋 Introducción
 
 CyberLauncher es un lanzador de aplicaciones a pantalla completa que convierte buscar y abrir cosas en Windows en un flujo de trabajo rápido y con teclado. Busca aplicaciones y archivos, organiza favoritos y categorías, invoca el lanzador con un atajo global o esquinas calientes, y automatiza lanzamientos recurrentes con el programador. El monitor de sistema integrado, las herramientas de comandos, los extensos controles de apariencia y una elegante interfaz de cristal lo convierten tanto en una alternativa práctica al menú Inicio como en un centro de comandos de escritorio personalizable. Construido con **Electron + React + TypeScript**.
 
