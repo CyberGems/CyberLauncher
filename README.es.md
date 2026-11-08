@@ -34,6 +34,7 @@
 ## 📑 Table of Contents
 
 - [👋 Introducción](#-introducción)
+- [📸 Capturas](#-capturas)
 - [🚀 ¿Por qué CyberLauncher?](#-por-qué-cyberlauncher)
 - [✨ Funciones principales](#-funciones-principales)
 - [🚀 Primeros pasos](#-primeros-pasos)
@@ -61,6 +62,14 @@
 El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de tus apps, ignora tus archivos y entierra todo a tres clics. CyberLauncher se abre a pantalla completa con un atajo y busca apps, accesos directos, apps de Microsoft Store y archivos de todas las unidades mientras escribes. Escribe `>` y el mismo panel se convierte en una sesión real de PowerShell o CMD; programa lanzamientos y comandos con avisos de cuenta atrás; mantén RAM, CPU y disco en la barra superior, consulta el espacio libre de cada unidad en el HUD de almacenamiento y deja que CyberBot cuente lo que pasa desde una esquina. El modo portátil, los atajos por app y las copias automáticas de la configuración completan el conjunto. Construido con **Electron + React + TypeScript**.
 
 *Gratuito y de código abierto (GPLv3): sin anuncios, sin rastreo y sin recogida de datos. Solo disfrútalo.*
+
+---
+
+<!-- Capturas: pendiente de la galería bilingüe ES/EN del plan en https://github.com/CyberGems/CyberGems.github.io/blob/main/docs/screenshots.md — sustituir la cita, conservar este título y su entrada en el índice. -->
+
+## 📸 Capturas
+
+> Próximamente...
 
 ---
 

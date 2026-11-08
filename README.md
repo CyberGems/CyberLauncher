@@ -34,6 +34,7 @@
 ## 📑 Table of Contents
 
 - [👋 Introduction](#-introduction)
+- [📸 Screenshots](#-screenshots)
 - [🚀 Why CyberLauncher?](#-why-cyberlauncher)
 - [✨ Key Features](#-key-features)
 - [🚀 Getting Started](#-getting-started)
@@ -61,6 +62,14 @@
 The Start menu was never built to find things: it searches a subset of your apps, ignores your files and buries everything three clicks deep. CyberLauncher opens full-screen on a hotkey and searches apps, shortcuts, Microsoft Store apps and files across every drive as you type. Type `>` and the same panel becomes a real PowerShell or CMD session; schedule launches and commands with countdown alerts; keep RAM, CPU and disk in the top bar, check every drive's free space in the Storage HUD, and let CyberBot narrate what is happening from the corner. Portable mode, per-app shortcuts and automatic configuration backups round it out. Built with **Electron + React + TypeScript**.
 
 *Free and open source (GPLv3): no ads, no tracking, and no data collection. Just enjoy it.*
+
+---
+
+<!-- Screenshots: pending the bilingual EN/ES gallery in the capture plan at https://github.com/CyberGems/CyberGems.github.io/blob/main/docs/screenshots.md — replace the blockquote, keep this heading and the TOC entry. -->
+
+## 📸 Screenshots
+
+> Coming soon...
 
 ---
 
