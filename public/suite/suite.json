@@ -1,13 +1,13 @@
 {
-  "updated": "2026-10-28",
+  "updated": "2026-11-08",
   "count": 10,
   "apps": [
     {
       "slug": "cyberclock",
       "name": "CyberClock",
       "tagline": {
-        "en": "Clock, calendar, timer, stopwatch, relaxation, and compact floating time tools for Windows.",
-        "es": "Reloj, calendario, temporizador, cronómetro, relajación y herramientas flotantes compactas para Windows."
+        "en": "Clock, calendar, timers and recorded soundscapes in one lightweight app — with an optional talking clock.",
+        "es": "Reloj, calendario, temporizadores y paisajes sonoros grabados en una app ligera, con reloj parlante opcional."
       },
       "site": "https://cybergems.org/apps/cyberclock/",
       "repo": "https://github.com/CyberGems/CyberClock",
@@ -28,8 +28,8 @@
       "slug": "cyberlauncher",
       "name": "CyberLauncher",
       "tagline": {
-        "en": "Find apps and files, launch favorites and get back to work in seconds.",
-        "es": "Encuentra apps y archivos, abre tus favoritos y vuelve a lo tuyo en segundos."
+        "en": "Apps, files, commands and a real terminal one hotkey away, with your system stats in the same panel.",
+        "es": "Apps, archivos, comandos y una terminal real a un atajo, con las estadísticas del sistema en el mismo panel."
       },
       "site": "https://cybergems.org/apps/cyberlauncher/",
       "repo": "https://github.com/CyberGems/CyberLauncher",
@@ -72,8 +72,8 @@
       "slug": "cybersnap",
       "name": "CyberSnap",
       "tagline": {
-        "en": "Capture, annotate and share anything — screenshots, recordings, text and color — with speed.",
-        "es": "Captura, anota y comparte cualquier cosa — imágenes, grabaciones, texto y color — con rapidez."
+        "en": "Screenshots, recordings, OCR, QR codes and a color picker — capture, edit and share it all in one window.",
+        "es": "Capturas, grabaciones, OCR, códigos QR y selector de color: captura, edita y comparte todo en una ventana."
       },
       "site": "https://cybergems.org/apps/cybersnap/",
       "repo": "https://github.com/CyberGems/CyberSnap",
@@ -94,8 +94,8 @@
       "slug": "cyberviewer",
       "name": "CyberViewer",
       "tagline": {
-        "en": "Open images quickly, explore whole folders and make the edits you need.",
-        "es": "Abre imágenes rápido, recorre carpetas y haz los ajustes que necesitas."
+        "en": "Images, video and audio in one fast window — browse whole folders and fix files without leaving it.",
+        "es": "Imágenes, video y audio en una ventana rápida: recorre carpetas y haz los ajustes sin salir de ella."
       },
       "site": "https://cybergems.org/apps/cyberviewer/",
       "repo": "https://github.com/CyberGems/CyberViewer",
