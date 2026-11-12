@@ -37,7 +37,7 @@
 - [🖼️ Capturas](#️-capturas)
 - [🚀 ¿Por qué CyberLauncher?](#-por-qué-cyberlauncher)
 - [✨ Funciones principales](#-funciones-principales)
-- [🚀 Instalación](#-instalación)
+- [⬇️ Instalación](#️-instalación)
 - [🧭 Cómo usar la app](#-cómo-usar-la-app)
 - [🛠️ Stack tecnológico y arquitectura](#️-stack-tecnológico-y-arquitectura)
 - [⌨️ Atajos de teclado](#️-atajos-de-teclado)
@@ -143,9 +143,10 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Exportar / Importar**: copia de seguridad y restauración de toda tu configuración en JSON
 - **Instancia única**: solo se ejecuta una instancia; un segundo lanzamiento enfoca la ventana existente
 - **Iniciar con Windows**: opcionalmente arranca minimizado o visible al arrancar el sistema
+
 ---
 
-## 🚀 Instalación
+## ⬇️ Instalación
 
 ### Instalación (recomendada)
 
@@ -255,6 +256,7 @@ El instalador quedará en el directorio `release/`.
 ```bash
 npm run lint
 ```
+
 ---
 
 ## ⌨️ Atajos de teclado

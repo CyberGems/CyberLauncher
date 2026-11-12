@@ -37,7 +37,7 @@
 - [🖼️ Screenshots](#️-screenshots)
 - [🚀 Why CyberLauncher?](#-why-cyberlauncher)
 - [✨ Key Features](#-key-features)
-- [🚀 Installation](#-installation)
+- [⬇️ Installation](#️-installation)
 - [🧭 Using the App](#-using-the-app)
 - [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
 - [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
@@ -146,7 +146,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 
 ---
 
-## 🚀 Installation
+## ⬇️ Installation
 
 ### Install (Recommended)
 
