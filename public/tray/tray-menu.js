@@ -123,7 +123,8 @@ function makeItem(def) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'item' + (def.danger ? ' item-danger' : '') + (def.stacked ? ' item-stacked' : '');
-  if (def.title) btn.title = def.title;
+  // App-style bubble via [data-tooltip]; a native title would use the OS style.
+  if (def.title) btn.dataset.tooltip = def.title;
 
   if (def.img) {
     const img = document.createElement('img');
@@ -226,7 +227,7 @@ function renderHead() {
 
     headEl.appendChild(logo);
     headEl.appendChild(titleWrap);
-    headEl.title = t('about');
+    headEl.dataset.tooltip = t('about');
     headEl.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
