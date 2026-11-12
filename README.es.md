@@ -37,7 +37,8 @@
 - [🖼️ Capturas](#️-capturas)
 - [🚀 ¿Por qué CyberLauncher?](#-por-qué-cyberlauncher)
 - [✨ Funciones principales](#-funciones-principales)
-- [🚀 Primeros pasos](#-primeros-pasos)
+- [🚀 Instalación](#-instalación)
+- [🧭 Cómo usar la app](#-cómo-usar-la-app)
 - [🛠️ Stack tecnológico y arquitectura](#️-stack-tecnológico-y-arquitectura)
 - [⌨️ Atajos de teclado](#️-atajos-de-teclado)
 - [❤️ Donar](#️-donar)
@@ -144,7 +145,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Iniciar con Windows**: opcionalmente arranca minimizado o visible al arrancar el sistema
 ---
 
-## 🚀 Primeros pasos
+## 🚀 Instalación
 
 ### Instalación (recomendada)
 
@@ -176,6 +177,20 @@ Windows muestra este aviso para cualquier instalador sin un certificado de firma
 Puedes verificar el archivo de forma independiente: compara el SHA con el release de GitHub, escanéalo en VirusTotal o compila desde el código fuente. Más detalles: [guía de SmartScreen en el sitio web](https://cybergems.org/download#smartscreen).
 
 </details>
+
+---
+
+## 🧭 Cómo usar la app
+
+CyberLauncher se aparta hasta que pulsas `Alt+Shift+L`.
+
+1. Pulsa `Alt+Shift+L` desde cualquier parte y empieza a escribir: `chr` encuentra Chrome incluso si lo escribes mal.
+2. Pulsa **Intro** para abrir el resultado resaltado.
+3. Abre **Cyber Terminal** con `Ctrl+J` cuando necesites un comando en lugar de una app.
+
+Las apps que más usas suben automáticamente en los resultados. El atajo global es personalizable y `Alt+Q` cierra Cyber Terminal.
+
+Consulta [¿Cómo se usa CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) para ver ejemplos cotidianos y las guías completas de la wiki (en inglés).
 
 ---
 

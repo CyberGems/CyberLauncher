@@ -37,7 +37,8 @@
 - [🖼️ Screenshots](#️-screenshots)
 - [🚀 Why CyberLauncher?](#-why-cyberlauncher)
 - [✨ Key Features](#-key-features)
-- [🚀 Getting Started](#-getting-started)
+- [🚀 Installation](#-installation)
+- [🧭 Using the App](#-using-the-app)
 - [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
 - [⌨️ Keyboard Shortcuts](#️-keyboard-shortcuts)
 - [❤️ Donate](#️-donate)
@@ -145,7 +146,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation
 
 ### Install (Recommended)
 
@@ -177,6 +178,20 @@ Windows shows this warning for any installer without a paid code-signing certifi
 You can verify the file independently: compare the SHA with the GitHub release, scan it on VirusTotal, or build from source. More details: [SmartScreen guide on the website](https://cybergems.org/download#smartscreen).
 
 </details>
+
+---
+
+## 🧭 Using the App
+
+CyberLauncher stays out of the way until you press `Alt+Shift+L`.
+
+1. Press `Alt+Shift+L` from anywhere and just start typing: `chr` finds Chrome even if you misspell it.
+2. Press **Enter** to launch the highlighted result.
+3. Open **Cyber Terminal** with `Ctrl+J` when you need a command instead of an app.
+
+Frequently used apps rank higher automatically. The global hotkey is customizable and `Alt+Q` closes Cyber Terminal.
+
+See [How Do You Use CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) for everyday examples and the full guides.
 
 ---
 
