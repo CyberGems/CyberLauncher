@@ -2,7 +2,7 @@
   "name": "cyber-launcher",
   "private": true,
   "version": "1.14.0",
-  "description": "CyberLauncher — launcher de escritorio rápido y personalizable, por CyberGems",
+  "description": "Apps, files, commands and a terminal one hotkey away, with system stats.",
   "type": "module",
   "author": "CyberGems <info@cybergems.org>",
   "license": "GPL-3.0-only",
