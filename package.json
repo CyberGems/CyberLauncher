@@ -6,6 +6,7 @@
   "type": "module",
   "author": "CyberGems <info@cybergems.org>",
   "license": "GPL-3.0-only",
+  "homepage": "https://cybergems.org",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
