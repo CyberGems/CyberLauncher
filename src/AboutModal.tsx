@@ -719,6 +719,7 @@ function cleanMarkdownChangelog(raw: string, language: 'es' | 'en' = 'en'): stri
   const lines = section.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
   const filtered: string[] = [];
   let inTableOrDownloads = false;
+  let inInstallBlock = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -729,6 +730,19 @@ function cleanMarkdownChangelog(raw: string, language: 'es' | 'en' = 'en'): stri
     // Filter out HTML noise & comments
     if (/^<!--[\s\S]*?-->$/.test(trimmed)) continue;
     if (/^<\/?(?:details|summary|p|img|div|span|b|strong)[^>]*>$/i.test(trimmed)) continue;
+    // Filter out the Before you install block (release-page furniture: the
+    // updater is automatic, so the About panel skips SmartScreen guidance)
+    if (/^#{1,4}\s*⚠️\s*(?:Before you install|Antes de instalar)/i.test(trimmed)) {
+      inInstallBlock = true;
+      continue;
+    }
+    if (inInstallBlock) {
+      if (/^#{1,3}\s+/i.test(trimmed)) {
+        inInstallBlock = false;
+      } else {
+        continue;
+      }
+    }
     // Filter out downloads and checksum sections
     if (/^#{1,4}\s*(?:📦|🔐)?\s*(?:Downloads|Paquetes|Checksums|Assets|Hashes)/i.test(trimmed)) {
       inTableOrDownloads = true;
