@@ -10881,4 +10881,4322 @@ export default function App() {
         {isSettingsOpen && (
           <>
           <motion.div 
-... [truncated for diff preview]
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-no-hide
+            className={`fixed inset-0 z-50 transition-all duration-200 ${
+              isPeeking ? 'bg-transparent backdrop-blur-none pointer-events-auto' : 'bg-black/60 backdrop-blur-sm'
+            }`}
+            style={isPeeking ? { backgroundColor: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' } : undefined}
+            onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
+          />
+            <motion.div 
+              initial={{ x: '100%', opacity: 0.9 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0.9 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              data-no-hide
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="right"
+              className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
+                isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
+              }`}
+            >
+              <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('settings_title')}</h2>
+                </div>
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-1 min-h-0">
+                {/* Left Sidebar Navigation */}
+                <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
+                  <div className="flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                    {([
+                      ['general', t('tab_general'), Keyboard],
+                      ['appearance', t('tab_appearance'), Palette],
+                      ['system', t('tab_system'), Settings],
+                      ['cyberbot', t('tab_cyberbot'), Bot],
+                      ['backup', t('tab_backup'), HardDrive],
+                      ['indexer', t('tab_indexer'), Search],
+                      ['uwp', t('tab_uwp'), ScanSearch]
+                    ] as const).map(([id,label,IconComponent]) => (
+                      <button 
+                        key={id} 
+                        onClick={() => setSettingsTab(id as any)}
+                        className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 group ${
+                          settingsTab === id 
+                            ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
+                            : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
+                        }`}
+                      >
+                        <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${settingsTab === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                        <span>{label.toUpperCase()}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-auto pt-3 px-3 shrink-0 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setIsSettingsOpen(false)}
+                      className="w-full py-2.5 rounded-xl text-[11px] font-cyber font-bold tracking-widest text-slate-400 hover:text-slate-200 bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-white/15 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>{t('tooltip_close').toUpperCase()}</span>
+                      <EscKeyBadge />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Scrollable Panel Content */}
+                <div className={`p-6 custom-scrollbar flex-1 text-slate-300 ${settingsTab === 'uwp' ? 'flex flex-col min-h-0 overflow-hidden' : 'overflow-y-auto space-y-8'}`}>
+
+                {settingsTab === 'general' && (<>
+                {/* Language Selection Config */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-slate-500" />
+                    {t('general_language')}
+                  </label>
+                  <div className="flex gap-3">
+                    {[
+                      { code: 'es', name: 'ESPAÑOL' },
+                      { code: 'en', name: 'ENGLISH' }
+                    ].map(item => {
+                      const isActive = language === item.code;
+                      return (
+                        <button
+                          key={item.code}
+                          onClick={() => {
+                            setLanguage(item.code as any);
+                            localStorage.setItem('cyber_lang', item.code);
+                            setNotification({ message: item.code === 'es' ? 'Idioma cambiado a Español' : 'Language switched to English', type: 'success' });
+                          }}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-cyber font-bold transition-all duration-300 border hover:scale-102 cursor-pointer ${
+                            isActive
+                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.15)] border-solid'
+                              : 'bg-black/40 text-slate-400 border-white/5 hover:border-white/10 hover:text-slate-200'
+                          }`}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_language_desc')}</p>
+                </div>
+
+                <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5">
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-wide">{t('general_confirm_delete_apps')}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('general_confirm_delete_apps_desc')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={confirmBeforeDeletingApps}
+                    aria-label={t('general_confirm_delete_apps')}
+                    onClick={() => setAppDeleteConfirmationPreference(!confirmBeforeDeletingApps)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${confirmBeforeDeletingApps ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${confirmBeforeDeletingApps ? 'left-6' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                {/* Keyboard Shortcut Config */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Keyboard className="w-4 h-4 text-slate-500" />
+                    {t('general_shortcut')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsRecordingShortcut(true)}
+                      onKeyDown={(e) => {
+                        if (isRecordingShortcut) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+                          
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                              keys.push(keyName);
+                              const newShortcut = keys.join('+');
+                              setActivationShortcut(newShortcut);
+                              setIsRecordingShortcut(false);
+                              // Registrar el atajo global en Electron
+                              if (isElectron) {
+                                window.electronAPI!.registerShortcut(newShortcut);
+                              }
+                          }
+                        }
+                      }}
+                      onBlur={() => setIsRecordingShortcut(false)}
+                      className={`flex-1 text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                        isRecordingShortcut 
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                          : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
+                      }`}
+                    >
+                      {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
+                    </button>
+                    <Tooltip label={t('general_shortcut_reset')} placement="top">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRecordingShortcut(false);
+                          setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                          if (isElectron) {
+                            window.electronAPI!.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                          }
+                        }}
+                        className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
+                </div>
+
+                {/* CyberBot Keyboard Shortcut Config */}
+                <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Bot className={`w-4 h-4 ${cyberBot.enabled ? 'text-cyan-400' : 'text-slate-500'}`} />
+                      {t('general_cyberbot_shortcut')}
+                    </span>
+                    {!cyberBot.enabled && (
+                      <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full font-normal">
+                        {t('cyberbot_disabled_tag')}
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!cyberBot.enabled}
+                      onClick={() => {
+                        if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (isRecordingCyberBotShortcut && cyberBot.enabled) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
+                          if (e.metaKey) keys.push('Meta');
+                          
+                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                            const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                            keys.push(keyName);
+                            const newShortcut = keys.join('+');
+                            setCyberBotShortcut(newShortcut);
+                            setIsRecordingCyberBotShortcut(false);
+                            if (isElectron) {
+                              window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
+                            }
+                          }
+                        }
+                      }}
+                      onBlur={() => setIsRecordingCyberBotShortcut(false)}
+                      className={`flex-1 text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                        !cyberBot.enabled
+                          ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
+                          : isRecordingCyberBotShortcut 
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
+                            : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
+                      }`}
+                    >
+                      {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                    </button>
+                    <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
+                      <button
+                        type="button"
+                        disabled={!cyberBot.enabled}
+                        onClick={() => {
+                          if (!cyberBot.enabled) return;
+                          setIsRecordingCyberBotShortcut(false);
+                          setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                          if (isElectron) {
+                            window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
+                          }
+                        }}
+                        className={`flex-shrink-0 p-3 rounded-xl border border-white/10 transition-all ${
+                          !cyberBot.enabled
+                            ? 'bg-black/20 text-slate-600 cursor-not-allowed'
+                            : 'bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                  <p className={`text-xs ${!cyberBot.enabled ? 'text-amber-400/90' : 'text-slate-500'}`}>
+                    {!cyberBot.enabled
+                      ? t('general_cyberbot_shortcut_disabled_desc')
+                      : t('general_cyberbot_shortcut_desc')}
+                  </p>
+                </div>
+
+                {/* Scale Selection */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 text-slate-500" />
+                    {t('general_scale')}
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="range" 
+                      min="50" max="150" 
+                      value={cardScale}
+                      onChange={(e) => setCardScale(Number(e.target.value))}
+                      className="flex-1 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                    <span className="text-sm text-blue-400 font-mono w-[30px] text-right">{cardScale}%</span>
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
+                </div>
+
+                {/* Monitor Selection */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-slate-500" />
+                    {t('general_monitor')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonitor('follow-cursor');
+                        if (isElectron) {
+                          window.electronAPI!.setMonitor('follow-cursor');
+                        }
+                      }}
+                      className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        selectedMonitor === 'follow-cursor'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                          : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                      }`}
+                    >
+                      {t('general_monitor_follow')}
+                    </button>
+                    {monitors.map(mon => (
+                      <button
+                        key={mon.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMonitor(mon.id);
+                          if (isElectron) {
+                            window.electronAPI!.setMonitor(mon.id);
+                          }
+                        }}
+                        className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          selectedMonitor === mon.id 
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm' 
+                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                        }`}
+                      >
+                        {mon.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
+                </div>
+
+                {/* Help Tooltips Section */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-slate-500" />
+                    {t('general_tooltips')}
+                  </label>
+                  <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                        <HelpCircle className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_tooltips')}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{t('general_tooltips_desc')}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const next = !enableTooltips;
+                        setEnableTooltips(next);
+                        if (!next) {
+                          window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
+                        }
+                      }}
+                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${enableTooltips ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                    >
+                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${enableTooltips ? 'translate-x-5' : 'translate-x-0'}`}>
+                        <div className={`w-2 h-2 rounded-full ${enableTooltips ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                      </div>
+                    </button>
+                  </div>
+                </div>
+                
+                </>)}
+
+                {settingsTab === 'appearance' && (<>
+                {/* Background Type Selector */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_bg_type')}</label>
+                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                    {[
+                      { id: 'image', icon: ImageIcon, label: t('app_bg_image') },
+                      { id: 'gradient', icon: Palette, label: t('app_bg_gradient') },
+                      { id: 'solid', icon: Droplets, label: t('app_bg_solid') }
+                    ].map(type => (
+                      <button
+                        key={type.id}
+                        onClick={() => {
+                          setBgType(type.id as any);
+                          triggerPeek();
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                          bgType === type.id 
+                            ? 'bg-blue-500/20 text-blue-300 shadow-sm border border-blue-500/30' 
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        }`}
+                      >
+                        <type.icon className="w-4 h-4" />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Specific Settings based on Type */}
+                <div className="space-y-4">
+                  {bgType === 'image' && (
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          {t('app_bg_presets')}
+                        </label>
+                        <p className="text-xs text-slate-500 -mt-1">{t('app_bg_presets_hint')}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {PRESET_IMAGES.map((img, i) => (
+                            <button
+                              key={img}
+                              type="button"
+                              onClick={() => {
+                                setBgImage(img);
+                                triggerPeek();
+                              }}
+                              aria-label={`${t('app_bg_image')} ${i + 1}`}
+                              className={`aspect-video rounded-xl border-2 transition-all overflow-hidden relative cursor-pointer bg-[#0a0f18] ${
+                                bgImage === img ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20'
+                              }`}
+                            >
+                              <img
+                                src={toPresetThumbnailUrl(img)}
+                                alt={`${t('app_bg_image')} ${i + 1}`}
+                                decoding="async"
+                                draggable={false}
+                                className="w-full h-full object-cover block select-none"
+                              />
+                              {bgImage === img && <div className="absolute inset-0 bg-blue-500/20 pointer-events-none" />}
+                            </button>
+                          ))}
+
+                          {/* Custom browse slot (4th) */}
+                          <div
+                            className={`aspect-video rounded-xl border-2 transition-all overflow-hidden relative group/customslot ${
+                              customSlotImage && bgImage === customSlotImage
+                                ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+                                : customSlotImage
+                                  ? 'border-transparent hover:border-white/20'
+                                  : 'border-dashed border-white/15 bg-black/40 hover:border-white/30 hover:bg-white/5'
+                            }`}
+                          >
+                            {customSlotImage ? (
+                              <>
+                                {/* Representative Fallback placeholder (visible if image is loading or unavailable) */}
+                                <div className="absolute inset-0 bg-[#0c121e] flex flex-col items-center justify-center text-slate-500 pointer-events-none p-2 text-center select-none">
+                                  <ImageIcon className="w-6 h-6 text-slate-500/70 mb-1" />
+                                  <span className="text-[10px] font-cyber text-slate-400 truncate max-w-full px-1">
+                                    {customSlotImage.replace(/^.*[\\/]/, '')}
+                                  </span>
+                                </div>
+
+                                {/* Custom image thumbnail button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBgImage(customSlotImage);
+                                    triggerPeek();
+                                  }}
+                                  className="absolute inset-0 w-full h-full cursor-pointer z-0 overflow-hidden"
+                                  aria-label={t('app_bg_image')}
+                                >
+                                  {!customSlotImgError && (
+                                    <img
+                                      src={customSlotDataUrl || toThumbnailUrl(customSlotImage)}
+                                      alt={t('app_bg_image')}
+                                      decoding="async"
+                                      draggable={false}
+                                      onError={() => setCustomSlotImgError(true)}
+                                      className="w-full h-full object-cover block select-none"
+                                    />
+                                  )}
+                                </button>
+
+                                {/* Active selection blue tint overlay */}
+                                {bgImage === customSlotImage && (
+                                  <div className="absolute inset-0 bg-blue-500/20 pointer-events-none z-[1]" />
+                                )}
+
+                                {/* Permanent small X button in corner (top-right) */}
+                                <Tooltip label={t('app_bg_clear_custom')} placement="top">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const wasActive = bgImage === customSlotImage;
+                                      setCustomSlotImage('');
+                                      if (wasActive) {
+                                        setBgImage(DEFAULT_BG_IMAGE);
+                                        triggerPeek();
+                                      }
+                                    }}
+                                    className="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-black/75 hover:bg-red-500 text-slate-300 hover:text-white border border-white/20 hover:border-red-400 shadow-md flex items-center justify-center transition-all cursor-pointer group/clear"
+                                    aria-label={t('app_bg_clear_custom')}
+                                  >
+                                    <X className="w-3 h-3 group-hover/clear:scale-110 transition-transform" />
+                                  </button>
+                                </Tooltip>
+
+                                {/* Hover overlay with centered Examinar button */}
+                                <div className="absolute inset-0 opacity-0 group-hover/customslot:opacity-100 transition-opacity bg-black/60 backdrop-blur-[2px] flex items-center justify-center px-2 pointer-events-none group-hover/customslot:pointer-events-auto z-10">
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!isElectron) return;
+                                      const path = await window.electronAPI!.selectImage();
+                                      if (path) {
+                                        setCustomSlotImage(path);
+                                        setBgImage(path);
+                                        triggerPeek();
+                                      }
+                                    }}
+                                    className="flex items-center gap-1.5 bg-blue-600/90 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg hover:shadow-blue-500/30 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                                  >
+                                    <FolderSearch className="w-3.5 h-3.5" />
+                                    <span>{t('app_bg_browse')}</span>
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!isElectron) return;
+                                  const path = await window.electronAPI!.selectImage();
+                                  if (path) {
+                                    setCustomSlotImage(path);
+                                    setBgImage(path);
+                                    triggerPeek();
+                                  }
+                                }}
+                                className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <FolderSearch className="w-5 h-5 text-cyan-400" />
+                                <span className="text-xs font-medium tracking-wide">{t('app_bg_browse')}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                           <Link className="w-3 h-3" /> {t('app_bg_custom_url')}
+                         </label>
+                         <div className="flex gap-2">
+                           <input 
+                             type="text" 
+                             placeholder={t('app_bg_url_placeholder')}
+                             value={customImageUrl}
+                             onChange={(e) => setCustomImageUrl(e.target.value)}
+                             className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/50"
+                           />
+                           <button 
+                             onClick={() => {
+                               if (customImageUrl) {
+                                 setCustomSlotImage(customImageUrl);
+                                 setBgImage(customImageUrl);
+                                 setCustomImageUrl('');
+                                 triggerPeek();
+                               }
+                             }}
+                             className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
+                           >
+                             {t('app_bg_apply')}
+                           </button>
+                         </div>
+                      </div>
+                      
+                      <div className="space-y-3 pt-4 border-t border-white/5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                            {language === 'es' ? 'INTENSIDAD DE CRISTAL (GLASS)' : 'GLASSMORPHISM BLUR LEVEL'}
+                          </label>
+                          <span className="text-xs text-blue-400 font-mono">{glassIntensity}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" max="100" 
+                          value={glassIntensity}
+                          onInput={triggerPeek}
+                          onChange={(e) => {
+                            setGlassIntensity(Number(e.target.value));
+                            triggerPeek();
+                          }}
+                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
+                        />
+                        <p className="text-xs text-slate-500">
+                          {language === 'es' 
+                            ? 'Mueve a la izquierda para una imagen nítida (0% = sin desenfoque), a la derecha para intensificar el efecto de cristal.' 
+                            : 'Drag left for a sharp image (0% = no blur), drag right to intensify the frosted glass effect.'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 pt-4 border-t border-white/5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_opacity')}</label>
+                          <span className="text-xs text-blue-400 font-mono">{bgOpacity}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" max="100" 
+                          value={bgOpacity}
+                          onInput={triggerPeek}
+                          onChange={(e) => {
+                            setBgOpacity(Number(e.target.value));
+                            triggerPeek();
+                          }}
+                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
+                        />
+                        <p className="text-xs text-slate-500">
+                          {language === 'es'
+                            ? 'Ajusta qué tan oscuro se ve la imagen de fondo antes de aplicar el efecto de cristal.'
+                            : 'Adjust how dark the background image displays under the glass backdrop layer.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {bgType === 'gradient' && (
+                    <div className="space-y-3">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        {language === 'es' ? 'GRADIENTES' : 'PRESET GRADIENTS'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {PRESET_GRADIENTS.map((grad, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setBgGradient(grad);
+                              triggerPeek();
+                            }}
+                            className={`h-20 rounded-xl border-2 transition-all cursor-pointer ${
+                              bgGradient === grad ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-transparent hover:border-white/20'
+                            }`}
+                            style={{ backgroundImage: grad }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {bgType === 'solid' && (
+                    <div className="space-y-3">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        {language === 'es' ? 'COLORES SÓLIDOS' : 'SOLID COLORS'}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {PRESET_SOLIDS.map((color, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setBgColor(color);
+                              triggerPeek();
+                            }}
+                            className={`w-14 h-14 rounded-xl border-2 transition-all cursor-pointer ${
+                              bgColor === color ? 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent hover:border-white/20 shadow-inner'
+                            }`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                        <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/20 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-colors cursor-pointer ring-offset-[#0d131f] focus-within:ring-2 focus-within:ring-blue-500">
+                          <input 
+                            type="color" 
+                            value={bgColor}
+                            onInput={(e) => {
+                              setBgColor(e.currentTarget.value);
+                              triggerPeek();
+                            }}
+                            onChange={(e) => {
+                              setBgColor(e.target.value);
+                              triggerPeek();
+                            }}
+                            className="absolute inset-[-10px] w-20 h-20 opacity-0 cursor-pointer"
+                          />
+                          <Palette className="w-5 h-5 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                </>)}
+
+                {settingsTab === 'general' && (<>
+                {/* Hotspots Section */}
+                <div className="space-y-4">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <MousePointer2 className="w-4 h-4 text-cyan-500" />
+                    {t('general_hotspots')}
+                  </label>
+                  
+                  <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex flex-col md:flex-row gap-6 items-center">
+                      
+                      {/* Interactive Screen Preview */}
+                      <div className="relative w-48 h-32 bg-black/40 border-2 border-white/10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                        <Monitor className="absolute text-slate-700 w-16 h-16 opacity-50" />
+                        
+                        {/* Corners */}
+                        {(['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map((corner) => (
+                          <button
+                            key={corner}
+                            onClick={() => {
+                              if (hotspotCorners.includes(corner)) {
+                                setHotspotCorners(hotspotCorners.filter(c => c !== corner));
+                              } else {
+                                setHotspotCorners([...hotspotCorners, corner]);
+                              }
+                            }}
+                            className={`absolute w-10 h-10 flex items-center justify-center transition-all focus:outline-none ${
+                              hotspotCorners.includes(corner) 
+                                ? 'bg-cyan-500/30 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.5)] z-10' 
+                                : 'bg-white/5 border-white/20 hover:bg-white/10'
+                            } ${
+                              corner === 'top-left' ? 'top-0 left-0 rounded-br-2xl border-b border-r' :
+                              corner === 'top-right' ? 'top-0 right-0 rounded-bl-2xl border-b border-l' :
+                              corner === 'bottom-left' ? 'bottom-0 left-0 rounded-tr-2xl border-t border-r' :
+                              'bottom-0 right-0 rounded-tl-2xl border-t border-l'
+                            }`}
+                          >
+                            <div className={`w-2.5 h-2.5 rounded-full ${hotspotCorners.includes(corner) ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-500'}`} />
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex-1 space-y-4 w-full">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('general_hotspots_corners')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_corners_desc')}</p>
+                        </div>
+                        
+                        <div className="space-y-2 pt-2 border-t border-white/5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-slate-300">{t('general_hotspots_delay')}</span>
+                            <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">{hotspotDelay}ms</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="1000" 
+                            step="50"
+                            value={hotspotDelay}
+                            onChange={(e) => setHotspotDelay(parseInt(e.target.value))}
+                            className="w-full accent-cyan-500 h-1 bg-white/10 rounded-full appearance-none outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(34,211,238,0.5)] cursor-pointer mt-3"
+                          />
+                          <p className="text-[10px] text-slate-500 text-right mt-1">{t('general_hotspots_delay_desc')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-6 w-full">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Monitor className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hotspots_disable_fullscreen')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_disable_fullscreen_desc')}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${hotspotsDisableInFullscreen ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hotspotsDisableInFullscreen ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${hotspotsDisableInFullscreen ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                </>)}
+
+                {settingsTab === 'system' && (<>
+                {/* Sistema Section */}
+                <div className="space-y-3 pb-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('sys_title')}</label>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
+                          <Power className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !startWithWindows;
+                          setStartWithWindows(newVal);
+                          if (isElectron) {
+                            window.electronAPI!.setAutoLaunch(newVal, newVal && startMinimized);
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${startWithWindows ? 'bg-blue-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startWithWindows ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${startWithWindows ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {startWithWindows && (
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
+                            <Shrink className="w-4 h-4 text-indigo-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup_minimized')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_minimized_desc')}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const newVal = !startMinimized;
+                            setStartMinimized(newVal);
+                            if (isElectron) {
+                              window.electronAPI!.setAutoLaunch(true, newVal);
+                            }
+                          }}
+                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${startMinimized ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startMinimized ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${startMinimized ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                          <MousePointer2 className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_click')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_click_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setHideOnClickDeadSpot(!hideOnClickDeadSpot)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${hideOnClickDeadSpot ? 'bg-amber-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnClickDeadSpot ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${hideOnClickDeadSpot ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Eye className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_blur')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_blur_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setHideOnBlur(!hideOnBlur)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${hideOnBlur ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnBlur ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${hideOnBlur ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
+                          <Monitor className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_show_taskbar')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_show_taskbar_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setShowTaskbarIcon(!showTaskbarIcon)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${showTaskbarIcon ? 'bg-slate-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTaskbarIcon ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showTaskbarIcon ? 'bg-slate-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Accesos Recientes en Menú del Tray */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <History className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_recents_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_recents_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newVal = !showTrayRecents;
+                          setShowTrayRecents(newVal);
+                          if (isElectron && window.electronAPI?.updateTraySettings) {
+                            void window.electronAPI.updateTraySettings({ showTrayRecents: newVal });
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showTrayRecents ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTrayRecents ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showTrayRecents ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Recomendaciones de la Suite CyberGems */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_suite_recommendations_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_suite_recommendations_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newVal = !showSuiteRecommendations;
+                          setShowSuiteRecommendations(newVal);
+                          if (isElectron && window.electronAPI?.updateTraySettings) {
+                            void window.electronAPI.updateTraySettings({ showSuiteRecommendations: newVal });
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${showSuiteRecommendations ? 'bg-purple-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showSuiteRecommendations ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showSuiteRecommendations ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Tray Pin Recommendation Card */}
+                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0 mt-0.5">
+                          <Pin className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_pin_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            <TrayOverflowText text={t('sys_tray_pin_desc')} />
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.electronAPI?.showTrayPinTip) {
+                              void window.electronAPI.showTrayPinTip();
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-cyber font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                        >
+                          {t('sys_tray_pin_tip_btn')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.electronAPI?.openTaskbarSettings) {
+                              void window.electronAPI.openTaskbarSettings();
+                            }
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-xs font-cyber font-bold text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/50 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(34,211,238,0.15)]"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>{t('sys_tray_pin_btn')}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
+                          <History className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_reset_on_launch')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('general_reset_on_launch_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setResetOnLaunch(!resetOnLaunch)}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${resetOnLaunch ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${resetOnLaunch ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${resetOnLaunch ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Header Clock Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Clock className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_header_clock')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_header_clock_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showHeaderClock;
+                          setShowHeaderClock(newVal);
+                          localStorage.setItem('showHeaderClock', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showHeaderClock ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showHeaderClock ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showHeaderClock ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer System Uptime Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <Power className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_uptime')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_uptime_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterUptime;
+                          setShowFooterUptime(newVal);
+                          localStorage.setItem('showFooterUptime', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterUptime ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterUptime ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterUptime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer Launch Counter Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <ChevronRight className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_launches')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_launches_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterLaunches;
+                          setShowFooterLaunches(newVal);
+                          localStorage.setItem('showFooterLaunches', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterLaunches ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterLaunches ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterLaunches ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Footer Date & Time Toggle */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                          <Calendar className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_datetime')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_datetime_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !showFooterDateTime;
+                          setShowFooterDateTime(newVal);
+                          localStorage.setItem('showFooterDateTime', newVal.toString());
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterDateTime ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterDateTime ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${showFooterDateTime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* System Health Alerts Section */}
+                    <div className="space-y-3 pt-6 border-t border-white/5">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-cyan-400" />
+                          {t('sys_alerts_title')}
+                        </label>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Master Switch */}
+                        <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                              <Activity className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_enabled')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_enabled_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newVal = !systemAlertsEnabled;
+                              setSystemAlertsEnabled(newVal);
+                              localStorage.setItem('systemAlertsEnabled', newVal.toString());
+                            }}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${systemAlertsEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${systemAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                              <div className={`w-2 h-2 rounded-full ${systemAlertsEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {systemAlertsEnabled && (
+                          <div className="space-y-2 ml-3 pl-3 border-l-2 border-cyan-500/30">
+                            {/* Disk Health Alert */}
+                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                              <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                  <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                                    <HardDrive className="w-4 h-4 text-amber-400" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_disk_enabled')}</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_disk_desc')}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const newVal = !diskAlertsEnabled;
+                                    setDiskAlertsEnabled(newVal);
+                                    localStorage.setItem('diskAlertsEnabled', newVal.toString());
+                                  }}
+                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${diskAlertsEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
+                                >
+                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${diskAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${diskAlertsEnabled ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                                  </div>
+                                </button>
+                              </div>
+
+                              {diskAlertsEnabled && (
+                                <div className="flex items-center gap-2 pt-2 border-t border-white/5 flex-wrap">
+                                  <span className="text-[11px] font-cyber text-slate-400 tracking-wider">
+                                    {t('sys_alerts_disk_tiers_badge')}:
+                                  </span>
+                                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                                    <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-semibold">20 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">10 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30 font-semibold">5 GB</span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 font-semibold">1 GB</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* RAM Health Alert */}
+                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                              <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                  <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                                    <Cpu className="w-4 h-4 text-cyan-400" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_ram_enabled')}</h4>
+                                    <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_ram_desc')}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const newVal = !ramAlertsEnabled;
+                                    setRamAlertsEnabled(newVal);
+                                    localStorage.setItem('ramAlertsEnabled', newVal.toString());
+                                  }}
+                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${ramAlertsEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                                >
+                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${ramAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${ramAlertsEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                                  </div>
+                                </button>
+                              </div>
+
+                              {ramAlertsEnabled && (
+                                <div className="space-y-3 pt-2 border-t border-white/5">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-medium text-slate-300 block">{t('sys_alerts_ram_threshold')}</span>
+                                      <span className="text-[11px] text-slate-500">{t('sys_alerts_ram_threshold_desc')}</span>
+                                    </div>
+                                    <div className="flex gap-1.5 shrink-0">
+                                      {[75, 80, 85, 90].map((pct) => (
+                                        <button
+                                          key={pct}
+                                          type="button"
+                                          onClick={() => {
+                                            setRamThresholdPercent(pct);
+                                            localStorage.setItem('ramThresholdPercent', pct.toString());
+                                          }}
+                                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+                                            ramThresholdPercent === pct
+                                              ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
+                                              : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                                          }`}
+                                        >
+                                          {pct}%
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-4 pt-1">
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-medium text-slate-300 block">{t('sys_alerts_ram_low_absolute')}</span>
+                                      <span className="text-[11px] text-slate-500">{t('sys_alerts_ram_low_absolute_desc')}</span>
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={() => {
+                                        const newVal = !ramLowAbsoluteAlertEnabled;
+                                        setRamLowAbsoluteAlertEnabled(newVal);
+                                        localStorage.setItem('ramLowAbsoluteAlertEnabled', newVal.toString());
+                                      }}
+                                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${ramLowAbsoluteAlertEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                                    >
+                                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${ramLowAbsoluteAlertEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                                        <div className={`w-2 h-2 rounded-full ${ramLowAbsoluteAlertEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                                      </div>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    </div>
+                  </div>
+
+                </>)}
+
+                {settingsTab === 'cyberbot' && (<>
+                {/* CyberBot Companion Section */}
+                <div className="space-y-6 pb-2">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('cyberbot_tab_title')}</h3>
+                      <p className="text-[10px] text-slate-500">
+                        {t('cyberbot_tab_desc')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3">
+                    {/* Card 1: Activar CyberBot */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <Bot className="w-5 h-5 text-cyan-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
+                          <p role={cyberBotFarewell.state.confirmation ? 'status' : undefined} className="text-xs text-slate-500 leading-relaxed">{t(cyberBotFarewell.state.confirmation ? 'cyberbot_disabled_confirmation' : 'cyberbot_settings_desc')}</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={handleCyberBotToggle}
+                        role="switch"
+                        aria-checked={cyberBot.enabled}
+                        aria-label={t('cyberbot_settings_enable')}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Card: Atajo para CyberBot */}
+                    <div className={`flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                            <Keyboard className="w-5 h-5 text-cyan-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_cyberbot_shortcut')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                              {!cyberBot.enabled ? t('general_cyberbot_shortcut_disabled_desc') : t('general_cyberbot_shortcut_desc')}
+                            </p>
+                          </div>
+                        </div>
+                        {!cyberBot.enabled && (
+                          <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
+                            {t('cyberbot_disabled_tag')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 sm:pl-[52px]">
+                        <button
+                          type="button"
+                          disabled={!cyberBot.enabled}
+                          onClick={() => {
+                            if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (isRecordingCyberBotShortcut && cyberBot.enabled) {
+                              e.preventDefault();
+                              const keys = [];
+                              if (e.ctrlKey) keys.push('Ctrl');
+                              if (e.altKey) keys.push('Alt');
+                              if (e.shiftKey) keys.push('Shift');
+                              if (e.metaKey) keys.push('Meta');
+                              
+                              if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                                const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                                keys.push(keyName);
+                                const newShortcut = keys.join('+');
+                                setCyberBotShortcut(newShortcut);
+                                setIsRecordingCyberBotShortcut(false);
+                                if (isElectron) {
+                                  window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
+                                }
+                              }
+                            }
+                          }}
+                          onBlur={() => setIsRecordingCyberBotShortcut(false)}
+                          className={`flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all ${
+                            !cyberBot.enabled
+                              ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
+                              : isRecordingCyberBotShortcut 
+                                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
+                                : 'bg-[#0f172a] text-slate-200 hover:bg-white/5 border border-white/10 shadow-inner'
+                          }`}
+                        >
+                          {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                        </button>
+                        <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
+                          <button
+                            type="button"
+                            disabled={!cyberBot.enabled}
+                            onClick={() => {
+                              if (!cyberBot.enabled) return;
+                              setIsRecordingCyberBotShortcut(false);
+                              setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                              if (isElectron) {
+                                window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
+                              }
+                            }}
+                            className={`flex-shrink-0 p-2.5 rounded-xl border border-white/10 transition-all ${
+                              !cyberBot.enabled
+                                ? 'bg-black/20 text-slate-600 cursor-not-allowed'
+                                : 'bg-[#0f172a] text-slate-400 hover:text-cyan-300 hover:bg-white/5'
+                            }`}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-rose-500/10 rounded-lg border border-rose-500/20 shrink-0">
+                          <User className="w-5 h-5 text-rose-300" />
+                        </div>
+                        <div className="min-w-0">
+                          <label htmlFor="cyberbot-preferred-name" className="text-sm font-medium text-slate-200 leading-tight mb-1 block">{t('cyberbot_name_title')}</label>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_name_desc')}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 sm:pl-[52px]">
+                        <input
+                          id="cyberbot-preferred-name"
+                          type="text"
+                          autoComplete="off"
+                          maxLength={CYBERBOT_NAME_MAX_LENGTH}
+                          value={cyberBotNameDraft}
+                          onChange={(event) => setCyberBotNameDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); saveCyberBotName(); }
+                            if (event.key === 'Escape') { event.stopPropagation(); setCyberBotNameDraft(cyberBot.preferredName); }
+                          }}
+                          placeholder={t('cyberbot_name_placeholder')}
+                          className="min-w-0 flex-1 basis-48 bg-[#0f172a] text-slate-100 text-sm rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-400/60 focus:outline-none select-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={saveCyberBotName}
+                          disabled={normalizeCyberBotName(cyberBotNameDraft) === cyberBot.preferredName}
+                          className="px-3 py-2 rounded-lg border border-cyan-400/40 bg-cyan-500/15 text-cyan-200 text-xs font-semibold hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {t('cyberbot_name_save')}
+                        </button>
+                        {cyberBot.preferredName && <button
+                          type="button"
+                          onClick={() => { setCyberBotNameDraft(''); cyberBot.updatePreferredName(''); setNameEntryRequested(true); }}
+                          className="px-2 py-2 text-slate-400 hover:text-rose-300 text-xs cursor-pointer"
+                        >
+                          {t('cyberbot_name_remove')}
+                        </button>}
+                        {!cyberBot.preferredName && !normalizeCyberBotName(cyberBotNameDraft) && <button
+                          type="button"
+                          onClick={() => {
+                            setCyberBotNameDraft('');
+                            cyberBot.updatePreferredName('');
+                            if (cyberBot.activeMessage?.id === 'cyberbot_name_invitation') cyberBot.dismissMessage();
+                            setNameEntryRequested(true);
+                            setIsSettingsOpen(false);
+                          }}
+                          className="px-3 py-2 rounded-lg border border-cyan-400/30 text-cyan-200 text-xs hover:bg-cyan-500/15 cursor-pointer"
+                        >
+                          {t('cyberbot_name_ask_again')}
+                        </button>}
+                      </div>
+                      <p className="text-[11px] text-slate-500 sm:pl-[52px]">{t('cyberbot_name_limit')}</p>
+                    </div>
+
+                    {cyberBot.enabled && (<>
+                      {/* Card 2: Evasión del cursor (Dodge) */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2.5 bg-sky-500/10 rounded-lg border border-sky-500/20 shrink-0">
+                            <MousePointer2 className="w-5 h-5 text-sky-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_dodge_title')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_dodge_desc')}</p>
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => cyberBot.updateDodgeEnabled(!cyberBot.dodgeEnabled)}
+                          role="switch"
+                          aria-checked={cyberBot.dodgeEnabled}
+                          aria-label={t('cyberbot_dodge_title')}
+                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${cyberBot.dodgeEnabled ? 'bg-sky-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.dodgeEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${cyberBot.dodgeEnabled ? 'bg-sky-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Separately configurable; immediate evasion takes precedence. */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                            <Timer className="w-5 h-5 text-cyan-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_hover_assist_title')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_hover_assist_desc')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => cyberBot.updateHoverAssistEnabled(!cyberBot.hoverAssistEnabled)}
+                          role="switch"
+                          aria-checked={cyberBot.hoverAssistEnabled}
+                          aria-label={t('cyberbot_hover_assist_title')}
+                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.hoverAssistEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.hoverAssistEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${cyberBot.hoverAssistEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Card 3: Nivel de interactividad */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
+                            <Sparkles className="w-5 h-5 text-indigo-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-0.5">{t('cyberbot_settings_chatter')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_settings_chatter_desc')}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('full')}
+                            aria-pressed={cyberBot.chatterLevel === 'full'}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.chatterLevel === 'full'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.chatterLevel === 'full' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.chatterLevel === 'full' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_settings_chatter_full')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updateChatterLevel('minimal')}
+                            aria-pressed={cyberBot.chatterLevel === 'minimal'}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.chatterLevel === 'minimal'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.chatterLevel === 'minimal' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.chatterLevel === 'minimal' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_settings_chatter_minimal')}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Horario silencioso (Captura 3 style) */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                              <Moon className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_quiet_hours_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_quiet_hours_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled })}
+                            role="switch"
+                            aria-checked={cyberBot.quietHours.enabled}
+                            aria-label={t('cyberbot_quiet_hours_title')}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer ${cyberBot.quietHours.enabled ? 'bg-purple-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.quietHours.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                              <div className={`w-2 h-2 rounded-full ${cyberBot.quietHours.enabled ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
+                            </div>
+                          </button>
+                        </div>
+
+                        {cyberBot.quietHours.enabled && (
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-white/5">
+                            <div className="flex items-center gap-2.5 text-slate-400 text-xs">
+                              <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+                              <div>
+                                <span className="font-semibold text-slate-300 block">{t('cyberbot_quiet_schedule_title')}</span>
+                                <span className="text-[11px] text-slate-500">{t('cyberbot_quiet_schedule_desc')}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400">{t('cyberbot_quiet_from')}</span>
+                                <select
+                                  value={cyberBot.quietHours.from}
+                                  onChange={(e) => cyberBot.updateQuietHours({ from: e.target.value })}
+                                  aria-label={t('cyberbot_quiet_from')}
+                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
+                                >
+                                  {Array.from({ length: 24 }).map((_, i) => {
+                                    const h = String(i).padStart(2, '0') + ':00';
+                                    return <option key={h} value={h}>{h}</option>;
+                                  })}
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400">{t('cyberbot_quiet_to')}</span>
+                                <select
+                                  value={cyberBot.quietHours.to}
+                                  onChange={(e) => cyberBot.updateQuietHours({ to: e.target.value })}
+                                  aria-label={t('cyberbot_quiet_to')}
+                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
+                                >
+                                  {Array.from({ length: 24 }).map((_, i) => {
+                                    const h = String(i).padStart(2, '0') + ':00';
+                                    return <option key={h} value={h}>{h}</option>;
+                                  })}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card 5: Posición inicial y arrastre */}
+                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-teal-500/10 rounded-lg border border-teal-500/20 shrink-0">
+                            <SlidersHorizontal className="w-5 h-5 text-teal-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_pos_title')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_pos_desc')}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updatePosition('bottom-left')}
+                            aria-pressed={cyberBot.position === 'bottom-left'}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.position === 'bottom-left'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.position === 'bottom-left' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.position === 'bottom-left' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_pos_bottom_left')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cyberBot.updatePosition('bottom-right')}
+                            aria-pressed={cyberBot.position === 'bottom-right'}
+                            className={`p-3 rounded-xl border text-xs font-cyber transition-all text-left flex items-start gap-2.5 cursor-pointer ${
+                              cyberBot.position === 'bottom-right'
+                                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                : 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${cyberBot.position === 'bottom-right' ? 'border-cyan-400 bg-cyan-400' : 'border-slate-500'}`}>
+                              {cyberBot.position === 'bottom-right' && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                            </div>
+                            <span className="leading-snug">{t('cyberbot_pos_bottom_right')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>)}
+
+                    {/* Banners alternativos (plan de contingencia cuando CyberBot está apagado o no cabe) */}
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
+                          <Info className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_banners_title')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_banners_desc')}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => cyberBot.updateBannersEnabled(!cyberBot.bannersEnabled)}
+                        role="switch"
+                        aria-checked={cyberBot.bannersEnabled}
+                        aria-label={t('cyberbot_banners_title')}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
+                      >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.bannersEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
+                          <div className={`w-2 h-2 rounded-full ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                </>)}
+
+                {settingsTab === 'backup' && (<>
+                  <div className="space-y-6">
+                    {/* Backup & Data Header */}
+                    <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                        <HardDrive className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('backup_title')}</h3>
+                        <p className="text-[10px] text-slate-500">
+                          {language === 'es'
+                            ? 'Administración de copias de seguridad, almacenamiento y optimización de caché.'
+                            : 'Manage configuration backups, data storage, and cache optimization.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Sección 1: Copias de Seguridad */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <FileJson className="w-4 h-4 text-emerald-400" />
+                        {t('backup_section_backup')}
+                      </label>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Exportar */}
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                              <FileJson className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_export_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={handleExport}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 shrink-0 cursor-pointer"
+                          >
+                            <Download className="w-4 h-4" /> {t('sys_export_btn')}
+                          </button>
+                        </div>
+
+                        {/* Importar */}
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                              <Upload className="w-4 h-4 text-purple-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_import_desc')}</p>
+                            </div>
+                          </div>
+                          {isElectron ? (
+                            <button 
+                              onClick={handleImportNative}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer"
+                            >
+                              <Upload className="w-4 h-4" /> {t('sys_import_btn')}
+                            </button>
+                          ) : (
+                            <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer">
+                              <Upload className="w-4 h-4" /> {t('sys_import_btn')}
+                              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sección Respaldo Automático Programado */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          <Archive className="w-4 h-4 text-cyan-400" />
+                          {t('backup_auto_title')}
+                        </label>
+                        {isElectron && (
+                          <button
+                            type="button"
+                            onClick={handleOpenBackupsFolder}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg border border-cyan-500/20 transition-all cursor-pointer"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                            <span>{t('backup_auto_btn_open_folder')}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-4">
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {t('backup_auto_desc')}
+                        </p>
+
+                        {/* Switch Activar/Desactivar Respaldo Programado */}
+                        <div className="flex items-center justify-between gap-4 pt-1">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+                            <div className="text-sm font-medium text-slate-200">{t('backup_auto_enabled_label')}</div>
+                            <div className="text-xs text-slate-500 leading-normal">{t('backup_auto_enabled_desc')}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAutoBackup(!autoBackupEnabled)}
+                            role="switch"
+                            aria-checked={autoBackupEnabled}
+                            aria-label={t('backup_auto_enabled_label')}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
+                              autoBackupEnabled ? 'bg-cyan-500' : 'bg-slate-700'
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
+                                autoBackupEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            >
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  autoBackupEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
+                                }`}
+                              />
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Selector de Frecuencia */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                              <Clock className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_frequency_label')}</div>
+                              <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_frequency_desc')}</div>
+                            </div>
+                          </div>
+                          <select
+                            value={autoBackupHours}
+                            onChange={(e) => setAutoBackupHours(Number(e.target.value))}
+                            disabled={!autoBackupEnabled}
+                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <option value={6}>{t('backup_auto_frequency_6h')}</option>
+                            <option value={12}>{t('backup_auto_frequency_12h')}</option>
+                            <option value={24}>{t('backup_auto_frequency_24h')}</option>
+                            <option value={168}>{t('backup_auto_frequency_168h')}</option>
+                          </select>
+                        </div>
+
+                        {/* Selector de Copias Conservadas */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                              <Database className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_keep_label')}</div>
+                              <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_keep_desc')}</div>
+                            </div>
+                          </div>
+                          <select
+                            value={autoBackupKeep}
+                            onChange={(e) => setAutoBackupKeep(Number(e.target.value))}
+                            disabled={!autoBackupEnabled}
+                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            <option value={1}>1</option>
+                            <option value={3}>3</option>
+                            <option value={5}>5</option>
+                            <option value={7}>7</option>
+                          </select>
+                        </div>
+
+                        {/* Selector de Carpeta de Destino */}
+                        {isElectron && (
+                          <div className="pt-3 border-t border-white/5 space-y-2">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                                <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
+                                  <Folder className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-slate-200 leading-tight mb-1 flex items-center gap-2">
+                                    <span>{t('backup_auto_folder_label')}</span>
+                                    {autoBackupFolder ? (
+                                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        {t('backup_auto_folder_custom_badge')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                                        {t('backup_auto_folder_default_badge')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-500 leading-relaxed">
+                                    {t('backup_auto_folder_desc')}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {autoBackupFolder && (
+                                  <button
+                                    type="button"
+                                    onClick={handleResetBackupFolder}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                    title={t('backup_auto_folder_btn_reset')}
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">{t('backup_auto_folder_btn_reset')}</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={handleSelectBackupFolder}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:text-cyan-200 bg-cyan-500/15 hover:bg-cyan-500/25 rounded-lg border border-cyan-500/30 transition-colors cursor-pointer shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                                >
+                                  <FolderOpen className="w-3.5 h-3.5" />
+                                  <span>{t('backup_auto_folder_btn_change')}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Ruta visible */}
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 font-mono text-[11px] text-slate-300 break-all select-text">
+                              <span className="text-slate-500 shrink-0 select-none">📁</span>
+                              <span className="truncate flex-1" title={resolvedBackupsDir || autoBackupFolder || defaultBackupsDir}>
+                                {resolvedBackupsDir || autoBackupFolder || defaultBackupsDir || '...'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fila Último Respaldo + Botón Respaldar Ahora */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-slate-300">{t('backup_auto_last_label')}</div>
+                            <div className="text-xs font-mono text-cyan-400 mt-0.5">
+                              {formatBackupDate(autoBackupLast)}
+                            </div>
+                          </div>
+                          {isElectron && (
+                            <button
+                              type="button"
+                              onClick={handleBackupNow}
+                              disabled={isBackingUp}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-lg transition-colors text-sm font-medium border border-cyan-500/40 disabled:opacity-50 disabled:cursor-wait shrink-0 cursor-pointer shadow-[0_0_12px_rgba(34,211,238,0.15)]"
+                            >
+                              <Archive className={`w-4 h-4 ${isBackingUp ? 'animate-spin' : ''}`} />
+                              <span>{isBackingUp ? t('backup_auto_btn_backing_up') : t('backup_auto_btn_now')}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Lista de Respaldos Existentes */}
+                        {isElectron && (
+                          <div className="pt-3 border-t border-white/5 space-y-2">
+                            <div className="text-xs font-cyber font-bold text-slate-400 tracking-wider">
+                              {t('backup_auto_list_title')}
+                            </div>
+                            {backupsList.length === 0 ? (
+                              <div className="text-xs text-slate-500 py-2 italic">
+                                {t('backup_auto_list_empty')}
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                {backupsList.map((bk) => (
+                                  <div
+                                    key={bk.file}
+                                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 hover:border-white/10 transition-colors text-xs"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-mono text-slate-300 truncate" title={bk.file}>
+                                        {bk.file}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                        <span>{formatBackupDate(bk.mtime)}</span>
+                                        <span>•</span>
+                                        <span>{formatBytes(bk.size)}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setBackupToRestore(bk)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors text-[11px] font-medium cursor-pointer"
+                                        title={t('backup_auto_btn_restore')}
+                                      >
+                                        <RotateCcw className="w-3 h-3" />
+                                        <span>{t('backup_auto_btn_restore')}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBackupToDelete(bk)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-colors text-[11px] font-medium cursor-pointer"
+                                        title={t('backup_auto_btn_delete')}
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sección 2: Mantenimiento de Caché de Iconos */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-cyan-400" />
+                        {t('backup_section_maintenance')}
+                      </label>
+
+                      <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {t('settings_icons_desc')}
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pt-1">
+                          <button
+                            type="button"
+                            disabled={isRefreshingIcons || !isElectron}
+                            onClick={handleRefreshAllIcons}
+                            className="flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-4 py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider transition-all disabled:opacity-50 disabled:cursor-wait shadow-[0_0_15px_rgba(34,211,238,0.15)] cursor-pointer"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isRefreshingIcons ? 'animate-spin text-cyan-400' : ''}`} />
+                            <span>{isRefreshingIcons ? t('settings_icons_refreshing') : t('settings_icons_refresh_all')}</span>
+                          </button>
+
+                          {iconRefreshFeedback && (
+                            <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
+                              {iconRefreshFeedback}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Auto check toggle */}
+                        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+                            <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={autoCheckIconsOnStartup}
+                            aria-label={t('settings_icons_auto_check')}
+                            onClick={() => {
+                              const next = !autoCheckIconsOnStartup;
+                              setAutoCheckIconsOnStartup(next);
+                              localStorage.setItem('cyber_auto_check_icons', String(next));
+                            }}
+                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
+                              autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-slate-700'
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
+                                autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            >
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  autoCheckIconsOnStartup ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
+                                }`}
+                              />
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sección 3: Almacenamiento y Diagnóstico */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-cyan-400" />
+                        {t('backup_section_storage')}
+                      </label>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Carpeta de Datos */}
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                              <FolderOpen className="w-4 h-4 text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_data_dir_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => window.electronAPI!.openDataFolder()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700/50 shrink-0 cursor-pointer"
+                          >
+                            <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
+                          </button>
+                        </div>
+
+                        {/* Diagnóstico del Sistema */}
+                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
+                              <Terminal className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('sys_diag_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => window.electronAPI!.openDevTools()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 shrink-0 cursor-pointer"
+                          >
+                            <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
+                          </button>
+                        </div>
+
+                        {/* Restablecer accesos predeterminados */}
+                        <div className="flex items-start sm:items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                          <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0 mt-0.5">
+                              <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">{t('settings_default_shortcuts_desc')}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={handleRestoreDefaultApps}
+                            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 rounded-lg transition-colors text-xs font-cyber font-bold tracking-wider border border-indigo-700/60 shrink-0 cursor-pointer whitespace-nowrap"
+                          >
+                            <RotateCcw className="w-4 h-4" /> {t('settings_default_shortcuts_btn')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>)}
+
+                {settingsTab === 'uwp' && (
+                  <div className="flex flex-col flex-1 min-h-0 relative">
+                    <div className="flex flex-col gap-1 border-b border-white/5 pb-4 shrink-0">
+                      <h3 className="text-lg font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
+                        <ScanSearch className="w-5 h-5 text-cyan-400" /> {t('uwp_header_title')}
+                      </h3>
+                      <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                        {t('uwp_header_desc')}
+                      </p>
+                    </div>
+
+                    {/* Botón de Escaneo / Estado Inicial */}
+                    {uwpAppsList.length === 0 && !isScanningUwp && (
+                      <div className="flex flex-col items-center justify-center flex-1 my-auto p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
+                        <ScanSearch className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
+                        <h4 className="text-sm font-medium text-slate-200 mb-2">{t('uwp_req_title')}</h4>
+                        <p className="text-xs text-slate-500 max-w-sm mb-6 leading-normal font-sans">
+                          {t('uwp_req_desc')}
+                        </p>
+                        <button
+                          onClick={handleScanUwpApps}
+                          className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98] cursor-pointer"
+                        >
+                          {t('uwp_req_btn')}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Consola Terminal Shimmer durante Escaneo */}
+                    {isScanningUwp && (
+                      <div className="flex flex-col h-80 my-auto bg-black/40 border border-cyan-500/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,211,238,0.15)] relative overflow-hidden">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                            <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">{t('uwp_terminal_title')}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-cyan-500 animate-pulse">{t('uwp_terminal_status')}</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
+                          {uwpScanLogs.map((log, i) => (
+                            <div key={i} className="flex items-start gap-1">
+                              <span className="text-cyan-500 shrink-0">&gt;</span>
+                              <span className={i === uwpScanLogs.length - 1 ? "text-cyan-400 font-bold" : ""}>{log}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Resultados de Búsqueda y Lista que aprovecha TODO el alto */}
+                    {uwpAppsList.length > 0 && !isScanningUwp && (
+                      <div className="flex flex-col flex-1 min-h-0 pt-4 space-y-3">
+                        {/* Buscador Superior */}
+                        <div className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl px-3.5 py-2.5 focus-within:border-cyan-500/30 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all shrink-0">
+                          <Search className="w-4 h-4 text-slate-500 shrink-0" />
+                          <input
+                            type="text"
+                            placeholder={t('uwp_search_placeholder')}
+                            value={uwpSearchQuery}
+                            onChange={(e) => setUwpSearchQuery(e.target.value)}
+                            className="bg-transparent border-none outline-none text-slate-200 text-xs w-full focus:ring-0 placeholder:text-slate-600"
+                          />
+
+                          {/* A-Z / Z-A Sorting toggle button */}
+                          <Tooltip label={uwpSortOrder === 'asc' ? t('tooltip_sort_order_desc') : t('tooltip_sort_order_asc')} placement="bottom">
+                            <button
+                              onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                              className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
+                            >
+                              {uwpSortOrder === 'asc' ? <ArrowDownAZ className="w-3.5 h-3.5 text-cyan-400/90" /> : <ArrowUpZA className="w-3.5 h-3.5 text-cyan-400/90" />}
+                              {uwpSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                            </button>
+                          </Tooltip>
+
+                          <button
+                            onClick={handleScanUwpApps}
+                            className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            {t('uwp_rescan_btn')}
+                          </button>
+                        </div>
+
+                        {/* Grid / Lista de Aplicaciones a TODO el alto disponible */}
+                        <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar space-y-2.5">
+                          {displayedUwpApps.map((app, index) => {
+                            const alreadyAdded = apps.some(existing => existing.path === app.aumid);
+                            
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="w-9 h-9 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 shrink-0 group-hover:border-cyan-400/30 transition-colors relative">
+                                    {app.icon ? (
+                                      <img src={app.icon} alt={app.name} className="w-full h-full object-contain" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-cyan-500/10 rounded text-cyan-400 font-bold text-[10px]">UWP</div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
+                                    <Tooltip label={app.aumid} placement="top">
+                                      <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
+                                    </Tooltip>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 ml-2">
+                                  {alreadyAdded ? (
+                                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
+                                      {t('uwp_added_label')}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setImportingUwpApp(app);
+                                        setUwpImportCategory(categories.find(c => c.id === UNCATEGORIZED_ID)?.name || UNCATEGORIZED_NAME);
+                                      }}
+                                      className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>{t('uwp_import_btn')}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selector de Categoría para Importación */}
+                    <AnimatePresence>
+                      {importingUwpApp && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 bg-black/90 backdrop-blur-md rounded-2xl flex items-center justify-center p-4 z-40 border border-cyan-500/20"
+                        >
+                          <motion.div
+                            initial={{ scale: 0.95, y: 10 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 10 }}
+                            className="bg-[#0f172a] border border-cyan-500/30 rounded-2xl p-6 max-w-sm w-full space-y-5 shadow-[0_0_30px_rgba(34,211,238,0.2)]"
+                          >
+                            <div className="text-center space-y-1.5">
+                              <h4 className="text-sm font-cyber font-bold text-cyan-400 tracking-wider uppercase">{t('uwp_confirm_title')}</h4>
+                              <p className="text-xs text-slate-200 font-bold leading-tight font-sans">{importingUwpApp.name}</p>
+                              <p className="text-[9px] text-slate-500 font-mono truncate">{importingUwpApp.aumid}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('uwp_confirm_category')}</label>
+                              <select
+                                value={uwpImportCategory}
+                                onChange={(e) => setUwpImportCategory(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/40"
+                              >
+                                {categories.filter(c => c.id !== 'all').sort((a, b) => {
+                                  if (a.id === UNCATEGORIZED_ID) return -1;
+                                  if (b.id === UNCATEGORIZED_ID) return 1;
+                                  const nameA = t(`cat_${a.id}` as TranslationKey) !== `cat_${a.id}` ? t(`cat_${a.id}` as TranslationKey) : a.name;
+                                  const nameB = t(`cat_${b.id}` as TranslationKey) !== `cat_${b.id}` ? t(`cat_${b.id}` as TranslationKey) : b.name;
+                                  return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
+                                }).map(cat => (
+                                  <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
+                                    {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setImportingUwpApp(null)}
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700 inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <span>{t('uwp_confirm_cancel')}</span>
+                                <EscKeyBadge />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newApp = {
+                                    id: Date.now(),
+                                    name: importingUwpApp.name,
+                                    category: uwpImportCategory,
+                                    path: importingUwpApp.aumid,
+                                    iconPath: importingUwpApp.icon || '',
+                                    color: 'text-cyan-400',
+                                    isFav: false,
+                                    usage: 0
+                                  };
+                                  // @ts-ignore
+                                  setApps(prev => [...prev, newApp]);
+                                  setImportingUwpApp(null);
+                                }}
+                                className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <span>{t('uwp_confirm_ok')}</span>
+                                <EnterKeyBadge variant="primary" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {settingsTab === 'indexer' && (
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                          <Search className={`w-5 h-5 text-cyan-400 ${indexerStats.status === 'INDEXING' ? 'animate-spin' : ''}`} />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('idx_title')}</h3>
+                          <p className="text-[10px] text-slate-500">{t('idx_desc')}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Master Toggle */}
+                      <button
+                        onClick={() => handleToggleIndexer(!indexerSettings.enabled)}
+                        className={`px-4 py-1.5 rounded-xl text-xs font-cyber font-bold transition-all border ${
+                          indexerSettings.enabled
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
+                      </button>
+                    </div>
+
+                    {/* Stats Card */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
+                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_label')}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            indexerStats.status === 'ONLINE'
+                              ? 'bg-emerald-400 animate-pulse'
+                              : indexerStats.status === 'INDEXING'
+                              ? 'bg-amber-400 animate-ping'
+                              : 'bg-red-400'
+                          }`} />
+                          <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+                            {indexerStats.status === 'INDEXING' ? (language === 'es' ? 'INDEXANDO...' : 'INDEXING...') : indexerStats.status}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
+                        <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_registered')}</span>
+                        <span className="text-lg font-mono font-semibold text-cyan-400/90 mt-0.5 tabular-nums tracking-normal">
+                          {indexerStats.totalFiles.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Slider for Depth */}
+                    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-left">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('idx_scan_depth')}</label>
+                        <span className="text-xs font-cyber font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
+                          {language === 'es' ? 'NIVEL' : 'LEVEL'} {indexerSettings.maxDepth}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="4"
+                        value={indexerSettings.maxDepth}
+                        onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
+                        disabled={!indexerSettings.enabled}
+                        className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-500 font-mono">
+                        <span>{t('stat_level1')}</span>
+                        <span>{t('stat_level2')}</span>
+                        <span>{t('stat_level3')}</span>
+                        <span>{t('stat_level4')}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 italic mt-1 font-sans leading-normal">
+                        {t('idx_scan_depth_desc')}
+                      </p>
+                    </div>
+
+                    {/* Hidden Folders Toggles */}
+                    <div className="space-y-3 text-left">
+                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
+                            <Eye className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_folders')}</h4>
+                            <p className="text-xs text-slate-500">{t('idx_hidden_folders_desc')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!indexerSettings.enabled}
+                          onClick={() => handleToggleHiddenFolders(!indexerSettings.includeHiddenFolders)}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${indexerSettings.includeHiddenFolders ? 'bg-slate-400' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.includeHiddenFolders ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${indexerSettings.includeHiddenFolders ? 'bg-slate-400 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled && indexerSettings.includeHiddenFolders ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                            <FolderOpen className="w-4 h-4 text-amber-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_content')}</h4>
+                            <p className="text-xs text-slate-500">{t('idx_hidden_content_desc')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!indexerSettings.enabled || !indexerSettings.includeHiddenFolders}
+                          onClick={() => handleToggleHiddenContent(!indexerSettings.indexHiddenContent)}
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${indexerSettings.indexHiddenContent ? 'bg-amber-500' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.indexHiddenContent ? 'translate-x-5' : 'translate-x-0'}`}>
+                            <div className={`w-2 h-2 rounded-full ${indexerSettings.indexHiddenContent ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Discovered System Drives */}
+                    <div className="space-y-3.5 text-left">
+                      <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1.5">
+                        <HardDrive className="w-3.5 h-3.5 text-slate-500" />
+                        {t('idx_drives_detected')}
+                      </label>
+                      <div className="flex flex-wrap gap-2.5">
+                        {systemDrives.map((drive) => {
+                          const isIndexed = indexerSettings.paths.includes(drive);
+                          return (
+                            <button
+                              key={drive}
+                              onClick={async () => {
+                                if (!indexerSettings.enabled) return;
+                                try {
+                                  let updatedPaths;
+                                  if (isIndexed) {
+                                    updatedPaths = indexerSettings.paths.filter(p => p !== drive);
+                                    setNotification({ message: t('notif_drive_unlinked', { drive }), type: 'info' });
+                                  } else {
+                                    updatedPaths = [...indexerSettings.paths, drive];
+                                    setNotification({ message: t('notif_drive_linked', { drive }), type: 'success' });
+                                  }
+                                  const updated = { ...indexerSettings, paths: updatedPaths };
+                                  setIndexerSettings(updated);
+                                  if (isElectron) {
+                                    await window.electronAPI!.saveIndexerSettings(updated);
+                                  }
+                                } catch (e) {
+                                  console.error('Error toggling drive:', e);
+                                }
+                              }}
+                              disabled={!indexerSettings.enabled}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-cyber font-bold select-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                                isIndexed
+                                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                  : 'bg-white/[0.01] text-slate-400 border-white/5 hover:border-white/10 hover:text-slate-200'
+                              }`}
+                            >
+                              <HardDrive className={`w-3.5 h-3.5 ${isIndexed ? 'animate-pulse text-cyan-400' : 'text-slate-500'}`} />
+                              <span>{language === 'es' ? 'DISCO' : 'DRIVE'} ({drive})</span>
+                            </button>
+                          );
+                        })}
+                        {systemDrives.length === 0 && (
+                          <span className="text-[10px] text-slate-600 italic">{t('idx_drives_none')}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Authorized Folders Chip List */}
+                    <div className="space-y-3 text-left">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">
+                          {t('idx_folders_authorized')}
+                        </label>
+                        <button
+                          onClick={handleAddFolder}
+                          disabled={!indexerSettings.enabled}
+                          className="px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-30 disabled:hover:bg-cyan-500/10 text-cyan-400 rounded-lg text-[10px] font-cyber font-bold transition-all border border-cyan-500/20 flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <Plus className="w-3 h-3" /> {t('idx_add_folder')}
+                        </button>
+                      </div>
+
+                      {indexerSettings.paths.length === 0 ? (
+                        <div className="p-8 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-slate-500 space-y-2 bg-black/10">
+                          <FolderOpen className="w-7 h-7 text-slate-600" />
+                          <span className="text-xs font-cyber">{language === 'es' ? 'SIN CARPETAS CONFIGURADAS' : 'NO CONFIGURED DIRECTORIES'}</span>
+                          <span className="text-[9px] text-slate-600">{language === 'es' ? 'El buscador no rastreará directorios personalizados hasta agregar uno.' : 'The search engine will not scan custom directories until one is added.'}</span>
+                        </div>
+                      ) : (
+                        <div className="border border-white/5 bg-black/20 rounded-xl divide-y divide-white/5 max-h-[180px] overflow-y-auto custom-scrollbar">
+                          {indexerSettings.paths.map((folderPath, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 group hover:bg-white/[0.01] transition-colors">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+                                <span className="text-xs text-slate-300 truncate font-mono select-all">
+                                  {folderPath}
+                                </span>
+                              </div>
+                              <Tooltip label={language === 'es' ? "Eliminar de la indexación" : "Remove from indexing"} placement="left">
+                                <button
+                                  onClick={() => handleRemoveFolder(folderPath)}
+                                  disabled={!indexerSettings.enabled}
+                                  className="opacity-0 group-hover:opacity-100 disabled:opacity-0 p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* (CyberTray Section removed) */}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* --- ADD CATEGORY MODAL --- */}
+      <AnimatePresence>
+        {isAddingCategory && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setIsAddingCategory(false); }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(34,211,238,0.1)] overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
+                <h2 className="text-lg font-cyber font-bold text-white flex items-center gap-2">
+                  <FolderPlus className="w-5 h-5 text-cyan-400" />
+                  {t('modal_add_category_title')}
+                </h2>
+                <button 
+                  onClick={() => setIsAddingCategory(false)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateCategory} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('app_field_name') || 'NOMBRE'}</label>
+                  <input 
+                    type="text" 
+                    autoFocus
+                    placeholder={t('modal_add_category_name_placeholder')}
+                    value={newCategoryForm.name}
+                    onChange={(e) => setNewCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('edit_cat_color') || 'COLOR'}</label>
+                  <div className="flex items-center gap-3">
+                    <label className="relative w-10 h-10 rounded-full overflow-hidden cursor-pointer shadow-sm ring-1 ring-white/10">
+                      <input 
+                        type="color" 
+                        value={newCategoryForm.color}
+                        onChange={(e) => setNewCategoryForm(prev => ({ ...prev, color: e.target.value }))}
+                        className="absolute inset-[-10px] w-14 h-14 cursor-pointer"
+                      />
+                    </label>
+                    <span className="text-xs font-mono text-slate-500">{newCategoryForm.color}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{t('modal_add_category_btn_create')}</span>
+                    <EnterKeyBadge variant="primary" />
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- EDIT CATEGORY MODAL --- */}
+      <AnimatePresence>
+        {editingCategory && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setEditingCategory(null); }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <PenBox className="w-5 h-5 text-blue-400" />
+                  {t('edit_cat_title')}
+                </h2>
+                <button 
+                  onClick={() => setEditingCategory(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('app_field_name') || 'NOMBRE'}</label>
+                  <input 
+                    type="text" 
+                    value={editCategoryForm.name}
+                    onChange={(e) => setEditCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest">{t('edit_cat_color') || 'COLOR'}</label>
+                  <div className="flex items-center gap-3">
+                    <label className="relative w-10 h-10 rounded-full overflow-hidden cursor-pointer shadow-sm ring-1 ring-white/10">
+                      <input 
+                        type="color" 
+                        value={editCategoryForm.color}
+                        onChange={(e) => setEditCategoryForm(prev => ({ ...prev, color: e.target.value }))}
+                        className="absolute inset-[-10px] w-14 h-14 cursor-pointer"
+                      />
+                    </label>
+                    <span className="text-xs font-mono text-slate-500">{editCategoryForm.color}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Tooltip label={t('ctx_delete_category')} placement="top">
+                    <button 
+                      type="button"
+                      onClick={handleDeleteCategory}
+                      className="px-3.5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
+                  <button 
+                    type="button"
+                    onClick={() => setEditingCategory(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{t('edit_cat_btn_save')}</span>
+                    <EnterKeyBadge variant="primary" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONTEXT MENU --- */}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[210px] text-sm select-none"
+            style={{ 
+              left: Math.min(contextMenu.x, window.innerWidth - 230), 
+              top: Math.min(contextMenu.y, window.innerHeight - (contextMenu.app ? 360 : 130)) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {contextMenu.app ? (
+              <>
+                {taskbarAppIds.includes(contextMenu.app.id) ? (
+                  <button 
+                    onClick={() => {
+                      setTaskbarAppIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    {t('ctx_unpin_taskbar')} <Minus className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setTaskbarAppIds([...taskbarAppIds, contextMenu.app!.id]);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    {t('ctx_pin_taskbar')} <Plus className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                )}
+
+                {favoriteIds.includes(contextMenu.app.id) ? (
+                  <button 
+                    onClick={() => {
+                      setFavoriteIds(prev => prev.filter(id => id !== contextMenu.app!.id));
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    {t('ctx_remove_fav')} <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setFavoriteIds([...favoriteIds, contextMenu.app!.id]);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    {t('ctx_add_fav')} <Star className="w-4 h-4 ml-2 fill-slate-500 text-slate-500" />
+                  </button>
+                )}
+
+                <div className="h-px bg-white/10 my-1 mx-2" />
+
+                {(contextMenu.app as any).path && (
+                  <button
+                    onClick={() => {
+                      window.electronAPI!.openFileLocation((contextMenu.app as any).path);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                  >
+                    {t('ctx_open_location')} <FolderOpen className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                )}
+
+                {(contextMenu.app as any).path && isElectron && (
+                  <button
+                    onClick={() => {
+                      const targetApp = contextMenu.app!;
+                      setContextMenu(null);
+                      handleRefreshSingleAppIcon(targetApp);
+                    }}
+                    disabled={refreshingAppId === contextMenu.app.id}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 disabled:opacity-50"
+                  >
+                    {refreshingAppId === contextMenu.app.id ? t('ctx_refreshing_icon') : t('ctx_refresh_icon')}
+                    <RotateCcw className={`w-4 h-4 ml-2 text-slate-400 ${refreshingAppId === contextMenu.app.id ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    const appId = String(contextMenu.app!.id);
+                    setSchedulerPreselectedAppId(appId);
+                    setContextMenu(null);
+                    setIsClockHUDOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                >
+                  {t('ctx_schedule_launch')} <Timer className="w-4 h-4 ml-2 text-slate-400" />
+                </button>
+
+                <div className="h-px bg-white/10 my-1 mx-2" />
+                
+                <button
+                   onClick={() => {
+                     setEditingApp(contextMenu.app!);
+                     setEditForm({
+                       name: contextMenu.app!.name,
+                       path: (contextMenu.app as any).path || '',
+                       iconPath: (contextMenu.app as any).iconPath || '',
+                       category: contextMenu.app!.category,
+                       isAdmin: !!(contextMenu.app as any).isAdmin,
+                       shortcut: (contextMenu.app as any).shortcut || '',
+                       pinToFavorites: favoriteIds.includes(contextMenu.app!.id),
+                       pinToTaskbar: taskbarAppIds.includes(contextMenu.app!.id)
+                     });
+                     setContextMenu(null);
+                   }}
+                   className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                >
+                  {t('ctx_edit_app')} <PenBox className="w-4 h-4 ml-2 text-slate-400" />
+                </button>
+                
+                <button
+                   onClick={() => {
+                     const app = contextMenu.app!;
+                     setContextMenu(null);
+                     if (confirmBeforeDeletingApps) {
+                       setDontAskAgainOnAppDelete(false);
+                       setAppToDelete(app);
+                     } else {
+                       deleteApp(app);
+                     }
+                   }}
+                   className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200"
+                >
+                  {t('ctx_delete_app')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+                </button>
+
+                {contextMenu.source === 'most-used' && (
+                  <>
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <button 
+                      onClick={() => {
+                        setConfirmResetType('most-used');
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                    >
+                      {t('ctx_reset_most_used')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                    </button>
+                  </>
+                )}
+
+                {contextMenu.source === 'recent' && (
+                  <>
+                    <div className="h-px bg-white/10 my-1 mx-2" />
+                    <button 
+                      onClick={() => {
+                        if (contextMenu.recentItem) handleRemoveSingleRecent(contextMenu.recentItem);
+                        else if (contextMenu.app) handleRemoveSingleRecent(contextMenu.app);
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+                    >
+                      {t('ctx_remove_recent')} <X className="w-4 h-4 ml-2 text-slate-400" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setConfirmResetType('recent');
+                        setContextMenu(null);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                    >
+                      {t('ctx_reset_recents')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {contextMenu.recentItem && (
+                  <button 
+                    onClick={() => {
+                      handleRemoveSingleRecent(contextMenu.recentItem!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+                  >
+                    {t('ctx_remove_recent')} <X className="w-4 h-4 ml-2 text-slate-400" />
+                  </button>
+                )}
+                {contextMenu.source === 'most-used' && (
+                  <button 
+                    onClick={() => {
+                      setConfirmResetType('most-used');
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                  >
+                    {t('ctx_reset_most_used')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                  </button>
+                )}
+                {contextMenu.source === 'recent' && (
+                  <button 
+                    onClick={() => {
+                      setConfirmResetType('recent');
+                      setContextMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-cyan-500/20 truncate transition-colors flex items-center justify-between text-cyan-300 cursor-pointer"
+                  >
+                    {t('ctx_reset_recents')} <RotateCcw className="w-4 h-4 ml-2 text-cyan-400" />
+                  </button>
+                )}
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- SYSTEM SEARCH RESULTS CONTEXT MENU --- */}
+      <AnimatePresence>
+        {systemContextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0d131f]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[220px] text-sm select-none"
+            style={{ 
+              left: Math.min(systemContextMenu.x, window.innerWidth - 240), 
+              top: Math.min(systemContextMenu.y, window.innerHeight - 250) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Abrir */}
+            <button
+              data-system-menu-index={0}
+              onMouseEnter={() => setSystemContextMenuIndex(0)}
+              onClick={() => {
+                void handleLaunchExternalItem(systemContextMenu.item);
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 0 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_open')} <Play className="w-4 h-4 ml-2 text-emerald-400" />
+            </button>
+
+            {/* Copiar */}
+            <button
+              data-system-menu-index={1}
+              onMouseEnter={() => setSystemContextMenuIndex(1)}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(systemContextMenu.item.path);
+                  setNotification({
+                    message: t('notif_copied_item', { name: systemContextMenu.item.name }),
+                    type: 'success'
+                  });
+                } catch (err) {
+                  console.error('Clipboard copy failed:', err);
+                }
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 1 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_copy')} <Upload className="w-4 h-4 ml-2 text-slate-400" />
+            </button>
+
+            {/* Cortar */}
+            <button
+              data-system-menu-index={2}
+              onMouseEnter={() => setSystemContextMenuIndex(2)}
+              onClick={() => {
+                setNotification({
+                  message: t('notif_cut_item', { name: systemContextMenu.item.name }),
+                  type: 'info'
+                });
+                navigator.clipboard.writeText(systemContextMenu.item.path).catch(console.error);
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 2 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_cut')} <Minus className="w-4 h-4 ml-2 text-slate-400" />
+            </button>
+
+            {/* Copiar Ruta completa al Portapapeles */}
+            <button
+              data-system-menu-index={3}
+              onMouseEnter={() => setSystemContextMenuIndex(3)}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(systemContextMenu.item.path);
+                  setNotification({
+                    message: t('notif_path_copied'),
+                    type: 'success'
+                  });
+                } catch (err) {
+                  console.error('Clipboard copy failed:', err);
+                }
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 3 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_copy_absolute_path')} <ExternalLink className="w-4 h-4 ml-2 text-cyan-400" />
+            </button>
+
+            <div className="h-px bg-white/10 my-1 mx-2" />
+
+            {/* Anclar a Favoritos de CyberLauncher */}
+            <button
+              data-system-menu-index={4}
+              onMouseEnter={() => setSystemContextMenuIndex(4)}
+              onClick={() => {
+                const appId = Date.now();
+                const newApp = {
+                  id: appId,
+                  name: systemContextMenu.item.name.replace(/\.[^/.]+$/, ""),
+                  path: systemContextMenu.item.path,
+                  icon: systemContextMenu.item.icon || '',
+                  category: 'all',
+                  shortcut: '',
+                  isAdmin: false,
+                  isFavorite: true,
+                };
+                // @ts-ignore
+                setApps(prev => {
+                  if (prev.some(a => a.path === newApp.path)) {
+                    const existing = prev.find(a => a.path === newApp.path);
+                    if (existing && !favoriteIds.includes(existing.id)) {
+                      setFavoriteIds(f => [...f, existing.id]);
+                    }
+                    return prev;
+                  }
+                  setFavoriteIds(f => [...f, appId]);
+                  return [...prev, newApp];
+                });
+                setNotification({
+                  message: t('notif_pinned_favorites'),
+                  type: 'success'
+                });
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 4 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_pin_fav_short')} <Star className="w-4 h-4 ml-2 fill-yellow-500 text-yellow-400" />
+            </button>
+
+            {/* Anclar a Barra de Tareas de CyberLauncher */}
+            <button
+              data-system-menu-index={5}
+              onMouseEnter={() => setSystemContextMenuIndex(5)}
+              onClick={() => {
+                const appId = Date.now();
+                const newApp = {
+                  id: appId,
+                  name: systemContextMenu.item.name.replace(/\.[^/.]+$/, ""),
+                  path: systemContextMenu.item.path,
+                  icon: systemContextMenu.item.icon || '',
+                  category: 'all',
+                  shortcut: '',
+                  isAdmin: false,
+                  isFavorite: false,
+                };
+                // @ts-ignore
+                setApps(prev => {
+                  if (prev.some(a => a.path === newApp.path)) {
+                    const existing = prev.find(a => a.path === newApp.path);
+                    if (existing && !taskbarAppIds.includes(existing.id)) {
+                      setTaskbarAppIds(t => [...t, existing.id]);
+                    }
+                    return prev;
+                  }
+                  setTaskbarAppIds(t => [...t, appId]);
+                  return [...prev, newApp];
+                });
+                setNotification({
+                  message: t('notif_pinned_taskbar'),
+                  type: 'success'
+                });
+                setSystemContextMenu(null);
+              }}
+              className={`w-full text-left px-4 py-2 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer ${
+                systemContextMenuIndex === 5 ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-white/10'
+              }`}
+            >
+              {t('ctx_pin_bar_short')} <Plus className="w-4 h-4 ml-2 text-cyan-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CATEGORY CONTEXT MENU --- */}
+      <AnimatePresence>
+        {categoryContextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[200px] text-sm select-none"
+            style={{ 
+              left: Math.min(categoryContextMenu.x, window.innerWidth - 220), 
+              top: Math.min(categoryContextMenu.y, window.innerHeight - 150) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3.5 py-1.5 mb-1 border-b border-white/10 flex items-center gap-2.5">
+              <div 
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ 
+                  backgroundColor: categoryContextMenu.category.color,
+                  boxShadow: `0 0 6px ${categoryContextMenu.category.color}`
+                }}
+              />
+              <span className="text-xs font-semibold text-slate-300 truncate">
+                {t(`cat_${categoryContextMenu.category.id}` as TranslationKey) !== `cat_${categoryContextMenu.category.id}` 
+                  ? t(`cat_${categoryContextMenu.category.id}` as TranslationKey) 
+                  : categoryContextMenu.category.name}
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                const cat = categoryContextMenu.category;
+                setCategoryContextMenu(null);
+                setEditCategoryForm({ name: cat.name, color: cat.color });
+                setEditingCategory(cat);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
+            >
+              {t('ctx_edit_category')} <Pencil className="w-4 h-4 ml-2 text-cyan-400" />
+            </button>
+
+            <button
+              onClick={() => {
+                const cat = categoryContextMenu.category;
+                setCategoryContextMenu(null);
+                setCategoryToDelete(cat);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-red-500/20 truncate transition-colors flex items-center justify-between text-red-400 cursor-pointer"
+            >
+              {t('ctx_delete_category')} <Trash2 className="w-4 h-4 ml-2 text-red-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- FOOTER ITEMS CONTEXT MENU --- */}
+      <AnimatePresence>
+        {footerContextMenu && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-[100] bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl py-1.5 min-w-[240px] text-sm select-none"
+            style={{ 
+              left: Math.max(10, Math.min(footerContextMenu.x - 120, window.innerWidth - 260)), 
+              top: Math.max(10, footerContextMenu.y - 95) 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                if (footerContextMenu.target === 'uptime') {
+                  setShowFooterUptime(false);
+                } else if (footerContextMenu.target === 'launches') {
+                  setShowFooterLaunches(false);
+                } else {
+                  setShowFooterDateTime(false);
+                }
+                setFooterContextMenu(null);
+              }}
+              className="w-full text-left px-3.5 py-2 hover:bg-white/10 transition-colors flex items-center justify-between text-slate-200 cursor-pointer group"
+            >
+              <span className="text-xs font-medium">
+                {footerContextMenu.target === 'uptime' && t('ctx_hide_uptime')}
+                {footerContextMenu.target === 'launches' && t('ctx_hide_launches')}
+                {footerContextMenu.target === 'datetime' && t('ctx_hide_datetime')}
+              </span>
+              <EyeOff className="w-4 h-4 ml-2 text-slate-400 group-hover:text-red-400 transition-colors" />
+            </button>
+
+            <div className="my-1 border-t border-white/10" />
+
+            <button
+              onClick={() => {
+                setFooterContextMenu(null);
+                setSettingsTab('system');
+                setIsSettingsOpen(true);
+              }}
+              className="w-full text-left px-3.5 py-1.5 hover:bg-white/10 transition-colors flex items-center justify-between text-slate-400 hover:text-slate-200 cursor-pointer"
+            >
+              <span className="text-[11px] font-cyber">{t('ctx_configure_footer')}</span>
+              <Settings className="w-3.5 h-3.5 ml-2 text-cyan-400" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- APP DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {appToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAppToDelete(null)}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  {t('confirm_delete_app_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setAppToDelete(null)}
+                  aria-label={t('confirm_reset_btn_cancel')}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('confirm_delete_app_desc', { name: appToDelete.name })}
+                </p>
+
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
+                  <input
+                    type="checkbox"
+                    checked={dontAskAgainOnAppDelete}
+                    onChange={(e) => setDontAskAgainOnAppDelete(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                  />
+                  <span>{t('confirm_delete_app_dont_ask')}</span>
+                </label>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAppToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (dontAskAgainOnAppDelete) setAppDeleteConfirmationPreference(false);
+                      deleteApp(appToDelete);
+                      setAppToDelete(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('ctx_delete_app')}</span>
+                    <EnterKeyBadge variant="danger" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CATEGORY DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {categoryToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-400 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                  {t('confirm_delete_category_title')}
+                </h2>
+                <button 
+                  onClick={() => setCategoryToDelete(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('confirm_delete_category_desc', { 
+                    name: t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
+                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
+                      : categoryToDelete.name 
+                  })}
+                </p>
+
+                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/10">
+                  <div 
+                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                    style={{ 
+                      backgroundColor: categoryToDelete.color,
+                      boxShadow: `0 0 8px ${categoryToDelete.color}`
+                    }} 
+                  />
+                  <span className="text-sm font-semibold text-white truncate">
+                    {t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
+                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
+                      : categoryToDelete.name}
+                  </span>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setCategoryToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_delete_category_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_delete_category_btn_confirm')}</span>
+                    <EnterKeyBadge variant="danger" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- RESET MOST USED / RECENTS CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {confirmResetType && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { e.stopPropagation(); setConfirmResetType(null); }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
+                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-cyan-400" />
+                  {confirmResetType === 'most-used' 
+                    ? t('confirm_reset_most_used_title') 
+                    : t('confirm_reset_recents_title')}
+                </h2>
+                <button 
+                  onClick={() => setConfirmResetType(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {confirmResetType === 'most-used'
+                    ? t('confirm_reset_most_used_desc')
+                    : t('confirm_reset_recents_desc')}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setConfirmResetType(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (confirmResetType === 'most-used') {
+                        handleResetMostUsed();
+                      } else {
+                        handleResetRecents();
+                      }
+                      setConfirmResetType(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_confirm')}</span>
+                    <EnterKeyBadge variant="primary" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONFIRM RESTORE BACKUP MODAL --- */}
+      <AnimatePresence>
+        {backupToRestore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setBackupToRestore(null)}
+            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
+                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-cyan-400" />
+                  {t('backup_auto_confirm_restore_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setBackupToRestore(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('backup_auto_confirm_restore_desc', { file: backupToRestore.file })}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToRestore(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = backupToRestore;
+                      setBackupToRestore(null);
+                      void handleConfirmRestoreBackup(target);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('backup_auto_btn_restore')}</span>
+                    <EnterKeyBadge variant="primary" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONFIRM DELETE BACKUP MODAL --- */}
+      <AnimatePresence>
+        {backupToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setBackupToDelete(null)}
+            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
+                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                  {t('backup_auto_confirm_delete_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setBackupToDelete(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  {t('backup_auto_confirm_delete_desc', { file: backupToDelete.file })}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToDelete(null)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('confirm_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = backupToDelete;
+                      setBackupToDelete(null);
+                      void handleConfirmDeleteBackup(target);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('backup_auto_btn_delete')}</span>
+                    <EnterKeyBadge variant="danger" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- SYSTEM POWER CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {powerConfirmAction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-no-hide
+            className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setPowerConfirmAction(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              data-no-hide
+              data-cyberbot-obstacle="center"
+              className={`w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 shadow-2xl space-y-5 text-center ${
+                powerConfirmAction === 'shutdown'
+                  ? 'border-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.2)]'
+                  : powerConfirmAction === 'restart'
+                  ? 'border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
+                  : powerConfirmAction === 'sleep'
+                  ? 'border-sky-500/40 shadow-[0_0_30px_rgba(56,189,248,0.2)]'
+                  : powerConfirmAction === 'signout'
+                  ? 'border-purple-500/40 shadow-[0_0_30px_rgba(192,132,252,0.2)]'
+                  : 'border-cyan-500/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
+              }`}
+            >
+              {/* Glowing Icon & Header */}
+              <div className="flex flex-col items-center justify-center pt-2">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border shadow-inner ${
+                  powerConfirmAction === 'shutdown'
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
+                    : powerConfirmAction === 'restart'
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                    : powerConfirmAction === 'sleep'
+                    ? 'bg-sky-500/15 border-sky-500/30 text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]'
+                    : powerConfirmAction === 'signout'
+                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.3)]'
+                    : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                }`}>
+                  {powerConfirmAction === 'shutdown' && <Power className="w-8 h-8" />}
+                  {powerConfirmAction === 'restart' && <RotateCcw className="w-8 h-8" />}
+                  {powerConfirmAction === 'sleep' && <Moon className="w-8 h-8" />}
+                  {powerConfirmAction === 'signout' && <LogOut className="w-8 h-8" />}
+                  {powerConfirmAction === 'lock' && <Lock className="w-8 h-8" />}
+                </div>
+
+                <h3 className="text-lg font-cyber font-bold text-white tracking-wider">
+                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_title')}
+                  {powerConfirmAction === 'restart' && t('power_confirm_restart_title')}
+                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_title')}
+                  {powerConfirmAction === 'signout' && t('power_confirm_signout_title')}
+                  {powerConfirmAction === 'lock' && t('power_confirm_lock_title')}
+                </h3>
+
+                <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'restart' && t('power_confirm_restart_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'signout' && t('power_confirm_signout_msg', { seconds: powerCountdown.toString() })}
+                  {powerConfirmAction === 'lock' && t('power_confirm_lock_msg', { seconds: powerCountdown.toString() })}
+                </p>
+              </div>
+
+              {/* Countdown Progress Bar */}
+              <div className="space-y-1.5 px-4">
+                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
+                  <span className="uppercase tracking-wider">{t('power_confirm_countdown_label')}</span>
+                  <span className="font-bold text-white font-digits text-xs tabular-nums">{powerCountdown}s</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      powerConfirmAction === 'shutdown'
+                        ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+                        : powerConfirmAction === 'restart'
+                        ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
+                        : powerConfirmAction === 'sleep'
+                        ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
+                        : powerConfirmAction === 'signout'
+                        ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]'
+                        : 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]'
+                    }`}
+                    style={{ width: `${(powerCountdown / 10) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Force Option (for shutdown/restart/signout) */}
+              {(powerConfirmAction === 'shutdown' || powerConfirmAction === 'restart' || powerConfirmAction === 'signout') && (
+                <label className="flex items-center justify-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
+                  <input
+                    type="checkbox"
+                    checked={powerForceClose}
+                    onChange={(e) => setPowerForceClose(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                  />
+                  <span>{t('power_confirm_force')}</span>
+                </label>
+              )}
+
+              {/* Action Buttons with Suite Badges */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPowerConfirmAction(null)}
+                  className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                >
+                  <span>{t('power_confirm_cancel')}</span>
+                  <EscKeyBadge />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExecutePowerAction(powerConfirmAction, powerForceClose)}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                    powerConfirmAction === 'shutdown'
+                      ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                      : powerConfirmAction === 'restart'
+                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                      : powerConfirmAction === 'sleep'
+                      ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.2)]'
+                      : powerConfirmAction === 'signout'
+                      ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(192,132,252,0.2)]'
+                      : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                  }`}
+                >
+                  <span>
+                    {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_now')}
+                    {powerConfirmAction === 'restart' && t('power_confirm_restart_now')}
+                    {powerConfirmAction === 'sleep' && t('power_confirm_sleep_now')}
+                    {powerConfirmAction === 'signout' && t('power_confirm_signout_now')}
+                    {powerConfirmAction === 'lock' && t('power_confirm_lock_now')}
+                  </span>
+                  <EnterKeyBadge variant={powerConfirmAction === 'shutdown' ? 'danger' : 'primary'} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
+      <AnimatePresence>
+        {!isElectron && imminentTask && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: false, essential: true, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
+          <motion.div
+            key={imminentTask.id}
+            data-no-hide
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 25, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-amber-500/40 backdrop-blur-2xl shadow-[0_0_35px_rgba(245,158,11,0.25)] select-none max-w-lg min-w-[360px]"
+          >
+            {/* Ticking countdown badge with generous breathing room */}
+            <div className="flex flex-col items-center justify-center shrink-0 min-w-[58px] h-12 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-300 shadow-[inset_0_0_10px_rgba(245,158,11,0.15)]">
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-amber-400/70 mb-0.5">T - MINUS</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-xl font-digits font-bold text-amber-300 tabular-nums animate-pulse leading-none">
+                  {imminentTask.remainingSeconds.toString().padStart(2, '0')}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-amber-400/80">s</span>
+              </div>
+            </div>
+
+            {/* Task Info */}
+            <div className="flex-1 min-w-0 text-left">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="text-[10px] font-cyber font-bold uppercase tracking-widest text-amber-400 truncate">
+                  {t('notif_scheduled_imminent', { seconds: imminentTask.remainingSeconds.toString() })}
+                </span>
+              </div>
+              <Tooltip label={imminentTask.name} placement="top">
+                <p className="text-xs font-medium text-white truncate max-w-[210px] cursor-default">
+                  {imminentTask.name}
+                </p>
+              </Tooltip>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Tooltip label={t('notif_action_launch_now')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => handleLaunchImminentNow(imminentTask)}
+                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/60 font-cyber font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>{t('notif_action_launch_now')}</span>
+                </button>
+              </Tooltip>
+              <Tooltip label={t('notif_action_cancel_launch')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => handleCancelImminentTask(imminentTask.id, imminentTask.name)}
+                  className="px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 hover:border-red-400/70 font-cyber font-bold text-[11px] transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)] flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{t('notif_action_cancel_launch')}</span>
+                </button>
+              </Tooltip>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MISSING SHORTCUT RECOVERY --- */}
+      <AnimatePresence>
+        {missingShortcut && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            data-no-hide
+            className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+            onClick={() => { if (!isRelinkingShortcut) setMissingShortcut(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 12 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="missing-shortcut-title"
+              onClick={(e) => e.stopPropagation()}
+              data-no-hide
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/35 bg-[#070b13]/95 shadow-[0_0_35px_rgba(245,158,11,0.14)] backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/[0.07] px-5 py-4">
+                <h2 id="missing-shortcut-title" className="flex items-center gap-2.5 text-base font-semibold text-amber-300">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  {t('missing_shortcut_title')}
+                </h2>
+                <button
+                  type="button"
+                  aria-label={t('tooltip_close')}
+                  disabled={isRelinkingShortcut}
+                  onClick={() => setMissingShortcut(null)}
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <p className="text-sm leading-relaxed text-slate-300">
+                  {t('missing_shortcut_message', { name: missingShortcut.app.name })}
+                </p>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {t('missing_shortcut_path')}
+                  </span>
+                  <div className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-slate-300">
+                    {missingShortcut.path}
+                  </div>
+                </div>
+
+                <p className="text-xs leading-relaxed text-slate-500">
+                  {t('missing_shortcut_hint')}
+                </p>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    disabled={isRelinkingShortcut}
+                    onClick={() => setMissingShortcut(null)}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  >
+                    {t('missing_shortcut_cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isRelinkingShortcut}
+                    onClick={() => { void handleRelinkShortcut(); }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.1)] transition-colors hover:bg-cyan-500/25 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <FolderSearch className="h-4 w-4" />
+                    {isRelinkingShortcut ? t('missing_shortcut_locating') : t('missing_shortcut_locate')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- TOAST NOTIFICATIONS --- */}
+      <AnimatePresence>
+        {!isElectron && notification && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', essential: notification.essential, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
+          <motion.div
+            key={notification.message + (notification.detail || '')}
+            data-no-hide
+            data-cyberbot-obstacle={notification.persistent ? 'bounds' : undefined}
+            role={notification.action ? 'button' : undefined}
+            tabIndex={notification.action ? 0 : undefined}
+            onMouseEnter={() => { if (notification.action === 'open-about') setToastPaused(true); }}
+            onMouseLeave={() => setToastPaused(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (notification.action === 'open-about') {
+                setIsAboutOpen(true);
+                setNotification(null);
+              } else if (notification.action === 'open-hud-storage') {
+                setIsStorageHUDOpen(true);
+                setNotification(null);
+              } else if (notification.action === 'open-hud-system') {
+                setIsSystemHUDOpen(true);
+                setNotification(null);
+              } else if (notification.action === 'open-hud-clock') {
+                setIsClockHUDOpen(true);
+                setNotification(null);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (!notification.action) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (notification.action === 'open-about') {
+                  setIsAboutOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-storage') {
+                  setIsStorageHUDOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-system') {
+                  setIsSystemHUDOpen(true);
+                  setNotification(null);
+                } else if (notification.action === 'open-hud-clock') {
+                  setIsClockHUDOpen(true);
+                  setNotification(null);
+                }
+              }
+            }}
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className={`fixed bottom-6 right-6 z-[200] flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
+              notification.detail || notification.releaseUrl ? 'max-w-sm' : 'items-center'
+            } ${
+              notification.action ? 'cursor-pointer hover:brightness-110' : ''
+            } ${
+              notification.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                : notification.type === 'error'
+                ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
+            }`}
+          >
+            <div className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
+              notification.detail || notification.releaseUrl ? 'mt-1.5' : ''
+            } ${
+              notification.type === 'success'
+                ? 'bg-emerald-400'
+                : notification.type === 'error'
+                ? 'bg-red-400'
+                : 'bg-cyan-400'
+            }`} />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span className="text-xs font-cyber font-bold tracking-wide uppercase">{notification.message}</span>
+              {notification.detail && (
+                <p className="text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap line-clamp-3 normal-case tracking-normal">
+                  {notification.detail}
+                </p>
+              )}
+              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available') || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock') && (
+                <div className="flex items-center gap-2 pt-0.5">
+                  {notification.action === 'open-hud-storage' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsStorageHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/40 bg-amber-500/20 px-2 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <HardDrive className="w-3 h-3" />
+                      {t('toast_action_view_storage')}
+                    </button>
+                  )}
+                  {notification.action === 'open-hud-system' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsSystemHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-purple-400/40 bg-purple-500/20 px-2 py-1 text-[11px] font-semibold text-purple-200 hover:bg-purple-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Cpu className="w-3 h-3" />
+                      {t('toast_action_view_system')}
+                    </button>
+                  )}
+                  {notification.action === 'open-hud-clock' && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsClockHUDOpen(true);
+                        setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Timer className="w-3 h-3" />
+                      {t('toast_action_view_clock')}
+                    </button>
+                  )}
+                  {notification.releaseUrl && (
+                    <button
+                      type="button"
+                      data-no-hide
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openExternalUrl(notification.releaseUrl!);
+                        if (notification.persistent) setNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-400/20 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {t('about_view_release')}
+                    </button>
+                  )}
+                  {notification.action === 'open-about' && updateStatus.state === 'available' && (
+                    <>
+                      <button
+                        type="button"
+                        data-no-hide
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSkipUpdateVersion(updateStatus.version);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-600/40 bg-slate-700/30 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <SkipForward className="w-3 h-3 text-slate-400" />
+                        {t('about_skip_btn')}
+                      </button>
+                      <button
+                        type="button"
+                        data-no-hide
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void window.electronAPI?.downloadUpdate?.();
+                          setNotification(null);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3 h-3" />
+                        {t('about_download_btn')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              data-no-hide
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotification(null);
+              }}
+              className="ml-1 shrink-0 hover:opacity-80 transition-opacity"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CYBERBOT COMPANION --- */}
+      <CyberBot
+        enabled={cyberBot.enabled}
+        farewell={cyberBotFarewell.state}
+        onDismissFarewell={cyberBotFarewell.depart}
+        onFarewellUnavailable={cyberBotFarewell.confirm}
+        activeMessage={cyberBot.activeMessage}
+        returnGesture={cyberBotReturnGesture}
+        onDismissMessage={cyberBot.dismissMessage}
+        onClickBot={() => {
+          if (isCyberBotPromptOpen) {
+            setIsCyberBotPromptOpen(false);
+          } else {
+            cyberBot.dismissMessage();
+            playCyberBeep();
+            setIsCyberBotPromptOpen(true);
+          }
+        }}
+        isPromptOpen={isCyberBotPromptOpen}
+        renderPrompt={(align) => (
+          <CyberBotPrompt
+            isOpen={isCyberBotPromptOpen}
+            onClose={() => setIsCyberBotPromptOpen(false)}
+            position={align === 'left' ? 'bottom-left' : 'bottom-right'}
+            t={t}
+            apps={apps}
+            recentHistory={launchHistory}
+            favoriteIds={favoriteIds}
+            onLaunchApp={(app) => {
+              void handleLaunchApp(app);
+            }}
+            renderAppIcon={(app, className) => <AppIcon app={app} className={className} />}
+            onOpenSystemHUD={() => setIsSystemHUDOpen(true)}
+            onOpenStorageHUD={() => setIsStorageHUDOpen(true)}
+            onOpenClockHUD={() => setIsClockHUDOpen(true)}
+            onOpenTerminal={openTerminal}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onBackupNow={() => {
+              void handleBackupNow();
+            }}
+            onAddNewApp={(prefillName) => {
+              setOpenedViaDrop(false);
+              const form = emptyEditForm();
+              if (prefillName) {
+                form.name = prefillName;
+              }
+              setEditForm(form);
+              setIsResolvingIcon(false);
+              setIsAddingApp(true);
+            }}
+            onAddNewCategory={() => {
+              setNewCategoryForm({ name: '', color: '#38bdf8' });
+              setIsAddingCategory(true);
+            }}
+            onOpenPowerMenu={() => setIsPowerMenuOpen(true)}
+            onOpenSettings={(tab) => {
+              setSettingsTab(tab || 'general');
+              setIsSettingsOpen(true);
+            }}
+            onOpenAbout={() => setIsAboutOpen(true)}
+            onRefreshIcons={() => {
+              void handleRefreshAllIcons();
+            }}
+            onTogglePin={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
+            isPinned={isAlwaysOnTop}
+            quietHours={cyberBot.quietHours}
+            onToggleQuietHours={() => {
+              cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled });
+            }}
+            playBeep={playCyberBeep}
+            onActionExecuted={(label) => {
+              cyberBot.say({
+                text: t('cyberbot_prompt_executed'),
+                detail: label,
+                emotion: 'happy',
+                durationMs: 2500,
+              });
+            }}
+          />
+        )}
+        position={cyberBot.position}
+        dodgeEnabled={cyberBot.dodgeEnabled}
+        hoverAssistEnabled={cyberBot.hoverAssistEnabled}
+        chatterLevel={cyberBot.chatterLevel}
+        quietHours={cyberBot.quietHours}
+        priorityEmotion={isTerminalOpen ? 'terminal' : undefined}
+        dragBoundsRef={rootRef}
+        interactLabel={t('cyberbot_interact')}
+        closeLabel={t('cyberbot_close_message')}
+        hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
+        marqueeStatusMessages={getCyberBotMarqueeStatusMessages({
+          apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut, cyberBotShortcut,
+        }, t)}
+        systemAttention={!!notification}
+        contextOpen={isAnyModalOpen || isTerminalOpen || isCyberBotPromptOpen}
+        onContextParkedChange={handleCyberBotContextParked}
+        onSpeechVisibilityChange={setIsCyberBotSpeechVisible}
+      />
+
+      {/* --- TRAY PIN TIP PROMPT REMOVED (NOW FLOATING OVER SYSTEM TRAY) --- */}
+
+      <SystemHUD 
+        isOpen={isSystemHUDOpen}
+        onClose={() => setIsSystemHUDOpen(false)}
+        activationShortcut={activationShortcut}
+        dailyLaunchCount={dailyLaunchCount}
+        showSuiteRecommendations={showSuiteRecommendations}
+        openExternalUrl={openExternalUrl}
+        t={t}
+      />
+
+      <StorageHUD 
+        isOpen={isStorageHUDOpen}
+        onClose={() => setIsStorageHUDOpen(false)}
+        t={t}
+      />
+
+      <ClockHUD 
+        isOpen={isClockHUDOpen}
+        onClose={() => setIsClockHUDOpen(false)}
+        apps={apps}
+        scheduledTasks={scheduledTasks}
+        setScheduledTasks={setScheduledTasks}
+        preselectedAppId={schedulerPreselectedAppId}
+        onClearPreselectedAppId={() => setSchedulerPreselectedAppId('')}
+        t={t}
+      />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        commands={paletteCommands}
+        label={t('cmd_palette_title')}
+        placeholder={t('cmd_palette_placeholder')}
+        noResults={t('cmd_palette_no_results')}
+        navigateHint={t('cmd_palette_hint_navigate')}
+        executeHint={t('cmd_palette_hint_execute')}
+        closeHint={t('cmd_palette_hint_close')}
+      />
+
+      <style>{`
+        /* ── Cyber Scrollbar ── */
+        @keyframes cyberScrollGlow {
+          0%, 100% { box-shadow: 0 0 6px rgba(34, 211, 238, 0.6), 0 0 18px rgba(129, 140, 248, 0.25); }
+          50%      { box-shadow: 0 0 10px rgba(34, 211, 238, 0.9), 0 0 28px rgba(129, 140, 248, 0.4), 0 0 4px rgba(232, 121, 249, 0.3); }
+        }
+
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: transparent transparent;
+          transition: scrollbar-color 0.3s ease;
+        }
+        .mouse-active .custom-scrollbar,
+        .custom-scrollbar.scrolling {
+          scrollbar-color: rgba(34, 211, 238, 0.45) rgba(15, 23, 42, 0.15);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+          height: 0px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+          border-radius: 8px;
+          margin: 6px 0;
+          transition: background 0.3s ease;
+        }
+        .mouse-active .custom-scrollbar::-webkit-scrollbar-track,
+        .custom-scrollbar.scrolling::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.25);
+          box-shadow: inset 0 0 4px rgba(34, 211, 238, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(34, 211, 238, 0) 0%, rgba(34, 211, 238, 0) 100%);
+          border-radius: 8px;
+          border: 1px solid transparent;
+          transition: all 0.3s ease;
+        }
+        .mouse-active .custom-scrollbar::-webkit-scrollbar-thumb,
+        .custom-scrollbar.scrolling::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, #22d3ee 0%, #818cf8 50%, #e879f9 100%);
+          border: 1px solid rgba(34, 211, 238, 0.3);
+          animation: cyberScrollGlow 2s ease-in-out infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, #67e8f9 0%, #a5b4fc 50%, #f0abfc 100%);
+          border: 1px solid rgba(34, 211, 238, 0.5);
+          box-shadow: 0 0 14px rgba(34, 211, 238, 1), 0 0 30px rgba(129, 140, 248, 0.5), 0 0 8px rgba(232, 121, 249, 0.4);
+          animation: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:active {
+          background: linear-gradient(180deg, #a5f3fc 0%, #c7d2fe 50%, #f5d0fe 100%);
+          box-shadow: 0 0 18px rgba(34, 211, 238, 1), 0 0 40px rgba(129, 140, 248, 0.6);
+        }
+
+        /* Sidebar narrower scrollbar */
+        [data-categories-scroll]::-webkit-scrollbar,
+        .custom-scrollbar[class*="px-4"][class*="space-y-0"]::-webkit-scrollbar {
+          width: 3px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
