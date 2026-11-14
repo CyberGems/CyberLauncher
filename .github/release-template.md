@@ -6,7 +6,7 @@
 
 ### 🚀 What's new in this release
 
-<!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. -->
+<!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
 Companion gains an interactive quick command prompt on click, global shortcut activation, and stays visible on the main panel during routine idle. Automated backups support custom destination folders with flexible retention, while tray branding and settings controls receive refined polish.
 <!-- changelog-summary:end -->
