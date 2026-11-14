@@ -44,6 +44,8 @@ Companion gains an interactive quick command prompt on click, global shortcut ac
 
 El compañero añade una paleta interactiva de comandos al hacer clic, activación por atajo global y permanece visible en el panel principal durante la inactividad. Los respaldos automáticos admiten carpeta personalizada con retención flexible, y los ajustes y el menú de bandeja se perfeccionan.
 
+> **¿Nuevo en CyberLauncher?** Un lanzador Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps desde un panel unificado.
+
 ---
 
 ### ✨ Novedades destacadas
