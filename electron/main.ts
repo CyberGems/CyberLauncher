@@ -130,7 +130,7 @@ let inOwnRestoreCall = 0;
 let hotspotCooldown = false;
 let lastHotspotActionTime = 0;
 let hasCursorExitedSinceLastAction = true;
-let hideOnBlurEnabled = true;
+let hideOnBlurEnabled = false;
 let externalTerminalBlurGuardUntil = 0;
 let showTaskbarIcon = false;
 /** Ignore hide-on-blur during initial boot / first maximize (Windows steals focus briefly). */
@@ -405,6 +405,10 @@ const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.js
 
 function getDefaultBackupsDir(): string {
   return path.join(app.getPath('userData'), 'backups');
+}
+
+function getWallpapersDir(): string {
+  return path.join(app.getPath('userData'), 'wallpapers');
 }
 
 function getActiveBackupsDir(): string {
@@ -4487,6 +4491,7 @@ foreach (\$app in \$startApps) {
     if (!parsed) return null;
     const restoredConfig = await restorePortableBackupIcons(parsed, {
       iconCacheDir: getIconCacheDir(),
+      wallpaperDir: getWallpapersDir(),
       extractFallback: async (item) => {
         if (!item?.path || typeof item.path !== 'string') return null;
         try {

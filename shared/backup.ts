@@ -34,7 +34,7 @@ export function parseBackupHours(value: unknown): number {
   return AUTO_BACKUP_INTERVALS_HOURS.includes(n) ? n : DEFAULT_AUTO_BACKUP_HOURS;
 }
 
-/** Normalizes retention count. Default is 7 copies. */
+/** Normalizes retention count. Default is 3 copies. */
 export function parseBackupKeep(value: unknown): number {
   const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
   return AUTO_BACKUP_KEEP_OPTIONS.includes(n) ? n : DEFAULT_AUTO_BACKUP_KEEP;

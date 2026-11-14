@@ -68,6 +68,26 @@ export function resolveEmbeddedIconsInBrowser<T extends Record<string, any>>(dat
     });
   }
 
+  for (const field of ['bgImage', 'customSlotImage'] as const) {
+    const hit = lookupEmbedded(data[field]);
+    if (hit) next[field] = hit;
+  }
+
+  if (data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings)) {
+    const nextSettings: Record<string, any> = { ...data.settings };
+    let settingsChanged = false;
+    for (const field of ['bgImage', 'customSlotImage'] as const) {
+      const hit = lookupEmbedded(nextSettings[field]);
+      if (hit) {
+        nextSettings[field] = hit;
+        settingsChanged = true;
+      }
+    }
+    if (settingsChanged) {
+      next.settings = nextSettings;
+    }
+  }
+
   return next as T;
 }
 

@@ -4019,7 +4019,7 @@ export default function App() {
   const [startWithWindows, setStartWithWindows] = useState(() => localStorage.getItem('startWithWindows') === 'true');
   const [startMinimized, setStartMinimized] = useState(() => localStorage.getItem('startMinimized') === 'true');
   const [hideOnClickDeadSpot, setHideOnClickDeadSpot] = useState(() => localStorage.getItem('hideOnClickDeadSpot') === 'true');
-  const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') !== 'false');
+  const [hideOnBlur, setHideOnBlur] = useState(() => localStorage.getItem('hideOnBlur') === 'true');
   const [showTaskbarIcon, setShowTaskbarIcon] = useState(() => localStorage.getItem('showTaskbarIcon') === 'true');
   const [resetOnLaunch, setResetOnLaunch] = useState(() => localStorage.getItem('resetOnLaunch') !== 'false');
   const [enableTooltips, setEnableTooltips] = useState(() => {
@@ -5447,7 +5447,7 @@ export default function App() {
     setStartWithWindows(false);
     setStartMinimized(false);
     setHideOnClickDeadSpot(false);
-    setHideOnBlur(true);
+    setHideOnBlur(false);
     setShowTaskbarIcon(false);
     setResetOnLaunch(true);
     setAutoUpdate(true);
@@ -5550,7 +5550,7 @@ export default function App() {
       }
       window.electronAPI.setHotspots([], 300, true);
       window.electronAPI.setAutoLaunch(false, false);
-      window.electronAPI.setHideOnBlur(true);
+      window.electronAPI.setHideOnBlur(false);
       window.electronAPI.setShowTaskbarIcon(false);
       window.electronAPI.setAlwaysOnTop?.(false);
       window.electronAPI.listBackups?.().then((list) => {
@@ -7560,6 +7560,8 @@ export default function App() {
         }
         if (appToDelete) {
           setAppToDelete(null);
+        } else if (missingShortcut) {
+          if (!isRelinkingShortcut) setMissingShortcut(null);
         } else if (powerConfirmAction) {
           setPowerConfirmAction(null);
         } else if (isPowerMenuOpen) {
@@ -9929,8 +9931,18 @@ export default function App() {
             </div>
             <div className="flex-1 min-h-0 flex flex-col">
               {mostUsed.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center px-2">
-                  <p className="text-[11px] font-sans text-slate-500 text-center leading-tight">{t('hud_most_used_empty')}</p>
+                <div className="flex-1 min-h-0 flex items-center justify-center px-2 py-2">
+                  <div className="w-full rounded-xl border border-dashed border-cyan-500/20 bg-white/[0.02] px-3 py-4 flex flex-col items-center text-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center shadow-[0_0_12px_rgba(34,211,238,0.12)]">
+                      <Activity className="w-4 h-4 text-cyan-400/85" strokeWidth={1.75} />
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-300 leading-snug">
+                      {t('hud_most_used_empty_title')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed max-w-[190px]">
+                      {t('hud_most_used_empty_hint')}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 Array.from({ length: 10 }, (_, index) => {
@@ -10012,8 +10024,18 @@ export default function App() {
             </div>
             <div className="flex-1 min-h-0 flex flex-col">
               {recentLaunches.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center px-2">
-                  <p className="text-[11px] font-sans text-slate-500 text-center leading-tight">{t('hud_history_empty')}</p>
+                <div className="flex-1 min-h-0 flex items-center justify-center px-2 pt-2 pb-16">
+                  <div className="w-full rounded-xl border border-dashed border-white/[0.09] bg-white/[0.02] px-3 py-4 flex flex-col items-center text-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center">
+                      <History className="w-4 h-4 text-slate-300/80" strokeWidth={1.75} />
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-300 leading-snug">
+                      {t('hud_history_empty_title')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed max-w-[190px]">
+                      {t('hud_history_empty_hint')}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 Array.from({ length: 10 }, (_, index) => {
@@ -15081,15 +15103,17 @@ export default function App() {
                   <AlertTriangle className="h-5 w-5 shrink-0" />
                   {t('missing_shortcut_title')}
                 </h2>
-                <button
-                  type="button"
-                  aria-label={t('tooltip_close')}
-                  disabled={isRelinkingShortcut}
-                  onClick={() => setMissingShortcut(null)}
-                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button
+                    type="button"
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    disabled={isRelinkingShortcut}
+                    onClick={() => setMissingShortcut(null)}
+                    className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="space-y-4 p-5">
@@ -15114,16 +15138,20 @@ export default function App() {
                   <button
                     type="button"
                     disabled={isRelinkingShortcut}
-                    onClick={() => setMissingShortcut(null)}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-50"
+                    onClick={() => {
+                      deleteApp(missingShortcut.app);
+                      setMissingShortcut(null);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/35 bg-rose-500/15 px-4 py-2.5 text-sm font-medium text-rose-200 transition-colors hover:bg-rose-500/25 disabled:opacity-50 cursor-pointer"
                   >
-                    {t('missing_shortcut_cancel')}
+                    <Trash2 className="h-4 w-4" />
+                    {t('missing_shortcut_delete')}
                   </button>
                   <button
                     type="button"
                     disabled={isRelinkingShortcut}
                     onClick={() => { void handleRelinkShortcut(); }}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.1)] transition-colors hover:bg-cyan-500/25 disabled:cursor-wait disabled:opacity-60"
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.1)] transition-colors hover:bg-cyan-500/25 disabled:cursor-wait disabled:opacity-60 cursor-pointer"
                   >
                     <FolderSearch className="h-4 w-4" />
                     {isRelinkingShortcut ? t('missing_shortcut_locating') : t('missing_shortcut_locate')}

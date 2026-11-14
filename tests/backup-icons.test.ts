@@ -225,3 +225,64 @@ test('parseValidBackupJson rejects 0-byte and malformed files while atomic write
   }
 });
 
+test('custom local wallpapers embed into backups, skip presets/oversized files, and restore across machines', async () => {
+  const tmpDir = makeTempDir('cl-wallpapers-');
+  try {
+    const sourceDir = path.join(tmpDir, 'source');
+    const newCacheDir = path.join(tmpDir, 'new-pc', 'icon-cache');
+    const newWallpaperDir = path.join(tmpDir, 'new-pc', 'wallpapers');
+    fs.mkdirSync(sourceDir, { recursive: true });
+
+    const customWallpaperPath = path.join(sourceDir, 'my-cyber-bg.jpg');
+    const hugeWallpaperPath = path.join(sourceDir, 'too-big.png');
+    const fakeJpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    fs.writeFileSync(customWallpaperPath, fakeJpg);
+    fs.writeFileSync(hugeWallpaperPath, Buffer.alloc(1024, 0xab));
+
+    // Export-shaped payload (nested under settings) + preset should remain ignored
+    const payload = {
+      apps: [],
+      settings: {
+        bgImage: customWallpaperPath,
+        customSlotImage: customWallpaperPath,
+      },
+      bgImage: 'bg_default.jpg',
+    };
+
+    const bundled = bundleEmbeddedBackupIcons(payload, { maxWallpaperBytes: 512 });
+    const embedded = (bundled as Record<string, any>)[EMBEDDED_ICONS_KEY];
+    assert.ok(embedded && typeof embedded === 'object');
+    assert.ok(embedded[customWallpaperPath]?.startsWith('data:image/jpeg;base64,'));
+    assert.equal(embedded['bg_default.jpg'], undefined);
+
+    // Oversized custom wallpaper is skipped cleanly
+    const oversizedBundled = bundleEmbeddedBackupIcons(
+      { bgImage: hugeWallpaperPath },
+      { maxWallpaperBytes: 512 }
+    );
+    assert.equal((oversizedBundled as Record<string, any>)[EMBEDDED_ICONS_KEY], undefined);
+
+    // Browser fallback converts embedded settings wallpaper to data: URLs while preserving bgImage === customSlotImage
+    const browserResolved = resolveEmbeddedIconsInBrowser(JSON.parse(JSON.stringify(bundled)));
+    assert.equal(browserResolved.settings.bgImage, browserResolved.settings.customSlotImage);
+    assert.ok(browserResolved.settings.bgImage.startsWith('data:image/jpeg;base64,'));
+    assert.equal(browserResolved.bgImage, 'bg_default.jpg');
+
+    // Simulate moving to another PC where source file no longer exists
+    fs.rmSync(customWallpaperPath);
+    const restored = await restorePortableBackupIcons(bundled, {
+      iconCacheDir: newCacheDir,
+      wallpaperDir: newWallpaperDir,
+    });
+
+    assert.equal((restored as Record<string, any>)[EMBEDDED_ICONS_KEY], undefined);
+    assert.equal(restored.bgImage, 'bg_default.jpg');
+    assert.equal(restored.settings.bgImage, restored.settings.customSlotImage);
+    assert.ok(restored.settings.bgImage.startsWith(newWallpaperDir));
+    assert.ok(restored.settings.bgImage.endsWith('.jpg'));
+    assert.deepEqual(fs.readFileSync(restored.settings.bgImage), fakeJpg);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+

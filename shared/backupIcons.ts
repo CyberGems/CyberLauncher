@@ -7,10 +7,12 @@ import {
   stripIconUrlQueryAndHash,
   extractIconCacheFileName,
 } from './backupIconsBrowser';
+import { PRESET_IMAGES } from './backgrounds';
 
 export { EMBEDDED_ICONS_KEY, stripIconUrlQueryAndHash, extractIconCacheFileName };
 
 const DEFAULT_MAX_ICON_BYTES = 1024 * 1024; // 1 MB cap per embedded icon
+const DEFAULT_MAX_WALLPAPER_BYTES = 8 * 1024 * 1024; // 8 MB cap per embedded custom wallpaper
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/png': '.png',
@@ -140,15 +142,24 @@ function resolveDiskIconFile(iconRef: string, iconCacheDir?: string): string | n
   return null;
 }
 
+function isPresetOrInlineWallpaper(ref: string): boolean {
+  const stripped = stripIconUrlQueryAndHash(ref);
+  if (!stripped || /^(data:|https?:)/i.test(stripped)) return true;
+  const relName = stripped.replace(/^\.\//, '');
+  if (PRESET_IMAGES.includes(relName)) return true;
+  return !localResourceUrlToFilePath(stripped);
+}
+
 /**
- * Clones a config/export payload and embeds local app & history icons as base64 data URLs
- * inside `_embeddedIcons` so backups restore identically even after cache deletion or PC migration.
+ * Clones a config/export payload and embeds local app icons, history icons, and custom wallpapers
+ * as base64 data URLs inside `_embeddedIcons` so backups restore identically even after cache deletion or PC migration.
  */
 export function bundleEmbeddedBackupIcons<T extends Record<string, any>>(
   configObj: T,
-  options: { iconCacheDir?: string; maxIconBytes?: number } = {}
+  options: { iconCacheDir?: string; maxIconBytes?: number; maxWallpaperBytes?: number } = {}
 ): T & { _embeddedIcons?: Record<string, string> } {
-  const maxBytes = options.maxIconBytes ?? DEFAULT_MAX_ICON_BYTES;
+  const maxIconBytes = options.maxIconBytes ?? DEFAULT_MAX_ICON_BYTES;
+  const maxWallpaperBytes = options.maxWallpaperBytes ?? DEFAULT_MAX_WALLPAPER_BYTES;
   const embedded: Record<string, string> = {};
 
   const existingEmbedded = configObj?.[EMBEDDED_ICONS_KEY];
@@ -160,13 +171,13 @@ export function bundleEmbeddedBackupIcons<T extends Record<string, any>>(
     }
   }
 
-  const collectRef = (ref: unknown) => {
+  const collectRef = (ref: unknown, maxBytes: number, allowCacheLookup: boolean) => {
     if (typeof ref !== 'string') return;
     const stripped = stripIconUrlQueryAndHash(ref);
     if (!stripped || /^(data:|https?:)/i.test(stripped)) return;
     if (embedded[stripped]) return;
 
-    const diskPath = resolveDiskIconFile(stripped, options.iconCacheDir);
+    const diskPath = resolveDiskIconFile(stripped, allowCacheLookup ? options.iconCacheDir : undefined);
     if (!diskPath) return;
 
     try {
@@ -177,14 +188,14 @@ export function bundleEmbeddedBackupIcons<T extends Record<string, any>>(
       const base64 = fs.readFileSync(diskPath).toString('base64');
       embedded[stripped] = `data:${mime};base64,${base64}`;
     } catch {
-      // Skip unreadable icon files gracefully
+      // Skip unreadable files gracefully
     }
   };
 
   if (Array.isArray(configObj.apps)) {
     for (const app of configObj.apps) {
       if (app && typeof app === 'object') {
-        collectRef(app.iconPath);
+        collectRef(app.iconPath, maxIconBytes, true);
       }
     }
   }
@@ -192,9 +203,21 @@ export function bundleEmbeddedBackupIcons<T extends Record<string, any>>(
   if (Array.isArray(configObj.launchHistory)) {
     for (const item of configObj.launchHistory) {
       if (item && typeof item === 'object') {
-        collectRef(item.icon);
+        collectRef(item.icon, maxIconBytes, true);
       }
     }
+  }
+
+  const collectWallpaper = (ref: unknown) => {
+    if (typeof ref !== 'string' || isPresetOrInlineWallpaper(ref)) return;
+    collectRef(ref, maxWallpaperBytes, false);
+  };
+
+  collectWallpaper(configObj.bgImage);
+  collectWallpaper(configObj.customSlotImage);
+  if (configObj.settings && typeof configObj.settings === 'object' && !Array.isArray(configObj.settings)) {
+    collectWallpaper(configObj.settings.bgImage);
+    collectWallpaper(configObj.settings.customSlotImage);
   }
 
   const clone: Record<string, any> = { ...configObj };
@@ -220,6 +243,7 @@ function decodeImageDataUrl(dataUrl: string): { mime: string; buffer: Buffer } |
 
 export interface RestoreBackupIconsOptions {
   iconCacheDir: string;
+  wallpaperDir?: string;
   cacheTimestamp?: number;
   extractFallback?: (app: Record<string, any>) => Promise<string | null>;
 }
@@ -364,6 +388,54 @@ export async function restorePortableBackupIcons<T extends Record<string, any>>(
       }
       return item;
     });
+  }
+
+  const targetWallpaperDir = options.wallpaperDir || path.join(path.dirname(options.iconCacheDir), 'wallpapers');
+  const materializedWallpapers = new Map<string, string>();
+  const resolveOrMaterializeWallpaper = (ref: unknown, seed: string): string | undefined => {
+    if (typeof ref !== 'string') return undefined;
+    const trimmed = ref.trim();
+    if (!trimmed || isPresetOrInlineWallpaper(trimmed)) {
+      return undefined;
+    }
+    const stripped = stripIconUrlQueryAndHash(trimmed);
+    const cached = materializedWallpapers.get(stripped);
+    if (cached) return cached;
+
+    const dataUrl = embedded[stripped] ?? embedded[trimmed];
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+      const decoded = decodeImageDataUrl(dataUrl);
+      if (decoded) {
+        fs.mkdirSync(targetWallpaperDir, { recursive: true });
+        const ext = MIME_TO_EXT[decoded.mime] || '.png';
+        const hash = crypto.createHash('sha1').update((stripped || seed).toLowerCase()).digest('hex').slice(0, 20);
+        const destPath = path.join(targetWallpaperDir, `imported-wallpaper-${hash}${ext}`);
+        writeBufferAtomicSync(destPath, decoded.buffer);
+        materializedWallpapers.set(stripped, destPath);
+        return destPath;
+      }
+    }
+    return undefined;
+  };
+
+  for (const field of ['bgImage', 'customSlotImage'] as const) {
+    const restoredPath = resolveOrMaterializeWallpaper(backupObj[field], field);
+    if (restoredPath) result[field] = restoredPath;
+  }
+
+  if (backupObj.settings && typeof backupObj.settings === 'object' && !Array.isArray(backupObj.settings)) {
+    const nextSettings: Record<string, any> = { ...backupObj.settings };
+    let settingsChanged = false;
+    for (const field of ['bgImage', 'customSlotImage'] as const) {
+      const restoredPath = resolveOrMaterializeWallpaper(nextSettings[field], `settings:${field}`);
+      if (restoredPath) {
+        nextSettings[field] = restoredPath;
+        settingsChanged = true;
+      }
+    }
+    if (settingsChanged) {
+      result.settings = nextSettings;
+    }
   }
 
   return result as T;
