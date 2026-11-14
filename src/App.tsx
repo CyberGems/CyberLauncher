@@ -10,6 +10,19 @@ import {
   toPresetThumbnailUrl,
   toThumbnailUrl,
 } from '../shared/backgrounds';
+import {
+  ALL_CATEGORY_ID,
+  UNCATEGORIZED_ID,
+  getDefaultCategories,
+  getPresetCategoryName,
+  ensureUncategorizedCategory,
+  resolveCategoryDisplayName,
+  doesAppMatchCategory,
+  resolveAppCategoryDisplayName,
+  resolveCategoryStorageValue,
+  type CategoryLang,
+  type CategoryRecord,
+} from '../shared/categories';
 import Tooltip from './Tooltip';
 import CyberTerminal from './CyberTerminal';
 import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
@@ -74,41 +87,21 @@ export const CyberLogo = ({ className = "w-6 h-6", animated = false }: { classNa
 );
 
 // --- MOCK DATA ---
-/** Stable English names are matching keys; UI labels come from cat_* locales. */
-const UNCATEGORIZED_ID = 'uncategorized';
-const UNCATEGORIZED_NAME = 'Uncategorized';
-const UNCATEGORIZED_COLOR = '#71717a';
+const UNCATEGORIZED_NAME = getPresetCategoryName(UNCATEGORIZED_ID, 'en');
 
-const INITIAL_CATEGORIES = [
-  { id: 'all', name: 'All', color: '#a1a1aa' },
-  { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR },
-  { id: 'ai', name: 'AI', color: '#34d399' },
-  { id: 'browsers', name: 'Browsers', color: '#f97316' },
-  { id: 'comm', name: 'Communication', color: '#6366f1' },
-  { id: 'design', name: 'Design', color: '#ef4444' },
-  { id: 'dev', name: 'Development', color: '#38bdf8' },
-  { id: 'ent', name: 'Entertainment', color: '#22c55e' },
-  { id: 'gaming', name: 'Gaming', color: '#d4d4d8' },
-  { id: 'office', name: 'Office', color: '#a78bfa' },
-  { id: 'utils', name: 'Utilities', color: '#60a5fa' },
-];
-
-const ensureUncategorizedCategory = (cats: typeof INITIAL_CATEGORIES) => {
-  if (cats.some(c => c.id === UNCATEGORIZED_ID)) return cats;
-  const allIdx = cats.findIndex(c => c.id === 'all');
-  const insertAt = allIdx >= 0 ? allIdx + 1 : 0;
-  return [
-    ...cats.slice(0, insertAt),
-    { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME, color: UNCATEGORIZED_COLOR },
-    ...cats.slice(insertAt),
-  ];
+const getInitialLanguage = (): CategoryLang => {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('cyber_lang') : null;
+  if (saved === 'es' || saved === 'en') return saved;
+  return typeof navigator !== 'undefined' && navigator.language.startsWith('en') ? 'en' : 'es';
 };
 
-const emptyEditForm = () => ({
+const INITIAL_CATEGORIES: CategoryRecord[] = getDefaultCategories('es');
+
+const emptyEditForm = (defaultCategory: string = UNCATEGORIZED_NAME) => ({
   name: '',
   path: '',
   iconPath: '',
-  category: UNCATEGORIZED_NAME,
+  category: defaultCategory,
   isAdmin: false,
   shortcut: '',
   pinToFavorites: false,
@@ -138,120 +131,126 @@ type LauncherApp = {
   shortcut?: string;
 };
 
-export const getDefaultWindowsApps = (lang: 'es' | 'en' = 'es'): LauncherApp[] => [
-  {
-    id: 1001,
-    name: lang === 'es' ? 'Calculadora' : 'Calculator',
-    path: 'calc.exe',
-    category: 'Utilities',
-    icon: 'Calculator',
-    color: 'text-amber-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1002,
-    name: 'Paint',
-    path: 'mspaint.exe',
-    category: 'Design',
-    icon: 'Palette',
-    color: 'text-pink-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1003,
-    name: lang === 'es' ? 'Configuración de Windows' : 'Windows Settings',
-    path: 'ms-settings:',
-    category: 'Utilities',
-    icon: 'Settings',
-    color: 'text-indigo-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1004,
-    name: lang === 'es' ? 'Explorador de archivos' : 'File Explorer',
-    path: 'explorer.exe',
-    category: 'Utilities',
-    icon: 'Folder',
-    color: 'text-yellow-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1005,
-    name: lang === 'es' ? 'Información del Sistema' : 'System Info',
-    path: 'ms-settings:about',
-    category: 'Utilities',
-    icon: 'Cpu',
-    color: 'text-teal-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1006,
-    name: lang === 'es' ? 'Administrador de tareas' : 'Task Manager',
-    path: 'taskmgr.exe',
-    category: 'Utilities',
-    icon: 'Activity',
-    color: 'text-emerald-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1007,
-    name: lang === 'es' ? 'Aplicaciones instaladas' : 'Installed Apps',
-    path: 'ms-settings:appsfeatures',
-    category: 'Utilities',
-    icon: 'Package',
-    color: 'text-purple-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1008,
-    name: 'PowerShell (Admin)',
-    path: 'powershell.exe',
-    isAdmin: true,
-    category: 'Development',
-    icon: 'Terminal',
-    color: 'text-cyan-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1009,
-    name: lang === 'es' ? 'Símbolo del sistema (Admin)' : 'Command Prompt (Admin)',
-    path: 'cmd.exe',
-    isAdmin: true,
-    category: 'Development',
-    icon: 'TerminalSquare',
-    color: 'text-sky-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1010,
-    name: lang === 'es' ? 'Configuración de Red' : 'Network Settings',
-    path: 'ms-settings:network',
-    category: 'Utilities',
-    icon: 'Wifi',
-    color: 'text-teal-400',
-    usage: 0,
-    isFav: true,
-  },
-  {
-    id: 1011,
-    name: lang === 'es' ? 'Bloc de notas' : 'Notepad',
-    path: 'notepad.exe',
-    category: 'Office',
-    icon: 'FileText',
-    color: 'text-blue-400',
-    usage: 0,
-    isFav: true,
-  },
-];
+export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] => {
+  const catUtils = getPresetCategoryName('utils', lang);
+  const catDesign = getPresetCategoryName('design', lang);
+  const catDev = getPresetCategoryName('dev', lang);
+  const catOffice = getPresetCategoryName('office', lang);
+  return [
+    {
+      id: 1001,
+      name: lang === 'es' ? 'Calculadora' : 'Calculator',
+      path: 'calc.exe',
+      category: catUtils,
+      icon: 'Calculator',
+      color: 'text-amber-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1002,
+      name: 'Paint',
+      path: 'mspaint.exe',
+      category: catDesign,
+      icon: 'Palette',
+      color: 'text-pink-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1003,
+      name: lang === 'es' ? 'Configuración de Windows' : 'Windows Settings',
+      path: 'ms-settings:',
+      category: catUtils,
+      icon: 'Settings',
+      color: 'text-indigo-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1004,
+      name: lang === 'es' ? 'Explorador de archivos' : 'File Explorer',
+      path: 'explorer.exe',
+      category: catUtils,
+      icon: 'Folder',
+      color: 'text-yellow-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1005,
+      name: lang === 'es' ? 'Información del Sistema' : 'System Info',
+      path: 'ms-settings:about',
+      category: catUtils,
+      icon: 'Cpu',
+      color: 'text-teal-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1006,
+      name: lang === 'es' ? 'Administrador de tareas' : 'Task Manager',
+      path: 'taskmgr.exe',
+      category: catUtils,
+      icon: 'Activity',
+      color: 'text-emerald-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1007,
+      name: lang === 'es' ? 'Aplicaciones instaladas' : 'Installed Apps',
+      path: 'ms-settings:appsfeatures',
+      category: catUtils,
+      icon: 'Package',
+      color: 'text-purple-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1008,
+      name: 'PowerShell (Admin)',
+      path: 'powershell.exe',
+      isAdmin: true,
+      category: catDev,
+      icon: 'Terminal',
+      color: 'text-cyan-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1009,
+      name: lang === 'es' ? 'Símbolo del sistema (Admin)' : 'Command Prompt (Admin)',
+      path: 'cmd.exe',
+      isAdmin: true,
+      category: catDev,
+      icon: 'TerminalSquare',
+      color: 'text-sky-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1010,
+      name: lang === 'es' ? 'Configuración de Red' : 'Network Settings',
+      path: 'ms-settings:network',
+      category: catUtils,
+      icon: 'Wifi',
+      color: 'text-teal-400',
+      usage: 0,
+      isFav: true,
+    },
+    {
+      id: 1011,
+      name: lang === 'es' ? 'Bloc de notas' : 'Notepad',
+      path: 'notepad.exe',
+      category: catOffice,
+      icon: 'FileText',
+      color: 'text-blue-400',
+      usage: 0,
+      isFav: true,
+    },
+  ];
+};
 
 export const DEFAULT_TASKBAR_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
 export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
@@ -971,26 +970,6 @@ interface HistoryItem {
   icon?: string;
 }
 
-const getCategoryDisplayName = (categoryName: string, t: any) => {
-  let id = '';
-  if (categoryName === 'Todas' || categoryName === 'All') id = 'all';
-  else if (categoryName === 'Sin Categoría' || categoryName === 'Uncategorized') id = UNCATEGORIZED_ID;
-  else if (categoryName === 'AI') id = 'ai';
-  else if (categoryName === 'Browsers') id = 'browsers';
-  else if (categoryName === 'Communication') id = 'comm';
-  else if (categoryName === 'Design') id = 'design';
-  else if (categoryName === 'Development') id = 'dev';
-  else if (categoryName === 'Entertainment') id = 'ent';
-  else if (categoryName === 'Gaming') id = 'gaming';
-  else if (categoryName === 'Office') id = 'office';
-  else if (categoryName === 'Utilidades' || categoryName === 'Utilities') id = 'utils';
-
-  if (!id) return categoryName;
-  const translationKey = `cat_${id}`;
-  const translated = t(translationKey as TranslationKey);
-  return translated !== translationKey ? translated : categoryName;
-};
-
 interface TaskHistoryItem {
   id: string;
   name: string;
@@ -1018,6 +997,7 @@ const ClockHUD = ({
   setScheduledTasks,
   preselectedAppId,
   onClearPreselectedAppId,
+  getCategoryDisplayName,
   t
 }: { 
   isOpen: boolean; 
@@ -1027,6 +1007,7 @@ const ClockHUD = ({
   setScheduledTasks: React.Dispatch<React.SetStateAction<Array<ScheduledTask>>>;
   preselectedAppId?: string;
   onClearPreselectedAppId?: () => void;
+  getCategoryDisplayName: (catName: string) => string;
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
 }) => {
   const [selectedType, setSelectedType] = useState<'app' | 'command'>('app');
@@ -1493,7 +1474,7 @@ const ClockHUD = ({
                       >
                         <span className={`truncate mr-2 ${!selectedAppId ? 'text-slate-500 italic' : 'text-slate-200 font-medium'}`}>
                           {selectedApp
-                            ? `${selectedApp.name} (${getCategoryDisplayName(selectedApp.category, t)})`
+                            ? `${selectedApp.name} (${getCategoryDisplayName(selectedApp.category)})`
                             : t('hud_clock_select_placeholder')}
                         </span>
                         <ChevronDown className={`w-4 h-4 text-cyan-400 shrink-0 transition-transform duration-200 ${isAppDropdownOpen ? 'rotate-180 text-cyan-300' : ''}`} />
@@ -1541,7 +1522,7 @@ const ClockHUD = ({
                                   >
                                     <span className="truncate mr-2 font-medium">{app.name}</span>
                                     <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                                      {getCategoryDisplayName(app.category, t)}
+                                      {getCategoryDisplayName(app.category)}
                                     </span>
                                   </button>
                                 );
@@ -1994,9 +1975,18 @@ let globalAudioCtx: AudioContext | null = null;
 
 export default function App() {
 
-  const [categories, setCategories] = useState(() => {
+  const [categories, setCategories] = useState<CategoryRecord[]>(() => {
+    const initialLang = getInitialLanguage();
     const saved = localStorage.getItem('categories');
-    return ensureUncategorizedCategory(saved ? JSON.parse(saved) : INITIAL_CATEGORIES);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return ensureUncategorizedCategory(parsed, initialLang);
+        }
+      } catch {}
+    }
+    return ensureUncategorizedCategory(getDefaultCategories(initialLang), initialLang);
   });
   const [apps, setApps] = useState<LauncherApp[]>(() => {
     const saved = localStorage.getItem('apps');
@@ -2006,8 +1996,7 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
-    const initialLang = (localStorage.getItem('cyber_lang') as 'es' | 'en') || (typeof navigator !== 'undefined' && navigator.language.startsWith('es') ? 'es' : 'en');
-    return getDefaultWindowsApps(initialLang);
+    return getDefaultWindowsApps(getInitialLanguage());
   });
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('favoriteIds');
@@ -2367,10 +2356,7 @@ export default function App() {
 
   // Customization State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [language, setLanguage] = useState<'es' | 'en'>(() => {
-    const sysLang = navigator.language.startsWith('en') ? 'en' : 'es';
-    return (localStorage.getItem('cyber_lang') as 'es' | 'en') || sysLang;
-  });
+  const [language, setLanguage] = useState<CategoryLang>(getInitialLanguage);
 
   const t = useCallback((key: TranslationKey, variables?: Record<string, string>) => {
     let text = translations[language]?.[key] || translations['es']?.[key] || String(key);
@@ -3145,7 +3131,7 @@ export default function App() {
         path: editForm.path,
         iconPath: editForm.iconPath,
         icon: Package,
-        category: editForm.category || UNCATEGORIZED_NAME,
+        category: resolveCategoryStorageValue(editForm.category || getUncategorizedStorageName(), categories, language),
         color: 'text-cyan-400',
         isFav: false,
         usage: 0,
@@ -3176,7 +3162,7 @@ export default function App() {
             path: editForm.path,
             // @ts-ignore
             iconPath: editForm.iconPath,
-            category: editForm.category || UNCATEGORIZED_NAME,
+            category: resolveCategoryStorageValue(editForm.category || getUncategorizedStorageName(), categories, language),
             isAdmin: editForm.isAdmin,
             shortcut: editForm.shortcut
           };
@@ -3232,25 +3218,37 @@ export default function App() {
   };
 
   const handleSaveCategory = () => {
-    if (!editingCategory || editingCategory.id === 'all' || editingCategory.id === UNCATEGORIZED_ID) return;
+    if (!editingCategory || editingCategory.id === ALL_CATEGORY_ID || editingCategory.id === UNCATEGORIZED_ID) return;
+    const trimmedName = editCategoryForm.name.trim();
+    if (!trimmedName) return;
     const oldName = editingCategory.name;
-    setCategories(cats => cats.map(c => c.id === editingCategory.id ? { ...c, name: editCategoryForm.name, color: editCategoryForm.color } : c));
-    if (editCategoryForm.name !== oldName) {
-      setApps(apps => apps.map(app => app.category === oldName ? { ...app, category: editCategoryForm.name } : app));
+    setCategories(cats => cats.map(c => c.id === editingCategory.id ? { ...c, name: trimmedName, color: editCategoryForm.color } : c));
+    if (trimmedName !== oldName) {
+      setApps(apps => apps.map(app => (
+        doesAppMatchCategory(app.category, editingCategory) || app.category === oldName
+          ? { ...app, category: trimmedName }
+          : app
+      )));
     }
     setEditingCategory(null);
   };
 
-  const handleConfirmDeleteCategory = (targetCategory: typeof INITIAL_CATEGORIES[0]) => {
-    if (!targetCategory || targetCategory.id === 'all' || targetCategory.id === UNCATEGORIZED_ID) return;
+  const handleConfirmDeleteCategory = (targetCategory: CategoryRecord) => {
+    if (!targetCategory || targetCategory.id === ALL_CATEGORY_ID || targetCategory.id === UNCATEGORIZED_ID) return;
     const deletedName = targetCategory.name;
+    const deletedDisplayName = getCatDisplayName(targetCategory);
+    const uncategorizedStorageName = getUncategorizedStorageName();
     setCategories(cats => cats.filter(c => c.id !== targetCategory.id));
-    setApps(apps => apps.map(app => app.category === deletedName ? { ...app, category: UNCATEGORIZED_NAME } : app));
-    if (activeCategory === targetCategory.id) setActiveCategory('all');
+    setApps(apps => apps.map(app => (
+      doesAppMatchCategory(app.category, targetCategory) || app.category === deletedName
+        ? { ...app, category: uncategorizedStorageName }
+        : app
+    )));
+    if (activeCategory === targetCategory.id) setActiveCategory(ALL_CATEGORY_ID);
     setCategoryToDelete(null);
     setCategoryContextMenu(null);
     setNotification({
-      message: t('category_deleted_notif', { name: deletedName }),
+      message: t('category_deleted_notif', { name: deletedDisplayName }),
       type: 'info'
     });
   };
@@ -4393,7 +4391,7 @@ export default function App() {
         if (source) {
           console.log('CONFIGURACIÓN CENTRALIZADA CARGADA - apps:', source.apps?.length, 'favs:', source.favoriteIds?.length, 'taskbar:', source.taskbarAppIds?.length);
           if (source.apps) { console.log('  apps names:', source.apps.map((a: any) => a.name).join(', ')); setApps(source.apps); }
-          if (source.categories) setCategories(ensureUncategorizedCategory(source.categories));
+          if (source.categories) setCategories(ensureUncategorizedCategory(source.categories, language));
           if (source.favoriteIds) setFavoriteIds(source.favoriteIds);
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
           // Datos de UI pueden variar entre versiones sin problema
@@ -4876,7 +4874,7 @@ export default function App() {
         localStorage.setItem('apps', JSON.stringify(config.apps));
       }
       if (config.categories) {
-        const cats = ensureUncategorizedCategory(config.categories);
+        const cats = ensureUncategorizedCategory(config.categories, language);
         setCategories(cats);
         localStorage.setItem('categories', JSON.stringify(cats));
       }
@@ -5170,20 +5168,60 @@ export default function App() {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Auto-hide scrollbar: show on any mouse move + on scroll, hide on cursor stop
+  // Auto-hide scrollbars independently per container on hover-move and scroll
   useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    let mouseTimer: number;
-    const onMouseMove = () => {
-      root.classList.add('mouse-active');
-      clearTimeout(mouseTimer);
-      mouseTimer = window.setTimeout(() => root.classList.remove('mouse-active'), 900);
-    };
-    root.addEventListener('mousemove', onMouseMove);
+    const hoverTimeouts = new Map<HTMLElement, number>();
     const scrollTimeouts = new Map<HTMLElement, number>();
+    let activeHoverEl: HTMLElement | null = null;
+
+    const clearHover = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.classList.remove('scrollbar-active');
+      const existing = hoverTimeouts.get(el);
+      if (existing) {
+        clearTimeout(existing);
+        hoverTimeouts.delete(el);
+      }
+      if (activeHoverEl === el) activeHoverEl = null;
+    };
+
+    const findScrollableContainer = (target: EventTarget | null): HTMLElement | null => {
+      let node = target instanceof HTMLElement ? target : (target instanceof Node ? target.parentElement : null);
+      while (node) {
+        if (
+          node.classList.contains('custom-scrollbar') &&
+          (node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1)
+        ) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      const targetEl = findScrollableContainer(e.target);
+      if (activeHoverEl && activeHoverEl !== targetEl) {
+        clearHover(activeHoverEl);
+      }
+      if (!targetEl) return;
+
+      activeHoverEl = targetEl;
+      targetEl.classList.add('scrollbar-active');
+      const existing = hoverTimeouts.get(targetEl);
+      if (existing) clearTimeout(existing);
+      hoverTimeouts.set(targetEl, window.setTimeout(() => {
+        clearHover(targetEl);
+      }, 900));
+    };
+
+    const onMouseLeaveWindow = () => {
+      clearHover(activeHoverEl);
+    };
+
     const onScroll = (e: Event) => {
-      const el = e.currentTarget as HTMLElement;
+      const el = e.target;
+      if (!(el instanceof HTMLElement) || !el.classList.contains('custom-scrollbar')) return;
       el.classList.add('scrolling');
       const existing = scrollTimeouts.get(el);
       if (existing) clearTimeout(existing);
@@ -5192,13 +5230,17 @@ export default function App() {
         scrollTimeouts.delete(el);
       }, 800));
     };
-    const scrollEls = document.querySelectorAll<HTMLElement>('.custom-scrollbar');
-    scrollEls.forEach(el => el.addEventListener('scroll', onScroll));
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    document.addEventListener('mouseleave', onMouseLeaveWindow);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
-      root.removeEventListener('mousemove', onMouseMove);
-      clearTimeout(mouseTimer);
-      scrollEls.forEach(el => el.removeEventListener('scroll', onScroll));
+      window.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseleave', onMouseLeaveWindow);
+      window.removeEventListener('scroll', onScroll, true);
+      hoverTimeouts.forEach(t => clearTimeout(t));
       scrollTimeouts.forEach(t => clearTimeout(t));
+      if (activeHoverEl) activeHoverEl.classList.remove('scrollbar-active');
     };
   }, []);
 
@@ -5555,7 +5597,7 @@ export default function App() {
     }
 
     if (includeAppsAndData) {
-      setCategories(ensureUncategorizedCategory(INITIAL_CATEGORIES));
+      setCategories(ensureUncategorizedCategory(getDefaultCategories(sysLang), sysLang));
       setApps(getDefaultWindowsApps(sysLang));
       setFavoriteIds([...DEFAULT_FAVORITE_APP_IDS]);
       setTaskbarAppIds([...DEFAULT_TASKBAR_APP_IDS]);
@@ -6103,21 +6145,27 @@ export default function App() {
     window.electronAPI!.getMonitors().then(setMonitors).catch(() => {});
   }, [isSettingsOpen]);
 
-  const getCatDisplayName = useCallback((cat: { id: string; name: string }) => {
-    const translationKey = `cat_${cat.id}` as TranslationKey;
-    const translated = t(translationKey);
-    return translated !== translationKey ? translated : cat.name;
+  const getCatDisplayName = useCallback((cat: Pick<CategoryRecord, 'id' | 'name'>) => {
+    return resolveCategoryDisplayName(cat, t);
   }, [t]);
+
+  const getAppCategoryLabel = useCallback((rawCategoryName: string) => {
+    return resolveAppCategoryDisplayName(rawCategoryName, categories, t);
+  }, [categories, t]);
+
+  const getUncategorizedStorageName = useCallback(() => {
+    return categories.find(c => c.id === UNCATEGORIZED_ID)?.name || getPresetCategoryName(UNCATEGORIZED_ID, language);
+  }, [categories, language]);
 
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
 
     return categories.map(cat => ({
       ...cat,
-      count: cat.id === 'all' ? apps.length : apps.filter(app => app.category === cat.name).length
+      count: cat.id === ALL_CATEGORY_ID ? apps.length : apps.filter(app => doesAppMatchCategory(app.category, cat)).length
     })).sort((a, b) => {
-      if (a.id === 'all') return -1;
-      if (b.id === 'all') return 1;
+      if (a.id === ALL_CATEGORY_ID) return -1;
+      if (b.id === ALL_CATEGORY_ID) return 1;
       if (a.id === UNCATEGORIZED_ID) return 1;
       if (b.id === UNCATEGORIZED_ID) return -1;
       const nameA = getCatDisplayName(a);
@@ -6128,8 +6176,9 @@ export default function App() {
 
   const filteredApps = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
+    const selectedCategory = activeCategory === ALL_CATEGORY_ID ? null : categories.find(c => c.id === activeCategory);
     return apps.filter(app => {
-      const matchesCategory = activeCategory === 'all' || categories.find(c => c.id === activeCategory)?.name === app.category;
+      const matchesCategory = activeCategory === ALL_CATEGORY_ID || (selectedCategory ? doesAppMatchCategory(app.category, selectedCategory) : false);
       const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
@@ -6250,7 +6299,7 @@ export default function App() {
           label: t('cyberbot_setup_add_app'),
           onClick: () => {
             setOpenedViaDrop(false);
-            setEditForm(emptyEditForm());
+            setEditForm(emptyEditForm(getUncategorizedStorageName()));
             setIsResolvingIcon(false);
             setIsAddingApp(true);
           },
@@ -6381,7 +6430,7 @@ export default function App() {
         icon: <Plus className="w-4 h-4 text-cyan-400" />,
         onSelect: () => {
           setOpenedViaDrop(false);
-          setEditForm(emptyEditForm());
+          setEditForm(emptyEditForm(getUncategorizedStorageName()));
           setIsResolvingIcon(false);
           setIsAddingApp(true);
         },
@@ -6750,7 +6799,7 @@ export default function App() {
         id: `app-${app.id}`,
         group: t('cmd_palette_group_apps'),
         label: app.name,
-        description: app.category ? categories.find(c => c.id === app.category)?.name : undefined,
+        description: app.category ? getAppCategoryLabel(app.category) : undefined,
         keywords: `${app.name} ${app.path || ''} ${app.arguments || ''}`,
         icon: <AppIcon app={app} className="w-5 h-5 rounded object-contain shrink-0" />,
         onSelect: () => {
@@ -6766,6 +6815,7 @@ export default function App() {
     categories,
     categoriesWithCount,
     getCatDisplayName,
+    getAppCategoryLabel,
     handleRefreshAllIcons,
     consoleCwd,
     handleBackupNow,
@@ -7708,11 +7758,12 @@ export default function App() {
       }
       
       if (filePath && isElectron) {
+        const defaultCat = getUncategorizedStorageName();
         setEditForm({
           name: file.name.replace(/\.[^/.]+$/, '') || file.name,
           path: filePath,
           iconPath: '',
-          category: UNCATEGORIZED_NAME,
+          category: defaultCat,
           isAdmin: false,
           shortcut: '',
           pinToFavorites: false,
@@ -7729,7 +7780,7 @@ export default function App() {
               name: resolved.name,
               path: resolved.path,
               iconPath: resolved.iconPath || '',
-              category: UNCATEGORIZED_NAME,
+              category: defaultCat,
               isAdmin: false,
               shortcut: '',
               pinToFavorites: false,
@@ -7748,7 +7799,7 @@ export default function App() {
           name: fileName,
           path: filePath || `C:\\Program Files\\${fileName}\\${file.name}`,
           iconPath: '',
-          category: UNCATEGORIZED_NAME,
+          category: getUncategorizedStorageName(),
           isAdmin: false,
           shortcut: '',
           pinToFavorites: false,
@@ -7979,7 +8030,7 @@ export default function App() {
             const isCatContextActive = categoryContextMenu?.category?.id === cat.id;
             const isCatActive = activeCategory === cat.id;
             const hotkey = isUncategorized ? 'Alt+0' : (index < 9 ? `Alt+${index + 1}` : null);
-            const displayName = t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name;
+            const displayName = getCatDisplayName(cat);
 
             if (leftSidebarCollapsed) {
               return (
@@ -8310,7 +8361,7 @@ export default function App() {
                   e.preventDefault();
                   e.stopPropagation();
                   setOpenedViaDrop(false);
-                  setEditForm(emptyEditForm());
+                  setEditForm(emptyEditForm(getUncategorizedStorageName()));
                   setIsResolvingIcon(false);
                   setIsAddingApp(true);
                   return;
@@ -8955,7 +9006,7 @@ export default function App() {
                           <span className="flex flex-col items-center gap-0.5">
                             <span>{app.name}</span>
                             <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(148,163,184,0.95)' }}>
-                              {getCategoryDisplayName(app.category, t)}
+                              {getAppCategoryLabel(app.category)}
                             </span>
                           </span>
                         }
@@ -9006,7 +9057,7 @@ export default function App() {
                   : (() => {
                       const cat = categories.find(c => c.id === activeCategory);
                       if (!cat) return '';
-                      return getCategoryDisplayName(cat.name, t).toUpperCase();
+                      return getCatDisplayName(cat).toUpperCase();
                     })()}
               </h3>
               
@@ -9076,7 +9127,7 @@ export default function App() {
                   <button 
                     onClick={() => {
                       setOpenedViaDrop(false);
-                      setEditForm(emptyEditForm());
+                      setEditForm(emptyEditForm(getUncategorizedStorageName()));
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
                     }}
@@ -9240,7 +9291,7 @@ export default function App() {
                               className="text-slate-400 truncate w-full cursor-pointer"
                               style={{ fontSize: `${10 * (cardScale / 100)}px` }}
                             >
-                              {getCategoryDisplayName(app.category, t)}
+                              {getAppCategoryLabel(app.category)}
                             </p>
                           </div>
                         </div>
@@ -9270,7 +9321,7 @@ export default function App() {
                               className="text-slate-400 truncate cursor-pointer"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
-                              {getCategoryDisplayName(app.category, t)}
+                              {getAppCategoryLabel(app.category)}
                             </p>
                           </div>
                         </div>
@@ -9303,7 +9354,7 @@ export default function App() {
                     type="button"
                     onClick={() => {
                       setOpenedViaDrop(false);
-                      setEditForm(emptyEditForm());
+                      setEditForm(emptyEditForm(getUncategorizedStorageName()));
                       setIsResolvingIcon(false);
                       setIsAddingApp(true);
                     }}
@@ -9959,7 +10010,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setOpenedViaDrop(false);
-                setEditForm({ ...emptyEditForm(), pinToTaskbar: true });
+                setEditForm({ ...emptyEditForm(getUncategorizedStorageName()), pinToTaskbar: true });
                 setIsResolvingIcon(false);
                 setIsAddingApp(true);
               }}
@@ -10948,19 +10999,19 @@ export default function App() {
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_category')}</label>
                     <div className="relative">
                       <select
-                        value={editForm.category}
+                        value={resolveCategoryStorageValue(editForm.category, categories, language)}
                         onChange={(e) => setEditForm(prev => ({...prev, category: e.target.value}))}
                         className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors appearance-none"
                       >
-                        {categories.filter(c => c.id !== 'all').sort((a, b) => {
+                        {categories.filter(c => c.id !== ALL_CATEGORY_ID).sort((a, b) => {
                           if (a.id === UNCATEGORIZED_ID) return -1;
                           if (b.id === UNCATEGORIZED_ID) return 1;
-                          const nameA = t(`cat_${a.id}` as TranslationKey) !== `cat_${a.id}` ? t(`cat_${a.id}` as TranslationKey) : a.name;
-                          const nameB = t(`cat_${b.id}` as TranslationKey) !== `cat_${b.id}` ? t(`cat_${b.id}` as TranslationKey) : b.name;
+                          const nameA = getCatDisplayName(a);
+                          const nameB = getCatDisplayName(b);
                           return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
                         }).map(cat => (
                           <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
-                            {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
+                            {getCatDisplayName(cat)}
                           </option>
                         ))}
                       </select>
@@ -13251,11 +13302,11 @@ export default function App() {
                                       {t('uwp_added_label')}
                                     </span>
                                   ) : (
-                                    <button
-                                      onClick={() => {
-                                        setImportingUwpApp(app);
-                                        setUwpImportCategory(categories.find(c => c.id === UNCATEGORIZED_ID)?.name || UNCATEGORIZED_NAME);
-                                      }}
+                                      <button
+                                        onClick={() => {
+                                          setImportingUwpApp(app);
+                                          setUwpImportCategory(getUncategorizedStorageName());
+                                        }}
                                       className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] cursor-pointer"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
@@ -13294,19 +13345,19 @@ export default function App() {
                             <div className="space-y-2">
                               <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('uwp_confirm_category')}</label>
                               <select
-                                value={uwpImportCategory}
+                                value={resolveCategoryStorageValue(uwpImportCategory, categories, language)}
                                 onChange={(e) => setUwpImportCategory(e.target.value)}
                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/40"
                               >
-                                {categories.filter(c => c.id !== 'all').sort((a, b) => {
+                                {categories.filter(c => c.id !== ALL_CATEGORY_ID).sort((a, b) => {
                                   if (a.id === UNCATEGORIZED_ID) return -1;
                                   if (b.id === UNCATEGORIZED_ID) return 1;
-                                  const nameA = t(`cat_${a.id}` as TranslationKey) !== `cat_${a.id}` ? t(`cat_${a.id}` as TranslationKey) : a.name;
-                                  const nameB = t(`cat_${b.id}` as TranslationKey) !== `cat_${b.id}` ? t(`cat_${b.id}` as TranslationKey) : b.name;
+                                  const nameA = getCatDisplayName(a);
+                                  const nameB = getCatDisplayName(b);
                                   return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
                                 }).map(cat => (
                                   <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
-                                    {t(`cat_${cat.id}` as TranslationKey) !== `cat_${cat.id}` ? t(`cat_${cat.id}` as TranslationKey) : cat.name}
+                                    {getCatDisplayName(cat)}
                                   </option>
                                 ))}
                               </select>
@@ -13867,7 +13918,7 @@ export default function App() {
                        name: contextMenu.app!.name,
                        path: (contextMenu.app as any).path || '',
                        iconPath: (contextMenu.app as any).iconPath || '',
-                       category: contextMenu.app!.category,
+                       category: resolveCategoryStorageValue(contextMenu.app!.category, categories, language),
                        isAdmin: !!(contextMenu.app as any).isAdmin,
                        shortcut: (contextMenu.app as any).shortcut || '',
                        pinToFavorites: favoriteIds.includes(contextMenu.app!.id),
@@ -14181,9 +14232,7 @@ export default function App() {
                 }}
               />
               <span className="text-xs font-semibold text-slate-300 truncate">
-                {t(`cat_${categoryContextMenu.category.id}` as TranslationKey) !== `cat_${categoryContextMenu.category.id}` 
-                  ? t(`cat_${categoryContextMenu.category.id}` as TranslationKey) 
-                  : categoryContextMenu.category.name}
+                {getCatDisplayName(categoryContextMenu.category)}
               </span>
             </div>
 
@@ -14191,7 +14240,7 @@ export default function App() {
               onClick={() => {
                 const cat = categoryContextMenu.category;
                 setCategoryContextMenu(null);
-                setEditCategoryForm({ name: cat.name, color: cat.color });
+                setEditCategoryForm({ name: getCatDisplayName(cat), color: cat.color });
                 setEditingCategory(cat);
               }}
               className="w-full text-left px-3.5 py-2 hover:bg-white/10 truncate transition-colors flex items-center justify-between text-slate-200 cursor-pointer"
@@ -14375,9 +14424,7 @@ export default function App() {
               <div className="p-6 space-y-4">
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {t('confirm_delete_category_desc', { 
-                    name: t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
-                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
-                      : categoryToDelete.name 
+                    name: getCatDisplayName(categoryToDelete)
                   })}
                 </p>
 
@@ -14390,9 +14437,7 @@ export default function App() {
                     }} 
                   />
                   <span className="text-sm font-semibold text-white truncate">
-                    {t(`cat_${categoryToDelete.id}` as TranslationKey) !== `cat_${categoryToDelete.id}` 
-                      ? t(`cat_${categoryToDelete.id}` as TranslationKey) 
-                      : categoryToDelete.name}
+                    {getCatDisplayName(categoryToDelete)}
                   </span>
                 </div>
 
@@ -15240,7 +15285,7 @@ export default function App() {
             }}
             onAddNewApp={(prefillName) => {
               setOpenedViaDrop(false);
-              const form = emptyEditForm();
+              const form = emptyEditForm(getUncategorizedStorageName());
               if (prefillName) {
                 form.name = prefillName;
               }
@@ -15323,6 +15368,7 @@ export default function App() {
         setScheduledTasks={setScheduledTasks}
         preselectedAppId={schedulerPreselectedAppId}
         onClearPreselectedAppId={() => setSchedulerPreselectedAppId('')}
+        getCategoryDisplayName={getAppCategoryLabel}
         t={t}
       />
 
@@ -15350,7 +15396,7 @@ export default function App() {
           scrollbar-color: transparent transparent;
           transition: scrollbar-color 0.3s ease;
         }
-        .mouse-active .custom-scrollbar,
+        .custom-scrollbar.scrollbar-active,
         .custom-scrollbar.scrolling {
           scrollbar-color: rgba(34, 211, 238, 0.45) rgba(15, 23, 42, 0.15);
         }
@@ -15365,7 +15411,7 @@ export default function App() {
           margin: 6px 0;
           transition: background 0.3s ease;
         }
-        .mouse-active .custom-scrollbar::-webkit-scrollbar-track,
+        .custom-scrollbar.scrollbar-active::-webkit-scrollbar-track,
         .custom-scrollbar.scrolling::-webkit-scrollbar-track {
           background: rgba(15, 23, 42, 0.25);
           box-shadow: inset 0 0 4px rgba(34, 211, 238, 0.05);
@@ -15376,7 +15422,7 @@ export default function App() {
           border: 1px solid transparent;
           transition: all 0.3s ease;
         }
-        .mouse-active .custom-scrollbar::-webkit-scrollbar-thumb,
+        .custom-scrollbar.scrollbar-active::-webkit-scrollbar-thumb,
         .custom-scrollbar.scrolling::-webkit-scrollbar-thumb {
           background: linear-gradient(180deg, #22d3ee 0%, #818cf8 50%, #e879f9 100%);
           border: 1px solid rgba(34, 211, 238, 0.3);

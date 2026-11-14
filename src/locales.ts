@@ -440,7 +440,7 @@ export const translations = {
     cat_dev: "Desarrollo",
     cat_ent: "Entretenimiento",
     cat_gaming: "Juegos",
-    cat_office: "Office",
+    cat_office: "Oficina",
     cat_utils: "Utilidades",
     apps_empty_title: "Aún no hay aplicaciones",
     apps_empty_hint: "Añade accesos a tus programas, archivos o URLs para empezar.",

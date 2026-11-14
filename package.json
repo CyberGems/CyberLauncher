@@ -21,6 +21,7 @@
     "test:cybermanager": "node --import tsx --test tests/cybermanager-recommendation.test.ts",
     "test:backup": "node --import tsx --test tests/backup.test.ts",
     "test:assets": "node --import tsx --test tests/preset-backgrounds.test.ts",
+    "test:categories": "node --import tsx --test tests/categories.test.ts",
     "icons": "node scripts/generate-icons.mjs",
     "installer-graphics": "node scripts/generate-installer-graphics.mjs",
     "build:store-launcher": "node scripts/build-store-launcher.mjs",
