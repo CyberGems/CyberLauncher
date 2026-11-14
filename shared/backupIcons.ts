@@ -441,3 +441,49 @@ export async function restorePortableBackupIcons<T extends Record<string, any>>(
   return result as T;
 }
 
+export interface PruneWallpapersOptions {
+  wallpaperDir: string;
+  referencedPaths: Array<string | null | undefined>;
+}
+
+/**
+ * Deletes orphaned `imported-wallpaper-*` files inside `wallpaperDir` that are no longer referenced
+ * by the live wallpaper configuration (`bgImage` / `customSlotImage`). Leaves manually placed files intact.
+ */
+export function pruneOrphanWallpapers(options: PruneWallpapersOptions): number {
+  const { wallpaperDir, referencedPaths } = options;
+  if (!wallpaperDir || !fs.existsSync(wallpaperDir)) return 0;
+
+  const activeResolved = new Set<string>();
+  for (const ref of referencedPaths) {
+    if (typeof ref !== 'string') continue;
+    const diskPath = localResourceUrlToFilePath(ref);
+    if (diskPath) {
+      activeResolved.add(path.resolve(diskPath).toLowerCase());
+    }
+  }
+
+  let removed = 0;
+  try {
+    const entries = fs.readdirSync(wallpaperDir);
+    for (const entry of entries) {
+      if (!entry.startsWith('imported-wallpaper-')) continue;
+      const fullPath = path.join(wallpaperDir, entry);
+      try {
+        if (!fs.statSync(fullPath).isFile()) continue;
+        const normalized = path.resolve(fullPath).toLowerCase();
+        if (!activeResolved.has(normalized)) {
+          fs.unlinkSync(fullPath);
+          removed++;
+        }
+      } catch {
+        // Ignore individual locked or missing file errors
+      }
+    }
+  } catch {
+    return removed;
+  }
+
+  return removed;
+}
+

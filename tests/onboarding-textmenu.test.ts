@@ -56,6 +56,7 @@ test('OnboardingModal renders localized welcome copy, 5 starter categories, and 
         isOpen: true,
         language: lang,
         initialName: lang === 'en' ? 'Alex' : '',
+        initialCyberBotEnabled: true,
         logo: React.createElement('img', { src: './icon.png', alt: 'CyberLauncher' }),
         t,
         onSelectLanguage: () => {},
@@ -64,12 +65,30 @@ test('OnboardingModal renders localized welcome copy, 5 starter categories, and 
     );
 
     assert.ok(html.includes(translations[lang].onboarding_title));
+    assert.ok(html.includes(translations[lang].onboarding_assistant_label));
     assert.ok(html.includes(translations[lang].onboarding_skip));
     assert.ok(html.includes(translations[lang].onboarding_start));
+    assert.ok(html.includes('role="switch"'));
     assert.ok(html.includes('id="onboarding-cyberbot-name"'));
     for (const preset of BASIC_CATEGORY_PRESETS) {
       assert.ok(html.includes(preset.names[lang]), `Missing preset ${preset.names[lang]}`);
     }
+
+    const botDisabledHtml = renderToStaticMarkup(
+      React.createElement(OnboardingModal, {
+        isOpen: true,
+        language: lang,
+        initialName: '',
+        initialCyberBotEnabled: false,
+        logo: React.createElement('img', { src: './icon.png', alt: 'CyberLauncher' }),
+        t,
+        onSelectLanguage: () => {},
+        onComplete: () => {},
+      })
+    );
+    assert.ok(botDisabledHtml.includes(translations[lang].onboarding_assistant_label));
+    assert.ok(botDisabledHtml.includes('aria-checked="false"'));
+    assert.equal(botDisabledHtml.includes('id="onboarding-cyberbot-name"'), false);
   }
 
   const closedHtml = renderToStaticMarkup(

@@ -125,6 +125,15 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const greetedRef = useRef(false);
 
   // Persist settings
+  const updateEnabled = useCallback((next: boolean) => {
+    setEnabled(next);
+    try {
+      localStorage.setItem('cyberbot_enabled', String(next));
+    } catch {
+      // ignore storage restrictions
+    }
+  }, []);
+
   const toggleEnabled = useCallback(() => {
     setEnabled(prev => {
       const next = !prev;
@@ -439,6 +448,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
 
   return {
     enabled,
+    updateEnabled,
     toggleEnabled,
     position,
     updatePosition,

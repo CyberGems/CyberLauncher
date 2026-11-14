@@ -29,6 +29,7 @@ import {
 import {
   bundleEmbeddedBackupIcons,
   restorePortableBackupIcons,
+  pruneOrphanWallpapers,
   parseValidBackupJson,
   writeFileAtomicSync,
   writeFileAtomic,
@@ -4450,7 +4451,7 @@ foreach (\$app in \$startApps) {
         await Promise.all(workers);
       }
 
-      // Limpieza de iconos huérfanos en icon-cache (solo en refresco manual forzado)
+      // Limpieza de iconos huérfanos en icon-cache y fondos importados huérfanos (solo en refresco manual forzado)
       let cleanedCount = 0;
       if (force) {
         try {
@@ -4464,6 +4465,13 @@ foreach (\$app in \$startApps) {
               }
             }
           }
+          const cfg = fs.existsSync(CONFIG_FILE)
+            ? parseValidBackupJson(await fs.promises.readFile(CONFIG_FILE, 'utf-8'))
+            : null;
+          cleanedCount += pruneOrphanWallpapers({
+            wallpaperDir: getWallpapersDir(),
+            referencedPaths: [cfg?.bgImage, cfg?.customSlotImage, cfg?.settings?.bgImage, cfg?.settings?.customSlotImage],
+          });
         } catch (cleanErr) {
           console.warn('[ICON] Error cleaning orphaned icon cache:', cleanErr);
         }
@@ -4613,6 +4621,16 @@ foreach (\$app in \$startApps) {
         return { success: false, error: 'Backup file is empty or corrupted' };
       }
       await writeFileAtomic(CONFIG_FILE, restoredJson);
+      const parsedRestored = parseValidBackupJson(restoredJson);
+      pruneOrphanWallpapers({
+        wallpaperDir: getWallpapersDir(),
+        referencedPaths: [
+          parsedRestored?.bgImage,
+          parsedRestored?.customSlotImage,
+          parsedRestored?.settings?.bgImage,
+          parsedRestored?.settings?.customSlotImage,
+        ],
+      });
       return { success: true, content: restoredJson };
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) };

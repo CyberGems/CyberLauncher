@@ -7,6 +7,7 @@ import {
   EMBEDDED_ICONS_KEY,
   bundleEmbeddedBackupIcons,
   restorePortableBackupIcons,
+  pruneOrphanWallpapers,
   parseValidBackupJson,
   writeFileAtomicSync,
   writeFileAtomic,
@@ -281,6 +282,30 @@ test('custom local wallpapers embed into backups, skip presets/oversized files, 
     assert.ok(restored.settings.bgImage.startsWith(newWallpaperDir));
     assert.ok(restored.settings.bgImage.endsWith('.jpg'));
     assert.deepEqual(fs.readFileSync(restored.settings.bgImage), fakeJpg);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('pruneOrphanWallpapers deletes unused imported wallpapers while keeping active references and user files', () => {
+  const tmpDir = makeTempDir('cl-prune-wp-');
+  try {
+    const activeImported = path.join(tmpDir, 'imported-wallpaper-1111aaaa.jpg');
+    const orphanImported = path.join(tmpDir, 'imported-wallpaper-2222bbbb.png');
+    const manualUserFile = path.join(tmpDir, 'my-personal-bg.jpg');
+    fs.writeFileSync(activeImported, 'active');
+    fs.writeFileSync(orphanImported, 'orphan');
+    fs.writeFileSync(manualUserFile, 'manual');
+
+    const removed = pruneOrphanWallpapers({
+      wallpaperDir: tmpDir,
+      referencedPaths: [activeImported, 'bg_default.jpg', null],
+    });
+
+    assert.equal(removed, 1);
+    assert.equal(fs.existsSync(activeImported), true);
+    assert.equal(fs.existsSync(orphanImported), false);
+    assert.equal(fs.existsSync(manualUserFile), true);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Globe, Sparkles, Bot, Layers } from 'lucide-react';
+import { Globe, Sparkles, Bot, BotOff, Layers } from 'lucide-react';
 import { BASIC_CATEGORY_PRESETS, type CategoryLang } from '../../shared/categories';
 import { CYBERBOT_NAME_MAX_LENGTH, normalizeCyberBotName } from './companion/cyberBotName';
 import { EnterKeyBadge, EscKeyBadge } from '../KeyBadge';
@@ -10,32 +10,41 @@ interface OnboardingModalProps {
   isOpen: boolean;
   language: CategoryLang;
   initialName: string;
+  initialCyberBotEnabled?: boolean;
   logo: React.ReactNode;
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
   onSelectLanguage: (lang: CategoryLang) => void;
-  onComplete: (result: { language: CategoryLang; preferredName: string; skipped: boolean }) => void;
+  onComplete: (result: {
+    language: CategoryLang;
+    cyberBotEnabled: boolean;
+    preferredName: string;
+    skipped: boolean;
+  }) => void;
 }
 
 /**
  * First-run and full-reset welcome dialog to choose language, localize starter categories,
- * and optionally set a preferred name for CyberBot.
+ * optionally enable CyberBot Assistant, and set an optional preferred name.
  */
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   language,
   initialName,
+  initialCyberBotEnabled = true,
   logo,
   t,
   onSelectLanguage,
   onComplete,
 }) => {
+  const [assistantEnabled, setAssistantEnabled] = useState(initialCyberBotEnabled);
   const [nameDraft, setNameDraft] = useState(initialName);
 
   useEffect(() => {
     if (isOpen) {
+      setAssistantEnabled(initialCyberBotEnabled);
       setNameDraft(initialName);
     }
-  }, [isOpen, initialName]);
+  }, [isOpen, initialName, initialCyberBotEnabled]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -43,18 +52,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        onComplete({ language, preferredName: '', skipped: true });
+        onComplete({
+          language,
+          cyberBotEnabled: assistantEnabled,
+          preferredName: '',
+          skipped: true,
+        });
       }
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, language, onComplete]);
+  }, [isOpen, language, assistantEnabled, onComplete]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onComplete({
       language,
-      preferredName: normalizeCyberBotName(nameDraft),
+      cyberBotEnabled: assistantEnabled,
+      preferredName: assistantEnabled ? normalizeCyberBotName(nameDraft) : '',
       skipped: false,
     });
   };
@@ -175,30 +190,79 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 </div>
               </div>
 
-              {/* Optional CyberBot Preferred Name */}
-              <div className="space-y-2">
-                <label
-                  htmlFor="onboarding-cyberbot-name"
-                  className="flex items-center gap-2 text-xs font-cyber font-bold tracking-wider uppercase text-slate-200"
-                >
-                  <Bot className="w-4 h-4 text-cyan-400" />
-                  <span>{t('onboarding_name_label')}</span>
-                  <span className="text-[10px] font-sans font-normal normal-case text-slate-400">
-                    ({t('onboarding_optional')})
-                  </span>
-                </label>
-                <input
-                  id="onboarding-cyberbot-name"
-                  type="text"
-                  value={nameDraft}
-                  maxLength={CYBERBOT_NAME_MAX_LENGTH}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  placeholder={t('onboarding_name_placeholder')}
-                  className="w-full rounded-xl bg-black/35 border border-white/15 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/40 transition-all"
-                />
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  {t('onboarding_name_desc')}
-                </p>
+              {/* Optional CyberBot Assistant card & preferred name */}
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3.5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className={`mt-0.5 p-1.5 rounded-lg border shrink-0 ${
+                      assistantEnabled
+                        ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
+                        : 'bg-white/[0.04] border-white/10 text-slate-500'
+                    }`}>
+                      {assistantEnabled ? <Bot className="w-4 h-4" /> : <BotOff className="w-4 h-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-cyber font-bold tracking-wider uppercase text-slate-200">
+                          {t('onboarding_assistant_label')}
+                        </span>
+                        <span className="text-[10px] font-sans font-normal text-slate-400">
+                          ({t('onboarding_optional')})
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                        {t('onboarding_assistant_desc')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={assistantEnabled}
+                    aria-label={t('onboarding_assistant_label')}
+                    onClick={() => setAssistantEnabled((prev) => !prev)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 mt-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
+                      assistantEnabled ? 'bg-cyan-500' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
+                        assistantEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          assistantEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
+                        }`}
+                      />
+                    </span>
+                  </button>
+                </div>
+
+                {assistantEnabled && (
+                  <div className="pt-2.5 border-t border-white/[0.07] space-y-2">
+                    <label
+                      htmlFor="onboarding-cyberbot-name"
+                      className="block text-[11px] font-medium text-slate-300"
+                    >
+                      {t('onboarding_name_label')}{' '}
+                      <span className="text-[10px] text-slate-500">({t('onboarding_optional')})</span>
+                    </label>
+                    <input
+                      id="onboarding-cyberbot-name"
+                      type="text"
+                      value={nameDraft}
+                      maxLength={CYBERBOT_NAME_MAX_LENGTH}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      placeholder={t('onboarding_name_placeholder')}
+                      className="w-full rounded-xl bg-black/35 border border-white/15 px-3.5 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-400/40 transition-all"
+                    />
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      {t('onboarding_name_desc')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -206,7 +270,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="px-6 py-4 border-t border-white/10 bg-black/30 flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => onComplete({ language, preferredName: '', skipped: true })}
+                onClick={() =>
+                  onComplete({
+                    language,
+                    cyberBotEnabled: assistantEnabled,
+                    preferredName: '',
+                    skipped: true,
+                  })
+                }
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/10 text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
                 <span>{t('onboarding_skip')}</span>
@@ -226,4 +297,3 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     </AnimatePresence>
   );
 };
-
