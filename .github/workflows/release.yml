@@ -52,6 +52,66 @@ jobs:
             release/latest.yml
           if-no-files-found: error
 
+      # Upload the freshly built binaries to VirusTotal so the SHA256 links in
+      # the release body resolve as soon as the release is published (new
+      # builds are unknown to VirusTotal until someone submits them). The
+      # portable exe stays optional here, matching the "pending" rendering
+      # in the release notes step below.
+      - name: Scan installers with VirusTotal
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          $installerItem = Get-ChildItem -Path "./release" -Filter "CyberLauncher-Setup-*.exe" |
+            Where-Object { $_.Name -notlike "*.blockmap*" } |
+            Select-Object -First 1
+          $portableItem = Get-ChildItem -Path "./release" -Filter "CyberLauncher-Portable-*.exe" |
+            Where-Object { $_.Name -notlike "*.blockmap*" } |
+            Select-Object -First 1
+          if (-not $installerItem) {
+            throw "Setup installer .exe not found in ./release"
+          }
+          if (-not $portableItem) {
+            Write-Warning "Portable .exe not found in ./release; skipping its VirusTotal upload."
+          }
+
+          if ($env:VIRUSTOTAL_API_KEY) {
+            function Upload-VirusTotal($filePath, $apiKey) {
+              $item = Get-Item $filePath
+              $sizeMb = [Math]::Round($item.Length / 1MB, 2)
+              Write-Host "Uploading $filePath ($sizeMb MB) to VirusTotal..."
+              $headers = @{ "x-apikey" = $apiKey }
+              $url = "https://www.virustotal.com/api/v3/files"
+
+              if ($item.Length -gt 30MB) {
+                Write-Host "File exceeds 30MB ($sizeMb MB), requesting dedicated large-file upload endpoint from VirusTotal..."
+                $urlResp = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files/upload_url" -Method Get -Headers $headers -TimeoutSec 60
+                $url = $urlResp.data
+                Write-Host "Using dedicated endpoint: $url"
+              }
+
+              $resp = & curl.exe -s -S --fail -X POST -H "x-apikey: $apiKey" -F "file=@$filePath" "$url"
+              Write-Host "Upload successful. Response: $resp"
+            }
+
+            try {
+              Upload-VirusTotal $installerItem.FullName $env:VIRUSTOTAL_API_KEY
+            } catch {
+              Write-Warning "VirusTotal installer upload warning: $_"
+            }
+
+            if ($portableItem) {
+              try {
+                Upload-VirusTotal $portableItem.FullName $env:VIRUSTOTAL_API_KEY
+              } catch {
+                Write-Warning "VirusTotal portable upload warning: $_"
+              }
+            }
+          } else {
+            Write-Host "VIRUSTOTAL_API_KEY secret not found; skipping direct upload and using computed SHA256 hashes for reports."
+          }
+
       - name: Fill release notes from template
         shell: pwsh
         run: |
