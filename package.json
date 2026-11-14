@@ -113,7 +113,7 @@
     "@fontsource/orbitron": "^5.3.0",
     "@fontsource/space-grotesk": "^5.3.0",
     "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^6.3.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "electron-updater": "^6.8.9",
