@@ -113,4 +113,6 @@ El compañero añade una paleta interactiva de comandos al hacer clic, activaci�
 
 ---
 
+📜 **Full changelog:** browse every version in [CHANGELOG.md](https://github.com/CyberGems/CyberLauncher/blob/main/CHANGELOG.md).
+
 *Crafted with precision by [CyberGems](https://cybergems.org)*
