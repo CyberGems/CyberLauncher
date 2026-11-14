@@ -252,7 +252,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
   ];
 };
 
-export const DEFAULT_TASKBAR_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
+export const DEFAULT_TASKBAR_APP_IDS = [1004, 1003, 1006, 1008, 1001];
 export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
 
 /** Default Windows apps populated for clean installs (user removable). */
@@ -6183,16 +6183,24 @@ export default function App() {
     return categories.map(cat => ({
       ...cat,
       count: cat.id === ALL_CATEGORY_ID ? apps.length : apps.filter(app => doesAppMatchCategory(app.category, cat)).length
-    })).sort((a, b) => {
-      if (a.id === ALL_CATEGORY_ID) return -1;
-      if (b.id === ALL_CATEGORY_ID) return 1;
-      if (a.id === UNCATEGORIZED_ID) return 1;
-      if (b.id === UNCATEGORIZED_ID) return -1;
-      const nameA = getCatDisplayName(a);
-      const nameB = getCatDisplayName(b);
-      return nameA.localeCompare(nameB, locale, { numeric: true, sensitivity: 'base' });
-    });
+    }))
+      .filter(cat => cat.id !== UNCATEGORIZED_ID || cat.count > 0)
+      .sort((a, b) => {
+        if (a.id === ALL_CATEGORY_ID) return -1;
+        if (b.id === ALL_CATEGORY_ID) return 1;
+        if (a.id === UNCATEGORIZED_ID) return 1;
+        if (b.id === UNCATEGORIZED_ID) return -1;
+        const nameA = getCatDisplayName(a);
+        const nameB = getCatDisplayName(b);
+        return nameA.localeCompare(nameB, locale, { numeric: true, sensitivity: 'base' });
+      });
   }, [categories, apps, language, getCatDisplayName]);
+
+  useEffect(() => {
+    if (activeCategory === UNCATEGORIZED_ID && !categoriesWithCount.some(c => c.id === UNCATEGORIZED_ID)) {
+      setActiveCategory(ALL_CATEGORY_ID);
+    }
+  }, [activeCategory, categoriesWithCount]);
 
   const filteredApps = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
@@ -6581,17 +6589,19 @@ export default function App() {
           setActiveCategory('all');
         },
       },
-      {
-        id: 'view-uncategorized',
-        group: t('cmd_palette_group_views'),
-        label: t('cmd_palette_view_uncategorized'),
-        shortcut: 'Alt+0',
-        keywords: 'uncategorized sin categoria otros',
-        icon: <Tag className="w-4 h-4 text-slate-400" />,
-        onSelect: () => {
-          setActiveCategory(UNCATEGORIZED_ID);
-        },
-      },
+      ...(categoriesWithCount.some(c => c.id === UNCATEGORIZED_ID)
+        ? [{
+            id: 'view-uncategorized',
+            group: t('cmd_palette_group_views'),
+            label: t('cmd_palette_view_uncategorized'),
+            shortcut: 'Alt+0',
+            keywords: 'uncategorized sin categoria otros',
+            icon: <Tag className="w-4 h-4 text-slate-400" />,
+            onSelect: () => {
+              setActiveCategory(UNCATEGORIZED_ID);
+            },
+          }]
+        : []),
     ];
 
     // Dynamic user categories
@@ -7240,8 +7250,10 @@ export default function App() {
           altNumpadBlockedRef.current = true;
           searchInputRef.current?.blur();
           if (num === 0) {
-            setActiveCategory(UNCATEGORIZED_ID);
-            setKeyboardNav(null);
+            if (categoriesWithCount.some(c => c.id === UNCATEGORIZED_ID)) {
+              setActiveCategory(UNCATEGORIZED_ID);
+              setKeyboardNav(null);
+            }
             return;
           }
           const index = num - 1;
@@ -8254,7 +8266,7 @@ export default function App() {
                       </div>
                       <Tooltip label={t('tooltip_sidebar_categories')} placement="right">
                         <span className="text-cyan-400/90 font-digits font-bold tracking-wider tabular-nums bg-cyan-500/[0.07] px-2 py-0.5 rounded-md border border-cyan-500/20 cursor-default">
-                          {categories.length - 1}
+                          {Math.max(0, categoriesWithCount.filter(c => c.id !== ALL_CATEGORY_ID).length)}
                         </span>
                       </Tooltip>
                     </div>
@@ -8414,8 +8426,10 @@ export default function App() {
                     altNumpadBlockedRef.current = true;
                     searchInputRef.current?.blur();
                     if (num === 0) {
-                      setActiveCategory(UNCATEGORIZED_ID);
-                      setKeyboardNav(null);
+                      if (categoriesWithCount.some(c => c.id === UNCATEGORIZED_ID)) {
+                        setActiveCategory(UNCATEGORIZED_ID);
+                        setKeyboardNav(null);
+                      }
                       return;
                     }
                     const index = num - 1;
