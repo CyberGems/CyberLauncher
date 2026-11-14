@@ -20,6 +20,7 @@
     "test:cyberbot": "node --import ./scripts/cyberbot-test-assets.mjs --import tsx --test tests/cyberbot.test.ts",
     "test:cybermanager": "node --import tsx --test tests/cybermanager-recommendation.test.ts",
     "test:backup": "node --import tsx --test tests/backup.test.ts",
+    "test:assets": "node --import tsx --test tests/preset-backgrounds.test.ts",
     "icons": "node scripts/generate-icons.mjs",
     "installer-graphics": "node scripts/generate-installer-graphics.mjs",
     "build:store-launcher": "node scripts/build-store-launcher.mjs",

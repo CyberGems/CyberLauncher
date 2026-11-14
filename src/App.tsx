@@ -2,6 +2,14 @@ import { cyberBotSpeechLifetime } from './components/companion/cyberBotTyping';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
+import {
+  DEFAULT_BG_IMAGE,
+  PRESET_IMAGES,
+  normalizeBgImage,
+  toPackagedAssetUrl,
+  toPresetThumbnailUrl,
+  toThumbnailUrl,
+} from '../shared/backgrounds';
 import Tooltip from './Tooltip';
 import CyberTerminal from './CyberTerminal';
 import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
@@ -253,63 +261,9 @@ const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
 const DEFAULT_SETUP_APP_IDS = new Set(INITIAL_APPS.map(app => app.id));
 const DEFAULT_SETUP_CATEGORY_IDS = new Set(INITIAL_CATEGORIES.map(category => category.id));
 
-const DEFAULT_BG_IMAGE = 'bg_default.jpg';
 const APPEARANCE_PREVIEW_IDLE_MS = 3000;
 
-/** Packaged presets only — relative names so they survive install on any PC. */
-const PRESET_IMAGES = [
-  DEFAULT_BG_IMAGE,
-  'bg_waves.jpg',
-  'bg_bubbles.png',
-];
-
-/** Filename → packaged relative asset (absolute/dev paths normalize to these). */
-const PACKAGED_BG_BY_FILENAME: Record<string, string> = {
-  'bg_default.jpg': DEFAULT_BG_IMAGE,
-  'default_background.jpg': DEFAULT_BG_IMAGE,
-  'bg_waves.jpg': 'bg_waves.jpg',
-  'default02.jpg': 'bg_waves.jpg',
-  'bg_bubbles.png': 'bg_bubbles.png',
-  'default03.png': 'bg_bubbles.png',
-  'default03.jpg': 'bg_bubbles.png',
-  // Pre-release legacy names → current presets (files no longer shipped)
-  'bg_abstract.jpg': 'bg_waves.jpg',
-  'bg_cyberpunk.jpg': 'bg_bubbles.png',
-  'bg_geom.jpg': DEFAULT_BG_IMAGE,
-};
-
 const PRESET_SOLIDS = ['#0a0f18', '#1a1a2e', '#000000', '#111827', '#0f172a'];
-
-/** Migrate legacy absolute paths / old project folders to packaged preset names. */
-const normalizeBgImage = (path: string | null | undefined): string => {
-  if (!path) return DEFAULT_BG_IMAGE;
-  if (path.includes('antigravity_projects')) return DEFAULT_BG_IMAGE;
-
-  const trimmed = path.replace(/^\.\//, '');
-  const fileName = trimmed.replace(/^.*[\\/]/, '').toLowerCase();
-  const packaged = PACKAGED_BG_BY_FILENAME[fileName];
-  if (packaged) return packaged;
-
-  return path;
-};
-
-/** Resolve packaged assets with ./ so file:// and Electron loadFile both work. */
-const toPackagedAssetUrl = (relativeName: string) =>
-  relativeName.startsWith('./') ? relativeName : `./${relativeName}`;
-
-/** Resolve packaged preset thumbnail (pre-scaled 16:9 Lanczos asset in public/thumbs). */
-const toPresetThumbnailUrl = (presetName: string) =>
-  `./thumbs/${presetName.replace(/^\.\//, '')}`;
-
-const toThumbnailUrl = (path: string) => {
-  if (!path) return '';
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
-  if (!path.includes(':') && !path.includes('\\')) {
-    return toPackagedAssetUrl(path.replace(/^\.\//, ''));
-  }
-  const normalized = path.replace(/\\/g, '/');
-  return `local-resource:///${encodeURI(normalized)}`;
-};
 const PRESET_GRADIENTS = [
   'linear-gradient(to bottom right, #0f2027, #203a43, #2c5364)',
   'linear-gradient(to bottom right, #000000, #434343)',
@@ -11070,6 +11024,32 @@ export default function App() {
                 </div>
 
                 {/* CyberBot Keyboard Shortcut Config */}
+                <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Bot className={`w-4 h-4 ${cyberBot.enabled ? 'text-cyan-400' : 'text-slate-500'}`} />
+                      {t('general_cyberbot_shortcut')}
+                    </span>
+                    {!cyberBot.enabled && (
+                      <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full font-normal">
+                        {t('cyberbot_disabled_tag')}
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!cyberBot.enabled}
+                      onClick={() => {
+                        if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (isRecordingCyberBotShortcut && cyberBot.enabled) {
+                          e.preventDefault();
+                          const keys = [];
+                          if (e.ctrlKey) keys.push('Ctrl');
+                          if (e.altKey) keys.push('Alt');
+                          if (e.shiftKey) keys.push('Shift');
                 <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
                     <span className="flex items-center gap-2">
