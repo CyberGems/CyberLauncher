@@ -93,10 +93,21 @@ El compañero añade una paleta interactiva de comandos al hacer clic, activaci�
 
 ---
 
-### 🔐 Checksums
+### 🔐 VirusTotal and SHA256
 
-- **`CyberLauncher-Setup-{{VERSION_NUM}}.exe`** — SHA256: `{{INSTALLER_HASH}}`
-- **`CyberLauncher-Portable-{{VERSION_NUM}}.exe`** — SHA256: `{{PORTABLE_HASH}}`
+> 🛡️ The report opens on VirusTotal and does not download anything.
+
+**Installer**: [View VirusTotal report](https://www.virustotal.com/gui/file/{{INSTALLER_HASH}})
+
+```text
+{{INSTALLER_HASH}}
+```
+
+**Portable**: [View VirusTotal report](https://www.virustotal.com/gui/file/{{PORTABLE_HASH}})
+
+```text
+{{PORTABLE_HASH}}
+```
 
 ---
 
