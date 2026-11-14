@@ -11050,32 +11050,6 @@ export default function App() {
                           if (e.ctrlKey) keys.push('Ctrl');
                           if (e.altKey) keys.push('Alt');
                           if (e.shiftKey) keys.push('Shift');
-                <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Bot className={`w-4 h-4 ${cyberBot.enabled ? 'text-cyan-400' : 'text-slate-500'}`} />
-                      {t('general_cyberbot_shortcut')}
-                    </span>
-                    {!cyberBot.enabled && (
-                      <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full font-normal">
-                        {t('cyberbot_disabled_tag')}
-                      </span>
-                    )}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={!cyberBot.enabled}
-                      onClick={() => {
-                        if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (isRecordingCyberBotShortcut && cyberBot.enabled) {
-                          e.preventDefault();
-                          const keys = [];
-                          if (e.ctrlKey) keys.push('Ctrl');
-                          if (e.altKey) keys.push('Alt');
-                          if (e.shiftKey) keys.push('Shift');
                           if (e.metaKey) keys.push('Meta');
                           
                           if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
