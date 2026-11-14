@@ -319,6 +319,9 @@ function showMainWindow() {
       }
       if (inOwnShowCall === callId) inOwnShowCall = 0;
       setImmediate(() => { if (inOwnShowCall === callId) inOwnShowCall = 0; });
+      if (mainWindow.isMaximized()) {
+        syncMaximizedWindowBounds(50);
+      }
     };
 
     // Mixed DPI (e.g. 150% ↔ 125%): let Chromium attach to the new scale before becoming visible
@@ -754,6 +757,19 @@ function placeWindowOnDisplay(display: Electron.Display, opts?: { maximize?: boo
   }
 }
 
+let maximizeSyncTimer: ReturnType<typeof setTimeout> | null = null;
+/** Re-sync frameless maximized window bounds on Windows so Chromium fills workArea to the bottom edge. */
+function syncMaximizedWindowBounds(delayMs = 60) {
+  if (maximizeSyncTimer) clearTimeout(maximizeSyncTimer);
+  maximizeSyncTimer = setTimeout(() => {
+    maximizeSyncTimer = null;
+    if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isMaximized()) return;
+    try {
+      mainWindow.setBounds(mainWindow.getBounds(), false);
+    } catch { /* ignore */ }
+  }, delayMs);
+}
+
 /** Special selectedMonitor value: open on the display under the cursor (hotkey/hotspot/tray). */
 const MONITOR_FOLLOW_CURSOR = 'follow-cursor';
 
@@ -849,7 +865,9 @@ function createWindow() {
   // maximize() while hidden often flashes a white frame on Windows.
   placeWindowOnDisplay(targetDisplay, { maximize: false });
 
-  mainWindow.on('maximize', () => {});
+  mainWindow.on('maximize', () => {
+    syncMaximizedWindowBounds(60);
+  });
 
   mainWindow.on('move', saveWindowState);
   mainWindow.on('resize', saveWindowState);
@@ -5346,6 +5364,9 @@ app.whenReady().then(() => {
       scaleFactor: display.scaleFactor,
       metrics: metrics.join(','),
     });
+    if (metrics.some(m => m === 'workArea' || m === 'bounds' || m === 'scaleFactor')) {
+      syncMaximizedWindowBounds(80);
+    }
   });
 
   // Listen for session lock / suspend to guard hotspots

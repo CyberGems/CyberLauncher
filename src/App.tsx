@@ -136,7 +136,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
   const catDesign = getPresetCategoryName('design', lang);
   const catDev = getPresetCategoryName('dev', lang);
   const catOffice = getPresetCategoryName('office', lang);
-  return [
+  const appsList: LauncherApp[] = [
     {
       id: 1001,
       name: lang === 'es' ? 'Calculadora' : 'Calculator',
@@ -155,7 +155,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'Palette',
       color: 'text-pink-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
     {
       id: 1003,
@@ -185,7 +185,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'Cpu',
       color: 'text-teal-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
     {
       id: 1006,
@@ -205,7 +205,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'Package',
       color: 'text-purple-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
     {
       id: 1008,
@@ -227,7 +227,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'TerminalSquare',
       color: 'text-sky-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
     {
       id: 1010,
@@ -237,7 +237,7 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'Wifi',
       color: 'text-teal-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
     {
       id: 1011,
@@ -247,13 +247,14 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
       icon: 'FileText',
       color: 'text-blue-400',
       usage: 0,
-      isFav: true,
+      isFav: false,
     },
   ];
+  return appsList;
 };
 
 export const DEFAULT_TASKBAR_APP_IDS = [1004, 1003, 1006, 1008, 1001];
-export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
+export const DEFAULT_FAVORITE_APP_IDS = [1004, 1003, 1006, 1008, 1001];
 
 /** Default Windows apps populated for clean installs (user removable). */
 const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
@@ -918,7 +919,7 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_tab'));
 
   return (
-    <div className="absolute inset-y-0 left-11 right-16 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
+    <div className="absolute inset-0 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -7848,7 +7849,7 @@ export default function App() {
   return (
     <div 
       ref={rootRef}
-      className="flex h-screen w-full text-slate-300 font-sans overflow-hidden selection:bg-blue-500/30 relative"
+      className="fixed inset-0 flex w-full h-full text-slate-300 font-sans overflow-hidden selection:bg-blue-500/30"
       style={{ backgroundColor: '#0a0f18', ...getBackgroundStyle() }}
       onDragOver={handleSystemDragOver}
       onDragLeave={handleSystemDragLeave}
@@ -7931,7 +7932,7 @@ export default function App() {
         className="flex flex-col w-full h-full relative z-10"
       >
         <div 
-          className="flex-1 flex overflow-hidden relative z-10"
+          className="flex-1 min-h-0 flex overflow-hidden relative z-10"
           style={getGlassStyle(0.4)}
         >
             {/* --- LEFT SIDEBAR (Categories) --- */}
@@ -8350,11 +8351,27 @@ export default function App() {
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 border-l border-t border-cyan-500/30 bg-[#070b13] rotate-45 -mb-1" />
             </div>
 
-            <input 
-              ref={searchInputRef}
-              type="text" 
-              placeholder=""
-              value={searchQuery}
+            <div
+              className={`relative flex items-center w-full bg-black/20 backdrop-blur-md rounded-xl shadow-inner border transition-all ${
+                searchScope === 'system'
+                  ? 'border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/50 focus-within:border-emerald-500/50 focus-within:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                  : 'border-white/10 focus-within:ring-1 focus-within:ring-cyan-500/50 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+              }`}
+            >
+              <div className="pl-4 pr-2.5 flex items-center pointer-events-none shrink-0">
+                {searchScope === 'system' ? (
+                  <Search className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
+                ) : (
+                  <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm shrink-0" />
+                )}
+              </div>
+
+              <div className="relative flex-1 min-w-0">
+                <input 
+                  ref={searchInputRef}
+                  type="text" 
+                  placeholder=""
+                  value={searchQuery}
               onFocus={() => {
                 setKeyboardNav(null);
                 if (isTerminalOpen) setIsTerminalOpen(false);
@@ -8567,75 +8584,68 @@ export default function App() {
                 }
 
               }}
-              className={`w-full min-w-0 bg-black/20 backdrop-blur-md text-white rounded-xl pl-11 py-3 text-sm focus:outline-none transition-all block shadow-inner border ${searchQuery ? 'pr-24' : 'pr-16'} ${
-                searchScope === 'system'
-                  ? 'border-emerald-500/30 focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 focus:shadow-[0_0_15px_rgba(16,185,129,0.15)] caret-emerald-400/80'
-                  : 'border-white/10 focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] caret-cyan-400/80'
-              } placeholder:text-slate-500`}
-            />
-            {searchQuery === '' && (
-              <RotatingSearchPlaceholder
-                mode={searchScope === 'system' ? 'system' : 'normal'}
-                t={t}
-              />
-            )}
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              {searchScope === 'system' ? (
-                <Search className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
-              ) : (
-                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors drop-shadow-sm shrink-0" />
-              )}
-            </div>
+                  className={`w-full min-w-0 bg-transparent text-white py-3 text-sm focus:outline-none block ${
+                    searchScope === 'system' ? 'caret-emerald-400/80' : 'caret-cyan-400/80'
+                  } placeholder:text-slate-500`}
+                />
+                {searchQuery === '' && (
+                  <RotatingSearchPlaceholder
+                    mode={searchScope === 'system' ? 'system' : 'normal'}
+                    t={t}
+                  />
+                )}
+              </div>
 
-            {/* Unified Inline Right Actions Container */}
-            <div 
-              className="absolute inset-y-0 right-3 flex items-center gap-2 z-20 select-none"
-              onMouseEnter={() => {
-                isHoveringRightActionsRef.current = true;
-                setShowSearchGuide(false);
-                if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
-                if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
-              }}
-              onMouseLeave={() => {
-                isHoveringRightActionsRef.current = false;
-              }}
-            >
-              {searchQuery && (
-                <Tooltip label={t('clear_search')} placement="bottom">
+              {/* Unified Inline Right Actions Container */}
+              <div 
+                className="pl-2 pr-3 flex items-center gap-2 z-20 select-none shrink-0"
+                onMouseEnter={() => {
+                  isHoveringRightActionsRef.current = true;
+                  setShowSearchGuide(false);
+                  if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
+                  if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
+                }}
+                onMouseLeave={() => {
+                  isHoveringRightActionsRef.current = false;
+                }}
+              >
+                {searchQuery && (
+                  <Tooltip label={t('clear_search')} placement="bottom">
+                    <button
+                      type="button"
+                      aria-label={t('clear_search')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="flex items-center justify-center text-slate-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
+                )}
+
+                <Tooltip label={withShortcut(t('tooltip_search_scope_toggle'), 'Tab')} placement="bottom">
                   <button
                     type="button"
-                    aria-label={t('clear_search')}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSearchQuery('');
-                      searchInputRef.current?.focus();
+                      setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
+                      if (isTerminalOpen) closeTerminal();
                     }}
-                    className="flex items-center justify-center text-slate-400 hover:text-red-400 hover:scale-110 active:scale-95 transition-all focus:outline-none cursor-pointer p-1"
+                    className="flex items-center focus:outline-none cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
+                      searchScope === 'system'
+                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
+                        : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
+                    }`}>
+                      {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
+                    </span>
                   </button>
                 </Tooltip>
-              )}
-
-              <Tooltip label={withShortcut(t('tooltip_search_scope_toggle'), 'Tab')} placement="bottom">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchScope(prev => prev === 'cyber' ? 'system' : 'cyber');
-                    if (isTerminalOpen) closeTerminal();
-                  }}
-                  className="flex items-center focus:outline-none cursor-pointer"
-                >
-                  <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
-                    searchScope === 'system'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
-                      : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
-                  }`}>
-                    {searchScope === 'system' ? t('scope_system') : t('scope_launcher')}
-                  </span>
-                </button>
-              </Tooltip>
+              </div>
             </div>
           </div>
           
