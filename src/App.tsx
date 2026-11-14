@@ -2099,7 +2099,7 @@ export default function App() {
   // Bandera para evitar guardar antes de que la carga inicial desde disco termine
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
-  const [selectedMonitor, setSelectedMonitor] = useState('');
+  const [selectedMonitor, setSelectedMonitor] = useState(() => localStorage.getItem('selectedMonitor') || '');
   const [monitors, setMonitors] = useState<Array<{ id: string; label: string; isPrimary: boolean }>>([]);
   const [cardScale, setCardScale] = useState(100);
 
@@ -4451,7 +4451,13 @@ export default function App() {
           if (source.showTrayRecents !== undefined) setShowTrayRecents(source.showTrayRecents !== false);
           if (source.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(source.showSuiteRecommendations !== false);
           if (source.cyberBotSettings) cyberBot.restoreSettings(source.cyberBotSettings);
-          if (source.selectedMonitor) setSelectedMonitor(source.selectedMonitor);
+          if (source.selectedMonitor !== undefined && source.selectedMonitor !== null) {
+            const normalizedMonitor = String(source.selectedMonitor).trim();
+            if (normalizedMonitor) {
+              setSelectedMonitor(normalizedMonitor);
+              localStorage.setItem('selectedMonitor', normalizedMonitor);
+            }
+          }
           // Mantener el login item de Windows alineado con la preferencia (incl. --start-minimized)
           {
             const auto = source.startWithWindows !== undefined
@@ -5054,9 +5060,12 @@ export default function App() {
         setRamLowAbsoluteAlertEnabled(!!config.ramLowAbsoluteAlertEnabled);
         localStorage.setItem('ramLowAbsoluteAlertEnabled', config.ramLowAbsoluteAlertEnabled.toString());
       }
-      if (config.selectedMonitor) {
-        setSelectedMonitor(config.selectedMonitor);
-        localStorage.setItem('selectedMonitor', config.selectedMonitor);
+      if (config.selectedMonitor !== undefined && config.selectedMonitor !== null) {
+        const normalizedMonitor = String(config.selectedMonitor).trim();
+        if (normalizedMonitor) {
+          setSelectedMonitor(normalizedMonitor);
+          localStorage.setItem('selectedMonitor', normalizedMonitor);
+        }
       }
       console.log('[CONFIG] Estado actualizado desde disco');
     });
@@ -5878,36 +5887,62 @@ export default function App() {
 
     // Fetch monitors
     const fetchMonitors = async () => {
+      const resolveMonitor = (mons: Array<{ id: string; label: string; isPrimary: boolean }>) => {
+        const savedMonitor = (localStorage.getItem('selectedMonitor') || selectedMonitor || '').trim();
+        if (savedMonitor === 'follow-cursor') return 'follow-cursor';
+        if (savedMonitor && mons.some(m => m.id === savedMonitor)) return savedMonitor;
+        const primary = mons.find(m => m.isPrimary) || mons[0];
+        return primary ? primary.id : '';
+      };
+
       if (isElectron) {
         const mons = await window.electronAPI!.getMonitors();
         setMonitors(mons);
-        const primary = mons.find(m => m.isPrimary);
-        
-        // Conservar el monitor guardado si ya existe (incluye modo seguir cursor)
-        const savedMonitor = localStorage.getItem('selectedMonitor') || selectedMonitor;
-        if (savedMonitor === 'follow-cursor') {
-          setSelectedMonitor('follow-cursor');
-        } else if (savedMonitor && mons.some(m => m.id === savedMonitor)) {
-          setSelectedMonitor(savedMonitor);
-        } else if (primary) {
-          setSelectedMonitor(primary.id);
+        const resolved = resolveMonitor(mons);
+        if (resolved) {
+          setSelectedMonitor(resolved);
+          localStorage.setItem('selectedMonitor', resolved);
         }
-        
+
         // Registrar el atajo guardado al iniciar
         window.electronAPI!.registerShortcut(activationShortcut);
         // Registrar hotspots al iniciar
         window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen);
       } else {
-        setMonitors([
+        const mockMonitors = [
           { id: '1', label: '1 (Primario)', isPrimary: true },
           { id: '2', label: 'Monitor 2', isPrimary: false },
           { id: '3', label: 'Monitor 3', isPrimary: false },
-        ]);
-        setSelectedMonitor('1');
+        ];
+        setMonitors(mockMonitors);
+        const resolved = resolveMonitor(mockMonitors);
+        if (resolved) {
+          setSelectedMonitor(resolved);
+          localStorage.setItem('selectedMonitor', resolved);
+        }
       }
     };
     fetchMonitors();
   }, []);
+
+  useEffect(() => {
+    if (monitors.length === 0) return;
+    const isValid =
+      selectedMonitor === 'follow-cursor' ||
+      monitors.some(m => m.id === selectedMonitor);
+    if (isValid) return;
+
+    const fallback = (monitors.find(m => m.isPrimary) || monitors[0])?.id || '';
+    if (fallback) {
+      setSelectedMonitor(fallback);
+      localStorage.setItem('selectedMonitor', fallback);
+    }
+  }, [monitors, selectedMonitor]);
+
+  useEffect(() => {
+    if (!isSettingsOpen || !isElectron) return;
+    window.electronAPI!.getMonitors().then(setMonitors).catch(() => {});
+  }, [isSettingsOpen]);
 
   const getCatDisplayName = useCallback((cat: { id: string; name: string }) => {
     const translationKey = `cat_${cat.id}` as TranslationKey;
@@ -10853,7 +10888,7 @@ export default function App() {
               data-no-hide
               onClick={(e) => e.stopPropagation()}
               data-cyberbot-obstacle="right"
-              className={`fixed right-0 top-0 bottom-0 w-[700px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
+              className={`fixed right-0 top-0 bottom-0 w-[840px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
                 isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
               }`}
             >
@@ -11134,6 +11169,7 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setSelectedMonitor('follow-cursor');
+                        localStorage.setItem('selectedMonitor', 'follow-cursor');
                         if (isElectron) {
                           window.electronAPI!.setMonitor('follow-cursor');
                         }
@@ -11152,6 +11188,7 @@ export default function App() {
                         type="button"
                         onClick={() => {
                           setSelectedMonitor(mon.id);
+                          localStorage.setItem('selectedMonitor', mon.id);
                           if (isElectron) {
                             window.electronAPI!.setMonitor(mon.id);
                           }
