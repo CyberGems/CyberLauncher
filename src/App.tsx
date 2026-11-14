@@ -2453,6 +2453,8 @@ export default function App() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupToRestore, setBackupToRestore] = useState<BackupItem | null>(null);
   const [backupToDelete, setBackupToDelete] = useState<BackupItem | null>(null);
+  const [isFactoryResetModalOpen, setIsFactoryResetModalOpen] = useState(false);
+  const [factoryResetIncludeApps, setFactoryResetIncludeApps] = useState(false);
 
   // Search Guide Tooltip State
   const [showSearchGuide, setShowSearchGuide] = useState(false);
@@ -5442,6 +5444,163 @@ export default function App() {
     });
   }, [language, t]);
 
+  const handleFactoryReset = useCallback((includeAppsAndData: boolean) => {
+    const sysLang: 'es' | 'en' = typeof navigator !== 'undefined' && navigator.language.startsWith('en') ? 'en' : 'es';
+    const primaryMonitor = monitors.find(m => m.isPrimary) || monitors[0];
+    const defaultMonitorId = primaryMonitor ? primaryMonitor.id : '';
+
+    // General & layout
+    setLanguage(sysLang);
+    setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+    setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+    setIsRecordingShortcut(false);
+    setIsRecordingCyberBotShortcut(false);
+    setCardScale(100);
+    setSelectedMonitor(defaultMonitorId);
+    setHotspotCorners([]);
+    setHotspotDelay(300);
+    setHotspotsDisableInFullscreen(true);
+    setEnableTooltips(true);
+    setLeftSidebarWidth(280);
+    setLeftSidebarCollapsed(false);
+    setRightSidebarWidth(320);
+    setRightSidebarCollapsed(false);
+    setSidebarStatsCollapsed(false);
+    setViewMode('grid');
+    setAppsSortOrder('asc');
+    setSearchTypeFilter('all');
+    setSearchSortOrder('asc');
+    setConfirmBeforeDeletingApps(true);
+    setIsAlwaysOnTop(false);
+    setAdvancedOptionsOpen(false);
+
+    // Appearance
+    setBgType('image');
+    setBgImage(DEFAULT_BG_IMAGE);
+    setCustomImageUrl('');
+    setCustomSlotImage('');
+    setBgColor(PRESET_SOLIDS[0]);
+    setBgGradient(PRESET_GRADIENTS[0]);
+    setGlassIntensity(60);
+    setBgOpacity(60);
+
+    // System, clock & alerts
+    setStartWithWindows(false);
+    setStartMinimized(false);
+    setHideOnClickDeadSpot(false);
+    setHideOnBlur(true);
+    setShowTaskbarIcon(false);
+    setResetOnLaunch(true);
+    setAutoUpdate(true);
+    setShowHeaderClock(false);
+    setShowFooterDateTime(true);
+    setShowFooterUptime(true);
+    setShowFooterLaunches(true);
+    setShowTrayRecents(true);
+    setShowSuiteRecommendations(true);
+    setSystemAlertsEnabled(true);
+    setDiskAlertsEnabled(true);
+    setRamAlertsEnabled(true);
+    setRamThresholdPercent(80);
+    setRamLowAbsoluteAlertEnabled(true);
+    setAutoCheckIconsOnStartup(true);
+    setIsGuideCardDismissed(false);
+    setLastBrowseMode('file');
+
+    // Auto backup preferences (keeps existing .json files on disk intact)
+    setAutoBackupEnabled(true);
+    setAutoBackupHours(24);
+    setAutoBackupKeep(DEFAULT_AUTO_BACKUP_KEEP);
+    setAutoBackupFolder('');
+    if (defaultBackupsDir) {
+      setResolvedBackupsDir(defaultBackupsDir);
+    }
+
+    // CyberBot companion
+    cyberBot.resetSettings();
+    setCyberBotNameDraft('');
+
+    // Clear keys written only on explicit user interaction
+    [
+      'cyber_lang',
+      'cyberBotShortcut',
+      'systemAlertsEnabled',
+      'diskAlertsEnabled',
+      'ramAlertsEnabled',
+      'ramThresholdPercent',
+      'ramLowAbsoluteAlertEnabled',
+      'sidebarStatsCollapsed',
+      'hide_add_app_guide_card',
+      'cl_last_browse_mode',
+      'update_notif_seen',
+      'cl_clock_panel_open',
+    ].forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // ignore storage restrictions
+      }
+    });
+    try {
+      localStorage.setItem('activationShortcut', DEFAULT_ACTIVATION_SHORTCUT);
+      localStorage.setItem('confirmBeforeDeletingApps', 'true');
+      localStorage.setItem('cyber_auto_check_icons', 'true');
+      if (defaultMonitorId) {
+        localStorage.setItem('selectedMonitor', defaultMonitorId);
+      } else {
+        localStorage.removeItem('selectedMonitor');
+      }
+    } catch {
+      // ignore storage restrictions
+    }
+
+    if (includeAppsAndData) {
+      setCategories(ensureUncategorizedCategory(INITIAL_CATEGORIES));
+      setApps(getDefaultWindowsApps(sysLang));
+      setFavoriteIds([...DEFAULT_FAVORITE_APP_IDS]);
+      setTaskbarAppIds([...DEFAULT_TASKBAR_APP_IDS]);
+      setActiveCategory('all');
+      setLaunchHistory([]);
+      setDailyLaunchCount(0);
+      [
+        'cyber_launch_history',
+        'cl_launch_timestamps_24h',
+        'dailyLaunchCount',
+        'dailyLaunchDate',
+        'cl_task_history',
+      ].forEach((key) => {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          // ignore storage restrictions
+        }
+      });
+    }
+
+    if (isElectron && window.electronAPI) {
+      window.electronAPI.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+      window.electronAPI.registerCyberBotShortcut?.(DEFAULT_CYBERBOT_SHORTCUT, true);
+      if (defaultMonitorId) {
+        window.electronAPI.setMonitor(defaultMonitorId);
+      }
+      window.electronAPI.setHotspots([], 300, true);
+      window.electronAPI.setAutoLaunch(false, false);
+      window.electronAPI.setHideOnBlur(true);
+      window.electronAPI.setShowTaskbarIcon(false);
+      window.electronAPI.setAlwaysOnTop?.(false);
+      window.electronAPI.listBackups?.().then((list) => {
+        if (list) setBackupsList(list);
+      }).catch(() => {});
+    }
+
+    setIsFactoryResetModalOpen(false);
+    setFactoryResetIncludeApps(false);
+    setNotification({
+      message: translations[sysLang][includeAppsAndData ? 'notif_factory_reset_full_done' : 'notif_factory_reset_done'],
+      type: 'success',
+    });
+  }, [monitors, defaultBackupsDir, cyberBot]);
+
   const handleRemoveSingleRecent = useCallback((target: HistoryItem | LauncherApp) => {
     setLaunchHistory(prev => {
       const filtered = prev.filter(item => {
@@ -6050,7 +6209,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
     try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
@@ -7284,6 +7443,9 @@ export default function App() {
           setBackupToDelete(null);
         } else if (backupToRestore) {
           setBackupToRestore(null);
+        } else if (isFactoryResetModalOpen) {
+          setIsFactoryResetModalOpen(false);
+          setFactoryResetIncludeApps(false);
         } else if (importingUwpApp) {
           setImportingUwpApp(null);
         } else if (confirmResetType) {
@@ -7374,7 +7536,7 @@ export default function App() {
     };
   }, [
     isCommandPaletteOpen, isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
-    editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, appToDelete, confirmResetType,
+    editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, appToDelete, confirmResetType, isFactoryResetModalOpen,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
@@ -11058,87 +11220,6 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
-                {/* CyberBot Keyboard Shortcut Config */}
-                <div className={`space-y-3 transition-opacity ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Bot className={`w-4 h-4 ${cyberBot.enabled ? 'text-cyan-400' : 'text-slate-500'}`} />
-                      {t('general_cyberbot_shortcut')}
-                    </span>
-                    {!cyberBot.enabled && (
-                      <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full font-normal">
-                        {t('cyberbot_disabled_tag')}
-                      </span>
-                    )}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={!cyberBot.enabled}
-                      onClick={() => {
-                        if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (isRecordingCyberBotShortcut && cyberBot.enabled) {
-                          e.preventDefault();
-                          const keys = [];
-                          if (e.ctrlKey) keys.push('Ctrl');
-                          if (e.altKey) keys.push('Alt');
-                          if (e.shiftKey) keys.push('Shift');
-                          if (e.metaKey) keys.push('Meta');
-                          
-                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
-                            const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
-                            keys.push(keyName);
-                            const newShortcut = keys.join('+');
-                            setCyberBotShortcut(newShortcut);
-                            setIsRecordingCyberBotShortcut(false);
-                            if (isElectron) {
-                              window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
-                            }
-                          }
-                        }
-                      }}
-                      onBlur={() => setIsRecordingCyberBotShortcut(false)}
-                      className={`flex-1 text-center px-4 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
-                        !cyberBot.enabled
-                          ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
-                          : isRecordingCyberBotShortcut 
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
-                            : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
-                      }`}
-                    >
-                      {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
-                    </button>
-                    <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
-                      <button
-                        type="button"
-                        disabled={!cyberBot.enabled}
-                        onClick={() => {
-                          if (!cyberBot.enabled) return;
-                          setIsRecordingCyberBotShortcut(false);
-                          setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
-                          if (isElectron) {
-                            window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
-                          }
-                        }}
-                        className={`flex-shrink-0 p-3 rounded-xl border border-white/10 transition-all ${
-                          !cyberBot.enabled
-                            ? 'bg-black/20 text-slate-600 cursor-not-allowed'
-                            : 'bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5'
-                        }`}
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                  <p className={`text-xs ${!cyberBot.enabled ? 'text-amber-400/90' : 'text-slate-500'}`}>
-                    {!cyberBot.enabled
-                      ? t('general_cyberbot_shortcut_disabled_desc')
-                      : t('general_cyberbot_shortcut_desc')}
-                  </p>
-                </div>
-
                 {/* Scale Selection */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -13019,6 +13100,39 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Sección 4: Restablecimiento de fábrica */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-cyber font-bold text-amber-300/90 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        {t('backup_section_reset')}
+                      </label>
+
+                      <div className="flex flex-col gap-3 bg-amber-500/[0.04] p-4 rounded-xl border border-amber-500/20 hover:border-amber-500/35 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
+                            <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/25 shrink-0 mt-0.5">
+                              <RotateCcw className="w-4 h-4 text-amber-400" />
+                            </div>
+                            <div className="min-w-0 space-y-1.5">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight">{t('settings_factory_reset_title')}</h4>
+                              <p className="text-xs text-slate-400 leading-relaxed">{t('settings_factory_reset_desc')}</p>
+                              <p className="text-[11px] text-amber-300/80 leading-relaxed">{t('settings_factory_reset_note')}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFactoryResetIncludeApps(false);
+                              setIsFactoryResetModalOpen(true);
+                            }}
+                            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 rounded-lg transition-colors text-xs font-cyber font-bold tracking-wider border border-amber-500/40 shrink-0 cursor-pointer whitespace-nowrap"
+                          >
+                            <RotateCcw className="w-4 h-4" /> {t('settings_factory_reset_btn')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </>)}
 
@@ -14499,6 +14613,104 @@ export default function App() {
                   >
                     <span>{t('backup_auto_btn_delete')}</span>
                     <EnterKeyBadge variant="danger" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- FACTORY RESET CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {isFactoryResetModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setIsFactoryResetModalOpen(false);
+              setFactoryResetIncludeApps(false);
+            }}
+            className="fixed inset-0 z-[155] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              data-cyberbot-obstacle="center"
+              className="w-full max-w-lg bg-[#0d131f]/95 backdrop-blur-2xl border border-amber-500/35 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-amber-500/10">
+                <h2 className="text-base font-semibold text-amber-300 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                  {t('factory_reset_modal_title')}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFactoryResetModalOpen(false);
+                    setFactoryResetIncludeApps(false);
+                  }}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-slate-200 leading-relaxed">
+                  {t('factory_reset_modal_intro')}
+                </p>
+
+                <ul className="space-y-2 text-xs text-slate-300 leading-relaxed bg-black/30 border border-white/10 rounded-xl p-3.5 list-disc pl-7">
+                  <li>{t('factory_reset_item_general')}</li>
+                  <li>{t('factory_reset_item_appearance')}</li>
+                  <li>{t('factory_reset_item_system')}</li>
+                  <li>{t('factory_reset_item_cyberbot')}</li>
+                </ul>
+
+                <p className="text-[11px] text-cyan-300/85 bg-cyan-500/10 border border-cyan-500/20 rounded-xl px-3.5 py-2.5 leading-relaxed">
+                  {t('factory_reset_preserve_note')}
+                </p>
+
+                <label className="flex items-start gap-3 p-3.5 rounded-xl bg-black/30 border border-white/10 hover:border-amber-500/30 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={factoryResetIncludeApps}
+                    onChange={(e) => setFactoryResetIncludeApps(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/60 accent-amber-500 cursor-pointer shrink-0"
+                  />
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-slate-200 leading-snug">
+                      {t('factory_reset_include_apps_label')}
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      {t('factory_reset_include_apps_desc')}
+                    </div>
+                  </div>
+                </label>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFactoryResetModalOpen(false);
+                      setFactoryResetIncludeApps(false);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t('factory_reset_btn_cancel')}</span>
+                    <EscKeyBadge />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFactoryReset(factoryResetIncludeApps)}
+                    className="flex-1 px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-xl font-cyber font-bold text-sm border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.18)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>{t('factory_reset_btn_confirm')}</span>
                   </button>
                 </div>
               </div>

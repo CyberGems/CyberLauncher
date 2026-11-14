@@ -261,6 +261,39 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     setActiveMessage(null);
   }, []);
 
+  const resetSettings = useCallback(() => {
+    setEnabled(true);
+    setPosition('bottom-right');
+    setDodgeEnabled(false);
+    setHoverAssistEnabled(true);
+    setBannersEnabled(true);
+    setPreferredName('');
+    setNamePromptState('unseen');
+    setNamePromptAfter(0);
+    setChatterLevel('full');
+    setQuietHours({ enabled: false, from: '22:00', to: '07:00' });
+    greetedRef.current = false;
+    dismissMessage();
+    [
+      'cyberbot_enabled',
+      'cyberbot_position',
+      'cyberbot_dodge',
+      'cyberbot_hover_assist',
+      'cyberbot_banners_enabled',
+      'cyberbot_preferred_name',
+      'cyberbot_name_prompt_state',
+      'cyberbot_name_prompt_after',
+      'cyberbot_chatter',
+      'cyberbot_quiet_hours',
+    ].forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // ignore storage restrictions
+      }
+    });
+  }, [dismissMessage]);
+
   useEffect(() => {
     if (!enabled) dismissMessage();
   }, [enabled, dismissMessage]);
@@ -428,6 +461,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     updateQuietHours,
     settings,
     restoreSettings,
+    resetSettings,
     activeMessage,
     say,
     sayPhrase,
