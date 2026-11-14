@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ExternalLink, Info, X } from 'lucide-react';
 import type { TranslationKey } from '../locales';
+import Tooltip from '../Tooltip';
 
 export const CYBERMANAGER_RECOMMENDATION_KEY = 'cybermanagerHudRecommendationDismissed';
 export const CYBERMANAGER_SITE = 'https://cybergems.org/apps/cybermanager/';
@@ -35,14 +36,16 @@ export const CyberManagerRecommendation: React.FC<CyberManagerRecommendationProp
 
   return (
     <aside className="relative rounded-xl border border-cyan-500/10 bg-cyan-500/[0.035] p-3 pr-8 text-left">
-      <button
-        type="button"
-        onClick={() => setVisibility(true)}
-        aria-label={t('hud_manager_dismiss')}
-        className="absolute right-2.5 top-2.5 rounded-md p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200 transition-colors cursor-pointer"
-      >
-        <X className="w-3.5 h-3.5" aria-hidden="true" />
-      </button>
+      <Tooltip label={t('hud_manager_dismiss')} placement="left">
+        <button
+          type="button"
+          onClick={() => setVisibility(true)}
+          aria-label={t('hud_manager_dismiss')}
+          className="absolute right-2.5 top-2.5 rounded-md p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200 transition-colors cursor-pointer"
+        >
+          <X className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      </Tooltip>
       <div className="flex items-start gap-2.5">
         <img src="./suite/cybermanager.png" alt="" aria-hidden="true" className="w-7 h-7 shrink-0 rounded-md" />
         <div className="min-w-0">

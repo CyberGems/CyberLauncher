@@ -5,6 +5,7 @@ import {
   Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Heart, ExternalLink
 } from 'lucide-react';
 import Tooltip from './Tooltip';
+import { ToggleSwitch } from './components/ToggleSwitch';
 import { EscKeyBadge } from './KeyBadge';
 import { TranslationKey } from './locales';
 
@@ -475,19 +476,11 @@ export default function AboutModal({
                   <span className="text-xs text-slate-200 font-medium leading-tight">{t('about_auto_updates')}</span>
                   <span className="text-[11px] text-slate-400 leading-snug mt-0.5">{t('about_auto_updates_desc')}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onAutoUpdateChange(!autoUpdate)}
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 cursor-pointer ${
-                    autoUpdate ? 'bg-cyan-500' : 'bg-slate-700'
-                  }`}
-                  aria-pressed={autoUpdate}
-                  aria-label={t('about_auto_updates')}
-                >
-                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow ${
-                    autoUpdate ? 'translate-x-5' : 'translate-x-0'
-                  }`} />
-                </button>
+                <ToggleSwitch
+                  checked={autoUpdate}
+                  onChange={() => onAutoUpdateChange(!autoUpdate)}
+                  ariaLabel={t('about_auto_updates')}
+                />
               </div>
             </div>
           </div>

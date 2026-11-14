@@ -5,6 +5,7 @@ import { X, AlertTriangle, Bot, CircleCheck, ArrowRight } from 'lucide-react';
 import { useCyberBotTyping } from './useCyberBotTyping';
 import { CyberBotTypingText } from './CyberBotTypingText';
 import type { CyberBotMessage } from './companionTypes';
+import Tooltip from '../../Tooltip';
 import { CYBERBOT_NAME_MAX_LENGTH, normalizeCyberBotName } from './cyberBotName';
 
 interface CyberSpeechBubbleProps {
@@ -66,18 +67,20 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       onPointerDown={(event) => event.stopPropagation()}
       className={`relative w-fit max-w-full min-w-[200px] rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
-      <button
-        type="button"
-        aria-label={closeLabel}
-        onClick={(e) => {
-          e.stopPropagation();
-          message.onDismiss?.();
-          onClose();
-        }}
-        className="absolute right-2.5 top-2.5 p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
+      <Tooltip label={closeLabel} placement="top">
+        <button
+          type="button"
+          aria-label={closeLabel}
+          onClick={(e) => {
+            e.stopPropagation();
+            message.onDismiss?.();
+            onClose();
+          }}
+          className="absolute right-2.5 top-2.5 p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </Tooltip>
 
       <div className="flex items-start gap-2.5 pr-6">
         <Bot aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 shrink-0 text-cyan-400" />

@@ -4,6 +4,7 @@ import { Globe, Sparkles, Bot, BotOff, Layers } from 'lucide-react';
 import { BASIC_CATEGORY_PRESETS, type CategoryLang } from '../../shared/categories';
 import { CYBERBOT_NAME_MAX_LENGTH, normalizeCyberBotName } from './companion/cyberBotName';
 import { EnterKeyBadge, EscKeyBadge } from '../KeyBadge';
+import { ToggleSwitch } from './ToggleSwitch';
 import type { TranslationKey } from '../locales';
 
 interface OnboardingModalProps {
@@ -216,28 +217,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={assistantEnabled}
-                    aria-label={t('onboarding_assistant_label')}
-                    onClick={() => setAssistantEnabled((prev) => !prev)}
-                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 mt-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
-                      assistantEnabled ? 'bg-cyan-500' : 'bg-slate-700'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
-                        assistantEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          assistantEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
-                        }`}
-                      />
-                    </span>
-                  </button>
+                  <ToggleSwitch
+                    checked={assistantEnabled}
+                    onChange={() => setAssistantEnabled((prev) => !prev)}
+                    ariaLabel={t('onboarding_assistant_label')}
+                    className="mt-0.5"
+                  />
                 </div>
 
                 {assistantEnabled && (

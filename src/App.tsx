@@ -25,6 +25,7 @@ import {
   type CategoryRecord,
 } from '../shared/categories';
 import Tooltip from './Tooltip';
+import { ToggleSwitch } from './components/ToggleSwitch';
 import CyberTerminal from './CyberTerminal';
 import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
@@ -1289,15 +1290,17 @@ const ClockHUD = ({
                     {t('hud_clock_title')}
                   </h2>
                 </div>
-                <button 
-                  type="button"
-                  onClick={onClose}
-                  className="p-1.5 px-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
-                  aria-label={t('tooltip_close')}
-                >
-                  <EscKeyBadge />
-                  <X className="w-4 h-4" />
-                </button>
+                <Tooltip label={t('tooltip_close')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 px-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 inline-flex items-center gap-1.5 cursor-pointer"
+                    aria-label={t('tooltip_close')}
+                  >
+                    <EscKeyBadge />
+                    <X className="w-4 h-4" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="flex-1 min-h-0 flex flex-col p-5">
@@ -1639,13 +1642,16 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, show
                 <Cpu className="w-4 h-4 text-cyan-400 shrink-0" />
                 {t('hud_system_title')}
               </h2>
-              <button 
-                type="button"
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <Tooltip label={t('tooltip_close')} placement="bottom">
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  aria-label={t('tooltip_close')}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </Tooltip>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-5 text-left">
@@ -1786,13 +1792,16 @@ const StorageHUD = ({ isOpen, onClose, t }: { isOpen: boolean, onClose: () => vo
                 <HardDrive className="w-4 h-4 text-cyan-400 shrink-0" />
                 {t('hud_storage_title')}
               </h2>
-              <button 
-                type="button"
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <Tooltip label={t('tooltip_close')} placement="bottom">
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  aria-label={t('tooltip_close')}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </Tooltip>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 text-left">
@@ -10517,15 +10526,12 @@ export default function App() {
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_fav_title')}</h4>
                         <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_fav_desc')}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-0.5 ${editForm.pinToFavorites ? 'bg-blue-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToFavorites ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${editForm.pinToFavorites ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={editForm.pinToFavorites}
+                        onChange={() => setEditForm(prev => ({ ...prev, pinToFavorites: !prev.pinToFavorites }))}
+                        ariaLabel={t('app_pin_fav_title')}
+                        className="mt-0.5"
+                      />
                     </div>
                   </div>
 
@@ -10539,15 +10545,12 @@ export default function App() {
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_pin_taskbar_title')}</h4>
                         <p className="text-[11px] text-slate-500 leading-snug">{t('app_pin_taskbar_desc')}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 mt-0.5 ${editForm.pinToTaskbar ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.pinToTaskbar ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${editForm.pinToTaskbar ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={editForm.pinToTaskbar}
+                        onChange={() => setEditForm(prev => ({ ...prev, pinToTaskbar: !prev.pinToTaskbar }))}
+                        ariaLabel={t('app_pin_taskbar_title')}
+                        className="mt-0.5"
+                      />
                     </div>
                   </div>
 
@@ -10561,15 +10564,12 @@ export default function App() {
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('app_admin_title')}</h4>
                         <p className="text-[11px] text-slate-500 leading-snug">{t('app_admin_desc')}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 mt-0.5 ${editForm.isAdmin ? 'bg-amber-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${editForm.isAdmin ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${editForm.isAdmin ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={editForm.isAdmin}
+                        onChange={() => setEditForm(prev => ({ ...prev, isAdmin: !prev.isAdmin }))}
+                        ariaLabel={t('app_admin_title')}
+                        className="mt-0.5"
+                      />
                     </div>
                   </div>
 
@@ -10669,12 +10669,16 @@ export default function App() {
                       </button>
                     </Tooltip>
                   )}
-                  <button
-                    onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); setBrowseDropdownOpen(false); }}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingApp(null); setIsAddingApp(false); setIsResolvingIcon(false); setBrowseDropdownOpen(false); }}
+                      aria-label={t('confirm_reset_btn_cancel')}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none shrink-0 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -11213,12 +11217,16 @@ export default function App() {
                   <Settings className="w-5 h-5 text-cyan-400" />
                   <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('settings_title')}</h2>
                 </div>
-                <button 
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('tooltip_close')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={() => setIsSettingsOpen(false)}
+                    aria-label={t('tooltip_close')}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="flex flex-1 min-h-0">
@@ -11303,16 +11311,11 @@ export default function App() {
                     <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-wide">{t('general_confirm_delete_apps')}</h3>
                     <p className="text-xs text-slate-500 mt-1">{t('general_confirm_delete_apps_desc')}</p>
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={confirmBeforeDeletingApps}
-                    aria-label={t('general_confirm_delete_apps')}
-                    onClick={() => setAppDeleteConfirmationPreference(!confirmBeforeDeletingApps)}
-                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${confirmBeforeDeletingApps ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                  >
-                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${confirmBeforeDeletingApps ? 'left-6' : 'left-1'}`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={confirmBeforeDeletingApps}
+                    onChange={() => setAppDeleteConfirmationPreference(!confirmBeforeDeletingApps)}
+                    ariaLabel={t('general_confirm_delete_apps')}
+                  />
                 </div>
 
                 {/* Keyboard Shortcut Config */}
@@ -11457,21 +11460,17 @@ export default function App() {
                         <p className="text-xs text-slate-500 leading-relaxed">{t('general_tooltips_desc')}</p>
                       </div>
                     </div>
-                    <button 
-                      type="button"
-                      onClick={() => {
+                    <ToggleSwitch
+                      checked={enableTooltips}
+                      onChange={() => {
                         const next = !enableTooltips;
                         setEnableTooltips(next);
                         if (!next) {
                           window.dispatchEvent(new CustomEvent('cyber-hide-tooltips'));
                         }
                       }}
-                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${enableTooltips ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                    >
-                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${enableTooltips ? 'translate-x-5' : 'translate-x-0'}`}>
-                        <div className={`w-2 h-2 rounded-full ${enableTooltips ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                      </div>
-                    </button>
+                      ariaLabel={t('general_tooltips')}
+                    />
                   </div>
                 </div>
                 
@@ -11869,15 +11868,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('general_hotspots_disable_fullscreen_desc')}</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${hotspotsDisableInFullscreen ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hotspotsDisableInFullscreen ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${hotspotsDisableInFullscreen ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={hotspotsDisableInFullscreen}
+                        onChange={() => setHotspotsDisableInFullscreen(!hotspotsDisableInFullscreen)}
+                        ariaLabel={t('general_hotspots_disable_fullscreen')}
+                      />
                     </div>
                   </div>
                 </div>
@@ -11902,20 +11897,17 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={startWithWindows}
+                        onChange={() => {
                           const newVal = !startWithWindows;
                           setStartWithWindows(newVal);
                           if (isElectron) {
                             window.electronAPI!.setAutoLaunch(newVal, newVal && startMinimized);
                           }
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${startWithWindows ? 'bg-blue-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startWithWindows ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${startWithWindows ? 'bg-blue-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_startup')}
+                      />
                     </div>
 
                     {startWithWindows && (
@@ -11929,20 +11921,17 @@ export default function App() {
                             <p className="text-xs text-slate-500 leading-relaxed">{t('sys_startup_minimized_desc')}</p>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => {
+                        <ToggleSwitch
+                          checked={startMinimized}
+                          onChange={() => {
                             const newVal = !startMinimized;
                             setStartMinimized(newVal);
                             if (isElectron) {
                               window.electronAPI!.setAutoLaunch(true, newVal);
                             }
                           }}
-                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${startMinimized ? 'bg-indigo-500' : 'bg-slate-700'}`}
-                        >
-                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${startMinimized ? 'translate-x-5' : 'translate-x-0'}`}>
-                            <div className={`w-2 h-2 rounded-full ${startMinimized ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                          </div>
-                        </button>
+                          ariaLabel={t('sys_startup_minimized')}
+                        />
                       </div>
                     )}
 
@@ -11956,14 +11945,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_click_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => setHideOnClickDeadSpot(!hideOnClickDeadSpot)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${hideOnClickDeadSpot ? 'bg-amber-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnClickDeadSpot ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${hideOnClickDeadSpot ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={hideOnClickDeadSpot}
+                        onChange={() => setHideOnClickDeadSpot(!hideOnClickDeadSpot)}
+                        ariaLabel={t('general_hide_on_click')}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -11976,14 +11962,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('general_hide_on_blur_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => setHideOnBlur(!hideOnBlur)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${hideOnBlur ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${hideOnBlur ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${hideOnBlur ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={hideOnBlur}
+                        onChange={() => setHideOnBlur(!hideOnBlur)}
+                        ariaLabel={t('general_hide_on_blur')}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
@@ -11996,15 +11979,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('general_show_taskbar_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setShowTaskbarIcon(!showTaskbarIcon)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${showTaskbarIcon ? 'bg-slate-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTaskbarIcon ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showTaskbarIcon ? 'bg-slate-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={showTaskbarIcon}
+                        onChange={() => setShowTaskbarIcon(!showTaskbarIcon)}
+                        ariaLabel={t('general_show_taskbar')}
+                      />
                     </div>
 
                     {/* Accesos Recientes en Menú del Tray */}
@@ -12018,21 +11997,17 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_tray_recents_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showTrayRecents}
+                        onChange={() => {
                           const newVal = !showTrayRecents;
                           setShowTrayRecents(newVal);
                           if (isElectron && window.electronAPI?.updateTraySettings) {
                             void window.electronAPI.updateTraySettings({ showTrayRecents: newVal });
                           }
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showTrayRecents ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showTrayRecents ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showTrayRecents ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_tray_recents_title')}
+                      />
                     </div>
 
                     {/* Recomendaciones de la Suite CyberGems */}
@@ -12046,21 +12021,17 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_suite_recommendations_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showSuiteRecommendations}
+                        onChange={() => {
                           const newVal = !showSuiteRecommendations;
                           setShowSuiteRecommendations(newVal);
                           if (isElectron && window.electronAPI?.updateTraySettings) {
                             void window.electronAPI.updateTraySettings({ showSuiteRecommendations: newVal });
                           }
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${showSuiteRecommendations ? 'bg-purple-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showSuiteRecommendations ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showSuiteRecommendations ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_suite_recommendations_title')}
+                      />
                     </div>
 
                     {/* Tray Pin Recommendation Card */}
@@ -12113,14 +12084,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('general_reset_on_launch_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => setResetOnLaunch(!resetOnLaunch)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${resetOnLaunch ? 'bg-indigo-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${resetOnLaunch ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${resetOnLaunch ? 'bg-indigo-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={resetOnLaunch}
+                        onChange={() => setResetOnLaunch(!resetOnLaunch)}
+                        ariaLabel={t('general_reset_on_launch')}
+                      />
                     </div>
 
                     {/* Header Clock Toggle */}
@@ -12134,18 +12102,15 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_header_clock_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showHeaderClock}
+                        onChange={() => {
                           const newVal = !showHeaderClock;
                           setShowHeaderClock(newVal);
                           localStorage.setItem('showHeaderClock', newVal.toString());
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${showHeaderClock ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showHeaderClock ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showHeaderClock ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_show_header_clock')}
+                      />
                     </div>
 
                     {/* Footer System Uptime Toggle */}
@@ -12159,18 +12124,15 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_uptime_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showFooterUptime}
+                        onChange={() => {
                           const newVal = !showFooterUptime;
                           setShowFooterUptime(newVal);
                           localStorage.setItem('showFooterUptime', newVal.toString());
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterUptime ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterUptime ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showFooterUptime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_show_footer_uptime')}
+                      />
                     </div>
 
                     {/* Footer Launch Counter Toggle */}
@@ -12184,18 +12146,15 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_launches_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showFooterLaunches}
+                        onChange={() => {
                           const newVal = !showFooterLaunches;
                           setShowFooterLaunches(newVal);
                           localStorage.setItem('showFooterLaunches', newVal.toString());
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterLaunches ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterLaunches ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showFooterLaunches ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_show_footer_launches')}
+                      />
                     </div>
 
                     {/* Footer Date & Time Toggle */}
@@ -12209,18 +12168,15 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_datetime_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
+                      <ToggleSwitch
+                        checked={showFooterDateTime}
+                        onChange={() => {
                           const newVal = !showFooterDateTime;
                           setShowFooterDateTime(newVal);
                           localStorage.setItem('showFooterDateTime', newVal.toString());
                         }}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${showFooterDateTime ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${showFooterDateTime ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${showFooterDateTime ? 'bg-emerald-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                        ariaLabel={t('sys_show_footer_datetime')}
+                      />
                     </div>
 
                     {/* System Health Alerts Section */}
@@ -12244,19 +12200,15 @@ export default function App() {
                               <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_enabled_desc')}</p>
                             </div>
                           </div>
-                          <button 
-                            type="button"
-                            onClick={() => {
+                          <ToggleSwitch
+                            checked={systemAlertsEnabled}
+                            onChange={() => {
                               const newVal = !systemAlertsEnabled;
                               setSystemAlertsEnabled(newVal);
                               localStorage.setItem('systemAlertsEnabled', newVal.toString());
                             }}
-                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${systemAlertsEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                          >
-                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${systemAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                              <div className={`w-2 h-2 rounded-full ${systemAlertsEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                            </div>
-                          </button>
+                            ariaLabel={t('sys_alerts_enabled')}
+                          />
                         </div>
 
                         {systemAlertsEnabled && (
@@ -12273,19 +12225,15 @@ export default function App() {
                                     <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_disk_desc')}</p>
                                   </div>
                                 </div>
-                                <button 
-                                  type="button"
-                                  onClick={() => {
+                                <ToggleSwitch
+                                  checked={diskAlertsEnabled}
+                                  onChange={() => {
                                     const newVal = !diskAlertsEnabled;
                                     setDiskAlertsEnabled(newVal);
                                     localStorage.setItem('diskAlertsEnabled', newVal.toString());
                                   }}
-                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${diskAlertsEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
-                                >
-                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${diskAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${diskAlertsEnabled ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                                  </div>
-                                </button>
+                                  ariaLabel={t('sys_alerts_disk_enabled')}
+                                />
                               </div>
 
                               {diskAlertsEnabled && (
@@ -12318,19 +12266,15 @@ export default function App() {
                                     <p className="text-xs text-slate-500 leading-relaxed">{t('sys_alerts_ram_desc')}</p>
                                   </div>
                                 </div>
-                                <button 
-                                  type="button"
-                                  onClick={() => {
+                                <ToggleSwitch
+                                  checked={ramAlertsEnabled}
+                                  onChange={() => {
                                     const newVal = !ramAlertsEnabled;
                                     setRamAlertsEnabled(newVal);
                                     localStorage.setItem('ramAlertsEnabled', newVal.toString());
                                   }}
-                                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${ramAlertsEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                                >
-                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${ramAlertsEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${ramAlertsEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                                  </div>
-                                </button>
+                                  ariaLabel={t('sys_alerts_ram_enabled')}
+                                />
                               </div>
 
                               {ramAlertsEnabled && (
@@ -12366,19 +12310,15 @@ export default function App() {
                                       <span className="text-xs font-medium text-slate-300 block">{t('sys_alerts_ram_low_absolute')}</span>
                                       <span className="text-[11px] text-slate-500">{t('sys_alerts_ram_low_absolute_desc')}</span>
                                     </div>
-                                    <button 
-                                      type="button"
-                                      onClick={() => {
+                                    <ToggleSwitch
+                                      checked={ramLowAbsoluteAlertEnabled}
+                                      onChange={() => {
                                         const newVal = !ramLowAbsoluteAlertEnabled;
                                         setRamLowAbsoluteAlertEnabled(newVal);
                                         localStorage.setItem('ramLowAbsoluteAlertEnabled', newVal.toString());
                                       }}
-                                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${ramLowAbsoluteAlertEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                                    >
-                                      <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${ramLowAbsoluteAlertEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                                        <div className={`w-2 h-2 rounded-full ${ramLowAbsoluteAlertEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                                      </div>
-                                    </button>
+                                      ariaLabel={t('sys_alerts_ram_low_absolute')}
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -12420,18 +12360,11 @@ export default function App() {
                           <p role={cyberBotFarewell.state.confirmation ? 'status' : undefined} className="text-xs text-slate-500 leading-relaxed">{t(cyberBotFarewell.state.confirmation ? 'cyberbot_disabled_confirmation' : 'cyberbot_settings_desc')}</p>
                         </div>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={handleCyberBotToggle}
-                        role="switch"
-                        aria-checked={cyberBot.enabled}
-                        aria-label={t('cyberbot_settings_enable')}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.enabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${cyberBot.enabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={cyberBot.enabled}
+                        onChange={handleCyberBotToggle}
+                        ariaLabel={t('cyberbot_settings_enable')}
+                      />
                     </div>
 
                     {/* Card: Atajo para CyberBot */}
@@ -12586,18 +12519,11 @@ export default function App() {
                             <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_dodge_desc')}</p>
                           </div>
                         </div>
-                        <button 
-                          type="button"
-                          onClick={() => cyberBot.updateDodgeEnabled(!cyberBot.dodgeEnabled)}
-                          role="switch"
-                          aria-checked={cyberBot.dodgeEnabled}
-                          aria-label={t('cyberbot_dodge_title')}
-                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${cyberBot.dodgeEnabled ? 'bg-sky-500' : 'bg-slate-700'}`}
-                        >
-                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.dodgeEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                            <div className={`w-2 h-2 rounded-full ${cyberBot.dodgeEnabled ? 'bg-sky-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                          </div>
-                        </button>
+                        <ToggleSwitch
+                          checked={cyberBot.dodgeEnabled}
+                          onChange={() => cyberBot.updateDodgeEnabled(!cyberBot.dodgeEnabled)}
+                          ariaLabel={t('cyberbot_dodge_title')}
+                        />
                       </div>
 
                       {/* Separately configurable; immediate evasion takes precedence. */}
@@ -12611,18 +12537,11 @@ export default function App() {
                             <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_hover_assist_desc')}</p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => cyberBot.updateHoverAssistEnabled(!cyberBot.hoverAssistEnabled)}
-                          role="switch"
-                          aria-checked={cyberBot.hoverAssistEnabled}
-                          aria-label={t('cyberbot_hover_assist_title')}
-                          className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${cyberBot.hoverAssistEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                        >
-                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.hoverAssistEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                            <div className={`w-2 h-2 rounded-full ${cyberBot.hoverAssistEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                          </div>
-                        </button>
+                        <ToggleSwitch
+                          checked={cyberBot.hoverAssistEnabled}
+                          onChange={() => cyberBot.updateHoverAssistEnabled(!cyberBot.hoverAssistEnabled)}
+                          ariaLabel={t('cyberbot_hover_assist_title')}
+                        />
                       </div>
 
                       {/* Card 3: Nivel de interactividad */}
@@ -12682,18 +12601,11 @@ export default function App() {
                               <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_quiet_hours_desc')}</p>
                             </div>
                           </div>
-                          <button 
-                            type="button"
-                            onClick={() => cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled })}
-                            role="switch"
-                            aria-checked={cyberBot.quietHours.enabled}
-                            aria-label={t('cyberbot_quiet_hours_title')}
-                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer ${cyberBot.quietHours.enabled ? 'bg-purple-500' : 'bg-slate-700'}`}
-                          >
-                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.quietHours.enabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                              <div className={`w-2 h-2 rounded-full ${cyberBot.quietHours.enabled ? 'bg-purple-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'}`} />
-                            </div>
-                          </button>
+                          <ToggleSwitch
+                            checked={cyberBot.quietHours.enabled}
+                            onChange={() => cyberBot.updateQuietHours({ enabled: !cyberBot.quietHours.enabled })}
+                            ariaLabel={t('cyberbot_quiet_hours_title')}
+                          />
                         </div>
 
                         {cyberBot.quietHours.enabled && (
@@ -12796,18 +12708,11 @@ export default function App() {
                           <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_banners_desc')}</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => cyberBot.updateBannersEnabled(!cyberBot.bannersEnabled)}
-                        role="switch"
-                        aria-checked={cyberBot.bannersEnabled}
-                        aria-label={t('cyberbot_banners_title')}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-700'}`}
-                      >
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${cyberBot.bannersEnabled ? 'translate-x-5' : 'translate-x-0'}`}>
-                          <div className={`w-2 h-2 rounded-full ${cyberBot.bannersEnabled ? 'bg-amber-500' : 'bg-slate-400'}`} />
-                        </div>
-                      </button>
+                      <ToggleSwitch
+                        checked={cyberBot.bannersEnabled}
+                        onChange={() => cyberBot.updateBannersEnabled(!cyberBot.bannersEnabled)}
+                        ariaLabel={t('cyberbot_banners_title')}
+                      />
                     </div>
                   </div>
                 </div>
@@ -12915,28 +12820,11 @@ export default function App() {
                             <div className="text-sm font-medium text-slate-200">{t('backup_auto_enabled_label')}</div>
                             <div className="text-xs text-slate-500 leading-normal">{t('backup_auto_enabled_desc')}</div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAutoBackup(!autoBackupEnabled)}
-                            role="switch"
-                            aria-checked={autoBackupEnabled}
-                            aria-label={t('backup_auto_enabled_label')}
-                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
-                              autoBackupEnabled ? 'bg-cyan-500' : 'bg-slate-700'
-                            }`}
-                          >
-                            <div
-                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
-                                autoBackupEnabled ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            >
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  autoBackupEnabled ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
-                                }`}
-                              />
-                            </div>
-                          </button>
+                          <ToggleSwitch
+                            checked={autoBackupEnabled}
+                            onChange={() => handleToggleAutoBackup(!autoBackupEnabled)}
+                            ariaLabel={t('backup_auto_enabled_label')}
+                          />
                         </div>
 
                         {/* Selector de Frecuencia */}
@@ -13158,32 +13046,15 @@ export default function App() {
                             <div className="text-xs font-medium text-slate-200">{t('settings_icons_auto_check')}</div>
                             <div className="text-[11px] text-slate-500 leading-normal">{t('settings_icons_auto_check_desc')}</div>
                           </div>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={autoCheckIconsOnStartup}
-                            aria-label={t('settings_icons_auto_check')}
-                            onClick={() => {
+                          <ToggleSwitch
+                            checked={autoCheckIconsOnStartup}
+                            onChange={() => {
                               const next = !autoCheckIconsOnStartup;
                               setAutoCheckIconsOnStartup(next);
                               localStorage.setItem('cyber_auto_check_icons', String(next));
                             }}
-                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 cursor-pointer ${
-                              autoCheckIconsOnStartup ? 'bg-cyan-500' : 'bg-slate-700'
-                            }`}
-                          >
-                            <div
-                              className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${
-                                autoCheckIconsOnStartup ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            >
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  autoCheckIconsOnStartup ? 'bg-cyan-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-400'
-                                }`}
-                              />
-                            </div>
-                          </button>
+                            ariaLabel={t('settings_icons_auto_check')}
+                          />
                         </div>
                       </div>
                     </div>
@@ -13598,16 +13469,12 @@ export default function App() {
                             <p className="text-xs text-slate-500">{t('idx_hidden_folders_desc')}</p>
                           </div>
                         </div>
-                        <button
-                          type="button"
+                        <ToggleSwitch
+                          checked={indexerSettings.includeHiddenFolders}
                           disabled={!indexerSettings.enabled}
-                          onClick={() => handleToggleHiddenFolders(!indexerSettings.includeHiddenFolders)}
-                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-500/50 ${indexerSettings.includeHiddenFolders ? 'bg-slate-400' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
-                        >
-                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.includeHiddenFolders ? 'translate-x-5' : 'translate-x-0'}`}>
-                            <div className={`w-2 h-2 rounded-full ${indexerSettings.includeHiddenFolders ? 'bg-slate-400 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
-                          </div>
-                        </button>
+                          onChange={() => handleToggleHiddenFolders(!indexerSettings.includeHiddenFolders)}
+                          ariaLabel={t('idx_hidden_folders')}
+                        />
                       </div>
 
                       <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled && indexerSettings.includeHiddenFolders ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
@@ -13620,16 +13487,12 @@ export default function App() {
                             <p className="text-xs text-slate-500">{t('idx_hidden_content_desc')}</p>
                           </div>
                         </div>
-                        <button
-                          type="button"
+                        <ToggleSwitch
+                          checked={indexerSettings.indexHiddenContent}
                           disabled={!indexerSettings.enabled || !indexerSettings.includeHiddenFolders}
-                          onClick={() => handleToggleHiddenContent(!indexerSettings.indexHiddenContent)}
-                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${indexerSettings.indexHiddenContent ? 'bg-amber-500' : 'bg-slate-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
-                        >
-                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow flex items-center justify-center ${indexerSettings.indexHiddenContent ? 'translate-x-5' : 'translate-x-0'}`}>
-                            <div className={`w-2 h-2 rounded-full ${indexerSettings.indexHiddenContent ? 'bg-amber-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
-                          </div>
-                        </button>
+                          onChange={() => handleToggleHiddenContent(!indexerSettings.indexHiddenContent)}
+                          ariaLabel={t('idx_hidden_content')}
+                        />
                       </div>
                     </div>
 
@@ -13762,12 +13625,16 @@ export default function App() {
                   <FolderPlus className="w-5 h-5 text-cyan-400" />
                   {t('modal_add_category_title')}
                 </h2>
-                <button 
-                  onClick={() => setIsAddingCategory(false)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <form onSubmit={handleCreateCategory} className="p-6 space-y-4">
@@ -13844,12 +13711,16 @@ export default function App() {
                   <PenBox className="w-5 h-5 text-blue-400" />
                   {t('edit_cat_title')}
                 </h2>
-                <button 
-                  onClick={() => setEditingCategory(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingCategory(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14440,14 +14311,16 @@ export default function App() {
                   <AlertTriangle className="w-5 h-5 text-red-400" />
                   {t('confirm_delete_app_title')}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setAppToDelete(null)}
-                  aria-label={t('confirm_reset_btn_cancel')}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setAppToDelete(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14516,12 +14389,16 @@ export default function App() {
                   <Trash2 className="w-5 h-5 text-red-400" />
                   {t('confirm_delete_category_title')}
                 </h2>
-                <button 
-                  onClick={() => setCategoryToDelete(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={() => setCategoryToDelete(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14593,12 +14470,16 @@ export default function App() {
                     ? t('confirm_reset_most_used_title') 
                     : t('confirm_reset_recents_title')}
                 </h2>
-                <button 
-                  onClick={() => setConfirmResetType(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button 
+                    type="button"
+                    onClick={() => setConfirmResetType(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14662,13 +14543,16 @@ export default function App() {
                   <RotateCcw className="w-5 h-5 text-cyan-400" />
                   {t('backup_auto_confirm_restore_title')}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setBackupToRestore(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToRestore(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14727,13 +14611,16 @@ export default function App() {
                   <Trash2 className="w-5 h-5 text-red-400" />
                   {t('backup_auto_confirm_delete_title')}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setBackupToDelete(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setBackupToDelete(null)}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -14795,16 +14682,19 @@ export default function App() {
                   <AlertTriangle className="w-5 h-5 text-amber-400" />
                   {t('factory_reset_modal_title')}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFactoryResetModalOpen(false);
-                    setFactoryResetIncludeApps(false);
-                  }}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFactoryResetModalOpen(false);
+                      setFactoryResetIncludeApps(false);
+                    }}
+                    aria-label={t('confirm_reset_btn_cancel')}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </Tooltip>
               </div>
 
               <div className="p-6 space-y-4">
@@ -15266,17 +15156,20 @@ export default function App() {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              data-no-hide
-              onClick={(e) => {
-                e.stopPropagation();
-                setNotification(null);
-              }}
-              className="ml-1 shrink-0 hover:opacity-80 transition-opacity"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip label={t('tooltip_close')} placement="top">
+              <button
+                type="button"
+                data-no-hide
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNotification(null);
+                }}
+                aria-label={t('tooltip_close')}
+                className="ml-1 shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           </motion.div>
         )}
       </AnimatePresence>

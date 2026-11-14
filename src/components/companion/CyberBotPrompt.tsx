@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { TranslationKey } from '../../locales';
 import type { CyberBotQuietHoursConfig } from './companionTypes';
+import Tooltip from '../../Tooltip';
 
 export interface PromptLauncherApp {
   id: number;
@@ -580,15 +581,17 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           </span>
         </div>
 
-        <button
-          type="button"
-          aria-label={t('cyberbot_prompt_esc_hint')}
-          onClick={onClose}
-          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber"
-        >
-          <kbd className="tooltip-shortcut">Esc</kbd>
-          <X className="w-3.5 h-3.5" />
-        </button>
+        <Tooltip label={t('tooltip_close')} placement="bottom">
+          <button
+            type="button"
+            aria-label={t('cyberbot_prompt_esc_hint')}
+            onClick={onClose}
+            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber"
+          >
+            <kbd className="tooltip-shortcut">Esc</kbd>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Command & Search Input */}
