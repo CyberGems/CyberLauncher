@@ -431,7 +431,7 @@ export const translations = {
     search_action_open_folder: "Abrir carpeta en el Explorador",
     search_action_open_location: "Abrir ubicación de archivo",
     search_action_add_launcher: "Agregar a CyberLauncher",
-    cat_all: "Todas",
+    cat_all: "Todo",
     cat_uncategorized: "Sin Categoría",
     cat_ai: "AI",
     cat_browsers: "Navegadores",

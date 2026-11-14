@@ -18,7 +18,7 @@ export const UNCATEGORIZED_ID = 'uncategorized';
 export const UNCATEGORIZED_COLOR = '#71717a';
 
 export const SYSTEM_CATEGORY_PRESETS: readonly PresetCategoryMeta[] = [
-  { id: ALL_CATEGORY_ID, color: '#a1a1aa', names: { es: 'Todas', en: 'All' } },
+  { id: ALL_CATEGORY_ID, color: '#a1a1aa', names: { es: 'Todo', en: 'All' }, aliases: ['Todas'] },
   { id: UNCATEGORIZED_ID, color: UNCATEGORIZED_COLOR, names: { es: 'Sin Categoría', en: 'Uncategorized' } },
 ];
 

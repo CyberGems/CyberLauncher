@@ -36,7 +36,7 @@ test('default starter setup exposes exactly 5 basic categories plus system entri
   );
   assert.deepEqual(
     esDefaults.map((c) => c.name),
-    ['Todas', 'Sin Categoría', 'Navegadores', 'Diseño', 'Desarrollo', 'Oficina', 'Utilidades']
+    ['Todo', 'Sin Categoría', 'Navegadores', 'Diseño', 'Desarrollo', 'Oficina', 'Utilidades']
   );
 
   const enDefaults = getDefaultCategories('en');
@@ -73,6 +73,7 @@ test('apps match their category across localized stored names and dynamic UI lan
   assert.equal(doesAppMatchCategory('Sin Categoría', uncatEn), true);
   assert.equal(doesAppMatchCategory('Uncategorized', uncatEs), true);
   assert.equal(doesAppMatchCategory('Custom Cat', allCat), true);
+  assert.equal(resolveStockCategoryId('Todas'), ALL_CATEGORY_ID);
   assert.equal(doesAppMatchCategory('Custom Cat', utilsCatEs), false);
 
   const tEs = makeTranslator('es');

@@ -257,6 +257,16 @@ export const DEFAULT_FAVORITE_APP_IDS = [1001, 1002, 1003, 1004, 1005, 1006, 100
 
 /** Default Windows apps populated for clean installs (user removable). */
 const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
+const DEFAULT_APP_ICON_BY_ID: Record<number, string> = Object.fromEntries(
+  INITIAL_APPS
+    .filter((app): app is LauncherApp & { icon: string } => typeof app.icon === 'string' && app.icon.length > 0)
+    .map(app => [app.id, app.icon])
+);
+export const sanitizeAppsForSave = <T extends { icon?: any }>(list: T[]) =>
+  list.map(({ icon, ...rest }) => (typeof icon === 'string' ? { ...rest, icon } : rest));
+export const restoreDefaultAppIcons = <T extends { id: number; icon?: any }>(list: T[]): T[] =>
+  list.map(app => (app.icon || !DEFAULT_APP_ICON_BY_ID[app.id] ? app : { ...app, icon: DEFAULT_APP_ICON_BY_ID[app.id] }));
+
 const DEFAULT_SETUP_APP_IDS = new Set(INITIAL_APPS.map(app => app.id));
 const DEFAULT_SETUP_CATEGORY_IDS = new Set(INITIAL_CATEGORIES.map(category => category.id));
 
@@ -321,6 +331,11 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
   }
   if (typeof app.icon === 'string' && LUCIDE_ICONS[app.icon]) {
     const IconComponent = LUCIDE_ICONS[app.icon];
+    return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
+  }
+  const builtInIconName = typeof app?.id === 'number' ? DEFAULT_APP_ICON_BY_ID[app.id] : undefined;
+  if (builtInIconName && LUCIDE_ICONS[builtInIconName]) {
+    const IconComponent = LUCIDE_ICONS[builtInIconName];
     return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
   }
   
@@ -1993,7 +2008,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return restoreDefaultAppIcons(parsed);
       } catch {}
     }
     return getDefaultWindowsApps(getInitialLanguage());
@@ -4390,7 +4405,7 @@ export default function App() {
         const source = config || pending;
         if (source) {
           console.log('CONFIGURACIÓN CENTRALIZADA CARGADA - apps:', source.apps?.length, 'favs:', source.favoriteIds?.length, 'taskbar:', source.taskbarAppIds?.length);
-          if (source.apps) { console.log('  apps names:', source.apps.map((a: any) => a.name).join(', ')); setApps(source.apps); }
+          if (source.apps) { console.log('  apps names:', source.apps.map((a: any) => a.name).join(', ')); setApps(restoreDefaultAppIcons(source.apps)); }
           if (source.categories) setCategories(ensureUncategorizedCategory(source.categories, language));
           if (source.favoriteIds) setFavoriteIds(source.favoriteIds);
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
@@ -4510,7 +4525,7 @@ export default function App() {
 
   // Guardar automáticamente cada vez que algo cambie
   const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
-  configRef.current = { apps: apps.map(({ icon, ...r }: any) => r), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
+  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4528,7 +4543,7 @@ export default function App() {
       // Sanitizar: JSON.stringify elimina funciones/undefined, luego reconstruye objeto limpio
       let cleanConfig;
       try {
-        const appsClean = apps.map(({ icon, ...rest }: any) => rest);
+        const appsClean = sanitizeAppsForSave(apps);
         cleanConfig = JSON.parse(JSON.stringify({
           apps: appsClean, categories, favoriteIds, taskbarAppIds,
           bgType, bgImage, customImageUrl, customSlotImage, bgColor,
@@ -4870,8 +4885,9 @@ export default function App() {
       }
 
       if (config.apps) {
-        setApps(config.apps);
-        localStorage.setItem('apps', JSON.stringify(config.apps));
+        const restoredApps = restoreDefaultAppIcons(config.apps);
+        setApps(restoredApps);
+        localStorage.setItem('apps', JSON.stringify(restoredApps));
       }
       if (config.categories) {
         const cats = ensureUncategorizedCategory(config.categories, language);
@@ -5561,11 +5577,15 @@ export default function App() {
     // CyberBot companion
     cyberBot.resetSettings();
     setCyberBotNameDraft('');
+    setNameEntryRequested(true);
+    setSetupInviteLastShownAt(0);
+    setupInviteShownThisSessionRef.current = false;
 
     // Clear keys written only on explicit user interaction
     [
       'cyber_lang',
       'cyberBotShortcut',
+      'cyberbot_setup_invite_at',
       'systemAlertsEnabled',
       'diskAlertsEnabled',
       'ramAlertsEnabled',
@@ -5808,8 +5828,8 @@ export default function App() {
     try {
       const data = JSON.parse(content);
       
-      if (data.apps) setApps(data.apps);
-      if (data.categories) setCategories(ensureUncategorizedCategory(data.categories));
+      if (data.apps) setApps(restoreDefaultAppIcons(data.apps));
+      if (data.categories) setCategories(ensureUncategorizedCategory(data.categories, language));
       if (data.favoriteIds) setFavoriteIds(data.favoriteIds);
       if (data.taskbarAppIds) setTaskbarAppIds(data.taskbarAppIds);
       if (data.viewMode) setViewMode(data.viewMode);
@@ -6269,8 +6289,10 @@ export default function App() {
     && !setupInviteShownThisSessionRef.current
     && isCyberBotSetupInviteDue(setupInviteLastShownAt);
 
+  const namePromptDue = isCyberBotNamePromptDue(cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter);
+
   useEffect(() => {
-    if (!setupInviteDue || !isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full'
+    if (!setupInviteDue || namePromptDue || !isConfigLoaded || !cyberBot.enabled || cyberBot.chatterLevel !== 'full'
       || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || notification || cyberBot.activeMessage) return;
     if (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)) return;
 
@@ -6323,7 +6345,7 @@ export default function App() {
     };
     timer = window.setTimeout(offer, 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [setupInviteDue, isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours,
+  }, [setupInviteDue, namePromptDue, isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours,
     cyberBot.activeMessage, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, notification, t]);
 
   // Opening a work context suspends optional name entry without spending an opt-out.
@@ -6341,9 +6363,9 @@ export default function App() {
   useEffect(() => {
     if (!isConfigLoaded || !cyberBot.enabled || !isWindowVisible || !isCyberBotSpeechVisible || isAnyModalOpen || isTerminalOpen || isCyberBotContextParked || notification) return;
     if (cyberBot.activeMessage && (!nameEntryRequested || cyberBot.activeMessage.priority !== 'low')) return;
-    if (!nameEntryRequested && (cyberBot.chatterLevel !== 'full' || setupInviteDue
+    if (!nameEntryRequested && (cyberBot.chatterLevel !== 'full'
       || (cyberBot.quietHours.enabled && isInQuietHours(cyberBot.quietHours.from, cyberBot.quietHours.to)))) return;
-    if (!isCyberBotNamePromptDue(cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter)) return;
+    if (!namePromptDue) return;
 
     let disposed = false;
     let timer: number;
@@ -6392,7 +6414,7 @@ export default function App() {
 
     timer = window.setTimeout(offer, nameEntryRequested ? 1500 : 8000);
     return () => { disposed = true; window.clearTimeout(timer); };
-  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, isTerminalOpen, isCyberBotContextParked, notification, setupInviteDue, namePromptCheckTick, nameEntryRequested, t]);
+  }, [isConfigLoaded, cyberBot.enabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.preferredName, cyberBot.namePromptState, cyberBot.namePromptAfter, namePromptDue, cyberBot.activeMessage, cyberBot.say, cyberBot.advanceNamePrompt, cyberBot.updatePreferredName, cyberBot.dismissNamePromptForever, isWindowVisible, isCyberBotSpeechVisible, isAnyModalOpen, isTerminalOpen, isCyberBotContextParked, notification, namePromptCheckTick, nameEntryRequested, t]);
 
   launcherShownContextRef.current = {
     enabled: cyberBot.enabled,
