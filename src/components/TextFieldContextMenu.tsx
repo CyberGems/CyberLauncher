@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ClipboardPaste, Copy, CheckSquare, Redo2, Scissors, Trash2, Undo2 } from 'lucide-react';
 import type { TranslationKey } from '../locales';
 
-const EDITABLE_INPUT_TYPES = new Set([
+export const EDITABLE_INPUT_TYPES = new Set([
   '',
   'text',
   'search',
@@ -19,18 +19,38 @@ const EDITABLE_INPUT_TYPES = new Set([
   'week',
 ]);
 
-type EditableElement = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
+export function isEditableInputType(type: string | undefined | null): boolean {
+  const normalized = (type || 'text').toLowerCase();
+  return EDITABLE_INPUT_TYPES.has(normalized);
+}
 
-interface MenuState {
-  x: number;
-  y: number;
-  target: EditableElement;
+export interface TextMenuCapabilities {
+  readOnly: boolean;
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
   hasText: boolean;
-  readOnly: boolean;
   canPaste: boolean;
+}
+
+export function getMenuItemDisabledState(caps: TextMenuCapabilities) {
+  return {
+    undo: caps.readOnly || !caps.canUndo,
+    redo: caps.readOnly || !caps.canRedo,
+    cut: caps.readOnly || !caps.hasSelection,
+    copy: !caps.hasSelection,
+    paste: caps.readOnly || !caps.canPaste,
+    selectAll: !caps.hasText,
+    delete: caps.readOnly || !caps.hasSelection,
+  };
+}
+
+type EditableElement = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
+
+interface MenuState extends TextMenuCapabilities {
+  x: number;
+  y: number;
+  target: EditableElement;
   clipboardText: string;
 }
 
@@ -38,14 +58,13 @@ interface TextFieldContextMenuProps {
   t: (key: TranslationKey) => string;
 }
 
-function getEditableTarget(rawTarget: EventTarget | null): EditableElement | null {
+export function getEditableTarget(rawTarget: EventTarget | null): EditableElement | null {
   if (!(rawTarget instanceof HTMLElement)) return null;
   if (rawTarget instanceof HTMLTextAreaElement) {
     return rawTarget.disabled ? null : rawTarget;
   }
   if (rawTarget instanceof HTMLInputElement) {
-    const type = (rawTarget.type || 'text').toLowerCase();
-    if (!EDITABLE_INPUT_TYPES.has(type) || rawTarget.disabled) return null;
+    if (!isEditableInputType(rawTarget.type) || rawTarget.disabled) return null;
     return rawTarget;
   }
   const editableRoot = rawTarget.closest('[contenteditable]') as HTMLElement | null;
@@ -55,7 +74,7 @@ function getEditableTarget(rawTarget: EventTarget | null): EditableElement | nul
   return null;
 }
 
-function getSelectionInfo(target: EditableElement): { hasSelection: boolean; hasText: boolean; selectedText: string } {
+export function getSelectionInfo(target: EditableElement): { hasSelection: boolean; hasText: boolean; selectedText: string } {
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
     const value = target.value ?? '';
     let start: number | null = null;
@@ -368,6 +387,8 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
 
   if (!menu || typeof document === 'undefined') return null;
 
+  const disabledMap = getMenuItemDisabledState(menu);
+
   const items: Array<
     | { type: 'separator'; id: string }
     | {
@@ -385,7 +406,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'undo',
       label: t('text_menu_undo'),
       shortcut: 'Ctrl+Z',
-      disabled: menu.readOnly || !menu.canUndo,
+      disabled: disabledMap.undo,
       icon: <Undo2 className="w-3.5 h-3.5 text-slate-400" />,
     },
     {
@@ -393,7 +414,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'redo',
       label: t('text_menu_redo'),
       shortcut: 'Ctrl+Y',
-      disabled: menu.readOnly || !menu.canRedo,
+      disabled: disabledMap.redo,
       icon: <Redo2 className="w-3.5 h-3.5 text-slate-400" />,
     },
     { type: 'separator', id: 'sep-1' },
@@ -402,7 +423,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'cut',
       label: t('text_menu_cut'),
       shortcut: 'Ctrl+X',
-      disabled: menu.readOnly || !menu.hasSelection,
+      disabled: disabledMap.cut,
       icon: <Scissors className="w-3.5 h-3.5 text-slate-400" />,
     },
     {
@@ -410,7 +431,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'copy',
       label: t('text_menu_copy'),
       shortcut: 'Ctrl+C',
-      disabled: !menu.hasSelection,
+      disabled: disabledMap.copy,
       icon: <Copy className="w-3.5 h-3.5 text-slate-400" />,
     },
     {
@@ -418,7 +439,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'paste',
       label: t('text_menu_paste'),
       shortcut: 'Ctrl+V',
-      disabled: menu.readOnly || !menu.canPaste,
+      disabled: disabledMap.paste,
       icon: <ClipboardPaste className="w-3.5 h-3.5 text-slate-400" />,
     },
     { type: 'separator', id: 'sep-2' },
@@ -427,14 +448,14 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
       id: 'selectAll',
       label: t('text_menu_select_all'),
       shortcut: 'Ctrl+A',
-      disabled: !menu.hasText,
+      disabled: disabledMap.selectAll,
       icon: <CheckSquare className="w-3.5 h-3.5 text-slate-400" />,
     },
     {
       type: 'action',
       id: 'delete',
       label: t('text_menu_delete'),
-      disabled: menu.readOnly || !menu.hasSelection,
+      disabled: disabledMap.delete,
       icon: <Trash2 className="w-3.5 h-3.5 text-rose-400" />,
       danger: true,
     },

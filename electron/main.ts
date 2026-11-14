@@ -26,6 +26,14 @@ import {
   normalizeBackupFolder,
   type BackupItem,
 } from '../shared/backup';
+import {
+  bundleEmbeddedBackupIcons,
+  restorePortableBackupIcons,
+  parseValidBackupJson,
+  writeFileAtomicSync,
+  writeFileAtomic,
+  extractIconCacheFileName,
+} from '../shared/backupIcons';
 
 // Registrar el protocolo antes de que la app esté lista
 protocol.registerSchemesAsPrivileged([
@@ -444,12 +452,21 @@ async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise
   autoBackupRunning = true;
   try {
     if (!fs.existsSync(CONFIG_FILE)) return { ok: false, error: 'Config file does not exist' };
+    const rawConfig = await fs.promises.readFile(CONFIG_FILE, 'utf-8');
+    const parsedConfig = parseValidBackupJson(rawConfig);
+    if (!parsedConfig) {
+      return { ok: false, error: 'Config file is empty or invalid JSON' };
+    }
+
     const targetDir = getActiveBackupsDir();
     fs.mkdirSync(targetDir, { recursive: true });
     const file = backupFileName(new Date());
     const targetPath = path.join(targetDir, file);
 
-    fs.copyFileSync(CONFIG_FILE, targetPath);
+    const portablePayload = bundleEmbeddedBackupIcons(parsedConfig, {
+      iconCacheDir: getIconCacheDir(),
+    });
+    writeFileAtomicSync(targetPath, JSON.stringify(portablePayload, null, 2));
 
     const cfg = getAutoBackupConfig();
     const files = fs.readdirSync(targetDir);
@@ -461,10 +478,12 @@ async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise
 
     const now = new Date().toISOString();
     try {
-      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-      const config = JSON.parse(raw);
-      config.autoBackupLast = now;
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+      const latestRaw = fs.existsSync(CONFIG_FILE) ? fs.readFileSync(CONFIG_FILE, 'utf-8') : rawConfig;
+      const latestConfig = parseValidBackupJson(latestRaw) || parsedConfig;
+      latestConfig.autoBackupLast = now;
+      isSavingConfig = true;
+      writeFileAtomicSync(CONFIG_FILE, JSON.stringify(latestConfig, null, 2));
+      setTimeout(() => { isSavingConfig = false; }, 350);
     } catch (err) {
       console.error('[BACKUP] Failed to record autoBackupLast in config:', err);
     }
@@ -710,11 +729,11 @@ function readPreferredMonitorId(): string | null {
 function persistSelectedMonitorInConfig(monitorId: string) {
   try {
     if (!fs.existsSync(CONFIG_FILE)) return;
-    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-    if (config.selectedMonitor === monitorId) return;
+    const config = parseValidBackupJson(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    if (!config || config.selectedMonitor === monitorId) return;
     config.selectedMonitor = monitorId;
     isSavingConfig = true;
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    writeFileAtomicSync(CONFIG_FILE, JSON.stringify(config, null, 2));
     setTimeout(() => { isSavingConfig = false; }, 300);
   } catch (e) {
     console.error('[MONITOR] Error persisting selectedMonitor in config:', e);
@@ -1820,12 +1839,14 @@ function hasSeenTrayPinTip(): boolean {
 
 function setSeenTrayPinTip(seen: boolean) {
   try {
-    let cfg: any = {};
+    let cfg: Record<string, any> = {};
     if (fs.existsSync(CONFIG_FILE)) {
-      cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      cfg = parseValidBackupJson(fs.readFileSync(CONFIG_FILE, 'utf-8')) || {};
     }
     cfg.hasSeenTrayPinTip = seen;
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+    isSavingConfig = true;
+    writeFileAtomicSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    setTimeout(() => { isSavingConfig = false; }, 300);
   } catch { /* ignore */ }
 }
 
@@ -4383,10 +4404,10 @@ foreach (\$app in \$startApps) {
   });
 
   // --- Refresco masivo de iconos y limpieza de huérfanos ---
-  ipcMain.handle('refresh-all-app-icons', async (_event, appList: Array<{ id: number; path?: string }>, force: boolean = true) => {
+  ipcMain.handle('refresh-all-app-icons', async (_event, appList: Array<{ id: number; path?: string; iconPath?: string }>, force: boolean = true) => {
     try {
       const updatedIcons: Record<number, string> = {};
-      const activeHashes = new Set<string>();
+      const activeFiles = new Set<string>();
 
       if (Array.isArray(appList)) {
         const concurrency = 3;
@@ -4395,16 +4416,25 @@ foreach (\$app in \$startApps) {
         const worker = async () => {
           while (queue.length > 0) {
             const item = queue.shift();
-            if (!item || !item.path) continue;
+            if (!item) continue;
+            const existingCacheFile = typeof item.iconPath === 'string' ? extractIconCacheFileName(item.iconPath) : null;
+            if (existingCacheFile) {
+              activeFiles.add(existingCacheFile);
+            }
+            if (!item.path) continue;
             try {
               const { resolvedPath, shortcutIcon, uwpAumid } = resolvePathAndTarget(item.path);
               const hashKey = uwpAumid || resolvedPath;
               const hash = crypto.createHash('sha1').update(hashKey.toLowerCase()).digest('hex').slice(0, 24);
-              activeHashes.add(hash);
+              activeFiles.add(`${hash}.png`);
 
               const result = await extractAndCacheIcon(resolvedPath, force, shortcutIcon, uwpAumid);
-              if (result.iconPath && (force || result.reextracted)) {
-                updatedIcons[item.id] = result.iconPath;
+              if (result.iconPath) {
+                const resultFile = extractIconCacheFileName(result.iconPath);
+                if (resultFile) activeFiles.add(resultFile);
+                if (force || result.reextracted) {
+                  updatedIcons[item.id] = result.iconPath;
+                }
               }
             } catch (err) {
               console.warn(`[ICON] Failed to refresh app ${item.id} (${item.path}):`, err);
@@ -4424,12 +4454,9 @@ foreach (\$app in \$startApps) {
           if (fs.existsSync(cacheDir)) {
             const files = await fs.promises.readdir(cacheDir);
             for (const file of files) {
-              if (file.endsWith('.png')) {
-                const fileHash = file.replace('.png', '');
-                if (!activeHashes.has(fileHash)) {
-                  await fs.promises.unlink(path.join(cacheDir, file)).catch(() => {});
-                  cleanedCount++;
-                }
+              if (!activeFiles.has(file)) {
+                await fs.promises.unlink(path.join(cacheDir, file)).catch(() => {});
+                cleanedCount++;
               }
             }
           }
@@ -4455,6 +4482,25 @@ foreach (\$app in \$startApps) {
     }
   });
 
+  async function restoreBackupPayload(rawContent: string): Promise<string | null> {
+    const parsed = parseValidBackupJson(rawContent);
+    if (!parsed) return null;
+    const restoredConfig = await restorePortableBackupIcons(parsed, {
+      iconCacheDir: getIconCacheDir(),
+      extractFallback: async (item) => {
+        if (!item?.path || typeof item.path !== 'string') return null;
+        try {
+          const { resolvedPath, shortcutIcon, uwpAumid } = resolvePathAndTarget(item.path);
+          const extracted = await extractAndCacheIcon(resolvedPath, false, shortcutIcon, uwpAumid);
+          return extracted.iconPath || null;
+        } catch {
+          return null;
+        }
+      },
+    });
+    return JSON.stringify(restoredConfig, null, 2);
+  }
+
   // --- Exportar configuración (guardar archivo nativo) ---
   ipcMain.handle('export-config', async (_event, jsonData: string) => {
     if (!mainWindow) return null;
@@ -4466,7 +4512,11 @@ foreach (\$app in \$startApps) {
     isDialogOpen = false;
     showMainWindow();
     if (result.canceled || !result.filePath) return null;
-    fs.writeFileSync(result.filePath, jsonData, 'utf-8');
+    const parsed = parseValidBackupJson(jsonData);
+    const outJson = parsed
+      ? JSON.stringify(bundleEmbeddedBackupIcons(parsed, { iconCacheDir: getIconCacheDir() }), null, 2)
+      : jsonData;
+    writeFileAtomicSync(result.filePath, outJson);
     return result.filePath;
   });
 
@@ -4481,8 +4531,9 @@ foreach (\$app in \$startApps) {
     isDialogOpen = false;
     showMainWindow();
     if (result.canceled || result.filePaths.length === 0) return null;
-    const content = fs.readFileSync(result.filePaths[0], 'utf-8');
-    return content;
+    const raw = await fs.promises.readFile(result.filePaths[0], 'utf-8');
+    const restored = await restoreBackupPayload(raw);
+    return restored ?? raw;
   });
 
   // --- Respaldo automático programado ---
@@ -4499,7 +4550,11 @@ foreach (\$app in \$startApps) {
         .reverse()
         .map((file) => {
           try {
-            const stat = fs.statSync(path.join(targetDir, file));
+            const fullPath = path.join(targetDir, file);
+            const stat = fs.statSync(fullPath);
+            if (stat.size < 2) return null;
+            const parsed = parseValidBackupJson(fs.readFileSync(fullPath, 'utf-8'));
+            if (!parsed) return null;
             return { file, size: stat.size, mtime: stat.mtime.toISOString() };
           } catch {
             return null;
@@ -4539,6 +4594,7 @@ foreach (\$app in \$startApps) {
   });
 
   ipcMain.handle('backup:restore', async (_event, fileName: string) => {
+    isSavingConfig = true;
     try {
       const targetDir = getActiveBackupsDir();
       const safeFile = path.basename(fileName);
@@ -4546,11 +4602,17 @@ foreach (\$app in \$startApps) {
       if (!fs.existsSync(backupPath) || !isBackupFile(safeFile)) {
         return { success: false, error: 'Backup file not found' };
       }
-      const content = await fs.promises.readFile(backupPath, 'utf-8');
-      await fs.promises.writeFile(CONFIG_FILE, content, 'utf-8');
-      return { success: true, content };
+      const rawContent = await fs.promises.readFile(backupPath, 'utf-8');
+      const restoredJson = await restoreBackupPayload(rawContent);
+      if (!restoredJson) {
+        return { success: false, error: 'Backup file is empty or corrupted' };
+      }
+      await writeFileAtomic(CONFIG_FILE, restoredJson);
+      return { success: true, content: restoredJson };
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) };
+    } finally {
+      setTimeout(() => { isSavingConfig = false; }, 350);
     }
   });
 
@@ -5114,7 +5176,7 @@ foreach (\$app in \$startApps) {
         }
       }
       const json = JSON.stringify(config, null, 2);
-      await fs.promises.writeFile(CONFIG_FILE, json, 'utf-8');
+      await writeFileAtomic(CONFIG_FILE, json);
       // Pequeña pausa para asegurar que el watcher no capture la escritura parcial
       await new Promise(r => setTimeout(r, 50));
       console.log('[CONFIG] Guardado:', CONFIG_FILE, 'apps:', config?.apps?.length || 0);
@@ -5154,7 +5216,7 @@ foreach (\$app in \$startApps) {
       if (fs.existsSync(oldConfig)) {
         const raw = await fs.promises.readFile(oldConfig, 'utf-8');
         const data = JSON.parse(raw);
-        await fs.promises.writeFile(CONFIG_FILE, JSON.stringify(data, null, 2));
+        await writeFileAtomic(CONFIG_FILE, JSON.stringify(data, null, 2));
         return data;
       }
       return null;

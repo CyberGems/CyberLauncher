@@ -72,6 +72,16 @@ import {
   parseBackupKeep,
   type BackupItem,
 } from '../shared/backup';
+import {
+  DEFAULT_TASKBAR_APP_IDS,
+  DEFAULT_FAVORITE_APP_IDS,
+  getDefaultWindowsApps,
+  localizeStockAppNames,
+  type LauncherApp,
+} from '../shared/defaultApps';
+import { resolveEmbeddedIconsInBrowser } from '../shared/backupIconsBrowser';
+
+export { DEFAULT_TASKBAR_APP_IDS, DEFAULT_FAVORITE_APP_IDS, getDefaultWindowsApps, localizeStockAppNames };
 
 // (CyberTray import removed)
 
@@ -118,164 +128,6 @@ function withShortcut(label: ReactNode, shortcut: string): ReactNode {
       <kbd className="tooltip-shortcut">{shortcut}</kbd>
     </>
   );
-}
-
-type LauncherApp = {
-  id: number;
-  name: string;
-  category: string;
-  color: string;
-  usage: number;
-  icon?: any;
-  iconPath?: string;
-  path?: string;
-  isFav?: boolean;
-  isAdmin?: boolean;
-  shortcut?: string;
-};
-
-export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] => {
-  const catUtils = getPresetCategoryName('utils', lang);
-  const catDesign = getPresetCategoryName('design', lang);
-  const catDev = getPresetCategoryName('dev', lang);
-  const catOffice = getPresetCategoryName('office', lang);
-  const appsList: LauncherApp[] = [
-    {
-      id: 1001,
-      name: lang === 'es' ? 'Calculadora' : 'Calculator',
-      path: 'calc.exe',
-      category: catUtils,
-      icon: 'Calculator',
-      color: 'text-amber-400',
-      usage: 0,
-      isFav: true,
-    },
-    {
-      id: 1002,
-      name: 'Paint',
-      path: 'mspaint.exe',
-      category: catDesign,
-      icon: 'Palette',
-      color: 'text-pink-400',
-      usage: 0,
-      isFav: false,
-    },
-    {
-      id: 1003,
-      name: lang === 'es' ? 'Configuración de Windows' : 'Windows Settings',
-      path: 'ms-settings:',
-      category: catUtils,
-      icon: 'Settings',
-      color: 'text-indigo-400',
-      usage: 0,
-      isFav: true,
-    },
-    {
-      id: 1004,
-      name: lang === 'es' ? 'Explorador de archivos' : 'File Explorer',
-      path: 'explorer.exe',
-      category: catUtils,
-      icon: 'Folder',
-      color: 'text-yellow-400',
-      usage: 0,
-      isFav: true,
-    },
-    {
-      id: 1005,
-      name: lang === 'es' ? 'Información del Sistema' : 'System Info',
-      path: 'ms-settings:about',
-      category: catUtils,
-      icon: 'Cpu',
-      color: 'text-teal-400',
-      usage: 0,
-      isFav: false,
-    },
-    {
-      id: 1006,
-      name: lang === 'es' ? 'Administrador de tareas' : 'Task Manager',
-      path: 'taskmgr.exe',
-      category: catUtils,
-      icon: 'Activity',
-      color: 'text-emerald-400',
-      usage: 0,
-      isFav: true,
-    },
-    {
-      id: 1007,
-      name: lang === 'es' ? 'Aplicaciones instaladas' : 'Installed Apps',
-      path: 'ms-settings:appsfeatures',
-      category: catUtils,
-      icon: 'Package',
-      color: 'text-purple-400',
-      usage: 0,
-      isFav: false,
-    },
-    {
-      id: 1008,
-      name: 'PowerShell (Admin)',
-      path: 'powershell.exe',
-      isAdmin: true,
-      category: catDev,
-      icon: 'Terminal',
-      color: 'text-cyan-400',
-      usage: 0,
-      isFav: true,
-    },
-    {
-      id: 1009,
-      name: lang === 'es' ? 'Símbolo del sistema (Admin)' : 'Command Prompt (Admin)',
-      path: 'cmd.exe',
-      isAdmin: true,
-      category: catDev,
-      icon: 'TerminalSquare',
-      color: 'text-sky-400',
-      usage: 0,
-      isFav: false,
-    },
-    {
-      id: 1010,
-      name: lang === 'es' ? 'Configuración de Red' : 'Network Settings',
-      path: 'ms-settings:network',
-      category: catUtils,
-      icon: 'Wifi',
-      color: 'text-teal-400',
-      usage: 0,
-      isFav: false,
-    },
-    {
-      id: 1011,
-      name: lang === 'es' ? 'Bloc de notas' : 'Notepad',
-      path: 'notepad.exe',
-      category: catOffice,
-      icon: 'FileText',
-      color: 'text-blue-400',
-      usage: 0,
-      isFav: false,
-    },
-  ];
-  return appsList;
-};
-
-export const DEFAULT_TASKBAR_APP_IDS = [1004, 1003, 1006, 1008, 1001];
-export const DEFAULT_FAVORITE_APP_IDS = [1004, 1003, 1006, 1008, 1001];
-
-/**
- * Updates untouched stock starter app names (IDs 1001..1011) to the target language,
- * leaving custom or renamed user apps intact.
- */
-function localizeStockAppNames<T extends { id: number; name: string }>(appsList: T[], lang: CategoryLang): T[] {
-  const esById = new Map(getDefaultWindowsApps('es').map(a => [a.id, a.name]));
-  const enById = new Map(getDefaultWindowsApps('en').map(a => [a.id, a.name]));
-  return appsList.map(app => {
-    const esName = esById.get(app.id);
-    const enName = enById.get(app.id);
-    if (!esName || !enName) return app;
-    if (app.name === esName || app.name === enName) {
-      const targetName = lang === 'en' ? enName : esName;
-      return app.name === targetName ? app : { ...app, name: targetName };
-    }
-    return app;
-  });
 }
 
 /** Default Windows apps populated for clean installs (user removable). */
@@ -5865,13 +5717,15 @@ export default function App() {
 
   const handleExport = async () => {
     const data = {
-      version: 1,
-      apps,
+      version: 2,
+      apps: sanitizeAppsForSave(apps),
       categories,
       favoriteIds,
       taskbarAppIds,
+      launchHistory,
       viewMode,
       cardScale,
+      onboardingCompleted,
       settings: {
         bgType,
         bgImage,
@@ -5887,6 +5741,30 @@ export default function App() {
         leftSidebarCollapsed,
         rightSidebarWidth,
         rightSidebarCollapsed,
+        hideOnClickDeadSpot,
+        hideOnBlur,
+        showTaskbarIcon,
+        resetOnLaunch,
+        enableTooltips,
+        showHeaderClock,
+        showFooterDateTime,
+        showFooterUptime,
+        showFooterLaunches,
+        systemAlertsEnabled,
+        diskAlertsEnabled,
+        ramAlertsEnabled,
+        ramThresholdPercent,
+        ramLowAbsoluteAlertEnabled,
+        selectedMonitor,
+        autoUpdate,
+        language,
+        autoBackupEnabled,
+        autoBackupHours,
+        autoBackupKeep,
+        autoBackupLast,
+        autoBackupFolder,
+        showTrayRecents,
+        showSuiteRecommendations,
         activationShortcut,
         cyberBotShortcut,
         hotspotCorners,
@@ -5917,64 +5795,128 @@ export default function App() {
 
   const applyImportData = (content: string) => {
     try {
-      const data = JSON.parse(content);
-      
-      if (data.apps) setApps(restoreDefaultAppIcons(data.apps));
-      if (data.categories) setCategories(ensureUncategorizedCategory(data.categories, language));
-      if (data.favoriteIds) setFavoriteIds(data.favoriteIds);
-      if (data.taskbarAppIds) setTaskbarAppIds(data.taskbarAppIds);
+      const parsed = JSON.parse(content);
+      const data = isElectron ? parsed : resolveEmbeddedIconsInBrowser(parsed);
+      const s = data.settings && typeof data.settings === 'object' ? { ...data, ...data.settings } : data;
+      const targetLang: CategoryLang =
+        s.language === 'es' || s.language === 'en' ? s.language : language;
+
+      if (s.language === 'es' || s.language === 'en') {
+        setLanguage(s.language);
+        try { localStorage.setItem('cyber_lang', s.language); } catch {}
+      }
+
+      if (Array.isArray(data.apps)) {
+        const restoredApps = restoreDefaultAppIcons(data.apps);
+        setApps(restoredApps);
+        try { localStorage.setItem('apps', JSON.stringify(restoredApps)); } catch {}
+      }
+      if (Array.isArray(data.categories)) {
+        const cats = ensureUncategorizedCategory(data.categories, targetLang);
+        setCategories(cats);
+        try { localStorage.setItem('categories', JSON.stringify(cats)); } catch {}
+      }
+      if (Array.isArray(data.favoriteIds)) {
+        setFavoriteIds(data.favoriteIds);
+        try { localStorage.setItem('favoriteIds', JSON.stringify(data.favoriteIds)); } catch {}
+      }
+      if (Array.isArray(data.taskbarAppIds)) {
+        setTaskbarAppIds(data.taskbarAppIds);
+        try { localStorage.setItem('taskbarAppIds', JSON.stringify(data.taskbarAppIds)); } catch {}
+      }
+      if (Array.isArray(data.launchHistory)) {
+        setLaunchHistory(data.launchHistory);
+        try { localStorage.setItem('cyber_launch_history', JSON.stringify(data.launchHistory)); } catch {}
+      }
       if (data.viewMode) setViewMode(data.viewMode);
       if (data.cardScale !== undefined) setCardScale(data.cardScale);
       if (data.cyberBotSettings) cyberBot.restoreSettings(data.cyberBotSettings);
-      
-      if (data.settings) {
-        if (data.settings.cyberBot) cyberBot.restoreSettings(data.settings.cyberBot);
-        if (data.settings.bgType !== undefined) setBgType(data.settings.bgType);
-        if (data.settings.bgImage !== undefined) setBgImage(normalizeBgImage(data.settings.bgImage));
-        if (data.settings.customImageUrl !== undefined) setCustomImageUrl(data.settings.customImageUrl);
-        if (data.settings.customSlotImage !== undefined) {
-          const slot = data.settings.customSlotImage
-            ? normalizeBgImage(data.settings.customSlotImage)
-            : '';
-          setCustomSlotImage(slot && !PRESET_IMAGES.includes(slot) ? slot : '');
-        } else if (data.settings.bgImage !== undefined) {
-          const normalized = normalizeBgImage(data.settings.bgImage);
-          if (!PRESET_IMAGES.includes(normalized)) setCustomSlotImage(normalized);
-        }
-        if (data.settings.bgColor !== undefined) setBgColor(data.settings.bgColor);
-        if (data.settings.bgGradient !== undefined) setBgGradient(data.settings.bgGradient);
-        if (data.settings.glassIntensity !== undefined) setGlassIntensity(data.settings.glassIntensity);
-        if (data.settings.bgOpacity !== undefined) setBgOpacity(data.settings.bgOpacity);
-        if (data.settings.startWithWindows !== undefined) setStartWithWindows(data.settings.startWithWindows);
-        if (data.settings.startMinimized !== undefined) setStartMinimized(data.settings.startMinimized);
-        if (data.settings.leftSidebarWidth !== undefined) setLeftSidebarWidth(data.settings.leftSidebarWidth);
-        if (data.settings.leftSidebarCollapsed !== undefined) setLeftSidebarCollapsed(!!data.settings.leftSidebarCollapsed);
-        if (data.settings.rightSidebarWidth !== undefined) setRightSidebarWidth(data.settings.rightSidebarWidth);
-        if (data.settings.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!data.settings.rightSidebarCollapsed);
-        if (data.settings.activationShortcut !== undefined) setActivationShortcut(data.settings.activationShortcut);
-        if (data.settings.cyberBotShortcut !== undefined) setCyberBotShortcut(data.settings.cyberBotShortcut);
-        if (data.settings.hotspotCorners !== undefined) setHotspotCorners(data.settings.hotspotCorners);
-        if (data.settings.hotspotCorner !== undefined && data.settings.hotspotCorner !== 'none') {
-           setHotspotCorners([data.settings.hotspotCorner]);
-        }
-        if (data.settings.hotspotDelay !== undefined) setHotspotDelay(data.settings.hotspotDelay);
-        if (data.settings.hotspotsDisableInFullscreen !== undefined) {
-          setHotspotsDisableInFullscreen(!!data.settings.hotspotsDisableInFullscreen);
-        }
-        if (data.settings.autoBackupEnabled !== undefined) setAutoBackupEnabled(data.settings.autoBackupEnabled !== false);
-        if (data.settings.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(data.settings.autoBackupHours));
-        if (data.settings.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(data.settings.autoBackupKeep));
-        if (data.settings.autoBackupLast !== undefined) setAutoBackupLast(data.settings.autoBackupLast || null);
-        if (data.settings.autoBackupFolder !== undefined) {
-          setAutoBackupFolder(typeof data.settings.autoBackupFolder === 'string' ? data.settings.autoBackupFolder : '');
-        }
-        if (isElectron && (data.settings.startWithWindows !== undefined || data.settings.startMinimized !== undefined)) {
-          const auto = data.settings.startWithWindows !== undefined ? !!data.settings.startWithWindows : startWithWindows;
-          const mini = data.settings.startMinimized !== undefined ? !!data.settings.startMinimized : startMinimized;
-          window.electronAPI!.setAutoLaunch(auto, auto && mini);
+      if (s.cyberBot) cyberBot.restoreSettings(s.cyberBot);
+      if (s.onboardingCompleted !== undefined) {
+        const completed = !!s.onboardingCompleted;
+        setOnboardingCompleted(completed);
+        try {
+          if (completed) localStorage.setItem('cyber_onboarding_done', 'true');
+          else localStorage.removeItem('cyber_onboarding_done');
+        } catch {}
+      } else if (Array.isArray(data.apps) && data.apps.length > 0) {
+        setOnboardingCompleted(true);
+        try { localStorage.setItem('cyber_onboarding_done', 'true'); } catch {}
+      }
+
+      if (s.bgType !== undefined) setBgType(s.bgType);
+      if (s.bgImage !== undefined) setBgImage(normalizeBgImage(s.bgImage));
+      if (s.customImageUrl !== undefined) setCustomImageUrl(s.customImageUrl);
+      if (s.customSlotImage !== undefined) {
+        const slot = s.customSlotImage
+          ? normalizeBgImage(s.customSlotImage)
+          : '';
+        setCustomSlotImage(slot && !PRESET_IMAGES.includes(slot) ? slot : '');
+      } else if (s.bgImage !== undefined) {
+        const normalized = normalizeBgImage(s.bgImage);
+        if (!PRESET_IMAGES.includes(normalized)) setCustomSlotImage(normalized);
+      }
+      if (s.bgColor !== undefined) setBgColor(s.bgColor);
+      if (s.bgGradient !== undefined) setBgGradient(s.bgGradient);
+      if (s.glassIntensity !== undefined) setGlassIntensity(s.glassIntensity);
+      if (s.bgOpacity !== undefined) setBgOpacity(s.bgOpacity);
+      if (s.startWithWindows !== undefined) setStartWithWindows(s.startWithWindows);
+      if (s.startMinimized !== undefined) setStartMinimized(s.startMinimized);
+      if (s.leftSidebarWidth !== undefined) setLeftSidebarWidth(s.leftSidebarWidth);
+      if (s.leftSidebarCollapsed !== undefined) setLeftSidebarCollapsed(!!s.leftSidebarCollapsed);
+      if (s.rightSidebarWidth !== undefined) setRightSidebarWidth(s.rightSidebarWidth);
+      if (s.rightSidebarCollapsed !== undefined) setRightSidebarCollapsed(!!s.rightSidebarCollapsed);
+      if (s.hideOnClickDeadSpot !== undefined) setHideOnClickDeadSpot(!!s.hideOnClickDeadSpot);
+      if (s.hideOnBlur !== undefined && s.hideOnBlur !== null) {
+        const hideBlurVal = typeof s.hideOnBlur === 'boolean' ? s.hideOnBlur : s.hideOnBlur !== 'false';
+        setHideOnBlur(hideBlurVal);
+        try { localStorage.setItem('hideOnBlur', hideBlurVal.toString()); } catch {}
+        if (isElectron) window.electronAPI!.setHideOnBlur(hideBlurVal);
+      }
+      if (s.showTaskbarIcon !== undefined) setShowTaskbarIcon(!!s.showTaskbarIcon);
+      if (s.resetOnLaunch !== undefined) setResetOnLaunch(!!s.resetOnLaunch);
+      if (s.enableTooltips !== undefined) setEnableTooltips(!!s.enableTooltips);
+      if (s.showHeaderClock !== undefined) setShowHeaderClock(!!s.showHeaderClock);
+      if (s.showFooterDateTime !== undefined) setShowFooterDateTime(!!s.showFooterDateTime);
+      if (s.showFooterUptime !== undefined) setShowFooterUptime(!!s.showFooterUptime);
+      if (s.showFooterLaunches !== undefined) setShowFooterLaunches(!!s.showFooterLaunches);
+      if (s.systemAlertsEnabled !== undefined) setSystemAlertsEnabled(!!s.systemAlertsEnabled);
+      if (s.diskAlertsEnabled !== undefined) setDiskAlertsEnabled(!!s.diskAlertsEnabled);
+      if (s.ramAlertsEnabled !== undefined) setRamAlertsEnabled(!!s.ramAlertsEnabled);
+      if (s.ramThresholdPercent !== undefined) setRamThresholdPercent(Number(s.ramThresholdPercent) || 80);
+      if (s.ramLowAbsoluteAlertEnabled !== undefined) setRamLowAbsoluteAlertEnabled(!!s.ramLowAbsoluteAlertEnabled);
+      if (s.selectedMonitor !== undefined && s.selectedMonitor !== null) {
+        const normalizedMonitor = String(s.selectedMonitor).trim();
+        if (normalizedMonitor) {
+          setSelectedMonitor(normalizedMonitor);
+          try { localStorage.setItem('selectedMonitor', normalizedMonitor); } catch {}
         }
       }
-      
+      if (s.autoUpdate !== undefined) setAutoUpdate(!!s.autoUpdate);
+      if (s.showTrayRecents !== undefined) setShowTrayRecents(s.showTrayRecents !== false);
+      if (s.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(s.showSuiteRecommendations !== false);
+      if (s.activationShortcut !== undefined) setActivationShortcut(s.activationShortcut);
+      if (s.cyberBotShortcut !== undefined) setCyberBotShortcut(s.cyberBotShortcut);
+      if (s.hotspotCorners !== undefined) setHotspotCorners(s.hotspotCorners);
+      if (s.hotspotCorner !== undefined && s.hotspotCorner !== 'none') {
+        setHotspotCorners([s.hotspotCorner]);
+      }
+      if (s.hotspotDelay !== undefined) setHotspotDelay(s.hotspotDelay);
+      if (s.hotspotsDisableInFullscreen !== undefined) {
+        setHotspotsDisableInFullscreen(!!s.hotspotsDisableInFullscreen);
+      }
+      if (s.autoBackupEnabled !== undefined) setAutoBackupEnabled(s.autoBackupEnabled !== false);
+      if (s.autoBackupHours !== undefined) setAutoBackupHours(parseBackupHours(s.autoBackupHours));
+      if (s.autoBackupKeep !== undefined) setAutoBackupKeep(parseBackupKeep(s.autoBackupKeep));
+      if (s.autoBackupLast !== undefined) setAutoBackupLast(s.autoBackupLast || null);
+      if (s.autoBackupFolder !== undefined) {
+        setAutoBackupFolder(typeof s.autoBackupFolder === 'string' ? s.autoBackupFolder : '');
+      }
+      if (isElectron && (s.startWithWindows !== undefined || s.startMinimized !== undefined)) {
+        const auto = s.startWithWindows !== undefined ? !!s.startWithWindows : startWithWindows;
+        const mini = s.startMinimized !== undefined ? !!s.startMinimized : startMinimized;
+        window.electronAPI!.setAutoLaunch(auto, auto && mini);
+      }
     } catch (error) {
       console.error('Error al importar:', error);
     }
@@ -6028,6 +5970,7 @@ export default function App() {
     if (!isElectron || !window.electronAPI?.backupNow || isBackingUp) return;
     setIsBackingUp(true);
     try {
+      await forceSaveConfig();
       const res = await window.electronAPI.backupNow();
       if (res?.ok && res.file) {
         setAutoBackupLast(new Date().toISOString());
@@ -10114,7 +10057,7 @@ export default function App() {
                         {appInfo ? (
                           <AppIcon app={appInfo} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
                         ) : item.icon ? (
-                          <img src={item.icon} alt="" className="w-3.5 h-3.5 lg:w-4 lg:h-4 object-contain drop-shadow-md shrink-0" />
+                          <AppIcon app={{ id: -1, name: item.name, iconPath: item.icon }} className="w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 text-slate-400" strokeWidth={1.5} />
                         ) : item.type === 'folder' ? (
                           <Folder className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400/80 shrink-0" />
                         ) : (
