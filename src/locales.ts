@@ -177,7 +177,7 @@ export const translations = {
     about_suite_manager: "CyberManager: gestor de tareas ligero",
     about_suite_tray: "CyberTray: lanzador en bandeja",
     about_suite_wall: "CyberWall: firewall por aplicación",
-    
+
     // Sidebar Tabs
     tab_general: "GENERAL",
     tab_appearance: "APARIENCIA",
@@ -185,10 +185,10 @@ export const translations = {
     tab_backup: "RESPALDO Y DATOS",
     tab_indexer: "BUSCADOR",
     tab_uwp: "ESCÁNER WS",
-    
+
     // Settings Title
     settings_title: "CONFIGURACIÓN DE CYBERLAUNCHER",
-    
+
     // General Settings Tab
     general_language: "IDIOMA DE LA INTERFAZ (LANGUAGE)",
     general_language_desc: "Selecciona el idioma de los menús y paneles de CyberLauncher.",
@@ -223,7 +223,7 @@ export const translations = {
     general_show_taskbar_desc: "Muestra el icono de Cyber Launcher en la barra de tareas de Windows.",
     general_reset_on_launch: "Restablecer vista al abrir (Reset)",
     general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/filtro/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
-    
+
     // Appearance Settings Tab
     app_bg_type: "TIPO DE FONDO",
     app_bg_image: "Imagen",
@@ -243,7 +243,7 @@ export const translations = {
     app_opacity_desc: "Controla la transparencia del fondo de la aplicación.",
     app_scale: "ESCALA DE LA INTERFAZ",
     app_scale_desc: "Ajusta la escala general de renderizado de CyberLauncher.",
-    
+
     // Icon Maintenance
     ctx_refresh_icon: "Refrescar icono",
     ctx_refreshing_icon: "Refrescando...",
@@ -257,7 +257,7 @@ export const translations = {
     settings_icons_auto_check_desc: "Comprueba en segundo plano si los ejecutables en disco cambiaron de fecha y renueva sus iconos en silencio.",
     app_edit_refresh_icon: "Restaurar icono original",
     app_edit_refreshing_icon: "Restaurando...",
-    
+
     // System Settings Tab
     sys_startup: "INICIO AUTOMÁTICO CON WINDOWS",
     sys_startup_desc: "Lanza Cyber Launcher automáticamente al iniciar sesión.",
@@ -267,7 +267,7 @@ export const translations = {
     sys_blur_hide_desc: "Oculta el lanzador inmediatamente al hacer clic fuera de su ventana.",
     sys_animations: "EFECTOS VISUALES Y ANIMACIONES",
     sys_animations_desc: "Habilita efectos fluidos y transiciones holográficas premium.",
-    
+
     // Indexer Settings Tab
     idx_title: "ÍNDICE GLOBAL",
     idx_desc: "Motor de indexación híbrido de archivos y accesos directos",
@@ -287,7 +287,7 @@ export const translations = {
     idx_hidden_folders_desc: "Muestra carpetas que empiezan con punto (ej. .codex, .git) en los resultados de búsqueda.",
     idx_hidden_content: "INDEXAR CONTENIDO INTERNO DE OCULTAS",
     idx_hidden_content_desc: "Rastrea recursivamente todo el contenido dentro de carpetas ocultas. Aumenta el uso de recursos.",
-    
+
     // Windows Store Settings Tab
     uwp_title: "APLICACIONES UWP & MSIX",
     uwp_desc: "Gestión nativa de aplicaciones de la Tienda de Windows (AUMID)",
@@ -296,7 +296,7 @@ export const translations = {
     uwp_empty: "No hay aplicaciones UWP indexadas. Haz clic en 'Escanear Windows Store' arriba para iniciar.",
     uwp_toast_scan_start: "Iniciando escaneo de Windows Store...",
     uwp_toast_scan_success: "Escaneo completado con éxito",
-    
+
     // Context Menu
     ctx_open: "Abrir",
     ctx_copy: "Copiar",
@@ -388,11 +388,11 @@ export const translations = {
     factory_reset_btn_confirm: "Restablecer ahora",
     notif_factory_reset_done: "Configuración restablecida a los valores de fábrica",
     notif_factory_reset_full_done: "Configuración y accesos restablecidos a los valores de fábrica",
-    
+
     // Placeholder Info Text below input
     hint_system_tab: "[Tab] Volver a Launcher",
     hint_normal_tab: "[Tab] Buscar en el sistema",
-    
+
     // Notifications & Toasts
     notif_drive_linked: "Indexando unidad entera {drive}...",
     notif_drive_unlinked: "Unidad {drive} desvinculada",
@@ -400,7 +400,7 @@ export const translations = {
     notif_indexer_error: "Error al guardar configuración del indexador",
     notif_path_added: "Ruta agregada: {path}",
     notif_path_removed: "Ruta eliminada: {path}",
-    
+
     // System Status
     stat_online: "ONLINE",
     stat_offline: "OFFLINE",
@@ -982,6 +982,29 @@ export const translations = {
     cyberbot_context_about: "Un punto y un signo más: de aquí heredé la mirada.",
     cyberbot_context_about_2: "Aquí puedes consultar la versión y los detalles de CyberLauncher.",
     cyberbot_context_about_3: "Hecho por CyberGems, con atajos, brillo azul y atención a los detalles.",
+    text_menu_aria: "Opciones de edición de texto",
+    text_menu_undo: "Deshacer",
+    text_menu_redo: "Rehacer",
+    text_menu_cut: "Cortar",
+    text_menu_copy: "Copiar",
+    text_menu_paste: "Pegar",
+    text_menu_select_all: "Seleccionar todo",
+    text_menu_delete: "Eliminar",
+    onboarding_badge: "Configuración inicial",
+    onboarding_title: "Bienvenido a CyberLauncher",
+    onboarding_subtitle: "Elige tu idioma y deja listo tu espacio inicial en segundos.",
+    onboarding_lang_label: "Idioma",
+    onboarding_preview_title: "Categorías iniciales",
+    onboarding_preview_summary: "5 categorías · 5 favoritos · 5 accesos",
+    onboarding_name_label: "¿Cómo te gustaría que te llame CyberBot?",
+    onboarding_optional: "Opcional",
+    onboarding_name_placeholder: "Tu nombre o apodo",
+    onboarding_name_desc: "Si lo dejas en blanco, CyberBot usará saludos neutrales. Puedes cambiarlo luego en Ajustes.",
+    onboarding_skip: "Omitir",
+    onboarding_start: "Empezar",
+    onboarding_welcome_toast: "Espacio inicial listo en español.",
+    cmd_palette_action_onboarding: "Asistente inicial",
+    cmd_palette_action_onboarding_desc: "Configurar idioma, categorías iniciales y nombre de CyberBot",
   },
   en: {
     // Top Bar & General Placeholders
@@ -1161,7 +1184,7 @@ export const translations = {
     about_suite_manager: "CyberManager: lightweight task manager",
     about_suite_tray: "CyberTray: tray launcher",
     about_suite_wall: "CyberWall: per-application firewall",
-    
+
     // Sidebar Tabs
     tab_general: "GENERAL",
     tab_appearance: "APPEARANCE",
@@ -1169,10 +1192,10 @@ export const translations = {
     tab_backup: "BACKUP & DATA",
     tab_indexer: "SEARCH ENGINE",
     tab_uwp: "WS SCANNER",
-    
+
     // Settings Title
     settings_title: "CYBERLAUNCHER CONFIGURATION",
-    
+
     // General Settings Tab
     general_language: "INTERFACE LANGUAGE",
     general_language_desc: "Select the display language for CyberLauncher menus and panels.",
@@ -1207,7 +1230,7 @@ export const translations = {
     general_show_taskbar_desc: "Displays the CyberLauncher icon in the Windows taskbar panel.",
     general_reset_on_launch: "Reset View State on Launch",
     general_reset_on_launch_desc: "When opening the launcher, clears search/filter/scroll and sets category to 'ALL' (once per open).",
-    
+
     // Appearance Settings Tab
     app_bg_type: "BACKGROUND TYPE",
     app_bg_image: "Image",
@@ -1227,7 +1250,7 @@ export const translations = {
     app_opacity_desc: "Control the background transparency of the launcher window.",
     app_scale: "INTERFACE SCALE",
     app_scale_desc: "Adjust the global rendering scale of CyberLauncher UI.",
-    
+
     // Icon Maintenance
     ctx_refresh_icon: "Refresh icon",
     ctx_refreshing_icon: "Refreshing...",
@@ -1241,7 +1264,7 @@ export const translations = {
     settings_icons_auto_check_desc: "Checks in the background if executables on disk were modified and quietly renews their icons.",
     app_edit_refresh_icon: "Restore original icon",
     app_edit_refreshing_icon: "Restoring...",
-    
+
     // System Settings Tab
     sys_startup: "LAUNCH AUTO WITH WINDOWS",
     sys_startup_desc: "Launch CyberLauncher automatically when you log into Windows.",
@@ -1251,7 +1274,7 @@ export const translations = {
     sys_blur_hide_desc: "Hide the launcher instantly when you click outside its window.",
     sys_animations: "VISUAL EFFECTS & ANIMATIONS",
     sys_animations_desc: "Enable fluid interface motions and premium holographic transitions.",
-    
+
     // Indexer Settings Tab
     idx_title: "GLOBAL INDEX",
     idx_desc: "Hybrid indexing file system and application shortcut engine",
@@ -1271,7 +1294,7 @@ export const translations = {
     idx_hidden_folders_desc: "Shows folders starting with a dot (e.g. .codex, .git) in search results.",
     idx_hidden_content: "INDEX INSIDE HIDDEN FOLDERS",
     idx_hidden_content_desc: "Recursively scans all content inside hidden folders. Increases resource usage.",
-    
+
     // Windows Store Settings Tab
     uwp_title: "UWP & MSIX APPLICATIONS",
     uwp_desc: "Native Windows Store sandbox application management (AUMID)",
@@ -1280,7 +1303,7 @@ export const translations = {
     uwp_empty: "No UWP applications cataloged yet. Click 'Scan Windows Store' above to begin.",
     uwp_toast_scan_start: "Starting Windows Store application scan...",
     uwp_toast_scan_success: "Scan successfully completed",
-    
+
     // Context Menu
     ctx_open: "Open",
     ctx_copy: "Copy",
@@ -1372,11 +1395,11 @@ export const translations = {
     factory_reset_btn_confirm: "Reset now",
     notif_factory_reset_done: "Settings restored to factory defaults",
     notif_factory_reset_full_done: "Settings and shortcuts restored to factory defaults",
-    
+
     // Placeholder Info Text below input
     hint_system_tab: "[Tab] Return to Launcher",
     hint_normal_tab: "[Tab] Search system",
-    
+
     // Notifications & Toasts
     notif_drive_linked: "Indexing full drive {drive}...",
     notif_drive_unlinked: "Drive {drive} unlinked",
@@ -1384,7 +1407,7 @@ export const translations = {
     notif_indexer_error: "Failed to save search indexer settings",
     notif_path_added: "Added path: {path}",
     notif_path_removed: "Removed path: {path}",
-    
+
     // System Status
     stat_online: "ONLINE",
     stat_offline: "OFFLINE",
@@ -1966,6 +1989,29 @@ export const translations = {
     cyberbot_context_about: "A dot and a plus sign: this is where I got my look.",
     cyberbot_context_about_2: "You can check CyberLauncher's version and details here.",
     cyberbot_context_about_3: "Made by CyberGems, with shortcuts, a blue glow, and attention to detail.",
+    text_menu_aria: "Text editing actions",
+    text_menu_undo: "Undo",
+    text_menu_redo: "Redo",
+    text_menu_cut: "Cut",
+    text_menu_copy: "Copy",
+    text_menu_paste: "Paste",
+    text_menu_select_all: "Select all",
+    text_menu_delete: "Delete",
+    onboarding_badge: "Initial Setup",
+    onboarding_title: "Welcome to CyberLauncher",
+    onboarding_subtitle: "Choose your language and prepare your starter workspace in seconds.",
+    onboarding_lang_label: "Language",
+    onboarding_preview_title: "Starter categories",
+    onboarding_preview_summary: "5 categories · 5 favorites · 5 taskbar apps",
+    onboarding_name_label: "How would you like CyberBot to call you?",
+    onboarding_optional: "Optional",
+    onboarding_name_placeholder: "Your name or nickname",
+    onboarding_name_desc: "Leave it blank to keep neutral greetings. You can change this anytime in Settings.",
+    onboarding_skip: "Skip",
+    onboarding_start: "Get started",
+    onboarding_welcome_toast: "Starter workspace ready in English.",
+    cmd_palette_action_onboarding: "Initial setup wizard",
+    cmd_palette_action_onboarding_desc: "Configure language, starter categories, and CyberBot name",
   }
 };
 

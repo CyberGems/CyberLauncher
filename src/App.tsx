@@ -20,6 +20,7 @@ import {
   doesAppMatchCategory,
   resolveAppCategoryDisplayName,
   resolveCategoryStorageValue,
+  localizeDefaultCategories,
   type CategoryLang,
   type CategoryRecord,
 } from '../shared/categories';
@@ -51,6 +52,8 @@ import { createCyberBotReturnController, createCyberBotNoticeLedger, type CyberB
 import { cyberBotNotificationEmotion } from './components/companion/cyberBotNotice';
 import { CyberManagerRecommendation } from './components/CyberManagerRecommendation';
 import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot';
+import { TextFieldContextMenu } from './components/TextFieldContextMenu';
+import { OnboardingModal } from './components/OnboardingModal';
 import { useLauncherVisibility } from './useLauncherVisibility';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from './components/companion/cyberBotSetup';
@@ -255,6 +258,25 @@ export const getDefaultWindowsApps = (lang: CategoryLang = 'es'): LauncherApp[] 
 
 export const DEFAULT_TASKBAR_APP_IDS = [1004, 1003, 1006, 1008, 1001];
 export const DEFAULT_FAVORITE_APP_IDS = [1004, 1003, 1006, 1008, 1001];
+
+/**
+ * Updates untouched stock starter app names (IDs 1001..1011) to the target language,
+ * leaving custom or renamed user apps intact.
+ */
+function localizeStockAppNames<T extends { id: number; name: string }>(appsList: T[], lang: CategoryLang): T[] {
+  const esById = new Map(getDefaultWindowsApps('es').map(a => [a.id, a.name]));
+  const enById = new Map(getDefaultWindowsApps('en').map(a => [a.id, a.name]));
+  return appsList.map(app => {
+    const esName = esById.get(app.id);
+    const enName = enById.get(app.id);
+    if (!esName || !enName) return app;
+    if (app.name === esName || app.name === enName) {
+      const targetName = lang === 'en' ? enName : esName;
+      return app.name === targetName ? app : { ...app, name: targetName };
+    }
+    return app;
+  });
+}
 
 /** Default Windows apps populated for clean installs (user removable). */
 const INITIAL_APPS: LauncherApp[] = getDefaultWindowsApps('es');
@@ -2457,6 +2479,13 @@ export default function App() {
   const [backupToDelete, setBackupToDelete] = useState<BackupItem | null>(null);
   const [isFactoryResetModalOpen, setIsFactoryResetModalOpen] = useState(false);
   const [factoryResetIncludeApps, setFactoryResetIncludeApps] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => localStorage.getItem('cyber_onboarding_done') === 'true');
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  // Capture before mount effects persist starter apps/categories into localStorage
+  const hadBrowserWorkspaceOnBootRef = useRef<boolean>(
+    typeof window !== 'undefined' &&
+    Boolean(localStorage.getItem('apps') || localStorage.getItem('categories'))
+  );
 
   // Search Guide Tooltip State
   const [showSearchGuide, setShowSearchGuide] = useState(false);
@@ -4467,6 +4496,15 @@ export default function App() {
           if (source.showTrayRecents !== undefined) setShowTrayRecents(source.showTrayRecents !== false);
           if (source.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(source.showSuiteRecommendations !== false);
           if (source.cyberBotSettings) cyberBot.restoreSettings(source.cyberBotSettings);
+          if (source.onboardingCompleted === false) {
+            setOnboardingCompleted(false);
+            setIsOnboardingOpen(true);
+          } else if (source.onboardingCompleted === true || (source.apps && source.apps.length > 0) || (source.categories && source.categories.length > 0)) {
+            setOnboardingCompleted(true);
+            try { localStorage.setItem('cyber_onboarding_done', 'true'); } catch {}
+          } else if (localStorage.getItem('cyber_onboarding_done') !== 'true') {
+            setIsOnboardingOpen(true);
+          }
           if (source.selectedMonitor !== undefined && source.selectedMonitor !== null) {
             const normalizedMonitor = String(source.selectedMonitor).trim();
             if (normalizedMonitor) {
@@ -4484,11 +4522,21 @@ export default function App() {
               : localStorage.getItem('startMinimized') === 'true';
             window.electronAPI!.setAutoLaunch(auto, auto && mini);
           }
+        } else if (localStorage.getItem('cyber_onboarding_done') !== 'true') {
+          setIsOnboardingOpen(true);
         }
         setIsConfigLoaded(true);
         console.log('[CONFIG] Carga inicial completada, guardado habilitado');
       } else {
         // En navegador siempre marcar como cargado
+        if (localStorage.getItem('cyber_onboarding_done') === 'true') {
+          setOnboardingCompleted(true);
+        } else if (hadBrowserWorkspaceOnBootRef.current) {
+          setOnboardingCompleted(true);
+          try { localStorage.setItem('cyber_onboarding_done', 'true'); } catch {}
+        } else {
+          setIsOnboardingOpen(true);
+        }
         setIsConfigLoaded(true);
       }
     };
@@ -4525,8 +4573,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings });
-  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted });
+  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4557,7 +4605,7 @@ export default function App() {
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
           autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
-          showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings
+          showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -4585,7 +4633,7 @@ export default function App() {
     systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
     selectedMonitor, autoUpdate, language,
     autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
-    showTrayRecents, showSuiteRecommendations, cyberBot.settings,
+    showTrayRecents, showSuiteRecommendations, cyberBot.settings, onboardingCompleted,
     isConfigLoaded
   ]);
 
@@ -4597,15 +4645,15 @@ export default function App() {
     localStorage.setItem('hideOnBlur', hideOnBlur.toString());
   }, [hideOnBlur]);
 
-  // While Add/Edit App modal or HUD modals are open, block hide-on-blur (separate from native dialogs).
+  // While Add/Edit App, Onboarding or HUD modals are open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
-    const open = !!(isAddingApp || editingApp || missingShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
+    const open = !!(isOnboardingOpen || isAddingApp || editingApp || missingShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
     window.electronAPI.setUiModalOpen(open);
     return () => {
       window.electronAPI?.setUiModalOpen(false);
     };
-  }, [isAddingApp, editingApp, missingShortcut, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
+  }, [isOnboardingOpen, isAddingApp, editingApp, missingShortcut, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -5578,7 +5626,7 @@ export default function App() {
     // CyberBot companion
     cyberBot.resetSettings();
     setCyberBotNameDraft('');
-    setNameEntryRequested(true);
+    setNameEntryRequested(!includeAppsAndData);
     setSetupInviteLastShownAt(0);
     setupInviteShownThisSessionRef.current = false;
 
@@ -5625,12 +5673,14 @@ export default function App() {
       setActiveCategory('all');
       setLaunchHistory([]);
       setDailyLaunchCount(0);
+      setOnboardingCompleted(false);
       [
         'cyber_launch_history',
         'cl_launch_timestamps_24h',
         'dailyLaunchCount',
         'dailyLaunchDate',
         'cl_task_history',
+        'cyber_onboarding_done',
       ].forEach((key) => {
         try {
           localStorage.removeItem(key);
@@ -5658,11 +5708,51 @@ export default function App() {
 
     setIsFactoryResetModalOpen(false);
     setFactoryResetIncludeApps(false);
+    if (includeAppsAndData) {
+      setIsSettingsOpen(false);
+      setIsOnboardingOpen(true);
+    }
     setNotification({
       message: translations[sysLang][includeAppsAndData ? 'notif_factory_reset_full_done' : 'notif_factory_reset_done'],
       type: 'success',
     });
   }, [monitors, defaultBackupsDir, cyberBot]);
+
+  const handleOnboardingLanguageSelect = useCallback((chosenLang: CategoryLang) => {
+    setLanguage(chosenLang);
+    try {
+      localStorage.setItem('cyber_lang', chosenLang);
+    } catch {
+      // ignore storage restrictions
+    }
+  }, []);
+
+  const handleOnboardingComplete = useCallback(({ language: chosenLang, preferredName }: { language: CategoryLang; preferredName: string; skipped: boolean }) => {
+    setLanguage(chosenLang);
+    try {
+      localStorage.setItem('cyber_lang', chosenLang);
+    } catch {
+      // ignore storage restrictions
+    }
+    const localized = localizeDefaultCategories<any>(categories, apps, chosenLang);
+    setCategories(ensureUncategorizedCategory(localized.categories, chosenLang));
+    setApps(localizeStockAppNames(localized.apps, chosenLang));
+    if (preferredName) {
+      cyberBot.updatePreferredName(preferredName);
+    }
+    setNameEntryRequested(false);
+    setOnboardingCompleted(true);
+    try {
+      localStorage.setItem('cyber_onboarding_done', 'true');
+    } catch {
+      // ignore storage restrictions
+    }
+    setIsOnboardingOpen(false);
+    setNotification({
+      message: translations[chosenLang].onboarding_welcome_toast,
+      type: 'success',
+    });
+  }, [categories, apps, cyberBot]);
 
   const handleRemoveSingleRecent = useCallback((target: HistoryItem | LauncherApp) => {
     setLaunchHistory(prev => {
@@ -6287,7 +6377,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
-  const isAnyModalOpen = isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isOnboardingOpen || isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
     try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
@@ -6545,6 +6635,15 @@ export default function App() {
           if (!cyberBot.enabled) cyberBot.toggleEnabled();
           setIsCyberBotPromptOpen(true);
         },
+      },
+      {
+        id: 'action-onboarding',
+        group: t('cmd_palette_group_actions'),
+        label: t('cmd_palette_action_onboarding'),
+        description: t('cmd_palette_action_onboarding_desc'),
+        keywords: 'onboarding wizard setup welcome bienvenida asistente idioma language',
+        icon: <Sparkles className="w-4 h-4 text-cyan-400" />,
+        onSelect: () => setIsOnboardingOpen(true),
       },
 
       // 2. Navegación y Categorías (Navigation & Categories)
@@ -7657,11 +7756,8 @@ export default function App() {
     };
   };
 
-  const handleInputContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isElectron) {
-      window.electronAPI!.showTextContextMenu(e.clientX, e.clientY);
-    }
+  const handleInputContextMenu = useCallback((_e: React.MouseEvent) => {
+    // Handled globally by TextFieldContextMenu in document capture phase
   }, []);
 
   const [isDraggingFromOS, setIsDraggingFromOS] = useState(false);
@@ -8389,12 +8485,6 @@ export default function App() {
                   setShowSearchGuide(false);
                   if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
                   if (searchGuideTimeoutRef.current) clearTimeout(searchGuideTimeoutRef.current);
-                }
-              }}
-              onContextMenu={(e) => {
-                if (isElectron) {
-                  e.preventDefault();
-                  window.electronAPI!.showTextContextMenu(e.clientX, e.clientY);
                 }
               }}
               onKeyDown={async (e) => {
@@ -15429,6 +15519,18 @@ export default function App() {
         executeHint={t('cmd_palette_hint_execute')}
         closeHint={t('cmd_palette_hint_close')}
       />
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        language={language}
+        initialName={cyberBot.preferredName}
+        logo={<CyberLogo className="w-12 h-12 drop-shadow-[0_0_8px_rgba(34,211,238,0.28)]" />}
+        t={t}
+        onSelectLanguage={handleOnboardingLanguageSelect}
+        onComplete={handleOnboardingComplete}
+      />
+
+      <TextFieldContextMenu t={t} />
 
       <style>{`
         /* ── Cyber Scrollbar ── */
