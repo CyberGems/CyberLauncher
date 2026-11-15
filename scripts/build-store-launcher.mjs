@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'electron', 'launch-store-app.exe');
 if (process.platform !== 'win32') {
-  if (!existsSync(output)) throw new Error('The Windows Store launcher binary is missing.');
-  console.log('Using the checked-in Windows Store launcher binary.');
+  if (!existsSync(output)) throw new Error('The Microsoft Store launcher binary is missing.');
+  console.log('Using the checked-in Microsoft Store launcher binary.');
 } else {
   const windows = process.env.SystemRoot || 'C:\\Windows';
   const compiler = ['Framework64', 'Framework']

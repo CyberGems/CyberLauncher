@@ -57,6 +57,7 @@ body {
   white-space: nowrap;
 }
 
+:is([data-app-card], [data-access-marquee-card]):hover .access-name-marquee[data-overflow="true"] .access-name-marquee__text,
 .access-name-marquee[data-overflow="true"]:hover .access-name-marquee__text {
   width: max-content;
   overflow: visible;
@@ -70,6 +71,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :is([data-app-card], [data-access-marquee-card]):hover .access-name-marquee[data-overflow="true"] .access-name-marquee__text,
   .access-name-marquee[data-overflow="true"]:hover .access-name-marquee__text {
     width: 100%;
     overflow: hidden;

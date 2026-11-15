@@ -32,6 +32,6 @@ export function resolveStoreAppLauncher(
       path.join(appPath, 'electron/launch-store-app.exe'),
     ];
   const helperPath = candidates.find(candidate => fs.existsSync(candidate));
-  if (!helperPath) throw new Error('The Windows Store activation helper is missing.');
+  if (!helperPath) throw new Error('The Microsoft Store activation helper is missing.');
   return helperPath;
 }

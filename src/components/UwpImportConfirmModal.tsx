@@ -22,7 +22,7 @@ export interface UwpImportConfirmModalProps {
 }
 
 /**
- * Confirmation dialog when importing a discovered Windows Store / UWP app.
+ * Confirmation dialog when importing a discovered Microsoft Store / UWP app.
  * Highlights the selected app's icon and name while keeping its action header subtle.
  */
 export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({

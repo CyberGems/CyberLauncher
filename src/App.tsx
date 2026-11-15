@@ -2870,7 +2870,7 @@ export default function App() {
     return () => window.removeEventListener('resize', place);
   }, [isHelpSubmenuOpen]);
 
-  // Windows Store UWP states
+  // Microsoft Store UWP states
   const [uwpAppsList, setUwpAppsList] = useState<Array<{ name: string; aumid: string; icon: string }>>([]);
   const [isScanningUwp, setIsScanningUwp] = useState(false);
   const [uwpSearchQuery, setUwpSearchQuery] = useState('');
@@ -10161,6 +10161,7 @@ export default function App() {
                     <button
                       key={`most-used-${app.id}`}
                       type="button"
+                      data-access-marquee-card="true"
                       disabled={isMostUsedLaunching}
                       aria-busy={isMostUsedLaunching}
                       onContextMenu={(e) => handleContextMenu(e, app, 'most-used')}
@@ -10257,6 +10258,7 @@ export default function App() {
                     <button
                       key={`recent-${item.id}`}
                       type="button"
+                      data-access-marquee-card="true"
                       onClick={() => handleLaunchHistoryItem(item)}
                       onContextMenu={(e) => {
                         e.preventDefault();
@@ -13464,6 +13466,7 @@ export default function App() {
                             return (
                               <div
                                 key={index}
+                                data-access-marquee-card="true"
                                 className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
                               >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">

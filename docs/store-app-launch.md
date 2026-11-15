@@ -1,4 +1,4 @@
-# Windows Store app activation
+# Microsoft Store app activation
 
 Store shortcuts use an application user model ID (AUMID). They are activated through Windows' IApplicationActivationManager, not by interpreting explorer.exe's exit code. Explorer can return 1 after successfully handing the launch to Windows, which previously produced a false launch-error notification for WhatsApp.
 

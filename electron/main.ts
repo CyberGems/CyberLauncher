@@ -3184,7 +3184,7 @@ async function extractAndCacheIcon(
 
   let pngBuffer: Buffer | null = null;
 
-  // 1. Si es una app UWP/Windows Store, extraer logo oficial directamente del paquete sin flechas de acceso
+  // 1. Si es una app UWP/Microsoft Store, extraer logo oficial directamente del paquete sin flechas de acceso
   if (uwpAumid) {
     pngBuffer = await extractUwpIcon(uwpAumid);
     if (pngBuffer && pngHasOpaqueBlackCorners(pngBuffer)) pngBuffer = null;
@@ -3552,7 +3552,7 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
       const helperPath = resolveStoreAppLauncher(app.isPackaged, process.resourcesPath, app.getAppPath(), __dirname);
       try {
         const processId = await activateStoreApp(trimmedPath, helperPath);
-        console.log(`[LAUNCH] Windows Store app activated: ${trimmedPath} (PID ${processId})`);
+        console.log(`[LAUNCH] Microsoft Store app activated: ${trimmedPath} (PID ${processId})`);
         return finishSuccessfulLaunch(keepWindowOpen);
       } catch (uwpErr: any) {
         const uwpMessage = String(uwpErr?.message || uwpErr);
@@ -4071,7 +4071,7 @@ function setupIpcHandlers() {
     hideDesktopToastInternal();
   });
 
-  // --- Obtener aplicaciones de Windows Store (UWP/MSIX) ---
+  // --- Obtener aplicaciones de Microsoft Store (UWP/MSIX) ---
   ipcMain.handle('get-uwp-apps', async () => {
     return new Promise((resolve) => {
       const psScript = `# Full UWP Scanner with Icon Extraction (Standard User version)
