@@ -453,6 +453,14 @@ export default function AboutModal({
                 </div>
               ) : status.state === 'skipped' ? (
                 <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t('about_download_btn')}</span>
+                  </button>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -460,44 +468,36 @@ export default function AboutModal({
                       className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{t('about_view_release')}</span>
+                      <span>{t('about_view_release')}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={handleDownload}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
+                      onClick={handleCheck}
+                      disabled={status.state === 'checking'}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
                     >
-                      <Download className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{t('about_download_btn')}</span>
+                      <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${status.state === 'checking' ? 'animate-spin' : ''}`} />
+                      <span>{t('about_check_updates')}</span>
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleCheck}
-                    disabled={status.state === 'checking'}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${status.state === 'checking' ? 'animate-spin' : ''}`} />
-                    {t('about_check_updates')}
-                  </button>
                 </div>
               ) : status.state === 'downloaded' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{t('about_view_release')}</span>
-                  </button>
+                <div className="space-y-2">
                   <button
                     type="button"
                     onClick={handleInstall}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{t('about_install_btn')}</span>
+                    <span>{t('about_install_btn')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
+                    className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t('about_view_release')}</span>
                   </button>
                 </div>
               ) : (
