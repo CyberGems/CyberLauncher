@@ -9,6 +9,8 @@ import * as pty from 'node-pty';
 import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
 import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
+import { HotspotGesture, type HotspotPosition } from './hotspot-gesture';
+import { createWindowsHotspotCursor } from './windows-hotspot-cursor';
 import { initUpdater } from './updater';
 import { initSystemAlerts, updateSystemAlertsConfig, stopSystemAlerts } from './system-alerts';
 import { cyberBotSpeechLifetime } from '../src/components/companion/cyberBotTyping';
@@ -115,8 +117,11 @@ let hotspotCorners: string[] = [];
 let hotspotDelay = 300;
 let hotspotsDisableInFullscreen = true;
 let hotspotTimer: NodeJS.Timeout | null = null;
-let lastHotspotCorner = '';
-let hotspotEntryTime = 0;
+const hotspotGesture = new HotspotGesture();
+let hotspotRevision = 0;
+let screenLocked = false;
+let systemSuspended = false;
+let elevatedLaunches = 0;
 let isSavingConfig = false;
 let isDialogOpen = false;
 /** React UI modals (e.g. Add/Edit App) that must block hide-on-blur independently of native dialogs. */
@@ -131,20 +136,11 @@ let ownShowCallId = 0;
 let inOwnShowCall = 0;
 let ownRestoreCallId = 0;
 let inOwnRestoreCall = 0;
-let hotspotCooldown = false;
-let lastHotspotActionTime = 0;
-let hasCursorExitedSinceLastAction = true;
 let hideOnBlurEnabled = false;
 let externalTerminalBlurGuardUntil = 0;
 let showTaskbarIcon = false;
 /** Ignore hide-on-blur during initial boot / first maximize (Windows steals focus briefly). */
 let bootBlurGuardUntil = 0;
-let lastHotspotPollTime = 0;
-const HOTSPOT_LAG_THRESHOLD_MS = 400;
-let hotspotsPausedByUAC = false;
-let uacResumeTimer: NodeJS.Timeout | null = null;
-let uacWatchdogTimer: NodeJS.Timeout | null = null;
-let isCheckingUAC = false;
 let cachedDisplays: Electron.Display[] = [];
 /** Keep Chromium awake while hidden only if the renderer must tick (scheduled tasks). */
 let keepRendererAwake = false;
@@ -156,36 +152,6 @@ function updateCachedDisplays() {
   } catch (e) {
     console.error('[MONITOR] Error updating cached displays:', e);
   }
-}
-
-function checkUACActive(callback: (active: boolean) => void) {
-  if (process.platform !== 'win32') {
-    callback(false);
-    return;
-  }
-  exec('tasklist /FI "IMAGENAME eq consent.exe" /NH', { windowsHide: true }, (err, stdout) => {
-    const isActive = !err && stdout.includes('consent.exe');
-    callback(isActive);
-  });
-}
-
-function watchUACUntilExit() {
-  if (process.platform !== 'win32') return;
-  if (uacWatchdogTimer) return; // Vigilante ya activo
-
-  console.log('[UAC-GUARD] Starting watchdog for consent.exe exit');
-  uacWatchdogTimer = setInterval(() => {
-    checkUACActive((isActive) => {
-      if (!isActive) {
-        console.log('[UAC-GUARD] consent.exe finished — scheduling hotspot resume');
-        if (uacWatchdogTimer) {
-          clearInterval(uacWatchdogTimer);
-          uacWatchdogTimer = null;
-        }
-        resumeHotspotsAfterUAC(600);
-      }
-    });
-  }, 1000);
 }
 
 interface AppShortcutItem {
@@ -267,58 +233,19 @@ function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
   }
 }
 
-function resumeHotspotsImmediate() {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  if (uacWatchdogTimer) {
-    clearInterval(uacWatchdogTimer);
-    uacWatchdogTimer = null;
-  }
-  hotspotsPausedByUAC = false;
-  isCheckingUAC = false;
-  console.log('[HOTSPOT] Resumed immediately (user action)');
-}
-
-function pauseHotspots() {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  hotspotsPausedByUAC = true;
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  hotspotCooldown = true;
-  console.log('[HOTSPOT] Paused by secure-desktop / UAC guard');
-}
-
-function resumeHotspotsAfterUAC(delayMs = 600) {
-  if (uacResumeTimer) clearTimeout(uacResumeTimer);
-  if (uacWatchdogTimer) {
-    clearInterval(uacWatchdogTimer);
-    uacWatchdogTimer = null;
-  }
-  uacResumeTimer = setTimeout(() => {
-    hotspotsPausedByUAC = false;
-    isCheckingUAC = false;
-    lastHotspotCorner = '';
-    hotspotEntryTime = 0;
-    hotspotCooldown = false;
-    hasCursorExitedSinceLastAction = true;
-    console.log('[HOTSPOT] Resumed after UAC exit buffer');
-  }, delayMs);
-}
-
-function showMainWindow() {
+function showMainWindow(cursor?: Electron.Point, canReveal?: () => boolean) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     console.log('[WM] showMainWindow (state=' + windowVisibilityState + ')');
-    const dpiSettle = willChangeDisplayOnActivation();
-    placeOnActivationDisplayIfNeeded();
+    const dpiSettle = placeOnActivationDisplayIfNeeded(cursor);
 
     const reveal = () => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      resumeHotspotsImmediate();
+      if (!mainWindow || mainWindow.isDestroyed() || (canReveal && !canReveal())) return;
       const callId = ++ownShowCallId;
       inOwnShowCall = callId;
       windowVisibilityState = 'shown-intentional';
       // Siempre mantener al menos 1500ms de guarda contra desenfoque tras mostrar
       bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + 1500);
-      syncHotspotLockAfterWindowChange();
+      resetHotspotGesture();
       mainWindow.show();
       hideDesktopToastInternal();
       const pinned = mainWindow.isAlwaysOnTop();
@@ -378,6 +305,8 @@ function hideMainWindow(fromUserAction = false) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (fromUserAction) notifyPowerSchedulePending();
     console.log('[WM] hideMainWindow');
+    if (windowVisibilityState === 'shown-intentional') windowVisibilityState = 'hidden-intentional';
+    resetHotspotGesture();
     mainWindow.hide();
   }
 }
@@ -833,20 +762,15 @@ function isFollowCursorMonitorMode(): boolean {
   return readPreferredMonitorId() === MONITOR_FOLLOW_CURSOR;
 }
 
-function willChangeDisplayOnActivation(): boolean {
-  if (!isFollowCursorMonitorMode() || !mainWindow || mainWindow.isDestroyed()) return false;
-  const target = getCursorDisplay();
-  const cur = screen.getDisplayMatching(mainWindow.getBounds());
-  return !cur || cur.id !== target.id;
-}
-
 /** Before showing via activation, optionally jump to the cursor's monitor. */
-function placeOnActivationDisplayIfNeeded() {
-  if (!isFollowCursorMonitorMode()) return;
-  const display = getCursorDisplay();
+function placeOnActivationDisplayIfNeeded(cursor?: Electron.Point) {
+  if (!isFollowCursorMonitorMode() || !mainWindow || mainWindow.isDestroyed()) return false;
+  const display = cursor ? screen.getDisplayNearestPoint(cursor) : getCursorDisplay();
+  const changed = screen.getDisplayMatching(mainWindow.getBounds()).id !== display.id;
   console.log(`[MONITOR] Follow-cursor → display ${display.id}`);
   placeWindowOnDisplay(display);
   saveWindowState();
+  return changed;
 }
 
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
@@ -979,9 +903,10 @@ function createWindow() {
 
   // Vista al restaurar del tray (reset ligero) — no mezclar con reload-config
   mainWindow.on('show', () => {
-    displayDiagnostics.write('window-show', displayWindowState());
+    const ownShow = inOwnShowCall !== 0 && inOwnShowCall === ownShowCallId;
+    displayDiagnostics.write('window-show', { ...displayWindowState(), ownShow });
     console.log('[WM EVENT] show (inOwnShowCall=' + inOwnShowCall + ', state=' + windowVisibilityState + ')');
-    if (inOwnShowCall === ownShowCallId) {
+    if (ownShow) {
       inOwnShowCall = 0;
       console.log('[WM] Own show confirmed');
     } else {
@@ -1002,7 +927,7 @@ function createWindow() {
     displayDiagnostics.write('window-hide', displayWindowState());
     console.log('[WM EVENT] hide');
     mainWindow?.webContents.send('launcher-hidden');
-    syncHotspotLockAfterWindowChange();
+    resetHotspotGesture();
     applyRendererThrottling();
     // Defer/skip if tray menu is open — replacing context menu mid-hover crashes on Windows.
     rebuildTrayMenu();
@@ -1014,8 +939,6 @@ function createWindow() {
   mainWindow.on('blur', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     displayDiagnostics.write('window-blur', displayWindowState());
-    lastHotspotCorner = '';
-    hotspotEntryTime = 0;
     
     if (mainWindow.isAlwaysOnTop()) {
       mainWindow.webContents.send('always-on-top-blur-attempt', 'blur');
@@ -1070,11 +993,12 @@ function createWindow() {
   });
 
   mainWindow.on('restore', () => {
-    displayDiagnostics.write('window-restore', displayWindowState());
+    const ownRestore = inOwnRestoreCall !== 0 && inOwnRestoreCall === ownRestoreCallId;
+    displayDiagnostics.write('window-restore', { ...displayWindowState(), ownRestore });
     console.log('[WM EVENT] restore (inOwnRestoreCall=' + inOwnRestoreCall + ', state=' + windowVisibilityState + ')');
-    if (inOwnRestoreCall === ownRestoreCallId) {
+    if (ownRestore || windowVisibilityState === 'shown-intentional') {
       inOwnRestoreCall = 0;
-      console.log('[WM] Own restore confirmed');
+      console.log('[WM] Restore confirmed for a visible launcher');
       mainWindow?.webContents.send('launcher-shown');
     } else {
       console.log('[WM] Window restored by OS (UAC?), re-hiding unconditionally');
@@ -2518,256 +2442,120 @@ function toggleWindow(forceShow = false) {
 // =====================================
 // HOTSPOTS LOGIC (Esquinas activas)
 // =====================================
+function resetHotspotGesture() {
+  hotspotRevision++;
+  hotspotGesture.requireExit();
+}
+
 function stopHotspotPolling() {
-  if (hotspotTimer) {
-    clearInterval(hotspotTimer);
-    hotspotTimer = null;
-  }
+  if (hotspotTimer) clearInterval(hotspotTimer);
+  hotspotTimer = null;
+  resetHotspotGesture();
 }
 
-function getCheckFullscreenExePath(): string | null {
-  const candidates = [
-    path.join(process.resourcesPath || '', 'check-fullscreen.exe'),
-    path.join(__dirname, '../electron/check-fullscreen.exe'),
-    path.join(app.getAppPath(), 'electron', 'check-fullscreen.exe'),
-    path.join(__dirname, 'check-fullscreen.exe'),
-  ];
-  return candidates.find((c) => c && fs.existsSync(c)) || null;
-}
+const HOTSPOT_CORNER_THRESHOLD = 4;
+const HOTSPOT_EXIT_THRESHOLD = 30;
 
-function checkFullscreenActive(x: number, y: number, callback: (isFullscreen: boolean) => void) {
-  if (!hotspotsDisableInFullscreen) {
-    callback(false);
-    return;
-  }
-  const exePath = getCheckFullscreenExePath();
-  if (!exePath) {
-    callback(false);
-    return;
-  }
-  execFile(exePath, [Math.round(x).toString(), Math.round(y).toString()], { windowsHide: true, timeout: 500 }, (error) => {
-    if (error && (error as any).code === 1) {
-      callback(true);
-    } else {
-      callback(false);
-    }
-  });
-}
-
-const HOTSPOT_CORNER_THRESHOLD = 4; // px: margen de entrada en la esquina (amigable con HiDPI)
-const HOTSPOT_EXIT_THRESHOLD = 30; // px: distancia mínima para considerar que el cursor abandonó la esquina
-// Bounce guard after a hotspot toggle while the cursor is still in the corner.
-const HOTSPOT_TOGGLE_SAFETY_MS = 200;
-
-function getCursorHotspotState(): { currentCorner: string; isWithinExitZone: boolean } {
-  if (hotspotCorners.length === 0) {
-    return { currentCorner: '', isWithinExitZone: false };
-  }
-
-  const { x, y } = screen.getCursorScreenPoint();
+function getCursorHotspotState({ x, y }: Electron.Point): HotspotPosition {
   const displays = cachedDisplays.length > 0 ? cachedDisplays : screen.getAllDisplays();
-  let activeDisplay = displays.find(
-    (d) =>
-      x >= d.bounds.x &&
-      x < d.bounds.x + d.bounds.width &&
-      y >= d.bounds.y &&
-      y < d.bounds.y + d.bounds.height
+  const display = displays.find(({ bounds }) =>
+    x >= bounds.x && x < bounds.x + bounds.width &&
+    y >= bounds.y && y < bounds.y + bounds.height
   );
-  if (!activeDisplay) {
-    activeDisplay = screen.getDisplayNearestPoint({ x, y });
-  }
-  if (!activeDisplay) {
-    return { currentCorner: '', isWithinExitZone: false };
-  }
+  if (!display) return { key: '', isWithinExitZone: false };
 
-  const { x: dx, y: dy, width: dw, height: dh } = activeDisplay.bounds;
-  const isTop = y >= dy && y <= dy + HOTSPOT_CORNER_THRESHOLD;
-  const isBottom = y >= dy + dh - 1 - HOTSPOT_CORNER_THRESHOLD && y <= dy + dh - 1;
-  const isLeft = x >= dx && x <= dx + HOTSPOT_CORNER_THRESHOLD;
-  const isRight = x >= dx + dw - 1 - HOTSPOT_CORNER_THRESHOLD && x <= dx + dw - 1;
-
-  let detected = '';
-  if (isTop && isLeft) detected = 'top-left';
-  else if (isTop && isRight) detected = 'top-right';
-  else if (isBottom && isLeft) detected = 'bottom-left';
-  else if (isBottom && isRight) detected = 'bottom-right';
-
-  if (detected && hotspotCorners.includes(detected)) {
-    return { currentCorner: detected, isWithinExitZone: true };
-  }
-
-  for (const corner of hotspotCorners) {
-    let inZone = false;
-    if (corner === 'top-left') {
-      inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
-    } else if (corner === 'top-right') {
-      inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy && y <= dy + HOTSPOT_EXIT_THRESHOLD;
-    } else if (corner === 'bottom-left') {
-      inZone = x >= dx && x <= dx + HOTSPOT_EXIT_THRESHOLD && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
-    } else if (corner === 'bottom-right') {
-      inZone = x >= dx + dw - 1 - HOTSPOT_EXIT_THRESHOLD && x <= dx + dw - 1 && y >= dy + dh - 1 - HOTSPOT_EXIT_THRESHOLD && y <= dy + dh - 1;
-    }
-    if (inZone) {
-      return { currentCorner: '', isWithinExitZone: true };
-    }
-  }
-
-  return { currentCorner: '', isWithinExitZone: false };
+  const { x: left, y: top, width, height } = display.bounds;
+  const right = left + width - 1 - x;
+  const bottom = top + height - 1 - y;
+  const distances: Record<string, number> = {
+    'top-left': Math.max(x - left, y - top),
+    'top-right': Math.max(right, y - top),
+    'bottom-left': Math.max(x - left, bottom),
+    'bottom-right': Math.max(right, bottom),
+  };
+  const corner = hotspotCorners.find((name) => distances[name] <= HOTSPOT_CORNER_THRESHOLD);
+  return {
+    key: corner ? `${display.id}:${corner}` : '',
+    isWithinExitZone: hotspotCorners.some((name) => distances[name] <= HOTSPOT_EXIT_THRESHOLD),
+  };
 }
 
-/** Arm the re-entry lock only if the cursor is still in a hotspot. Launching an app
- *  already left the corner — requiring another leave+reenter made the next open fail. */
-function syncHotspotLockAfterWindowChange() {
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  lastHotspotActionTime = Date.now();
-  try {
-    const { isWithinExitZone } = getCursorHotspotState();
-    if (isWithinExitZone) {
-      hasCursorExitedSinceLastAction = false;
-      hotspotCooldown = true;
-    } else {
-      hasCursorExitedSinceLastAction = true;
-      hotspotCooldown = false;
-    }
-  } catch {
-    hasCursorExitedSinceLastAction = true;
-    hotspotCooldown = false;
-  }
-}
-
-let bootHotspotGuardUntil = Date.now() + 4000;
+let windowsHotspotCursor: ReturnType<typeof createWindowsHotspotCursor> | null = null;
 
 function startHotspotPolling() {
   stopHotspotPolling();
-  lastHotspotPollTime = Date.now();
-  lastHotspotCorner = '';
-  hotspotEntryTime = 0;
-  hotspotCooldown = false;
-  // Al arrancar, el cursor NO ha salido aún de una posible esquina (ej. 0,0 al boot de Windows).
-  // Debe salir de la zona de esquina antes de que se arme cualquier disparo.
-  hasCursorExitedSinceLastAction = false;
-  bootHotspotGuardUntil = Date.now() + 4000;
-
   if (hotspotCorners.length === 0) {
-    console.log('[HOTSPOT] No corners configured — polling stopped');
+    windowsHotspotCursor?.stop();
+    windowsHotspotCursor = null;
     return;
   }
-  
-  hotspotTimer = setInterval(() => {
-    if (hotspotsPausedByUAC || isCheckingUAC) return;
-    if (Date.now() < bootHotspotGuardUntil) return;
 
-    const now = Date.now();
-    const elapsed = now - lastHotspotPollTime;
-    lastHotspotPollTime = now;
+  if (process.platform === 'win32' && !windowsHotspotCursor) {
+    const exePath = app.isPackaged
+      ? path.join(process.resourcesPath, 'check-fullscreen.exe')
+      : path.join(__dirname, '../electron/check-fullscreen.exe');
+    windowsHotspotCursor = createWindowsHotspotCursor(exePath, (reason) => {
+      displayDiagnostics.write('hotspot-helper-error', { reason });
+      console.error('[HOTSPOT] Cursor helper failed:', reason);
+    });
+  }
 
-    if (elapsed > HOTSPOT_LAG_THRESHOLD_MS) {
-      console.log(`[HOTSPOT] Lag detected (${elapsed}ms), resetting hotspot state`);
-      lastHotspotCorner = '';
-      hotspotEntryTime = 0;
-      hotspotCooldown = false;
-      return;
-    }
+  let polling = false;
+  let cursorUnavailable = false;
+  const bootGuardUntil = performance.now() + 4000;
+  const timer = setInterval(async () => {
+    const started = performance.now();
+    const window = mainWindow;
+    if (polling || started < bootGuardUntil || screenLocked || systemSuspended || elevatedLaunches ||
+        !window || window.isDestroyed()) return;
 
-    if (hotspotCorners.length === 0) return;
+    polling = true;
+    try {
+      const revision = hotspotRevision;
+      const visible = window.isVisible();
+      const checkFullscreen = !!windowsHotspotCursor && !visible && hotspotsDisableInFullscreen;
+      const nativeSample = windowsHotspotCursor
+        ? await windowsHotspotCursor.read(checkFullscreen && (hotspotDelay <= 0 || hotspotGesture.isReady(started, hotspotDelay)))
+        : { ...screen.getCursorScreenPoint(), fullscreen: false };
 
-    const { currentCorner, isWithinExitZone } = getCursorHotspotState();
+      if (timer !== hotspotTimer || revision !== hotspotRevision || window !== mainWindow ||
+          window.isDestroyed() || window.isVisible() !== visible) return;
 
-    if (!isWithinExitZone) {
-      hasCursorExitedSinceLastAction = true;
-      lastHotspotCorner = '';
-      hotspotEntryTime = 0;
-    }
-    if (now - lastHotspotActionTime >= HOTSPOT_TOGGLE_SAFETY_MS) {
-      hotspotCooldown = false;
-    }
+      const now = performance.now();
+      const sample = now - started <= 250 ? nativeSample : null;
+      if (!sample) {
+        if (!cursorUnavailable) displayDiagnostics.write('hotspot-cursor-unavailable', displayWindowState());
+        cursorUnavailable = true;
+        hotspotGesture.observe(null, now, hotspotDelay);
+        return;
+      }
+      if (cursorUnavailable) displayDiagnostics.write('hotspot-cursor-available', displayWindowState());
+      cursorUnavailable = false;
 
-    if (!currentCorner) return;
+      const rawPoint = { x: sample.x, y: sample.y };
+      const dipPoint = windowsHotspotCursor ? screen.screenToDipPoint(rawPoint) : rawPoint;
+      const point = { x: Math.floor(dipPoint.x), y: Math.floor(dipPoint.y) };
+      const position = getCursorHotspotState(point);
+      if (!hotspotGesture.observe(position, now, hotspotDelay)) return;
+      if (checkFullscreen && sample.fullscreen === null) return;
 
-    if (currentCorner !== lastHotspotCorner) {
-      lastHotspotCorner = currentCorner;
-      hotspotEntryTime = now;
-    }
-
-    // After a hotspot toggle, the cursor must leave the corner before the next
-    // action. After launching an app the cursor is already out, so this is armed.
-    if (hotspotCooldown || !hasCursorExitedSinceLastAction) return;
-
-    const timeInCorner = now - hotspotEntryTime;
-    if (hotspotDelay > 0 && timeInCorner < hotspotDelay) return;
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-
-    hotspotCooldown = true;
-    hasCursorExitedSinceLastAction = false;
-    lastHotspotActionTime = now;
-
-    const executeHotspotAction = () => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (mainWindow.isVisible()) {
-        console.log(`OCULTAMIENTO VÁLIDO POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-        if (mainWindow.isAlwaysOnTop()) {
-          mainWindow.webContents.send('always-on-top-blur-attempt', 'hide-attempt');
+      hotspotGesture.consume(now);
+      if (checkFullscreen && sample.fullscreen) return;
+      displayDiagnostics.write('hotspot-toggle', { key: position.key, opening: !visible });
+      if (visible) {
+        if (window.isAlwaysOnTop()) {
+          window.webContents.send('always-on-top-blur-attempt', 'hide-attempt');
         } else {
           hideMainWindow();
         }
       } else {
-        console.log(`ACTIVACIÓN VÁLIDA POR HOTSPOT: ${currentCorner} tras ${timeInCorner}ms`);
-        showMainWindow();
+        showMainWindow(point, () => revision === hotspotRevision && timer === hotspotTimer);
       }
-    };
-
-    const { x, y } = screen.getCursorScreenPoint();
-
-    const runHotspotWithGuards = () => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (!mainWindow.isVisible() && hotspotsDisableInFullscreen) {
-        checkFullscreenActive(x, y, (isFs) => {
-          if (isFs) {
-            console.log(`[HOTSPOT] Ignored activation: fullscreen window detected on display under cursor (${currentCorner})`);
-            return;
-          }
-          executeHotspotAction();
-        });
-      } else {
-        executeHotspotAction();
-      }
-    };
-
-    const isVulnerableToUAC = (currentCorner === 'top-left' || (x === 0 && y === 0));
-    if (isVulnerableToUAC) {
-      isCheckingUAC = true;
-      checkUACActive((isUAC) => {
-        isCheckingUAC = false;
-        if (isUAC) {
-          console.log('[HOTSPOT] Ignored activation due to UAC detection (consent.exe)');
-          pauseHotspots();
-          watchUACUntilExit();
-          if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-            windowVisibilityState = 'hidden-os';
-            hideMainWindow();
-          }
-        } else {
-          runHotspotWithGuards();
-        }
-      });
-    } else {
-      runHotspotWithGuards();
+    } finally {
+      polling = false;
     }
   }, 100);
-}
-
-// UAC Guard continuous timer has been replaced with on-demand check + watchdog on exit.
-function startUACGuard() {}
-function stopUACGuard() {
-  if (uacWatchdogTimer) {
-    clearInterval(uacWatchdogTimer);
-    uacWatchdogTimer = null;
-  }
-  if (uacResumeTimer) {
-    clearTimeout(uacResumeTimer);
-    uacResumeTimer = null;
-  }
+  hotspotTimer = timer;
 }
 
 // =====================================
@@ -3798,19 +3586,24 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
 
     if (isAdmin && process.platform === 'win32') {
       console.log(`[LAUNCH] Intentando lanzar como administrador: ${targetPath}`);
-      pauseHotspots();
-      watchUACUntilExit();
-      const escapedPath = targetPath.replace(/'/g, "''");
-      const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
+      elevatedLaunches++;
+      resetHotspotGesture();
+      try {
+        const escapedPath = targetPath.replace(/'/g, "''");
+        const command = `powershell -NoProfile -Command "Start-Process -FilePath '${escapedPath}' -Verb RunAs"`;
 
-      const launchError = await new Promise<Error | null>(resolve => {
-        exec(command, { windowsHide: true }, err => resolve(err));
-      });
-      if (launchError) {
-        console.error('[LAUNCH] Error al ejecutar como administrador:', launchError);
-        return { success: false, error: launchError.message, code: 'launch-failed' };
+        const launchError = await new Promise<Error | null>(resolve => {
+          exec(command, { windowsHide: true }, err => resolve(err));
+        });
+        if (launchError) {
+          console.error('[LAUNCH] Error al ejecutar como administrador:', launchError);
+          return { success: false, error: launchError.message, code: 'launch-failed' };
+        }
+        return finishSuccessfulLaunch(keepWindowOpen);
+      } finally {
+        elevatedLaunches--;
+        resetHotspotGesture();
       }
-      return finishSuccessfulLaunch(keepWindowOpen);
     }
 
     const errorMessage = await shell.openPath(targetPath);
@@ -5742,28 +5535,28 @@ app.whenReady().then(() => {
 
   // Listen for session lock / suspend to guard hotspots
   powerMonitor.on('lock-screen', () => {
+    screenLocked = true;
+    resetHotspotGesture();
     displayDiagnostics.write('screen-locked', displayWindowState());
-    console.log('[POWER] Screen locked — pausing hotspots');
-    pauseHotspots();
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && hideOnBlurEnabled) {
       windowVisibilityState = 'hidden-os';
       hideMainWindow();
     }
   });
   powerMonitor.on('unlock-screen', () => {
+    screenLocked = false;
+    resetHotspotGesture();
     displayDiagnostics.write('screen-unlocked', displayWindowState());
-    console.log('[POWER] Screen unlocked — resuming hotspots');
-    resumeHotspotsAfterUAC(1000);
   });
   powerMonitor.on('suspend', () => {
+    systemSuspended = true;
+    resetHotspotGesture();
     displayDiagnostics.write('system-suspended', displayWindowState());
-    console.log('[POWER] System suspended — pausing hotspots');
-    pauseHotspots();
   });
   powerMonitor.on('resume', () => {
+    systemSuspended = false;
+    resetHotspotGesture();
     displayDiagnostics.write('system-resumed', displayWindowState());
-    console.log('[POWER] System resumed — resuming hotspots');
-    resumeHotspotsAfterUAC(1500);
   });
 
   // Auto-update (GitHub Releases via electron-updater)
@@ -5881,7 +5674,8 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  stopUACGuard();
+  stopHotspotPolling();
+  windowsHotspotCursor?.stop();
   stopSystemAlerts();
   stopAutoBackupWatcher();
 });
