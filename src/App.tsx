@@ -3093,7 +3093,10 @@ export default function App() {
 
   // Reiniciar la elección de tiempo cada vez que se abre el modal de una acción.
   useEffect(() => {
-    if (powerConfirmAction) setPowerScheduleChoice('now');
+    if (powerConfirmAction) {
+      setPowerScheduleChoice('now');
+      setPowerScheduleCustomMinutes('');
+    }
   }, [powerConfirmAction]);
 
   // Cuenta atrás de la acción de energía programada (junto a setRendererAwake).
@@ -14430,14 +14433,14 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.95 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[255] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-rose-500/35 backdrop-blur-2xl select-none max-w-lg min-w-[360px]"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[255] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-rose-500/35 backdrop-blur-2xl select-none w-max max-w-[92vw]"
             style={{ boxShadow: '0 0 24px rgba(244,63,94,0.15), 0 12px 32px rgba(0,0,0,0.8)' }}
           >
-            <div className="flex flex-col items-center justify-center shrink-0 min-w-[74px] h-12 px-2.5 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 shadow-[inset_0_0_10px_rgba(244,63,94,0.15)]">
+            <div className="flex flex-col items-center justify-center shrink-0 w-[92px] h-12 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 shadow-[inset_0_0_10px_rgba(244,63,94,0.15)]">
               <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-rose-400/70 mb-0.5">T - MINUS</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-xl font-digits font-bold text-rose-300 tabular-nums animate-pulse leading-none">
-                  {`${Math.floor(powerSchedule.secondsLeft / 60)}:${(powerSchedule.secondsLeft % 60).toString().padStart(2, '0')}`}
+                  {`${Math.floor(powerSchedule.secondsLeft / 60).toString().padStart(2, '0')}:${(powerSchedule.secondsLeft % 60).toString().padStart(2, '0')}`}
                 </span>
                 <span className="text-[10px] font-mono font-bold text-rose-400/80">s</span>
               </div>
@@ -14450,7 +14453,7 @@ export default function App() {
                   {t(`power_action_${powerSchedule.action}` as TranslationKey)}
                 </span>
               </div>
-              <p className="text-xs font-medium text-white cursor-default">
+              <p className="text-xs font-medium text-white cursor-default truncate whitespace-nowrap">
                 {t('power_schedule_active_desc')}
               </p>
             </div>
@@ -14464,10 +14467,10 @@ export default function App() {
                     setPowerSchedule(null);
                     handleExecutePowerAction(action, force);
                   }}
-                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/60 font-cyber font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/60 font-cyber font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
                 >
                   <Play className="w-3 h-3 fill-current" />
-                  <span>{t('power_schedule_apply_now')}</span>
+                  <span className="whitespace-nowrap">{t('power_schedule_apply_now')}</span>
                 </button>
               </Tooltip>
               <Tooltip label={t('power_schedule_cancel')} placement="top">
@@ -14477,10 +14480,10 @@ export default function App() {
                     setPowerSchedule(null);
                     setNotification({ message: t('power_schedule_cancelled'), type: 'info' });
                   }}
-                  className="px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 hover:border-red-400/70 font-cyber font-bold text-[11px] transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)] flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 hover:border-red-400/70 font-cyber font-bold text-[11px] transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)] flex items-center gap-1 cursor-pointer whitespace-nowrap"
                 >
                   <X className="w-3.5 h-3.5" />
-                  <span>{t('power_schedule_cancel')}</span>
+                  <span className="whitespace-nowrap">{t('power_confirm_cancel')}</span>
                 </button>
               </Tooltip>
             </div>
