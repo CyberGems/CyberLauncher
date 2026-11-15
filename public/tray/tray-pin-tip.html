@@ -8,6 +8,7 @@
   >
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CyberLauncher Tray Pin Tip</title>
+  <link rel="icon" type="image/png" href="../icon-16.png">
   <link rel="stylesheet" href="tray-pin-tip.css">
 </head>
 <body>
@@ -25,7 +26,12 @@
         </div>
         <p id="body" class="body-text"></p>
         <label class="dont-show-wrap">
-          <input type="checkbox" id="dontShowCheckbox" checked>
+          <span class="checkbox-shell">
+            <input type="checkbox" id="dontShowCheckbox" checked>
+            <span class="checkbox-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="checkbox-icon"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+          </span>
           <span id="dontShowLabel"></span>
         </label>
         <div class="actions">

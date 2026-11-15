@@ -20,7 +20,7 @@ test('CustomSelect renders accessible combobox trigger without native select ele
   const markup = renderToStaticMarkup(
     React.createElement(CustomSelect, {
       value: 'browsers',
-      onChange: () => {},
+      onChange: () => { },
       ariaLabel: 'Category',
       options: [
         { value: 'uncategorized', label: 'Uncategorized' },
@@ -41,7 +41,7 @@ test('Checkbox renders custom cyan and amber states around accessible input', ()
   const unchecked = renderToStaticMarkup(
     React.createElement(Checkbox, {
       checked: false,
-      onChange: () => {},
+      onChange: () => { },
       ariaLabel: 'Force close',
     })
   );
@@ -52,7 +52,7 @@ test('Checkbox renders custom cyan and amber states around accessible input', ()
   const checkedCyan = renderToStaticMarkup(
     React.createElement(Checkbox, {
       checked: true,
-      onChange: () => {},
+      onChange: () => { },
       ariaLabel: 'Skip confirmation',
     })
   );
@@ -64,7 +64,7 @@ test('Checkbox renders custom cyan and amber states around accessible input', ()
     React.createElement(Checkbox, {
       checked: true,
       tone: 'amber',
-      onChange: () => {},
+      onChange: () => { },
       ariaLabel: 'Include shortcuts on reset',
     })
   );
@@ -102,13 +102,13 @@ test('UwpImportConfirmModal prioritizes app icon and name over subtle action hea
         icon: 'data:image/png;base64,iVBORw0KGgo=',
       },
       category: 'Design',
-      onChangeCategory: () => {},
+      onChangeCategory: () => { },
       categoryOptions: [
         { value: 'Uncategorized', label: 'Uncategorized' },
         { value: 'Design', label: 'Design' },
       ],
-      onCancel: () => {},
-      onConfirm: () => {},
+      onCancel: () => { },
+      onConfirm: () => { },
       t: (key) => translations.en[key],
     })
   );
@@ -128,10 +128,10 @@ test('UwpImportConfirmModal prioritizes app icon and name over subtle action hea
         icon: '',
       },
       category: 'Design',
-      onChangeCategory: () => {},
+      onChangeCategory: () => { },
       categoryOptions: [{ value: 'Design', label: 'Design' }],
-      onCancel: () => {},
-      onConfirm: () => {},
+      onCancel: () => { },
+      onConfirm: () => { },
       t: (key) => translations.en[key],
     })
   );
@@ -158,32 +158,32 @@ test('Modals use calmed glow tokens across UWP, Power, Onboarding, CommandPalett
       getCategoryDisplayName: (cat) => cat.name,
       appToDelete: null,
       dontAskAgainOnAppDelete: false,
-      onChangeDontAskAgainOnAppDelete: () => {},
-      onCancelDeleteApp: () => {},
-      onConfirmDeleteApp: () => {},
+      onChangeDontAskAgainOnAppDelete: () => { },
+      onCancelDeleteApp: () => { },
+      onConfirmDeleteApp: () => { },
       categoryToDelete: null,
-      onCancelDeleteCategory: () => {},
-      onConfirmDeleteCategory: () => {},
+      onCancelDeleteCategory: () => { },
+      onConfirmDeleteCategory: () => { },
       confirmResetType: null,
-      onCancelReset: () => {},
-      onConfirmReset: () => {},
+      onCancelReset: () => { },
+      onConfirmReset: () => { },
       backupToRestore: null,
-      onCancelRestoreBackup: () => {},
-      onConfirmRestoreBackup: () => {},
+      onCancelRestoreBackup: () => { },
+      onConfirmRestoreBackup: () => { },
       backupToDelete: null,
-      onCancelDeleteBackup: () => {},
-      onConfirmDeleteBackup: () => {},
+      onCancelDeleteBackup: () => { },
+      onConfirmDeleteBackup: () => { },
       isFactoryResetOpen: true,
       factoryResetIncludeApps: true,
-      onChangeFactoryResetIncludeApps: () => {},
-      onCancelFactoryReset: () => {},
-      onConfirmFactoryReset: () => {},
+      onChangeFactoryResetIncludeApps: () => { },
+      onCancelFactoryReset: () => { },
+      onConfirmFactoryReset: () => { },
       powerConfirmAction: null,
       powerCountdown: 10,
       powerForceClose: false,
-      onChangePowerForceClose: () => {},
-      onCancelPowerAction: () => {},
-      onExecutePowerAction: () => {},
+      onChangePowerForceClose: () => { },
+      onCancelPowerAction: () => { },
+      onExecutePowerAction: () => { },
     })
   );
   assert.ok(factoryMarkup.includes(MODAL_SHADOW_AMBER));
@@ -265,6 +265,7 @@ test('Collapsible favorites, scheduler inline shortcut search, and tray pin popu
   const appSource = readFileSync('src/App.tsx', 'utf8');
   const trayTipJs = readFileSync('public/tray/tray-pin-tip.js', 'utf8');
   const trayTipCss = readFileSync('public/tray/tray-pin-tip.css', 'utf8');
+  const trayTipHtml = readFileSync('public/tray/tray-pin-tip.html', 'utf8');
 
   assert.ok(translations.es.favorites_collapse);
   assert.ok(translations.es.favorites_expand);
@@ -281,5 +282,9 @@ test('Collapsible favorites, scheduler inline shortcut search, and tray pin popu
   assert.ok(trayTipJs.includes('<span class="overflow-inline">'));
   assert.ok(trayTipCss.includes('.overflow-inline'));
   assert.ok(trayTipCss.includes('white-space: nowrap'));
+  assert.ok(trayTipHtml.includes('class="checkbox-shell"'));
+  assert.ok(trayTipHtml.includes('class="checkbox-box"'));
+  assert.ok(trayTipCss.includes('#06b6d4'));
+  assert.equal(trayTipHtml.includes('onerror='), false);
 });
 
