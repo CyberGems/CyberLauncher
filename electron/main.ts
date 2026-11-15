@@ -2958,22 +2958,55 @@ function isGenericIcon(buf: Buffer): boolean {
   return false;
 }
 
+/**
+ * Detects PNGs produced by alpha-losing conversions (e.g. Bitmap.FromHbitmap over a
+ * shell HBITMAP): the transparent area turns into fully opaque pure-black pixels, so
+ * all four corners read as A255 R0 G0 B0. Legit artwork rarely has pure black on all
+ * four corners, and a false positive only costs one harmless re-extraction.
+ */
+function pngHasOpaqueBlackCorners(pngBuffer: Buffer): boolean {
+  try {
+    if (!pngBuffer || pngBuffer.length < 200) return false;
+    const img = nativeImage.createFromBuffer(pngBuffer);
+    if (img.isEmpty()) return false;
+    const { width, height } = img.getSize();
+    if (width < 8 || height < 8) return false;
+    const bitmap = img.toBitmap();
+    const corners: Array<[number, number]> = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]];
+    return corners.every(([x, y]) => {
+      const offset = (y * width + x) * 4;
+      return bitmap[offset + 3] === 255 && bitmap[offset] === 0 && bitmap[offset + 1] === 0 && bitmap[offset + 2] === 0;
+    });
+  } catch {
+    return false;
+  }
+}
+
 /** Extrae el icono original en alta resolución (256x256) mediante IShellItemImageFactory sin badges de flecha de acceso directo */
 async function extractShellItemIcon(itemPath: string): Promise<Buffer | null> {
   if (!itemPath) return null;
   const escaped = itemPath.replace(/'/g, "''");
   const csharp = [
     'using System;',
-    'using System.Runtime.InteropServices;',
     'using System.Drawing;',
+    'using System.Drawing.Imaging;',
+    'using System.Runtime.InteropServices;',
     'public class ShellItemIconHelper {',
     '  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
     '  interface IShellItemImageFactory {',
     '    [PreserveSig] int GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] int flags, [Out] out IntPtr phbm);',
     '  }',
     '  [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx; public int cy; public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; } }',
+    '  [StructLayout(LayoutKind.Sequential)]',
+    '  public struct BITMAPINFOHEADER { public uint biSize; public int biWidth; public int biHeight; public ushort biPlanes; public ushort biBitCount; public uint biCompression; public uint biSizeImage; public int biXPelsPerMeter; public int biYPelsPerMeter; public uint biClrUsed; public uint biClrImportant; }',
+    '  [StructLayout(LayoutKind.Sequential)]',
+    '  public struct BITMAPINFO { public BITMAPINFOHEADER bmiHeader; public uint bmiColors; }',
     '  [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]',
     '  static extern void SHCreateItemFromParsingName([In, MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellItemImageFactory ppv);',
+    '  [DllImport("gdi32.dll")] static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint lines, byte[] bits, ref BITMAPINFO bi, uint usage);',
+    '  [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hWnd);',
+    '  [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);',
+    '  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);',
     '  public static string SaveIcon(string path, string outPath, int size) {',
     '    try {',
     '      Guid uuid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");',
@@ -2981,12 +3014,45 @@ async function extractShellItemIcon(itemPath: string): Promise<Buffer | null> {
     '      SHCreateItemFromParsingName(path, IntPtr.Zero, uuid, out factory);',
     '      if (factory == null) return null;',
     '      IntPtr hBitmap;',
-    '      int hr = factory.GetImage(new SIZE(size, size), 0x100, out hBitmap);',
-    '      if (hr != 0) return null;',
-    '      using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap)) {',
-    '        bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);',
+    '      int hr = factory.GetImage(new SIZE(size, size), 0, out hBitmap);',
+    '      if (hr != 0 || hBitmap == IntPtr.Zero) return null;',
+    '      try {',
+    '        // Bitmap.FromHbitmap drops the alpha channel and yields opaque black corners,',
+    '        // so read the 32bpp DIB directly, unpremultiply and encode as PNG instead.',
+    '        var bmi = new BITMAPINFO();',
+    '        bmi.bmiHeader.biSize = 40;',
+    '        IntPtr hdc = GetDC(IntPtr.Zero);',
+    '        GetDIBits(hdc, hBitmap, 0, 0, null, ref bmi, 0);',
+    '        int w = (int)bmi.bmiHeader.biWidth;',
+    '        int h = Math.Abs((int)bmi.bmiHeader.biHeight);',
+    '        if (w <= 0 || h <= 0) { ReleaseDC(IntPtr.Zero, hdc); return null; }',
+    '        byte[] bits = new byte[w * h * 4];',
+    '        bmi.bmiHeader.biHeight = -h;',
+    '        int copied = GetDIBits(hdc, hBitmap, 0, (uint)h, bits, ref bmi, 0);',
+    '        ReleaseDC(IntPtr.Zero, hdc);',
+    '        if (copied == 0) {',
+    '          using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap)) { bmp.Save(outPath, ImageFormat.Png); }',
+    '          return outPath;',
+    '        }',
+    '        for (int i = 0; i < bits.Length; i += 4) {',
+    '          byte a = bits[i + 3];',
+    '          if (a == 0) { bits[i] = 0; bits[i + 1] = 0; bits[i + 2] = 0; continue; }',
+    '          if (a != 255) {',
+    '            bits[i]     = (byte)Math.Min(255, (bits[i]     * 255 + a / 2) / a);',
+    '            bits[i + 1] = (byte)Math.Min(255, (bits[i + 1] * 255 + a / 2) / a);',
+    '            bits[i + 2] = (byte)Math.Min(255, (bits[i + 2] * 255 + a / 2) / a);',
+    '          }',
+    '        }',
+    '        using (Bitmap outBmp = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {',
+    '          var data = outBmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);',
+    '          Marshal.Copy(bits, 0, data.Scan0, bits.Length);',
+    '          outBmp.UnlockBits(data);',
+    '          outBmp.Save(outPath, ImageFormat.Png);',
+    '        }',
+    '        return outPath;',
+    '      } finally {',
+    '        DeleteObject(hBitmap);',
     '      }',
-    '      return outPath;',
     '    } catch { return null; }',
     '  }',
     '}'
@@ -3148,7 +3214,7 @@ function tryCompanionIcons(exePath: string): Buffer | null {
         const img = nativeImage.createFromPath(cand);
         if (img && !img.isEmpty()) {
           const buf = img.toPNG();
-          if (buf.length > 500 && !isGenericIcon(buf)) {
+          if (buf.length > 500 && !isGenericIcon(buf) && !pngHasOpaqueBlackCorners(buf)) {
             return buf;
           }
         }
@@ -3202,14 +3268,14 @@ async function extractAndCacheIcon(
       if (cacheStat.size > 100) {
         if (uwpAumid) {
           const cachedBuf = fs.readFileSync(cachedIconPath);
-          if (!isGenericIcon(cachedBuf)) {
+          if (!isGenericIcon(cachedBuf) && !pngHasOpaqueBlackCorners(cachedBuf)) {
             return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
           }
         } else if (fs.existsSync(resolvedPath)) {
           const targetStat = fs.statSync(resolvedPath);
           if (targetStat.mtimeMs <= cacheStat.mtimeMs) {
             const cachedBuf = fs.readFileSync(cachedIconPath);
-            if (!isGenericIcon(cachedBuf)) {
+            if (!isGenericIcon(cachedBuf) && !pngHasOpaqueBlackCorners(cachedBuf)) {
               return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
             }
           }
@@ -3225,6 +3291,7 @@ async function extractAndCacheIcon(
   // 1. Si es una app UWP/Windows Store, extraer logo oficial directamente del paquete sin flechas de acceso
   if (uwpAumid) {
     pngBuffer = await extractUwpIcon(uwpAumid);
+    if (pngBuffer && pngHasOpaqueBlackCorners(pngBuffer)) pngBuffer = null;
   }
 
   // 2. Icono explícito de acceso directo (.lnk) si existe y es válido
@@ -3236,7 +3303,7 @@ async function extractAndCacheIcon(
         const img = nativeImage.createFromPath(shortcutIcon);
         if (img && !img.isEmpty()) {
           const buf = img.toPNG();
-          if (!isGenericIcon(buf)) pngBuffer = buf;
+          if (!isGenericIcon(buf) && !pngHasOpaqueBlackCorners(buf)) pngBuffer = buf;
         }
       }
     } catch {
@@ -3249,6 +3316,7 @@ async function extractAndCacheIcon(
   if (!pngBuffer && fs.existsSync(resolvedPath)) {
     try {
       pngBuffer = await extractShellItemIcon(resolvedPath);
+      if (pngBuffer && pngHasOpaqueBlackCorners(pngBuffer)) pngBuffer = null;
       if (!pngBuffer) {
         let icon = await app.getFileIcon(resolvedPath, { size: 'large' });
         if (!icon || icon.isEmpty()) {
@@ -3256,7 +3324,7 @@ async function extractAndCacheIcon(
         }
         if (icon && !icon.isEmpty()) {
           const buf = icon.toPNG();
-          if (!isGenericIcon(buf)) {
+          if (!isGenericIcon(buf) && !pngHasOpaqueBlackCorners(buf)) {
             pngBuffer = buf;
           }
         }
@@ -3292,7 +3360,7 @@ async function extractAndCacheIcon(
       if (psOutput && fs.existsSync(psOutput)) {
         const buf = await fs.promises.readFile(psOutput);
         await fs.promises.unlink(psOutput).catch(() => {});
-        if (buf.length > 100 && !isGenericIcon(buf)) {
+        if (buf.length > 100 && !isGenericIcon(buf) && !pngHasOpaqueBlackCorners(buf)) {
           pngBuffer = buf;
         }
       }
