@@ -9512,9 +9512,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsAboutOpen(true)}
-                  className="group relative flex items-center justify-center w-6 h-6 rounded-full bg-[#1D2636] hover:bg-[#253246] border border-[#2D3A4E] hover:border-[#3B4E6E] text-[#6C9BFF] shadow-[0_0_8px_rgba(108,155,255,0.18)] hover:shadow-[0_0_12px_rgba(108,155,255,0.35)] transition-all duration-200 mr-0.5 focus:outline-none cursor-pointer"
+                  className="flex items-center justify-center w-7 h-7 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 transition-all group cursor-pointer focus:outline-none"
                 >
-                  <ArrowDown className={`w-3.5 h-3.5 text-[#6C9BFF] group-hover:text-cyan-300 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
+                  <ArrowDown className={`w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
                 </button>
               </Tooltip>
             )}
@@ -9532,7 +9532,7 @@ export default function App() {
                   aria-pressed={cyberBot.enabled}
                   className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
                     cyberBot.enabled
-                      ? 'text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.25)] hover:bg-cyan-500/25'
+                      ? 'text-cyan-400 bg-cyan-500/15 hover:bg-cyan-500/25'
                       : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
                   }`}
                 >
