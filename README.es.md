@@ -98,12 +98,12 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Paleta de comandos**: presiona `Ctrl+K` para ejecutar comandos del lanzador y navegar al instante
 - **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y programas en todas las unidades
 - **Apps de Microsoft Store**: escanea, importa (recordando la última categoría elegida en la sesión) y lanza apps de la Tienda (UWP y MSIX) de forma nativa mediante AUMID
-- **Cyber Terminal**: escribe `>` en la búsqueda para abrir una sesión persistente e interactiva de PowerShell o CMD dentro del panel. Escribe en el prompt, usa el historial nativo y programas interactivos, y cambia de shell desde la barra.
+- **Cyber Terminal**: abre una sesión persistente e interactiva de PowerShell o CMD dentro del panel con `Ctrl+J`, el botón de terminal de la barra superior o `Más opciones (⋯) → Cyber Terminal`. Escribe en el prompt real del shell, usa el historial nativo y programas interactivos, y cambia de shell desde la barra.
 
 ### 📂 Organización
 - **Asistente inicial bilingüe**: configuración inicial rápida para elegir español o inglés con 5 categorías base, 5 favoritos iniciales, 5 accesos esenciales en la barra de tareas y activación opcional de CyberBot
 - **Categorías personalizadas**: organiza tus accesos en categorías con código de color bajo `Todo`, edición en línea y ocultamiento automático de `Sin Categoría` cuando está vacía
-- **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+B` o al pasar el cursor
+- **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+Shift+B` o al pasar el cursor
 - **Favoritos y reordenar con arrastrar**: fija tus accesos más usados bajo una cabecera plegable de Favoritos con arrastre fluido en tiempo real
 - **Barra de tareas**: barra inferior personalizable con accesos anclados de apertura rápida
 - **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usados y recientes
@@ -115,7 +115,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Ocultamiento inteligente**: se oculta al lanzar un acceso, con opción en Configuración para ocultar también al perder el foco (desactivada por defecto)
 
 ### 🤖 Asistente CyberBot
-- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Ctrl+Alt+B` para abrir una paleta rápida de comandos anclada directamente sobre el compañero con búsqueda inteligente, orden de acciones e insignias de atajos.
+- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Alt+Shift+B` para abrir una paleta rápida de comandos anclada directamente sobre el compañero con búsqueda inteligente, orden de acciones e insignias de atajos.
 - **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
 - **Mensajes progresivos**: Los comentarios al abrir accesos, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
 - **Personaliza la experiencia**: Introduce tu nombre desde el asistente inicial o el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.

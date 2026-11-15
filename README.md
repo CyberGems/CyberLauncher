@@ -98,12 +98,12 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Command Palette**: Press `Ctrl+K` for instant launcher command execution and quick navigation
 - **System-Wide File Search**: Hybrid indexing engine finds files, folders, and programs across all drives
 - **Microsoft Store Apps**: Natively scan, import (with per-session category selection), and launch Store apps (UWP and MSIX) via AUMID
-- **Cyber Terminal**: Type `>` in search to open a persistent, interactive PowerShell or CMD session in the panel. Type at the shell prompt, use native history and interactive programs, and switch shells from the toolbar.
+- **Cyber Terminal**: Open a persistent, interactive PowerShell or CMD session in the panel with `Ctrl+J`, the top-bar terminal button, or `More options (⋯) → Cyber Terminal`. Type at the real shell prompt, use native history and interactive programs, and switch shells from the toolbar.
 
 ### 📂 Organization
 - **Bilingual Initial Setup**: Quick onboarding wizard lets you pick English or Spanish with 5 starter categories, 5 default favorites, 5 essential Windows taskbar shortcuts, and optional CyberBot setup
 - **Custom Categories**: Organize shortcuts into color-coded categories under `All Items`, with inline editing and automatic hiding of `Uncategorized` when empty
-- **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+B` or hover
+- **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+Shift+B` or hover
 - **Favorites & Drag-to-Reorder**: Pin frequent shortcuts under a collapsible Favorites header with fluid live drag & drop reordering
 - **Taskbar**: Customizable bottom bar with pinned shortcuts for instant access
 - **Resizable Panels**: Drag to resize the category sidebar and most-used/recent panel
@@ -115,7 +115,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Smart Auto-Hide**: Hides on shortcut launch, with optional hide-on-blur in Settings (disabled by default)
 
 ### 🤖 CyberBot Assistant
-- **Interactive Quick Command Prompt**: Click CyberBot or press `Ctrl+Alt+B` to summon a sleek command prompt anchored right above the companion with smart search, action ranking, and hotkey badges.
+- **Interactive Quick Command Prompt**: Click CyberBot or press `Alt+Shift+B` to summon a sleek command prompt anchored right above the companion with smart search, action ranking, and hotkey badges.
 - **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
 - **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
 - **Personalize the experience**: Enter your name directly in onboarding or its bubble, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
