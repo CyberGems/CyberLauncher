@@ -2116,7 +2116,8 @@ export default function App() {
   const [confirmResetType, setConfirmResetType] = useState<'most-used' | 'recent' | null>(null);
   const [isPowerMenuOpen, setIsPowerMenuOpen] = useState(false);
   const [powerConfirmAction, setPowerConfirmAction] = useState<'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout' | null>(null);
-  const [powerScheduleChoice, setPowerScheduleChoice] = useState<'now' | 5 | 10 | 15 | 30 | 60>('now');
+  const [powerScheduleChoice, setPowerScheduleChoice] = useState<'now' | 5 | 10 | 15 | 30 | 'custom'>('now');
+  const [powerScheduleCustomMinutes, setPowerScheduleCustomMinutes] = useState<string>('');
   const [powerSchedule, setPowerSchedule] = useState<{ action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout'; secondsLeft: number; force: boolean } | null>(null);
   const [powerForceClose, setPowerForceClose] = useState<boolean>(false);
   const [confirmBeforeDeletingApps, setConfirmBeforeDeletingApps] = useState<boolean>(() => localStorage.getItem('confirmBeforeDeletingApps') !== 'false');
@@ -14345,7 +14346,9 @@ export default function App() {
         onConfirmFactoryReset={handleFactoryReset}
         powerConfirmAction={powerConfirmAction}
         powerScheduleChoice={powerScheduleChoice}
+        powerScheduleCustomMinutes={powerScheduleCustomMinutes}
         onChangePowerScheduleChoice={setPowerScheduleChoice}
+        onChangePowerScheduleCustomMinutes={setPowerScheduleCustomMinutes}
         powerForceClose={powerForceClose}
         onChangePowerForceClose={setPowerForceClose}
         onCancelPowerAction={() => setPowerConfirmAction(null)}

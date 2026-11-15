@@ -220,8 +220,10 @@ export interface AppConfirmModalsProps {
   onConfirmFactoryReset: (includeApps: boolean) => void;
 
   powerConfirmAction: PowerConfirmAction | null;
-  powerScheduleChoice: 'now' | 5 | 10 | 15 | 30 | 60;
-  onChangePowerScheduleChoice: (val: 'now' | 5 | 10 | 15 | 30 | 60) => void;
+  powerScheduleChoice: 'now' | 5 | 10 | 15 | 30 | 'custom';
+  powerScheduleCustomMinutes: string;
+  onChangePowerScheduleChoice: (val: 'now' | 5 | 10 | 15 | 30 | 'custom') => void;
+  onChangePowerScheduleCustomMinutes: (val: string) => void;
   powerForceClose: boolean;
   onChangePowerForceClose: (val: boolean) => void;
   onCancelPowerAction: () => void;
@@ -259,13 +261,19 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
   onConfirmFactoryReset,
   powerConfirmAction,
   powerScheduleChoice,
+  powerScheduleCustomMinutes,
   onChangePowerScheduleChoice,
+  onChangePowerScheduleCustomMinutes,
   powerForceClose,
   onChangePowerForceClose,
   onCancelPowerAction,
   onExecutePowerAction,
 }) => {
   const powerStyle = powerConfirmAction ? POWER_ACTION_STYLES[powerConfirmAction] : null;
+  const customMinutesRef = React.useRef<HTMLInputElement | null>(null);
+  const customMinutes = parseInt(powerScheduleCustomMinutes, 10);
+  const customMinutesInvalid = powerScheduleChoice === 'custom'
+    && (!Number.isFinite(customMinutes) || customMinutes < 1 || customMinutes > 1440);
 
   return (
     <>
@@ -495,8 +503,18 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
               onClick={(e) => e.stopPropagation()}
               data-no-hide
               data-cyberbot-obstacle="center"
-              className={`w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 space-y-5 text-center ${powerStyle.frameClass}`}
+              className={`relative w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 space-y-5 text-center ${powerStyle.frameClass}`}
             >
+              <Tooltip label={t('power_confirm_cancel')} placement="left">
+                <button
+                  type="button"
+                  onClick={onCancelPowerAction}
+                  aria-label={t('power_confirm_cancel')}
+                  className="absolute top-3.5 right-3.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-slate-500 hover:text-white focus:outline-none cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </Tooltip>
               <div className="flex flex-col items-center justify-center pt-2">
                 <div
                   className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border shadow-inner ${powerStyle.iconBoxClass}`}
@@ -518,7 +536,7 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                   {t('power_schedule_when')}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['now', 5, 10, 15, 30, 60] as const).map((choice) => (
+                  {(['now', 5, 10, 15, 30] as const).map((choice) => (
                     <button
                       key={String(choice)}
                       type="button"
@@ -532,6 +550,29 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                       {choice === 'now' ? t('power_schedule_now') : `${choice} min`}
                     </button>
                   ))}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { onChangePowerScheduleChoice('custom'); customMinutesRef.current?.focus(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); customMinutesRef.current?.focus(); } }}
+                    className={`flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-xs font-cyber font-bold transition-all border cursor-text ${
+                      powerScheduleChoice === 'custom'
+                        ? powerStyle.buttonClass
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                    }`}
+                  >
+                    <input
+                      ref={customMinutesRef}
+                      inputMode="numeric"
+                      value={powerScheduleCustomMinutes}
+                      onChange={(e) => onChangePowerScheduleCustomMinutes(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                      onFocus={() => onChangePowerScheduleChoice('custom')}
+                      placeholder="60"
+                      aria-label={t('power_schedule_custom')}
+                      className="w-8 bg-transparent text-center outline-none placeholder:text-slate-500 text-inherit p-0 border-0 cursor-text"
+                    />
+                    <span className="opacity-70 pointer-events-none">min</span>
+                  </div>
                 </div>
               </div>
 
@@ -556,12 +597,17 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                 <button
                   type="button"
                   onClick={() => onExecutePowerAction(powerConfirmAction, powerForceClose)}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${powerStyle.buttonClass}`}
+                  disabled={customMinutesInvalid}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${powerStyle.buttonClass}`}
                 >
                   <span>
                     {powerScheduleChoice === 'now'
                       ? t(powerStyle.confirmKey)
-                      : t('power_schedule_in', { minutes: String(powerScheduleChoice) })}
+                      : t('power_schedule_in', {
+                        minutes: powerScheduleChoice === 'custom'
+                          ? (Number.isFinite(customMinutes) ? String(customMinutes) : '…')
+                          : String(powerScheduleChoice),
+                      })}
                   </span>
                   <EnterKeyBadge variant={powerStyle.badgeVariant} />
                 </button>
