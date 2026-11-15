@@ -2488,10 +2488,14 @@ export default function App() {
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [openedViaDrop, setOpenedViaDrop] = useState(false);
   const [isAddGuideExpanded, setIsAddGuideExpanded] = useState(false);
+  const [isEditingAppTarget, setIsEditingAppTarget] = useState(false);
   useLayoutEffect(() => {
     if (isAddingApp) setIsAddGuideExpanded(false);
   }, [isAddingApp]);
+  useLayoutEffect(() => setIsEditingAppTarget(false), [isAddingApp, editingApp]);
   const [editForm, setEditForm] = useState(emptyEditForm);
+  // Packaged apps use a package family name followed by the application ID.
+  const hasPackagedAppTarget = /^[\w.-]+_[a-z0-9]{13}![\w.-]+$/i.test(editForm.path.trim());
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [browseDropdownOpen, setBrowseDropdownOpen] = useState(false);
   const [lastBrowseMode, setLastBrowseMode] = useState<'file' | 'folder'>(() => {
@@ -7872,6 +7876,7 @@ export default function App() {
     if (document.body.hasAttribute('data-cl-drag')) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
+      setIsEditingAppTarget(false);
       
       let filePath = '';
       if (isElectron && window.electronAPI?.getPathForFile) {
@@ -10776,27 +10781,21 @@ export default function App() {
               <div ref={modalScrollContainerRef} className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
                 {/* Informative / friendly card describing supported shortcut types */}
                 {isAddingApp && !openedViaDrop && (
-                  <div className="p-3.5 bg-gradient-to-br from-white/[0.04] to-cyan-950/20 border border-cyan-500/25 rounded-xl relative shadow-[0_4px_20px_rgba(0,0,0,0.25)] min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <h4 className="text-xs font-cyber font-bold text-cyan-300 tracking-wide leading-tight">
-                          {t('app_add_guide_title')}
-                        </h4>
-                      </div>
-                      <Tooltip label={isAddGuideExpanded ? t('app_add_guide_dismiss') : t('app_add_guide_show')} placement="left">
-                        <button
-                          type="button"
-                          onClick={() => setIsAddGuideExpanded(prev => !prev)}
-                          aria-label={isAddGuideExpanded ? t('app_add_guide_dismiss') : t('app_add_guide_show')}
-                          aria-expanded={isAddGuideExpanded}
-                          aria-controls="app-add-guide-content"
-                          className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-white/10 rounded-md transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
-                        >
-                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isAddGuideExpanded ? 'rotate-180 text-cyan-300' : ''}`} />
-                        </button>
-                      </Tooltip>
-                    </div>
+                  <div className="bg-gradient-to-br from-white/[0.04] to-cyan-950/20 border border-cyan-500/25 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.25)] min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddGuideExpanded(prev => !prev)}
+                      onKeyDown={event => { if (event.key === 'Enter') event.stopPropagation(); }}
+                      aria-expanded={isAddGuideExpanded}
+                      aria-controls="app-add-guide-content"
+                      className="flex w-full items-center gap-2 rounded-xl p-3.5 text-left text-cyan-300 transition-colors hover:bg-cyan-500/5 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
+                    >
+                      <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
+                      <span className="flex-1 text-xs font-cyber font-bold tracking-wide leading-tight">
+                        {t('app_add_guide_title')}
+                      </span>
+                      <ChevronDown aria-hidden="true" className={`size-4 shrink-0 transition-transform duration-200 ${isAddGuideExpanded ? 'rotate-180' : 'text-slate-400'}`} />
+                    </button>
 
                     <motion.div
                       id="app-add-guide-content"
@@ -10806,7 +10805,7 @@ export default function App() {
                       aria-hidden={!isAddGuideExpanded}
                       className="overflow-hidden"
                     >
-                      <div className="pt-3.5">
+                      <div className="px-3.5 pb-3.5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
                           {/* Apps & Scripts */}
                           <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
@@ -10887,16 +10886,37 @@ export default function App() {
 
                   {/* Shortcut path field */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_path')}</label>
+                    <label htmlFor="shortcut-target" className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_path')}</label>
                     <div className="flex gap-2 min-w-0">
-                      <input
-                        type="text"
-                        className="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors font-mono"
-                        value={editForm.path}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, path: e.target.value }))}
-                        onContextMenu={handleInputContextMenu}
-                        placeholder={t('app_path_placeholder')}
-                      />
+                      {hasPackagedAppTarget && !isEditingAppTarget ? (
+                        <Tooltip label={<span className="block max-w-[min(24rem,80vw)] whitespace-normal break-all font-mono">{editForm.path.trim()}</span>} placement="top">
+                          <button
+                            id="shortcut-target"
+                            type="button"
+                            aria-label={`${t('app_target_store')}. ${t('app_target_edit')}`}
+                            onClick={() => setIsEditingAppTarget(true)}
+                            onKeyDown={event => { if (event.key === 'Enter') event.stopPropagation(); }}
+                            className="group flex flex-1 min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-left text-xs font-medium leading-snug text-slate-100 transition-colors hover:border-cyan-500/35 focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                          >
+                            <PackagePlus className="size-4 shrink-0 text-cyan-300" aria-hidden="true" />
+                            <span className="min-w-0 flex-1">{t('app_target_store')}</span>
+                            <Pencil className="size-3 shrink-0 text-slate-400 group-hover:text-cyan-300" aria-hidden="true" />
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <input
+                          id="shortcut-target"
+                          type="text"
+                          autoFocus={hasPackagedAppTarget}
+                          className="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors font-mono"
+                          value={editForm.path}
+                          onFocus={() => setIsEditingAppTarget(true)}
+                          onBlur={() => setIsEditingAppTarget(false)}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, path: e.target.value }))}
+                          onContextMenu={handleInputContextMenu}
+                          placeholder={t('app_path_placeholder')}
+                        />
+                      )}
                       <div
                         className="relative shrink-0"
                         ref={browseDropdownRef}
@@ -11185,7 +11205,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {isAddingApp && openedViaDrop && <StoreImporterCard t={t} onOpen={openStoreImporter} />}
               </div>
 
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
