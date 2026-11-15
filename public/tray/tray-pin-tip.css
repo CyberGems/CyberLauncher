@@ -141,6 +141,10 @@ html, body {
   color: var(--text-muted);
 }
 
+.overflow-inline {
+  white-space: nowrap;
+}
+
 .overflow-badge {
   display: inline-flex;
   align-items: center;
@@ -151,7 +155,7 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
   vertical-align: middle;
-  margin: 0 3px;
+  margin: 0 2px;
   color: #e2e8f0;
 }
 

@@ -3,8 +3,10 @@
 const I18N = {
   es: {
     title: 'Mantén CyberLauncher visible en la bandeja',
-    bodyPrefix: 'Windows oculta los iconos nuevos detrás de la flecha ',
-    bodySuffix: '. Arrastra CyberLauncher a la barra de tareas visible, o fíjalo en Configuración de Windows.',
+    bodyPrefix: 'Windows oculta los iconos nuevos detrás de ',
+    bodyGlueWord: 'la flecha',
+    bodyPunct: '.',
+    bodySuffix: ' Arrastra CyberLauncher a la barra de tareas visible, o fíjalo en Configuración de Windows.',
     dontShow: 'No mostrar más',
     gotIt: 'Entendido',
     openSettings: 'Abrir Configuración de Windows',
@@ -12,8 +14,10 @@ const I18N = {
   },
   en: {
     title: 'Keep CyberLauncher visible in the tray',
-    bodyPrefix: 'Windows hides new tray icons behind the overflow arrow ',
-    bodySuffix: '. Drag CyberLauncher onto the visible taskbar, or pin it in Windows Settings.',
+    bodyPrefix: 'Windows hides new tray icons behind the overflow ',
+    bodyGlueWord: 'arrow',
+    bodyPunct: '.',
+    bodySuffix: ' Drag CyberLauncher onto the visible taskbar, or pin it in Windows Settings.',
     dontShow: "Don't show again",
     gotIt: 'Got it',
     openSettings: 'Open Windows Settings',
@@ -38,6 +42,15 @@ const gotItBtn = document.getElementById('gotItBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsBtnLabel = document.getElementById('settingsBtnLabel');
 const closeBtn = document.getElementById('closeBtn');
+const headIcon = document.getElementById('headIcon');
+
+if (headIcon) {
+  headIcon.addEventListener('error', () => {
+    if (!headIcon.src.endsWith('icon-20.png')) {
+      headIcon.src = '../icon-20.png';
+    }
+  }, { once: true });
+}
 
 let currentLang = 'es';
 
@@ -46,7 +59,7 @@ function updateUI(lang, edge, tailOffsetPx) {
   const t = I18N[currentLang];
 
   titleEl.textContent = t.title;
-  bodyEl.innerHTML = `${t.bodyPrefix}${CHEVRON_SVG}${t.bodySuffix}`;
+  bodyEl.innerHTML = `${t.bodyPrefix}<span class="overflow-inline">${t.bodyGlueWord} ${CHEVRON_SVG}${t.bodyPunct}</span>${t.bodySuffix}`;
   dontShowLabel.textContent = t.dontShow;
   gotItBtn.textContent = t.gotIt;
   settingsBtnLabel.textContent = t.openSettings;

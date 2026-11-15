@@ -415,6 +415,8 @@ export const translations = {
     // Main UI Titles
     title_categories: "CATEGORÍAS",
     title_favorites: "FAVORITOS",
+    favorites_collapse: "Contraer favoritos",
+    favorites_expand: "Expandir favoritos",
     title_all_apps: "TODO",
     title_most_used: "MÁS USADOS",
     title_recent: "MÁS RECIENTES",
@@ -504,6 +506,7 @@ export const translations = {
     hud_clock_select_placeholder: "Seleccionar acceso...",
     hud_clock_reset_form: "Restablecer formulario",
     hud_clock_search_apps: "Buscar acceso...",
+    hud_clock_no_matching_apps: "Ningún acceso coincide con la búsqueda",
     hud_clock_quick_presets: "PRESETS RÁPIDOS",
     hud_clock_history: "HISTORIAL RECIENTE",
     hud_clock_history_empty: "Sin programaciones recientes",
@@ -1434,6 +1437,8 @@ export const translations = {
     // Main UI Titles
     title_categories: "CATEGORIES",
     title_favorites: "FAVORITES",
+    favorites_collapse: "Collapse favorites",
+    favorites_expand: "Expand favorites",
     title_all_apps: "ALL ITEMS",
     title_most_used: "MOST USED",
     title_recent: "MOST RECENT",
@@ -1523,6 +1528,7 @@ export const translations = {
     hud_clock_select_placeholder: "Select shortcut...",
     hud_clock_reset_form: "Reset form",
     hud_clock_search_apps: "Search shortcut...",
+    hud_clock_no_matching_apps: "No shortcuts match your search",
     hud_clock_quick_presets: "QUICK PRESETS",
     hud_clock_history: "RECENT HISTORY",
     hud_clock_history_empty: "No recent scheduled tasks",

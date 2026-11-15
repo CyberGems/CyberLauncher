@@ -658,7 +658,10 @@ const TrayOverflowText = ({ text }: { text: string }) => {
   if (markerIndex < 0) return <>{text}</>;
 
   const beforeMarker = text.slice(0, markerIndex);
-  const afterMarker = text.slice(markerIndex + 3);
+  const afterMarkerRaw = text.slice(markerIndex + 3);
+  const punctMatch = afterMarkerRaw.match(/^([.,;:!?)]+)(.*)$/s);
+  const trailingPunct = punctMatch?.[1] ?? '';
+  const afterMarker = punctMatch?.[2] ?? afterMarkerRaw;
   const overflowLeadMatch = beforeMarker.match(/^(.*\s)(\S+\s+\S+\s*)$/s);
   const textPrefix = overflowLeadMatch?.[1] ?? beforeMarker;
   const overflowLead = overflowLeadMatch?.[2]?.trimEnd() ?? '';
@@ -674,6 +677,7 @@ const TrayOverflowText = ({ text }: { text: string }) => {
         >
           <ChevronUp size={11} strokeWidth={2.5} />
         </span>
+        {trailingPunct}
       </span>
       {afterMarker}
     </>
@@ -746,17 +750,28 @@ const ClockHUD = ({
   const [selectedAppId, setSelectedAppId] = useState<string>('');
   const [customCommand, setCustomCommand] = useState('');
   const [isAppDropdownOpen, setIsAppDropdownOpen] = useState(false);
+  const [appSearchQuery, setAppSearchQuery] = useState('');
   const appDropdownRef = useRef<HTMLDivElement>(null);
+  const appSearchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isAppDropdownOpen) return;
+    if (!isAppDropdownOpen) {
+      setAppSearchQuery('');
+      return;
+    }
+    const focusTimer = window.requestAnimationFrame(() => {
+      appSearchInputRef.current?.focus();
+    });
     const handleClickOutside = (e: MouseEvent) => {
       if (appDropdownRef.current && !appDropdownRef.current.contains(e.target as Node)) {
         setIsAppDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.cancelAnimationFrame(focusTimer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isAppDropdownOpen]);
   
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
@@ -840,11 +855,29 @@ const ClockHUD = ({
     return apps.find(a => a.id.toString() === selectedAppId);
   }, [apps, selectedAppId]);
 
+  const sortedApps = useMemo(
+    () =>
+      [...apps].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      ),
+    [apps]
+  );
+
+  const filteredDropdownApps = useMemo(() => {
+    const q = appSearchQuery.trim().toLowerCase();
+    if (!q) return sortedApps;
+    return sortedApps.filter((app) => {
+      const catLabel = getCategoryDisplayName(app.category).toLowerCase();
+      return app.name.toLowerCase().includes(q) || catLabel.includes(q);
+    });
+  }, [sortedApps, appSearchQuery, getCategoryDisplayName]);
+
   const handleResetForm = () => {
     setSelectedAppId('');
     setCustomCommand('');
     setTimerMinutes(0);
     setTimerSeconds(0);
+    setAppSearchQuery('');
     setIsAppDropdownOpen(false);
   };
 
@@ -1215,52 +1248,78 @@ const ClockHUD = ({
                       </button>
 
                       {isAppDropdownOpen && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#070b13] border border-cyan-500/30 rounded-xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] backdrop-blur-2xl max-h-56 overflow-y-auto custom-scrollbar p-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedAppId('');
-                              setIsAppDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between mb-1 cursor-pointer ${
-                              !selectedAppId
-                                ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                                : 'text-slate-400 italic hover:bg-white/5 hover:text-slate-300'
-                            }`}
-                          >
-                            <span>{t('hud_clock_select_placeholder')}</span>
-                          </button>
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#070b13] border border-cyan-500/30 rounded-xl shadow-[0_12px_32px_rgba(0,0,0,0.85)] backdrop-blur-2xl max-h-60 overflow-y-auto custom-scrollbar p-1.5">
+                          <div className="sticky -top-1.5 z-10 bg-[#070b13] pt-0.5 pb-1.5 mb-1 border-b border-white/[0.06]">
+                            <div className="relative flex items-center">
+                              <Search className="w-3.5 h-3.5 text-cyan-400/75 absolute left-2.5 pointer-events-none" />
+                              <input
+                                ref={appSearchInputRef}
+                                type="text"
+                                value={appSearchQuery}
+                                onChange={(e) => setAppSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setIsAppDropdownOpen(false);
+                                  } else if (e.key === 'Enter' && filteredDropdownApps.length > 0) {
+                                    e.preventDefault();
+                                    setSelectedAppId(filteredDropdownApps[0].id.toString());
+                                    setIsAppDropdownOpen(false);
+                                  }
+                                }}
+                                placeholder={t('hud_clock_search_apps')}
+                                aria-label={t('hud_clock_search_apps')}
+                                className="w-full bg-slate-950/90 border border-cyan-500/20 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+                              />
+                              {appSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAppSearchQuery('');
+                                    appSearchInputRef.current?.focus();
+                                  }}
+                                  aria-label={t('app_cancel')}
+                                  className="absolute right-1.5 p-0.5 rounded text-slate-500 hover:text-slate-200 hover:bg-white/10 transition-colors"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
 
                           {apps.length === 0 ? (
                             <div className="px-3 py-2 text-xs text-slate-500 italic text-center">
                               {t('hud_clock_no_apps')}
                             </div>
+                          ) : filteredDropdownApps.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-slate-500 italic text-center">
+                              {t('hud_clock_no_matching_apps')}
+                            </div>
                           ) : (
-                            [...apps]
-                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-                              .map(app => {
-                                const isSelected = selectedAppId === app.id.toString();
-                                return (
-                                  <button
-                                    key={app.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedAppId(app.id.toString());
-                                      setIsAppDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between mb-0.5 cursor-pointer ${
-                                      isSelected
-                                        ? 'bg-cyan-500/25 text-cyan-200 font-bold border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                                        : 'text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300'
-                                    }`}
-                                  >
-                                    <span className="truncate mr-2 font-medium">{app.name}</span>
-                                    <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                                      {getCategoryDisplayName(app.category)}
-                                    </span>
-                                  </button>
-                                );
-                              })
+                            filteredDropdownApps.map(app => {
+                              const isSelected = selectedAppId === app.id.toString();
+                              return (
+                                <button
+                                  key={app.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedAppId(app.id.toString());
+                                    setIsAppDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between mb-0.5 cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-cyan-500/25 text-cyan-200 font-bold border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                                      : 'text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300'
+                                  }`}
+                                >
+                                  <span className="truncate mr-2 font-medium">{app.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                                    {getCategoryDisplayName(app.category)}
+                                  </span>
+                                </button>
+                              );
+                            })
                           )}
                         </div>
                       )}
@@ -1748,6 +1807,14 @@ export default function App() {
     }
     return [...DEFAULT_FAVORITE_APP_IDS];
   });
+  const [isFavoritesCollapsed, setIsFavoritesCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('cl_favorites_collapsed') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('cl_favorites_collapsed', String(isFavoritesCollapsed));
+    } catch {}
+  }, [isFavoritesCollapsed]);
   const [draggedFavId, setDraggedFavId] = useState<number | null>(null);
   const [favDropTarget, setFavDropTarget] = useState<number | null>(null);
   const isDraggingFavRef = useRef(false);
@@ -6212,7 +6279,7 @@ export default function App() {
   );
   const animateAppCards = filteredApps.length <= 48;
 
-  const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0;
+  const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0 && !isFavoritesCollapsed;
   const isAnyModalOpen = isOnboardingOpen || isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
@@ -8915,11 +8982,39 @@ export default function App() {
             <>
               {/* Favorites Section */}
           {!searchQuery && activeCategory === 'all' && favorites.length > 0 && (
-            <section className="mb-10 pt-4">
-              <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest flex items-center gap-2 mb-4 drop-shadow-sm">
-                <Star className="w-4 h-4 fill-slate-400" />
-                {t('title_favorites')}
-              </h3>
+            <section className={`${isFavoritesCollapsed ? 'mb-5' : 'mb-10'} pt-4`}>
+              <div className={isFavoritesCollapsed ? 'mb-0' : 'mb-4'}>
+                <Tooltip label={isFavoritesCollapsed ? t('favorites_expand') : t('favorites_collapse')} placement="right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFavoritesCollapsed(prev => {
+                        const next = !prev;
+                        if (next && keyboardNav?.section === 'favorites') {
+                          setKeyboardNav(null);
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-expanded={!isFavoritesCollapsed}
+                    className="group/favhdr inline-flex items-center gap-2 text-[11px] font-cyber font-bold text-slate-400 hover:text-slate-200 tracking-widest drop-shadow-sm cursor-pointer transition-colors focus:outline-none focus-visible:text-cyan-300"
+                  >
+                    <Star className="w-4 h-4 fill-slate-400 group-hover/favhdr:fill-slate-200 transition-colors" />
+                    <span>{t('title_favorites')}</span>
+                    {isFavoritesCollapsed && (
+                      <span className="text-[10px] font-mono text-slate-400 bg-white/[0.04] border border-white/10 px-1.5 py-0.5 rounded-full leading-none">
+                        {favorites.length}
+                      </span>
+                    )}
+                    {isFavoritesCollapsed ? (
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover/favhdr:text-slate-200 transition-colors" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover/favhdr:opacity-90 group-focus-visible/favhdr:opacity-90 transition-opacity" />
+                    )}
+                  </button>
+                </Tooltip>
+              </div>
+              {!isFavoritesCollapsed && (
               <div
                 ref={favContainerRef}
                 className="relative flex flex-wrap gap-3 rounded-2xl p-2 -m-2"
@@ -9016,6 +9111,7 @@ export default function App() {
                   );
                 })}
               </div>
+              )}
             </section>
           )}
 

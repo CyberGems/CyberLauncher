@@ -94,13 +94,14 @@ export const CyberAnalogClock: React.FC<CyberAnalogClockProps> = ({
             </radialGradient>
 
             <clipPath id="cyber-clock-logo-clip">
-              <circle cx="90" cy="90" r="46" />
+              <circle cx="90" cy="90" r="42" />
             </clipPath>
 
             <radialGradient id="cyber-clock-logo-fade" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#070c16" stopOpacity="0.18" />
-              <stop offset="62%" stopColor="#060a13" stopOpacity="0.48" />
-              <stop offset="100%" stopColor="#050912" stopOpacity="0.96" />
+              <stop offset="0%" stopColor="#070c16" stopOpacity="0.14" />
+              <stop offset="58%" stopColor="#060a13" stopOpacity="0.42" />
+              <stop offset="90%" stopColor="#050912" stopOpacity="0.94" />
+              <stop offset="100%" stopColor="#050912" stopOpacity="1" />
             </radialGradient>
 
             <linearGradient id="cyber-clock-hour-hand" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -128,19 +129,19 @@ export const CyberAnalogClock: React.FC<CyberAnalogClockProps> = ({
           {/* Subtle CyberLauncher Icon Watermark */}
           <image
             href="./icon-256.png"
-            x="29"
-            y="29"
-            width="122"
-            height="122"
-            opacity="0.18"
+            x="36"
+            y="36"
+            width="108"
+            height="108"
+            opacity="0.22"
             preserveAspectRatio="xMidYMid slice"
             clipPath="url(#cyber-clock-logo-clip)"
           />
-          <circle cx="90" cy="90" r="47" fill="url(#cyber-clock-logo-fade)" />
+          <circle cx="90" cy="90" r="43" fill="url(#cyber-clock-logo-fade)" />
 
           {/* Fine Etched Chapter Ring */}
           <circle cx="90" cy="90" r="65" fill="none" stroke="#94a3b8" strokeWidth="0.5" strokeOpacity="0.12" />
-          <circle cx="90" cy="90" r="47" fill="none" stroke="#38bdf8" strokeWidth="0.5" strokeOpacity="0.12" />
+          <circle cx="90" cy="90" r="44" fill="none" stroke="#38bdf8" strokeWidth="0.5" strokeOpacity="0.14" />
 
           {/* 60 Crisp Graduation Ticks */}
           {ticks.map((tick, idx) => (
@@ -163,26 +164,21 @@ export const CyberAnalogClock: React.FC<CyberAnalogClockProps> = ({
           <text x="90" y="156" textAnchor="middle" fill="#94a3b8" fontSize="7.5" fontWeight="600" fontFamily="monospace" letterSpacing="0.5">06</text>
           <text x="27" y="92.5" textAnchor="middle" fill="#94a3b8" fontSize="7.5" fontWeight="600" fontFamily="monospace" letterSpacing="0.5">09</text>
 
-          {/* Subtle Wordmark */}
-          <text x="90" y="53" textAnchor="middle" fill="#64748b" fontSize="4.6" fontWeight="700" fontFamily="sans-serif" letterSpacing="2">
-            CYBERLAUNCHER
-          </text>
-
           {/* Recessed Digital Time Readout */}
-          <g transform="translate(64, 117)">
+          <g transform="translate(49, 108)">
             <rect
               x="0"
               y="0"
-              width="52"
-              height="14"
-              rx="3.5"
+              width="82"
+              height="22"
+              rx="5"
               fill="#030712"
-              fillOpacity="0.86"
+              fillOpacity="0.88"
               stroke="#94a3b8"
-              strokeWidth="0.65"
-              strokeOpacity="0.22"
+              strokeWidth="0.7"
+              strokeOpacity="0.25"
             />
-            <text x="26" y="9.8" textAnchor="middle" fill="#bae6fd" fontSize="7.5" fontWeight="600" fontFamily="monospace" letterSpacing="0.6">
+            <text x="41" y="14.7" textAnchor="middle" fill="#e0f2fe" fontSize="11" fontWeight="700" fontFamily="monospace" letterSpacing="1.1">
               {timeStr}
             </text>
           </g>

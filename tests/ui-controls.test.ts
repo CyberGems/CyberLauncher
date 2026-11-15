@@ -253,9 +253,33 @@ test('CyberAnalogClock renders sober dial with etched CyberLauncher icon waterma
   assert.ok(markup.includes('./icon-256.png'));
   assert.ok(markup.includes('cyber-clock-logo-clip'));
   assert.ok(markup.includes('cyber-clock-logo-fade'));
-  assert.ok(markup.includes('CYBERLAUNCHER'));
+  assert.ok(markup.includes('width="82"'));
+  assert.ok(markup.includes('font-size="11"'));
   assert.ok(markup.includes('15:34:23'));
+  assert.equal(markup.includes('CYBERLAUNCHER'), false);
   assert.equal(markup.includes('CYBERGEMS'), false);
   assert.equal(markup.includes('feGaussianBlur'), false);
+});
+
+test('Collapsible favorites, scheduler inline shortcut search, and tray pin popup wrapping are localized and intact', () => {
+  const appSource = readFileSync('src/App.tsx', 'utf8');
+  const trayTipJs = readFileSync('public/tray/tray-pin-tip.js', 'utf8');
+  const trayTipCss = readFileSync('public/tray/tray-pin-tip.css', 'utf8');
+
+  assert.ok(translations.es.favorites_collapse);
+  assert.ok(translations.es.favorites_expand);
+  assert.ok(translations.en.favorites_collapse);
+  assert.ok(translations.en.favorites_expand);
+  assert.ok(translations.es.hud_clock_no_matching_apps);
+  assert.ok(translations.en.hud_clock_no_matching_apps);
+
+  assert.ok(appSource.includes('cl_favorites_collapsed'));
+  assert.ok(appSource.includes('aria-expanded={!isFavoritesCollapsed}'));
+  assert.ok(appSource.includes('setAppSearchQuery'));
+  assert.ok(appSource.includes("t('hud_clock_no_matching_apps')"));
+
+  assert.ok(trayTipJs.includes('<span class="overflow-inline">'));
+  assert.ok(trayTipCss.includes('.overflow-inline'));
+  assert.ok(trayTipCss.includes('white-space: nowrap'));
 });
 
