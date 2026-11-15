@@ -234,7 +234,7 @@ const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel }: { 
   if (!broken) return content;
   return (
     <span className="relative inline-flex shrink-0">
-      {content}
+      <span className="inline-flex opacity-60">{content}</span>
       <span
         className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border border-[#0a0f18] flex items-center justify-center shadow-[0_0_6px_rgba(245,158,11,0.4)]"
         role="img"
@@ -270,7 +270,7 @@ declare global {
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       setUiModalOpen: (open: boolean) => Promise<{ success: boolean; open: boolean }>;
       setPowerScheduleNotice: (notice: { pending: boolean; message: string }) => Promise<boolean>;
-      verifyUwpApps: (apps: Array<{ path: string; name: string }>) => Promise<Array<{ name: string }>>;
+      verifyBrokenApps: (apps: Array<{ path: string; name: string }>) => Promise<Array<{ path: string; name: string }>>;
       setShowTaskbarIcon: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
@@ -2232,7 +2232,7 @@ export default function App() {
     suppressToast?: boolean;
   } | null>(null);
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string; uwp?: boolean } | null>(null);
-  const [brokenUwpAppIds, setBrokenUwpAppIds] = useState<Set<number>>(new Set());
+  const [brokenAppIds, setBrokenAppIds] = useState<Map<number, 'uwp' | 'normal'>>(new Map());
   const storeSearchQueryRef = useRef('');
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
   const launchingAppsRef = useRef(new Set<number>());
@@ -2242,8 +2242,8 @@ export default function App() {
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
     return localStorage.getItem('cyber_auto_check_icons') !== 'false';
   });
-  const [verifyUwpAppsOnStartup, setVerifyUwpAppsOnStartup] = useState<boolean>(() => {
-    return localStorage.getItem('cyber_verify_uwp_apps') !== 'false';
+  const [verifyBrokenAppsOnStartup, setVerifyBrokenAppsOnStartup] = useState<boolean>(() => {
+    return localStorage.getItem('cyber_verify_broken_apps') !== 'false';
   });
   const [isRefreshingIcons, setIsRefreshingIcons] = useState(false);
   const [iconRefreshFeedback, setIconRefreshFeedback] = useState<string | null>(null);
@@ -4454,31 +4454,33 @@ export default function App() {
 
   // Verificación silenciosa de accesos de la Microsoft Store al iniciar: avisa si un
   // paquete ya no está instalado para que el usuario decida antes de pulsar el acceso.
-  const uwpVerifyDoneRef = useRef(false);
+  const brokenAppsVerifyDoneRef = useRef(false);
   useEffect(() => {
-    if (!isConfigLoaded || !isElectron || !verifyUwpAppsOnStartup || uwpVerifyDoneRef.current) return;
-    const uwpApps = apps.filter(app => typeof app.path === 'string' && app.path.includes('!') && app.path.includes('_'));
-    if (uwpApps.length === 0) return;
-    uwpVerifyDoneRef.current = true;
+    if (!isConfigLoaded || !isElectron || !verifyBrokenAppsOnStartup || brokenAppsVerifyDoneRef.current) return;
+    const candidates = apps.filter(app => typeof app.path === 'string' && app.path.trim().length > 0);
+    if (candidates.length === 0) return;
+    brokenAppsVerifyDoneRef.current = true;
     const timer = setTimeout(async () => {
       try {
-        const missing = await window.electronAPI!.verifyUwpApps(uwpApps.map(app => ({ path: app.path, name: app.name })));
+        const missing = await window.electronAPI!.verifyBrokenApps(candidates.map(app => ({ path: app.path, name: app.name })));
         if (missing.length > 0) {
-          const missingNames = new Set(missing.map(entry => entry.name));
-          setBrokenUwpAppIds(new Set(uwpApps.filter(app => missingNames.has(app.name)).map(app => app.id)));
+          const missingPaths = new Set(missing.map(entry => entry.path));
+          setBrokenAppIds(new Map(candidates
+            .filter(app => missingPaths.has(app.path))
+            .map(app => [app.id, app.path.includes('!') && app.path.includes('_') ? 'uwp' as const : 'normal' as const])));
           setNotification({
-            message: t('notif_uwp_missing_title', { count: String(missing.length) }),
-            detail: t('notif_uwp_missing_detail', { names: missing.map(entry => entry.name).join(', ') }),
+            message: t('notif_broken_apps_title', { count: String(missing.length) }),
+            detail: t('notif_broken_apps_detail', { names: missing.map(entry => entry.name).join(', ') }),
             type: 'warning',
             essential: true,
           });
         }
       } catch (err) {
-        console.warn('[UWP] Startup verification failed:', err);
+        console.warn('[APPS] Startup verification failed:', err);
       }
     }, 6000);
     return () => clearTimeout(timer);
-  }, [isConfigLoaded, verifyUwpAppsOnStartup, apps, t]);
+  }, [isConfigLoaded, verifyBrokenAppsOnStartup, apps, t]);
 
   // Guardar automáticamente cada vez que algo cambie
   const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted, powerSchedule });
@@ -5275,8 +5277,10 @@ export default function App() {
         if (!result.success) {
           if (result.code === 'not-found') {
             setMissingShortcut({ app, path: appPath });
+            setBrokenAppIds(prev => new Map(prev).set(app.id, 'normal'));
           } else if (result.code === 'uwp-not-found') {
             setMissingShortcut({ app, path: appPath, uwp: true });
+            setBrokenAppIds(prev => new Map(prev).set(app.id, 'uwp'));
           } else {
             reportLaunchFailure(app.name, result.error || '', undefined, result.code);
           }
@@ -5284,10 +5288,10 @@ export default function App() {
         }
         windowHidden = !!result.windowHidden;
         pinned = result.pinned ?? isAlwaysOnTop;
-        // Un lanzamiento exitoso limpia la marca de paquete UWP faltante (p. ej. se reinstaló).
-        if (brokenUwpAppIds.has(app.id)) {
-          setBrokenUwpAppIds(prev => {
-            const next = new Set(prev);
+        // Un lanzamiento exitoso limpia la marca de destino faltante (p. ej. se reinstaló o reubicó).
+        if (brokenAppIds.has(app.id)) {
+          setBrokenAppIds(prev => {
+            const next = new Map(prev);
             next.delete(app.id);
             return next;
           });
@@ -9289,7 +9293,7 @@ export default function App() {
                           } transition-[border-color,background-color,box-shadow,opacity] duration-150 ease-out`}
                         >
                           <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
-                          <AppIcon app={app} broken={brokenUwpAppIds.has(app.id)} brokenLabel={t('missing_uwp_title')} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavLaunching ? 'opacity-40' : ''} ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
+                          <AppIcon app={app} broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavLaunching ? 'opacity-40' : ''} ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
                           {isFavLaunching && (
                             <span role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/30 pointer-events-none">
                               <LoaderCircle className="w-4 h-4 animate-spin text-cyan-300" />
@@ -9546,7 +9550,7 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
-                              broken={brokenUwpAppIds.has(app.id)}
+                              broken={brokenAppIds.has(app.id)}
                               brokenLabel={t('missing_uwp_title')}
                               className={app.color}
                               style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
@@ -9578,7 +9582,7 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
-                              broken={brokenUwpAppIds.has(app.id)}
+                              broken={brokenAppIds.has(app.id)}
                               brokenLabel={t('missing_uwp_title')}
                               className={`flex-shrink-0 ${app.color}`}
                               style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }}
@@ -10167,7 +10171,7 @@ export default function App() {
                         {isMostUsedLaunching ? (
                           <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-cyan-300 animate-spin shrink-0" />
                         ) : (
-                          <AppIcon app={app} broken={brokenUwpAppIds.has(app.id)} brokenLabel={t('missing_uwp_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                          <AppIcon app={app} broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
                         )}
                         <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
                           {app.name}
@@ -10271,7 +10275,7 @@ export default function App() {
                           {index + 1}.
                         </span>
                         {appInfo ? (
-                          <AppIcon app={appInfo} broken={brokenUwpAppIds.has(appInfo.id)} brokenLabel={t('missing_uwp_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
+                          <AppIcon app={appInfo} broken={brokenAppIds.has(appInfo.id)} brokenLabel={brokenAppIds.get(appInfo.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
                         ) : item.icon ? (
                           <AppIcon app={{ id: -1, name: item.name, iconPath: item.icon }} className="w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 text-slate-400" strokeWidth={1.5} />
                         ) : item.type === 'folder' ? (
@@ -13246,17 +13250,17 @@ export default function App() {
                         {/* Verify Microsoft Store shortcuts at startup */}
                         <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
                           <div className="space-y-0.5 flex-1 min-w-0 pr-4">
-                            <div className="text-xs font-medium text-slate-200">{t('settings_uwp_verify')}</div>
-                            <div className="text-[11px] text-slate-500 leading-normal">{t('settings_uwp_verify_desc')}</div>
+                            <div className="text-xs font-medium text-slate-200">{t('settings_verify_broken')}</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">{t('settings_verify_broken_desc')}</div>
                           </div>
                           <ToggleSwitch
-                            checked={verifyUwpAppsOnStartup}
+                            checked={verifyBrokenAppsOnStartup}
                             onChange={() => {
-                              const next = !verifyUwpAppsOnStartup;
-                              setVerifyUwpAppsOnStartup(next);
-                              localStorage.setItem('cyber_verify_uwp_apps', String(next));
+                              const next = !verifyBrokenAppsOnStartup;
+                              setVerifyBrokenAppsOnStartup(next);
+                              localStorage.setItem('cyber_verify_broken_apps', String(next));
                             }}
-                            ariaLabel={t('settings_uwp_verify')}
+                            ariaLabel={t('settings_verify_broken')}
                           />
                         </div>
                       </div>

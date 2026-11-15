@@ -4480,18 +4480,31 @@ foreach (\$app in \$startApps) {
   });
 
   // --- Verificación por lotes de paquetes UWP: devuelve los accesos cuyo paquete ya no está instalado ---
-  ipcMain.handle('verify-uwp-apps', async (_event, apps: Array<{ path: string; name: string }>) => {
+  // --- Verificación por lotes de destinos de accesos: devuelve los que ya no existen.
+  // Paquetes UWP vía Get-AppxPackage en un solo proceso; rutas de archivo con existsSync. ---
+  ipcMain.handle('verify-broken-apps', async (_event, apps: Array<{ path: string; name: string }>) => {
     if (process.platform !== 'win32' || !Array.isArray(apps) || apps.length === 0) return [];
     const familyOf = (aumid: string) => aumid.trim().split('!')[0];
+    const isAumid = (p: string) => p.includes('!') && p.includes('_');
     const wantedFamilies = [...new Set(apps
       .map(app => (typeof app?.path === 'string' ? app.path.trim() : ''))
-      .filter(p => p.includes('!') && p.includes('_'))
+      .filter(p => isAumid(p))
       .map(familyOf))];
-    if (wantedFamilies.length === 0) return [];
 
-    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const listFile = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.txt`);
-    const psScript = `
+    const missingPaths = new Set<string>();
+    for (const app of apps) {
+      const rawPath = typeof app?.path === 'string' ? app.path.trim() : '';
+      if (!rawPath) continue;
+      const unquoted = rawPath.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1').trim();
+      if (isAumid(unquoted)) continue; // Se verifican por lotes con PowerShell más abajo.
+      if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(unquoted)) continue; // Los esquemas URI no se pueden verificar localmente.
+      if (!fs.existsSync(unquoted)) missingPaths.add(rawPath);
+    }
+
+    if (wantedFamilies.length > 0) {
+      const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const listFile = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.txt`);
+      const psScript = `
 $ErrorActionPreference = 'SilentlyContinue'
 $installed = Get-AppxPackage | ForEach-Object { $_.PackageFamilyName }
 $wanted = Get-Content -LiteralPath '${listFile}'
@@ -4499,25 +4512,30 @@ foreach ($f in $wanted) {
   if (-not ($installed -contains $f)) { [Console]::WriteLine($f) }
 }
 `;
-    const tmpPs = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.ps1`);
-    try {
-      await fs.promises.writeFile(listFile, wantedFamilies.join('\n'), 'utf-8');
-      await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
-      const out = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
-        encoding: 'utf-8',
-        timeout: 30000,
-        windowsHide: true,
-      });
-      const missingFamilies = new Set(out.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
-      return apps.filter(app => typeof app?.path === 'string' && app.path.includes('!') && missingFamilies.has(familyOf(app.path)))
-        .map(app => ({ name: String(app?.name || '') }));
-    } catch (err: any) {
-      console.warn('[UWP] Verification error:', err?.message || err);
-      return [];
-    } finally {
-      await fs.promises.unlink(listFile).catch(() => {});
-      await fs.promises.unlink(tmpPs).catch(() => {});
+      const tmpPs = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.ps1`);
+      try {
+        await fs.promises.writeFile(listFile, wantedFamilies.join('\n'), 'utf-8');
+        await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+        const out = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+          encoding: 'utf-8',
+          timeout: 30000,
+          windowsHide: true,
+        });
+        const missingFamilies = new Set(out.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+        for (const app of apps) {
+          const rawPath = typeof app?.path === 'string' ? app.path.trim() : '';
+          if (isAumid(rawPath) && missingFamilies.has(familyOf(rawPath))) missingPaths.add(rawPath);
+        }
+      } catch (err: any) {
+        console.warn('[UWP] Verification error:', err?.message || err);
+      } finally {
+        await fs.promises.unlink(listFile).catch(() => {});
+        await fs.promises.unlink(tmpPs).catch(() => {});
+      }
     }
+
+    return apps.filter(app => typeof app?.path === 'string' && missingPaths.has(app.path.trim()))
+      .map(app => ({ path: String(app.path), name: String(app?.name || '') }));
   });
 
   // (CyberTray IPCs removed)
