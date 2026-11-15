@@ -2223,7 +2223,7 @@ export default function App() {
     essential?: boolean;
     brandTag?: string;
     /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
-    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock';
+    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock' | 'search-store';
     detail?: string;
     releaseUrl?: string;
     source?: 'system-alert';
@@ -3321,7 +3321,7 @@ export default function App() {
     }
   }, [cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.sayPhrase, cyberBot.deliverPhrase, isCyberBotSpeechVisible, cancelPendingPinBlurReminder, t]);
 
-  const reportLaunchFailure = useCallback((name: string, detail: string, action?: 'open-hud-clock', code?: LaunchResult['code']) => {
+  const reportLaunchFailure = useCallback((name: string, detail: string, action?: 'open-hud-clock' | 'search-store', code?: LaunchResult['code']) => {
     setNotification({
       message: t('launch_failed_message', { name }),
       detail: code === 'not-found'
@@ -3334,6 +3334,13 @@ export default function App() {
       action,
     });
   }, [t]);
+
+  // Abre la búsqueda de la Microsoft Store para el último paquete UWP fallido.
+  const openStoreSearchAction = useCallback(() => {
+    const query = storeSearchQueryRef.current.trim();
+    if (!query) return;
+    void window.electronAPI?.openExternal?.(`ms-windows-store://search/?query=${encodeURIComponent(query)}`);
+  }, []);
 
   // Contextual CyberBot commentary on panel opening & settings navigation
   const topicCooldownsRef = useRef<Record<string, number>>({});
@@ -3669,6 +3676,9 @@ export default function App() {
       } else if (notification.action === 'open-about') {
         actionLabel = t('about_title');
         if (!brandTag) brandTag = t('toast_brand_system');
+      } else if (notification.action === 'search-store') {
+        actionLabel = t('missing_uwp_store_search');
+        if (!brandTag) brandTag = t('toast_brand_system');
       }
 
       const isUpdateAvailable = notification.action === 'open-about' && updateStatus.state === 'available';
@@ -3684,6 +3694,11 @@ export default function App() {
         ? () => setIsClockHUDOpen(true)
         : notification.action === 'open-about'
         ? () => setIsAboutOpen(true)
+        : notification.action === 'search-store'
+        ? () => {
+          setNotification(null);
+          openStoreSearchAction();
+        }
         : undefined;
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
         if (isUpdateAvailable) {
@@ -3759,7 +3774,7 @@ export default function App() {
     }
 
     if (isElectron) void window.electronAPI?.hideDesktopToast?.();
-  }, [imminentTask, notification, updateStatus, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleSkipUpdateVersion, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl]);
+  }, [imminentTask, notification, updateStatus, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleSkipUpdateVersion, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl, openStoreSearchAction]);
 
   // Register desktop toast IPC action listeners (Cancel, Launch now, Open HUD)
   useEffect(() => {
@@ -3788,6 +3803,9 @@ export default function App() {
           setIsSystemHUDOpen(true);
         } else if (target === 'open-about') {
           setIsAboutOpen(true);
+          setNotification(null);
+        } else if (target === 'search-store') {
+          openStoreSearchAction();
           setNotification(null);
         }
       }));
@@ -5327,7 +5345,12 @@ export default function App() {
       try {
         const result = await window.electronAPI!.launchApp(item.path, isAdmin, isAlwaysOnTop);
         if (!result.success) {
-          reportLaunchFailure(item.name, result.error || '', undefined, result.code);
+          if (result.code === 'uwp-not-found') {
+            storeSearchQueryRef.current = item.name;
+            reportLaunchFailure(item.name, '', 'search-store', result.code);
+          } else {
+            reportLaunchFailure(item.name, result.error || '', undefined, result.code);
+          }
           return;
         }
         windowHidden = !!result.windowHidden;
