@@ -2982,81 +2982,166 @@ function pngHasOpaqueBlackCorners(pngBuffer: Buffer): boolean {
   }
 }
 
+/** C# helper shared by the single and batched shell-icon extraction scripts. */
+const SHELL_ITEM_ICON_CSHARP_LINES = [
+  'using System;',
+  'using System.Drawing;',
+  'using System.Drawing.Imaging;',
+  'using System.Runtime.InteropServices;',
+  'public class ShellItemIconHelper {',
+  '  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
+  '  interface IShellItemImageFactory {',
+  '    [PreserveSig] int GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] int flags, [Out] out IntPtr phbm);',
+  '  }',
+  '  [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx; public int cy; public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; } }',
+  '  [StructLayout(LayoutKind.Sequential)]',
+  '  public struct BITMAPINFOHEADER { public uint biSize; public int biWidth; public int biHeight; public ushort biPlanes; public ushort biBitCount; public uint biCompression; public uint biSizeImage; public int biXPelsPerMeter; public int biYPelsPerMeter; public uint biClrUsed; public uint biClrImportant; }',
+  '  [StructLayout(LayoutKind.Sequential)]',
+  '  public struct BITMAPINFO { public BITMAPINFOHEADER bmiHeader; public uint bmiColors; }',
+  '  [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]',
+  '  static extern void SHCreateItemFromParsingName([In, MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellItemImageFactory ppv);',
+  '  [DllImport("gdi32.dll")] static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint lines, byte[] bits, ref BITMAPINFO bi, uint usage);',
+  '  [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hWnd);',
+  '  [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);',
+  '  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);',
+  '  public static string SaveIcon(string path, string outPath, int size) {',
+  '    try {',
+  '      Guid uuid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");',
+  '      IShellItemImageFactory factory;',
+  '      SHCreateItemFromParsingName(path, IntPtr.Zero, uuid, out factory);',
+  '      if (factory == null) return null;',
+  '      IntPtr hBitmap;',
+  '      int hr = factory.GetImage(new SIZE(size, size), 0, out hBitmap);',
+  '      if (hr != 0 || hBitmap == IntPtr.Zero) return null;',
+  '      try {',
+  '        // Bitmap.FromHbitmap drops the alpha channel and yields opaque black corners,',
+  '        // so read the 32bpp DIB directly, unpremultiply and encode as PNG instead.',
+  '        var bmi = new BITMAPINFO();',
+  '        bmi.bmiHeader.biSize = 40;',
+  '        IntPtr hdc = GetDC(IntPtr.Zero);',
+  '        GetDIBits(hdc, hBitmap, 0, 0, null, ref bmi, 0);',
+  '        int w = (int)bmi.bmiHeader.biWidth;',
+  '        int h = Math.Abs((int)bmi.bmiHeader.biHeight);',
+  '        if (w <= 0 || h <= 0) { ReleaseDC(IntPtr.Zero, hdc); return null; }',
+  '        byte[] bits = new byte[w * h * 4];',
+  '        bmi.bmiHeader.biHeight = -h;',
+  '        int copied = GetDIBits(hdc, hBitmap, 0, (uint)h, bits, ref bmi, 0);',
+  '        ReleaseDC(IntPtr.Zero, hdc);',
+  '        if (copied == 0) {',
+  '          using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap)) { bmp.Save(outPath, ImageFormat.Png); }',
+  '          return outPath;',
+  '        }',
+  '        for (int i = 0; i < bits.Length; i += 4) {',
+  '          byte a = bits[i + 3];',
+  '          if (a == 0) { bits[i] = 0; bits[i + 1] = 0; bits[i + 2] = 0; continue; }',
+  '          if (a != 255) {',
+  '            bits[i]     = (byte)Math.Min(255, (bits[i]     * 255 + a / 2) / a);',
+  '            bits[i + 1] = (byte)Math.Min(255, (bits[i + 1] * 255 + a / 2) / a);',
+  '            bits[i + 2] = (byte)Math.Min(255, (bits[i + 2] * 255 + a / 2) / a);',
+  '          }',
+  '        }',
+  '        using (Bitmap outBmp = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {',
+  '          var data = outBmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);',
+  '          Marshal.Copy(bits, 0, data.Scan0, bits.Length);',
+  '          outBmp.UnlockBits(data);',
+  '          outBmp.Save(outPath, ImageFormat.Png);',
+  '        }',
+  '        return outPath;',
+  '      } finally {',
+  '        DeleteObject(hBitmap);',
+  '      }',
+  '    } catch { return null; }',
+  '  }',
+  '}'
+];
+
+/** Cache-freshness check shared by extractAndCacheIcon and the batched refresh pass. */
+function isIconCacheFresh(hashKey: string, resolvedPath: string, uwpAumid?: string): boolean {
+  const hash = crypto.createHash('sha1').update(hashKey.toLowerCase()).digest('hex').slice(0, 24);
+  const cachedIconPath = path.join(getIconCacheDir(), `${hash}.png`);
+  try {
+    if (!fs.existsSync(cachedIconPath)) return false;
+    const cacheStat = fs.statSync(cachedIconPath);
+    if (cacheStat.size <= 100) return false;
+    const cachedBuf = fs.readFileSync(cachedIconPath);
+    if (isGenericIcon(cachedBuf) || pngHasOpaqueBlackCorners(cachedBuf)) return false;
+    if (uwpAumid) return true;
+    if (!fs.existsSync(resolvedPath)) return false;
+    return fs.statSync(resolvedPath).mtimeMs <= cacheStat.mtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Extracts high-res shell icons for many paths in a single PowerShell process
+ * (the C# helper compiles once instead of once per icon). Results map each
+ * input path to its PNG buffer, or null when the shell could not produce one.
+ */
+async function extractShellItemIconsBatch(itemPaths: string[]): Promise<Map<string, Buffer | null>> {
+  const results = new Map<string, Buffer | null>();
+  if (process.platform !== 'win32' || itemPaths.length === 0) return results;
+  if (itemPaths.length === 1) {
+    results.set(itemPaths[0], await extractShellItemIcon(itemPaths[0]));
+    return results;
+  }
+
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const listFile = path.join(os.tmpdir(), `cl-icon-batch-${stamp}.txt`);
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cl-icon-batch-'));
+  const csharp = SHELL_ITEM_ICON_CSHARP_LINES.join('\n');
+  const psScript = `
+$ErrorActionPreference = 'SilentlyContinue'
+$code = @'
+${csharp}
+'@
+Add-Type -TypeDefinition $code -ReferencedAssemblies System.Drawing
+$paths = Get-Content -LiteralPath '${listFile}'
+$i = 0
+foreach ($p in $paths) {
+  if (-not $p) { continue }
+  $i++
+  $tmp = Join-Path '${outDir}' ("icon-" + $i + ".png")
+  $res = [ShellItemIconHelper]::SaveIcon($p, $tmp, 256)
+  if ($res -and (Test-Path $res)) { [Console]::WriteLine(($p + '|' + $res)) }
+}
+`;
+
+  const tmpPs = path.join(os.tmpdir(), `cl-icon-batch-${stamp}.ps1`);
+  try {
+    await fs.promises.writeFile(listFile, itemPaths.join('\n'), 'utf-8');
+    await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+    const timeout = Math.min(180000, Math.max(20000, itemPaths.length * 2500));
+    const out = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+      encoding: 'utf-8',
+      timeout,
+      windowsHide: true,
+    });
+    for (const line of out.split(/\r?\n/)) {
+      if (!line) continue;
+      const sep = line.lastIndexOf('|');
+      if (sep <= 0) continue;
+      const sourcePath = line.slice(0, sep);
+      const resultFile = line.slice(sep + 1);
+      if (!sourcePath || !fs.existsSync(resultFile)) continue;
+      const buf = await fs.promises.readFile(resultFile);
+      results.set(sourcePath, buf);
+    }
+  } catch (e: any) {
+    console.warn('[ICON] Batch shell extraction error:', e?.message || e);
+  } finally {
+    await fs.promises.unlink(tmpPs).catch(() => {});
+    await fs.promises.unlink(listFile).catch(() => {});
+    await fs.promises.rm(outDir, { recursive: true, force: true }).catch(() => {});
+  }
+  return results;
+}
+
 /** Extrae el icono original en alta resolución (256x256) mediante IShellItemImageFactory sin badges de flecha de acceso directo */
 async function extractShellItemIcon(itemPath: string): Promise<Buffer | null> {
   if (!itemPath) return null;
   const escaped = itemPath.replace(/'/g, "''");
-  const csharp = [
-    'using System;',
-    'using System.Drawing;',
-    'using System.Drawing.Imaging;',
-    'using System.Runtime.InteropServices;',
-    'public class ShellItemIconHelper {',
-    '  [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]',
-    '  interface IShellItemImageFactory {',
-    '    [PreserveSig] int GetImage([In, MarshalAs(UnmanagedType.Struct)] SIZE size, [In] int flags, [Out] out IntPtr phbm);',
-    '  }',
-    '  [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx; public int cy; public SIZE(int cx, int cy) { this.cx = cx; this.cy = cy; } }',
-    '  [StructLayout(LayoutKind.Sequential)]',
-    '  public struct BITMAPINFOHEADER { public uint biSize; public int biWidth; public int biHeight; public ushort biPlanes; public ushort biBitCount; public uint biCompression; public uint biSizeImage; public int biXPelsPerMeter; public int biYPelsPerMeter; public uint biClrUsed; public uint biClrImportant; }',
-    '  [StructLayout(LayoutKind.Sequential)]',
-    '  public struct BITMAPINFO { public BITMAPINFOHEADER bmiHeader; public uint bmiColors; }',
-    '  [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]',
-    '  static extern void SHCreateItemFromParsingName([In, MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellItemImageFactory ppv);',
-    '  [DllImport("gdi32.dll")] static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint lines, byte[] bits, ref BITMAPINFO bi, uint usage);',
-    '  [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hWnd);',
-    '  [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);',
-    '  [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);',
-    '  public static string SaveIcon(string path, string outPath, int size) {',
-    '    try {',
-    '      Guid uuid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");',
-    '      IShellItemImageFactory factory;',
-    '      SHCreateItemFromParsingName(path, IntPtr.Zero, uuid, out factory);',
-    '      if (factory == null) return null;',
-    '      IntPtr hBitmap;',
-    '      int hr = factory.GetImage(new SIZE(size, size), 0, out hBitmap);',
-    '      if (hr != 0 || hBitmap == IntPtr.Zero) return null;',
-    '      try {',
-    '        // Bitmap.FromHbitmap drops the alpha channel and yields opaque black corners,',
-    '        // so read the 32bpp DIB directly, unpremultiply and encode as PNG instead.',
-    '        var bmi = new BITMAPINFO();',
-    '        bmi.bmiHeader.biSize = 40;',
-    '        IntPtr hdc = GetDC(IntPtr.Zero);',
-    '        GetDIBits(hdc, hBitmap, 0, 0, null, ref bmi, 0);',
-    '        int w = (int)bmi.bmiHeader.biWidth;',
-    '        int h = Math.Abs((int)bmi.bmiHeader.biHeight);',
-    '        if (w <= 0 || h <= 0) { ReleaseDC(IntPtr.Zero, hdc); return null; }',
-    '        byte[] bits = new byte[w * h * 4];',
-    '        bmi.bmiHeader.biHeight = -h;',
-    '        int copied = GetDIBits(hdc, hBitmap, 0, (uint)h, bits, ref bmi, 0);',
-    '        ReleaseDC(IntPtr.Zero, hdc);',
-    '        if (copied == 0) {',
-    '          using (Bitmap bmp = Bitmap.FromHbitmap(hBitmap)) { bmp.Save(outPath, ImageFormat.Png); }',
-    '          return outPath;',
-    '        }',
-    '        for (int i = 0; i < bits.Length; i += 4) {',
-    '          byte a = bits[i + 3];',
-    '          if (a == 0) { bits[i] = 0; bits[i + 1] = 0; bits[i + 2] = 0; continue; }',
-    '          if (a != 255) {',
-    '            bits[i]     = (byte)Math.Min(255, (bits[i]     * 255 + a / 2) / a);',
-    '            bits[i + 1] = (byte)Math.Min(255, (bits[i + 1] * 255 + a / 2) / a);',
-    '            bits[i + 2] = (byte)Math.Min(255, (bits[i + 2] * 255 + a / 2) / a);',
-    '          }',
-    '        }',
-    '        using (Bitmap outBmp = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {',
-    '          var data = outBmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);',
-    '          Marshal.Copy(bits, 0, data.Scan0, bits.Length);',
-    '          outBmp.UnlockBits(data);',
-    '          outBmp.Save(outPath, ImageFormat.Png);',
-    '        }',
-    '        return outPath;',
-    '      } finally {',
-    '        DeleteObject(hBitmap);',
-    '      }',
-    '    } catch { return null; }',
-    '  }',
-    '}'
-  ].join('\n');
+  const csharp = SHELL_ITEM_ICON_CSHARP_LINES.join('\n');
 
   const psScript = `
 $ErrorActionPreference = 'SilentlyContinue'
@@ -3262,28 +3347,8 @@ async function extractAndCacheIcon(
   const hash = crypto.createHash('sha1').update(hashKey.toLowerCase()).digest('hex').slice(0, 24);
   const cachedIconPath = path.join(getIconCacheDir(), `${hash}.png`);
 
-  if (!force && fs.existsSync(cachedIconPath)) {
-    try {
-      const cacheStat = fs.statSync(cachedIconPath);
-      if (cacheStat.size > 100) {
-        if (uwpAumid) {
-          const cachedBuf = fs.readFileSync(cachedIconPath);
-          if (!isGenericIcon(cachedBuf) && !pngHasOpaqueBlackCorners(cachedBuf)) {
-            return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
-          }
-        } else if (fs.existsSync(resolvedPath)) {
-          const targetStat = fs.statSync(resolvedPath);
-          if (targetStat.mtimeMs <= cacheStat.mtimeMs) {
-            const cachedBuf = fs.readFileSync(cachedIconPath);
-            if (!isGenericIcon(cachedBuf) && !pngHasOpaqueBlackCorners(cachedBuf)) {
-              return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
-            }
-          }
-        }
-      }
-    } catch {
-      // Ignorar error y proceder a re-extraer
-    }
+  if (!force && isIconCacheFresh(hashKey, resolvedPath, uwpAumid)) {
+    return { iconPath: toLocalResourceUrl(cachedIconPath), reextracted: false };
   }
 
   let pngBuffer: Buffer | null = null;
@@ -4497,34 +4562,66 @@ foreach (\$app in \$startApps) {
       const activeFiles = new Set<string>();
 
       if (Array.isArray(appList)) {
+        // Resolve + classify first so the high-res shell helper compiles once for the whole queue.
+        const resolved: Array<{ id: number; resolvedPath: string; shortcutIcon?: string; uwpAumid?: string; hashKey: string }> = [];
+        for (const item of appList) {
+          const existingCacheFile = typeof item.iconPath === 'string' ? extractIconCacheFileName(item.iconPath) : null;
+          if (existingCacheFile) {
+            activeFiles.add(existingCacheFile);
+          }
+          if (!item.path) continue;
+          try {
+            const { resolvedPath, shortcutIcon, uwpAumid } = resolvePathAndTarget(item.path);
+            const hashKey = uwpAumid || resolvedPath;
+            const hash = crypto.createHash('sha1').update(hashKey.toLowerCase()).digest('hex').slice(0, 24);
+            activeFiles.add(`${hash}.png`);
+            resolved.push({ id: item.id, resolvedPath, shortcutIcon, uwpAumid, hashKey });
+          } catch (err) {
+            console.warn(`[ICON] Failed to resolve app ${item.id} (${item.path}):`, err);
+          }
+        }
+
+        // First pass: batch the shell extraction for everything needing a refresh.
+        const pending = resolved.filter(entry => force || !isIconCacheFresh(entry.hashKey, entry.resolvedPath, entry.uwpAumid));
+        const batchTargets = [...new Set(pending.filter(entry => !entry.uwpAumid).map(entry => entry.resolvedPath))];
+        const batchResults = await extractShellItemIconsBatch(batchTargets);
+
+        const needsFullPipeline = new Set<number>();
+        for (const entry of pending) {
+          if (entry.uwpAumid) {
+            needsFullPipeline.add(entry.id);
+            continue;
+          }
+          const buf = batchResults.get(entry.resolvedPath);
+          if (buf && buf.length > 100 && !isGenericIcon(buf) && !pngHasOpaqueBlackCorners(buf)) {
+            const iconPath = await persistIconPng(entry.hashKey, buf);
+            const resultFile = extractIconCacheFileName(iconPath);
+            if (resultFile) activeFiles.add(resultFile);
+            updatedIcons[entry.id] = iconPath;
+          } else {
+            needsFullPipeline.add(entry.id);
+          }
+        }
+
+        // Second pass: per-icon pipeline for UWP apps, batch misses and fallback sources.
         const concurrency = 3;
-        const queue = [...appList];
+        const queue = resolved.filter(entry => needsFullPipeline.has(entry.id));
 
         const worker = async () => {
           while (queue.length > 0) {
-            const item = queue.shift();
-            if (!item) continue;
-            const existingCacheFile = typeof item.iconPath === 'string' ? extractIconCacheFileName(item.iconPath) : null;
-            if (existingCacheFile) {
-              activeFiles.add(existingCacheFile);
-            }
-            if (!item.path) continue;
+            const entry = queue.shift();
+            if (!entry) continue;
             try {
-              const { resolvedPath, shortcutIcon, uwpAumid } = resolvePathAndTarget(item.path);
-              const hashKey = uwpAumid || resolvedPath;
-              const hash = crypto.createHash('sha1').update(hashKey.toLowerCase()).digest('hex').slice(0, 24);
-              activeFiles.add(`${hash}.png`);
-
-              const result = await extractAndCacheIcon(resolvedPath, force, shortcutIcon, uwpAumid);
+              const result = await extractAndCacheIcon(entry.resolvedPath, force, entry.shortcutIcon, entry.uwpAumid);
               if (result.iconPath) {
                 const resultFile = extractIconCacheFileName(result.iconPath);
                 if (resultFile) activeFiles.add(resultFile);
                 if (force || result.reextracted) {
-                  updatedIcons[item.id] = result.iconPath;
+                  updatedIcons[entry.id] = result.iconPath;
                 }
               }
             } catch (err) {
-              console.warn(`[ICON] Failed to refresh app ${item.id} (${item.path}):`, err);
+              console.warn(`[ICON] Failed to refresh app ${entry.id} (${entry.hashKey}):`, err);
             }
           }
         };
