@@ -232,25 +232,21 @@ const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel, mini
   }
 
   if (!broken) return content;
-  // Los badges mini se colocan dentro del icono para que los contenedores con
-  // overflow-hidden (listas compactas) no los recorten.
-  return (
+  // Keep the marker inside the icon bounds so compact lists do not clip it.
+  const markedIcon = (
     <span className="relative inline-flex shrink-0">
       <span className="inline-flex opacity-60">{content}</span>
       <span
-        className={`absolute rounded-full bg-amber-500 border border-[#0a0f18] flex items-center justify-center shadow-[0_0_6px_rgba(245,158,11,0.4)] ${
-          miniBadge ? 'top-0 right-0 w-2.5 h-2.5' : '-top-1.5 -right-1.5 w-3.5 h-3.5'
+        className={`absolute top-0 right-0 rounded-full bg-amber-400 border border-slate-800 ${
+          miniBadge ? 'w-1.5 h-1.5' : 'w-2 h-2'
         }`}
         role="img"
         aria-label={brokenLabel}
-      >
-        <AlertTriangle
-          strokeWidth={2}
-          className={`text-[#0a0f18] translate-y-[0.5px] ${miniBadge ? 'w-2 h-2' : 'w-2.5 h-2.5'}`}
-        />
-      </span>
+      />
     </span>
   );
+
+  return <Tooltip label={brokenLabel}>{markedIcon}</Tooltip>;
 };
 
 // Tipo para la API de Electron expuesta por preload
