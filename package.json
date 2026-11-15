@@ -22,7 +22,7 @@
     "test:ui": "node --import tsx --test tests/ui-controls.test.ts",
     "test:cyberbot": "node --import ./scripts/cyberbot-test-assets.mjs --import tsx --test tests/cyberbot.test.ts",
     "test:cybermanager": "node --import tsx --test tests/cybermanager-recommendation.test.ts",
-    "test:backup": "node --import tsx --test tests/backup.test.ts tests/backup-icons.test.ts",
+    "test:backup": "node --import tsx --test tests/backup.test.ts tests/backup-icons.test.ts tests/scheduled-tasks.test.ts",
     "test:onboarding": "node --import tsx --test tests/onboarding-textmenu.test.ts",
     "test:missing-shortcut": "node --import tsx --test tests/missing-shortcut.test.ts",
     "test:assets": "node --import tsx --test tests/preset-backgrounds.test.ts",

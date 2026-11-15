@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFileLocation: (filePath: string) => ipcRenderer.invoke('open-file-location', filePath),
   searchSystemFiles: (query: string) => ipcRenderer.invoke('search-system-files', query),
   getIndexerSettings: () => ipcRenderer.invoke('get-indexer-settings'),
-  saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[] }) =>
+  saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders?: boolean; indexHiddenContent?: boolean; _migrateDotfolders2026?: boolean }) =>
     ipcRenderer.invoke('save-indexer-settings', settings),
   getIndexerStats: () => ipcRenderer.invoke('get-indexer-stats'),
   selectIndexerFolder: () => ipcRenderer.invoke('select-indexer-folder'),

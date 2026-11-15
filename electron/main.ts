@@ -471,6 +471,8 @@ async function runAutoBackup(reason: 'schedule' | 'startup' | 'manual'): Promise
     const portablePayload = bundleEmbeddedBackupIcons(parsedConfig, {
       iconCacheDir: getIconCacheDir(),
     });
+    const indexerForBackup = readIndexerSettingsForBackup();
+    if (indexerForBackup) portablePayload.indexerSettings = indexerForBackup;
     writeFileAtomicSync(targetPath, JSON.stringify(portablePayload, null, 2));
 
     const cfg = getAutoBackupConfig();
@@ -3346,6 +3348,18 @@ let systemIndexStatus: 'ONLINE' | 'OFFLINE' | 'INDEXING' = 'OFFLINE';
 
 const getSettingsFilePath = () => path.join(app.getPath('userData'), 'indexer_settings.json');
 
+/** Reads indexer_settings.json for embedding into backups and exports (null if missing/invalid). */
+function readIndexerSettingsForBackup(): Record<string, unknown> | null {
+  try {
+    const file = getSettingsFilePath();
+    if (!fs.existsSync(file)) return null;
+    const parsed = parseValidBackupJson(fs.readFileSync(file, 'utf-8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Default crawl roots — Start Menu shortcuts are the Wox/Everything-style app surface. */
 function getDefaultIndexerPaths(): string[] {
   const programData = process.env.ProgramData || 'C:\\ProgramData';
@@ -4526,6 +4540,10 @@ foreach (\$app in \$startApps) {
     showMainWindow();
     if (result.canceled || !result.filePath) return null;
     const parsed = parseValidBackupJson(jsonData);
+    if (parsed && !parsed.indexerSettings) {
+      const indexerForExport = readIndexerSettingsForBackup();
+      if (indexerForExport) parsed.indexerSettings = indexerForExport;
+    }
     const outJson = parsed
       ? JSON.stringify(bundleEmbeddedBackupIcons(parsed, { iconCacheDir: getIconCacheDir() }), null, 2)
       : jsonData;

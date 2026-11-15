@@ -82,6 +82,7 @@ import {
   DEFAULT_AUTO_BACKUP_KEEP,
   parseBackupHours,
   parseBackupKeep,
+  parseScheduledTasks,
   type BackupItem,
 } from '../shared/backup';
 import {
@@ -261,8 +262,8 @@ declare global {
       refreshAllAppIcons: (apps: Array<{ id: number; path?: string; iconPath?: string }>, force?: boolean) => Promise<{ success: boolean; updatedIcons: Record<number, string>; cleanedCount: number; error?: string }>;
       openFileLocation: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       searchSystemFiles: (query: string) => Promise<Array<{ name: string; path: string; ext: string; type: 'app' | 'file' | 'folder'; icon?: string }>>;
-      getIndexerSettings: () => Promise<{ enabled: boolean; maxDepth: number; paths: string[] }>;
-      saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[] }) => Promise<boolean>;
+      getIndexerSettings: () => Promise<{ enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders?: boolean; indexHiddenContent?: boolean }>;
+      saveIndexerSettings: (settings: { enabled: boolean; maxDepth: number; paths: string[]; includeHiddenFolders?: boolean; indexHiddenContent?: boolean; _migrateDotfolders2026?: boolean }) => Promise<boolean>;
       getIndexerStats: () => Promise<{ status: 'ONLINE' | 'OFFLINE' | 'INDEXING'; totalFiles: number }>;
       selectIndexerFolder: () => Promise<string | null>;
       getSystemDrives: () => Promise<string[]>;
@@ -4208,6 +4209,7 @@ export default function App() {
           if (source.categories) setCategories(ensureUncategorizedCategory(source.categories, language));
           if (source.favoriteIds) setFavoriteIds(source.favoriteIds);
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
+          if (Array.isArray(source.scheduledTasks)) setScheduledTasks(parseScheduledTasks(source.scheduledTasks));
           // Datos de UI pueden variar entre versiones sin problema
           if (source.bgType) setBgType(source.bgType);
           if (source.bgImage) setBgImage(normalizeBgImage(source.bgImage));
@@ -4342,8 +4344,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted });
-  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted });
+  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4354,6 +4356,15 @@ export default function App() {
       console.error('[SAVE] Error en forceSave:', e);
     }
   }, [isConfigLoaded]);
+
+  // Persist scheduled tasks on structural changes only (add / remove). Countdown
+  // ticks stay in memory so the config file is not rewritten every second; the
+  // stored remainingSeconds resume on the next launch.
+  const scheduledTasksSignature = scheduledTasks.map(task => task.id).join(',');
+  useEffect(() => {
+    if (!isElectron || !isConfigLoaded) return;
+    void forceSaveConfig();
+  }, [scheduledTasksSignature, forceSaveConfig, isElectron, isConfigLoaded]);
 
   useEffect(() => {
     const saveAll = async () => {
@@ -4651,13 +4662,13 @@ export default function App() {
     if (!isElectron) return;
 
     const stateKeys = [
-      'apps', 'categories', 'favoriteIds', 'taskbarAppIds',
+      'apps', 'categories', 'favoriteIds', 'taskbarAppIds', 'scheduledTasks',
       'bgType', 'bgImage', 'customImageUrl', 'customSlotImage', 'bgColor',
       'bgGradient', 'glassIntensity', 'bgOpacity',
       'startWithWindows', 'startMinimized', 'activationShortcut',
       'hotspotCorners', 'hotspotDelay',
       'leftSidebarWidth', 'leftSidebarCollapsed', 'rightSidebarWidth', 'rightSidebarCollapsed',
-      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'cyberTray', 'resetOnLaunch', 'selectedMonitor',
+      'hideOnClickDeadSpot', 'hideOnBlur', 'showTaskbarIcon', 'resetOnLaunch', 'selectedMonitor',
       'systemAlertsEnabled', 'diskAlertsEnabled', 'ramAlertsEnabled', 'ramThresholdPercent', 'ramLowAbsoluteAlertEnabled',
       'autoBackupEnabled', 'autoBackupHours', 'autoBackupKeep', 'autoBackupLast', 'autoBackupFolder',
       'showTrayRecents', 'showSuiteRecommendations', 'cyberBotSettings'
@@ -4805,6 +4816,9 @@ export default function App() {
       if (config.hotspotsDisableInFullscreen !== undefined) {
         setHotspotsDisableInFullscreen(!!config.hotspotsDisableInFullscreen);
         localStorage.setItem('hotspotsDisableInFullscreen', (!!config.hotspotsDisableInFullscreen).toString());
+      }
+      if (config.scheduledTasks !== undefined) {
+        setScheduledTasks(parseScheduledTasks(config.scheduledTasks));
       }
       if (config.leftSidebarWidth !== undefined) {
         setLeftSidebarWidth(config.leftSidebarWidth);
@@ -5644,6 +5658,7 @@ export default function App() {
       viewMode,
       cardScale,
       onboardingCompleted,
+      scheduledTasks,
       settings: {
         bgType,
         bgImage,
@@ -5745,6 +5760,19 @@ export default function App() {
       if (Array.isArray(data.launchHistory)) {
         setLaunchHistory(data.launchHistory);
         try { localStorage.setItem('cyber_launch_history', JSON.stringify(data.launchHistory)); } catch {}
+      }
+      if (Array.isArray(data.scheduledTasks)) {
+        setScheduledTasks(parseScheduledTasks(data.scheduledTasks));
+      }
+      if (
+        data.indexerSettings &&
+        typeof data.indexerSettings === 'object' &&
+        !Array.isArray(data.indexerSettings)
+      ) {
+        const idx = data.indexerSettings as { enabled: boolean; maxDepth: number; paths: string[] };
+        if (typeof idx.enabled === 'boolean' && typeof idx.maxDepth === 'number' && Array.isArray(idx.paths)) {
+          void window.electronAPI?.saveIndexerSettings?.(idx);
+        }
       }
       if (data.viewMode) setViewMode(data.viewMode);
       if (data.cardScale !== undefined) setCardScale(data.cardScale);
