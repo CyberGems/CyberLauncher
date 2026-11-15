@@ -56,7 +56,7 @@ export interface CyberBotPromptProps {
   favoriteIds?: (string | number)[];
   onLaunchApp: (app: PromptLauncherApp) => void;
   renderAppIcon?: (app: PromptLauncherApp, className?: string) => React.ReactNode;
-  desktop?: { resultsHeight: number; feedback: string; launching: boolean };
+  desktop?: { maxHeight: number; tailLeft: number; side: 'above' | 'below'; feedback: string; launching: boolean };
   onOpenSystemHUD?: () => void;
   onOpenStorageHUD?: () => void;
   onOpenClockHUD?: () => void;
@@ -577,6 +577,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
 
   const isLeft = position === 'bottom-left' || position === 'left';
   const tailPositionClass = isLeft ? 'left-[40px]' : 'right-[40px]';
+  const pointsUp = desktop?.side === 'below';
 
   return (
     <div
@@ -586,12 +587,13 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       aria-label={t(isDesktop ? 'cyberbot_desktop_tag' : 'cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
+      style={desktop ? { minHeight: Math.min(190, desktop.maxHeight), maxHeight: desktop.maxHeight } : undefined}
       className={`relative rounded-2xl border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5 ${
-        isDesktop ? 'desktop-cyberbot-bubble min-h-[190px] w-full' : `w-[440px] max-w-[calc(100vw-32px)] ${CYBERBOT_BUBBLE_SURFACE}`
+        isDesktop ? 'desktop-cyberbot-bubble w-full' : `w-[440px] max-w-[calc(100vw-32px)] ${CYBERBOT_BUBBLE_SURFACE}`
       }`}
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 pb-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-5 h-5 rounded-md bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(34,211,238,0.3)]">
             <Bot className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
@@ -615,7 +617,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       </div>
 
       {/* Command & Search Input */}
-      <div className="relative flex items-center">
+      <div className="relative flex shrink-0 items-center">
         <Search className="w-4 h-4 text-cyan-400/80 absolute left-2.5 pointer-events-none" aria-hidden="true" />
         <input
           ref={inputRef}
@@ -646,8 +648,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       {/* Main Content Area */}
       <div
         ref={listRef}
-        style={desktop ? { maxHeight: desktop.resultsHeight } : undefined}
-        className="overflow-y-auto custom-scrollbar flex-1 px-1.5 space-y-2.5 max-h-[min(480px,68vh)]"
+        className={`overflow-y-auto custom-scrollbar min-h-0 flex-1 px-1.5 space-y-2.5 ${isDesktop ? '' : 'max-h-[min(480px,68vh)]'}`}
       >
         {/* VIEW A: Empty Query (Quick Chips & Frequent Apps) */}
         {!normalizedQuery && (
@@ -940,9 +941,12 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         )}
       </div>
 
-      {/* Speech Bubble Tail Pointing Down To CyberBot */}
+      {/* Speech bubble tail follows the desktop avatar, including near screen edges. */}
       <div
-        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 ${CYBERBOT_BUBBLE_TAIL_SURFACE} border-r border-b ${CYBERBOT_BUBBLE_TONES.default.tailBorder} transform rotate-45 pointer-events-none z-10`}
+        style={desktop ? { left: desktop.tailLeft } : undefined}
+        className={`absolute w-3.5 h-3.5 ${CYBERBOT_BUBBLE_TAIL_SURFACE} border-r border-b ${CYBERBOT_BUBBLE_TONES.default.tailBorder} pointer-events-none z-10 ${
+          pointsUp ? '-top-[7px] rotate-[225deg]' : '-bottom-[7px] rotate-45'
+        } ${desktop ? '-translate-x-1/2' : tailPositionClass}`}
       />
     </div>
   );

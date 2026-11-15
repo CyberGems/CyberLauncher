@@ -1,24 +1,29 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'node:path';
-import { DESKTOP_CYBERBOT_LAYOUT, type DesktopCyberBotContext, type DesktopCyberBotShortcut } from '../shared/desktopCyberBot';
+import { DESKTOP_CYBERBOT_LAYOUT, type DesktopCyberBotContext, type DesktopCyberBotDragPhase, type DesktopCyberBotShortcut } from '../shared/desktopCyberBot';
+import { constrainDesktopAvatar, desktopCyberBotLayout } from './desktop-cyberbot-layout';
 import type { LaunchResult } from '../src/launchFlow';
 
 interface DesktopCyberBotOptions {
   devServerUrl?: string;
   rendererDirectory: string;
   preloadPath: string;
-  getCatalog: () => Omit<DesktopCyberBotContext, 'resultsHeight'>;
+  getCatalog: () => Omit<DesktopCyberBotContext, 'placement'>;
   launch: (shortcut: DesktopCyberBotShortcut) => Promise<LaunchResult>;
 }
 
 export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
-  let active: {
+  interface Session {
     window: BrowserWindow;
     workArea: Electron.Rectangle;
     context: DesktopCyberBotContext;
     launching: boolean;
-  } | null = null;
-  const margin = 12;
+    avatar: Electron.Point;
+    expanded: boolean;
+    bubbleHeight: number;
+    dragOffset: Electron.Point | null;
+  }
+  let active: Session | null = null;
 
   const close = () => {
     const session = active;
@@ -29,23 +34,60 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   const getSession = (event: { sender: Electron.WebContents }) =>
     active && event.sender === active.window.webContents ? active : null;
 
+  const updatePlacement = (session: Session) => {
+    const { window, workArea, avatar, expanded, bubbleHeight } = session;
+    const { bounds, placement } = desktopCyberBotLayout(avatar, workArea, expanded, bubbleHeight);
+    if (JSON.stringify(session.context.placement) !== JSON.stringify(placement)) {
+      session.context.placement = placement;
+      window.webContents.send('desktop-cyberbot:placement', placement);
+    }
+    const current = window.getBounds();
+    if (bounds.x !== current.x || bounds.y !== current.y || bounds.width !== current.width || bounds.height !== current.height) {
+      window.setBounds(bounds);
+    }
+  };
+
   ipcMain.handle('desktop-cyberbot:get-context', event => getSession(event)?.context ?? null);
   ipcMain.on('desktop-cyberbot:close', event => {
     if (getSession(event)) close();
   });
   ipcMain.on('desktop-cyberbot:resize', (event, measuredHeight: number) => {
     const session = getSession(event);
-    if (!session || !Number.isFinite(measuredHeight) || measuredHeight < 1) return;
-    const { window, workArea } = session;
-    const height = Math.min(Math.ceil(measuredHeight), workArea.height - margin * 2);
-    const bounds = window.getBounds();
-    const y = workArea.y + workArea.height - height - margin;
-    if (bounds.height !== height || bounds.y !== y) {
-      window.setBounds({ ...bounds, height, y });
+    if (!session?.expanded || !Number.isFinite(measuredHeight) || measuredHeight < 1) return;
+    session.bubbleHeight = Math.ceil(measuredHeight);
+    updatePlacement(session);
+    if (!session.window.isVisible()) {
+      session.window.show();
+      session.window.focus();
     }
-    if (!window.isVisible()) {
-      window.show();
-      window.focus();
+  });
+  ipcMain.on('desktop-cyberbot:toggle-bubble', event => {
+    const session = getSession(event);
+    if (!session) return;
+    session.expanded = !session.expanded;
+    updatePlacement(session);
+  });
+  ipcMain.on('desktop-cyberbot:drag', (event, phase: DesktopCyberBotDragPhase, offset?: Electron.Point) => {
+    const session = getSession(event);
+    if (!session) return;
+    if (phase === 'cancel') {
+      session.dragOffset = null;
+      return;
+    }
+    if (phase === 'start') {
+      const { avatarSize } = DESKTOP_CYBERBOT_LAYOUT;
+      if (!offset || !Number.isFinite(offset.x) || !Number.isFinite(offset.y)
+        || offset.x < 0 || offset.x > avatarSize || offset.y < 0 || offset.y > avatarSize) return;
+      session.dragOffset = { x: Math.round(offset.x), y: Math.round(offset.y) };
+    } else if (session.dragOffset && (phase === 'move' || phase === 'end')) {
+      const cursor = screen.getCursorScreenPoint();
+      session.workArea = screen.getDisplayNearestPoint(cursor).workArea;
+      session.avatar = constrainDesktopAvatar({
+        x: cursor.x - session.dragOffset.x,
+        y: cursor.y - session.dragOffset.y,
+      }, session.workArea);
+      if (phase === 'end') session.dragOffset = null;
+      updatePlacement(session);
     }
   });
   ipcMain.handle('desktop-cyberbot:launch', async (event, id: number): Promise<LaunchResult> => {
@@ -68,19 +110,20 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
       return;
     }
     const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-    const { bubbleWidth, sidePadding, topPadding, bottomPadding } = DESKTOP_CYBERBOT_LAYOUT;
-    const width = Math.min(bubbleWidth + sidePadding * 2, workArea.width - margin * 2);
-    const height = Math.min(600, workArea.height - margin * 2);
+    const { avatarSize, sidePadding, bottomPadding } = DESKTOP_CYBERBOT_LAYOUT;
+    const avatar = constrainDesktopAvatar({
+      x: workArea.x + workArea.width - 12 - sidePadding - 5 - avatarSize,
+      y: workArea.y + workArea.height - 12 - bottomPadding - avatarSize,
+    }, workArea);
+    const bubbleHeight = 260;
+    const { bounds, placement } = desktopCyberBotLayout(avatar, workArea, true, bubbleHeight);
     const context: DesktopCyberBotContext = {
       ...options.getCatalog(),
-      resultsHeight: Math.max(48, height - topPadding - bottomPadding - 240),
+      placement,
     };
     const window = new BrowserWindow({
       title: 'CyberBot',
-      x: workArea.x + workArea.width - width - margin,
-      y: workArea.y + workArea.height - height - margin,
-      width,
-      height,
+      ...bounds,
       show: false,
       frame: false,
       transparent: true,
@@ -99,7 +142,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
         sandbox: true,
       },
     });
-    active = { window, workArea, context, launching: false };
+    active = { window, workArea, context, launching: false, avatar, expanded: true, bubbleHeight, dragOffset: null };
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', event => event.preventDefault());
     window.webContents.on('render-process-gone', () => {

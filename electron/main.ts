@@ -2665,7 +2665,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   }
 }
 
-function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'resultsHeight'> {
+function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'placement'> {
   let catalog = desktopCyberBotCatalog;
   if (!catalog) {
     let config: ReturnType<typeof parseValidBackupJson> = null;
