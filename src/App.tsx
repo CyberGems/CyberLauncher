@@ -8247,14 +8247,20 @@ export default function App() {
                       : 'border-transparent hover:bg-white/5 hover:text-white hover:border-white/5 text-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div 
-                    className={`${isAllCategory ? 'w-2.5 h-2.5' : 'w-2 h-2'} rounded-full flex-shrink-0 transition-shadow`} 
-                    style={{ 
-                      backgroundColor: cat.color,
-                      boxShadow: isCatContextActive ? `0 0 12px ${cat.color}` : `0 0 8px ${cat.color}`
-                    }} 
-                  />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-3.5 flex items-center justify-center flex-shrink-0">
+                    {isAllCategory ? (
+                      <LayoutGrid className={`w-3.5 h-3.5 transition-colors ${isCatActive ? 'text-cyan-300' : 'text-slate-400 group-hover:text-white'}`} />
+                    ) : (
+                      <div 
+                        className="w-2 h-2 rounded-full transition-shadow" 
+                        style={{ 
+                          backgroundColor: cat.color,
+                          boxShadow: isCatContextActive ? `0 0 12px ${cat.color}` : `0 0 8px ${cat.color}`
+                        }} 
+                      />
+                    )}
+                  </div>
                   <span className={`${isAllCategory ? 'text-[15px]' : 'text-sm'} truncate transition-colors ${
                     isCatContextActive
                       ? 'font-semibold text-white drop-shadow-md'

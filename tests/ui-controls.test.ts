@@ -235,7 +235,7 @@ test('All Items / Todo headings and shortcut terminology stay aligned in English
 
   const appSource = readFileSync('src/App.tsx', 'utf8');
   assert.ok(appSource.includes('const isAllCategory = cat.id === ALL_CATEGORY_ID;'));
-  assert.ok(appSource.includes("isAllCategory ? 'w-2.5 h-2.5' : 'w-2 h-2'"));
+  assert.ok(appSource.includes('{isAllCategory ? ('));
   assert.ok(appSource.includes("isAllCategory ? 'text-[15px]' : 'text-sm'"));
 });
 
