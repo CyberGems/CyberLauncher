@@ -191,7 +191,7 @@ const LUCIDE_ICONS: Record<string, React.FC<any>> = {
   FileText,
 };
 
-const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number, broken?: boolean, brokenLabel?: string }) => {
+const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel, miniBadge }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number, broken?: boolean, brokenLabel?: string, miniBadge?: boolean }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
@@ -232,15 +232,22 @@ const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel }: { 
   }
 
   if (!broken) return content;
+  // Los badges mini se colocan dentro del icono para que los contenedores con
+  // overflow-hidden (listas compactas) no los recorten.
   return (
     <span className="relative inline-flex shrink-0">
       <span className="inline-flex opacity-60">{content}</span>
       <span
-        className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border border-[#0a0f18] flex items-center justify-center shadow-[0_0_6px_rgba(245,158,11,0.4)]"
+        className={`absolute rounded-full bg-amber-500 border border-[#0a0f18] flex items-center justify-center shadow-[0_0_6px_rgba(245,158,11,0.4)] ${
+          miniBadge ? 'top-0 right-0 w-2.5 h-2.5' : '-top-1.5 -right-1.5 w-3.5 h-3.5'
+        }`}
         role="img"
         aria-label={brokenLabel}
       >
-        <AlertTriangle className="w-2.5 h-2.5 text-[#0a0f18]" strokeWidth={2.5} />
+        <AlertTriangle
+          strokeWidth={2}
+          className={`text-[#0a0f18] translate-y-[0.5px] ${miniBadge ? 'w-2 h-2' : 'w-2.5 h-2.5'}`}
+        />
       </span>
     </span>
   );
@@ -10171,7 +10178,7 @@ export default function App() {
                         {isMostUsedLaunching ? (
                           <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-cyan-300 animate-spin shrink-0" />
                         ) : (
-                          <AppIcon app={app} broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                          <AppIcon app={app} miniBadge broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
                         )}
                         <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
                           {app.name}
@@ -10275,7 +10282,7 @@ export default function App() {
                           {index + 1}.
                         </span>
                         {appInfo ? (
-                          <AppIcon app={appInfo} broken={brokenAppIds.has(appInfo.id)} brokenLabel={brokenAppIds.get(appInfo.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
+                          <AppIcon app={appInfo} miniBadge broken={brokenAppIds.has(appInfo.id)} brokenLabel={brokenAppIds.get(appInfo.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
                         ) : item.icon ? (
                           <AppIcon app={{ id: -1, name: item.name, iconPath: item.icon }} className="w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 text-slate-400" strokeWidth={1.5} />
                         ) : item.type === 'folder' ? (
