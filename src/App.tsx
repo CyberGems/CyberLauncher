@@ -8151,8 +8151,9 @@ export default function App() {
           } custom-scrollbar ${categoryMaskClass}`}
         >
           {categoriesWithCount.map((cat, index) => {
+            const isAllCategory = cat.id === ALL_CATEGORY_ID;
             const isUncategorized = cat.id === UNCATEGORIZED_ID;
-            const isCanEditOrDelete = cat.id !== 'all' && !isUncategorized;
+            const isCanEditOrDelete = !isAllCategory && !isUncategorized;
             const isCatContextActive = categoryContextMenu?.category?.id === cat.id;
             const isCatActive = activeCategory === cat.id;
             const hotkey = isUncategorized ? 'Alt+0' : (index < 9 ? `Alt+${index + 1}` : null);
@@ -8248,15 +8249,17 @@ export default function App() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div 
-                    className="w-2 h-2 rounded-full flex-shrink-0 transition-shadow" 
+                    className={`${isAllCategory ? 'w-2.5 h-2.5' : 'w-2 h-2'} rounded-full flex-shrink-0 transition-shadow`} 
                     style={{ 
                       backgroundColor: cat.color,
                       boxShadow: isCatContextActive ? `0 0 12px ${cat.color}` : `0 0 8px ${cat.color}`
                     }} 
                   />
-                  <span className={`text-sm truncate transition-colors ${
+                  <span className={`${isAllCategory ? 'text-[15px]' : 'text-sm'} truncate transition-colors ${
                     isCatContextActive
                       ? 'font-semibold text-white drop-shadow-md'
+                      : isAllCategory
+                        ? 'font-semibold tracking-wide drop-shadow-sm'
                       : isUncategorized
                         ? 'italic text-slate-400 font-normal tracking-wide'
                         : 'font-medium drop-shadow-sm'

@@ -42,7 +42,7 @@ test('default starter setup exposes exactly 5 basic categories plus system entri
   const enDefaults = getDefaultCategories('en');
   assert.deepEqual(
     enDefaults.map((c) => c.name),
-    ['All', 'Uncategorized', 'Browsers', 'Design', 'Development', 'Office', 'Utilities']
+    ['All Items', 'Uncategorized', 'Browsers', 'Design', 'Development', 'Office', 'Utilities']
   );
 });
 
@@ -74,6 +74,7 @@ test('apps match their category across localized stored names and dynamic UI lan
   assert.equal(doesAppMatchCategory('Uncategorized', uncatEs), true);
   assert.equal(doesAppMatchCategory('Custom Cat', allCat), true);
   assert.equal(resolveStockCategoryId('Todas'), ALL_CATEGORY_ID);
+  assert.equal(resolveStockCategoryId('All'), ALL_CATEGORY_ID);
   assert.equal(doesAppMatchCategory('Custom Cat', utilsCatEs), false);
 
   const tEs = makeTranslator('es');
@@ -134,7 +135,7 @@ test('localizeDefaultCategories prepares onboarding/setup categories and apps in
   ];
 
   const localized = localizeDefaultCategories(initialCategories, initialApps, 'en');
-  assert.equal(localized.categories.find((c) => c.id === 'all')?.name, 'All');
+  assert.equal(localized.categories.find((c) => c.id === 'all')?.name, 'All Items');
   assert.equal(localized.categories.find((c) => c.id === 'uncategorized')?.name, 'Uncategorized');
   assert.equal(localized.categories.find((c) => c.id === 'utils')?.name, 'Utilities');
   assert.equal(localized.categories.find((c) => c.id === 'browsers')?.name, 'Mis Navegadores');

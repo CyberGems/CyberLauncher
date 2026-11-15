@@ -221,3 +221,21 @@ test('CyberBot prompt, speech bubble, and desktop toast share unified Capture-1 
   }
 });
 
+test('All Items / Todo headings and shortcut terminology stay aligned in English and Spanish', () => {
+  assert.equal(translations.es.cat_all, 'Todo');
+  assert.equal(translations.en.cat_all, 'All Items');
+  assert.equal(translations.es.title_all_apps, 'TODO');
+  assert.equal(translations.en.title_all_apps, 'ALL ITEMS');
+  assert.equal(translations.es.title_apps, 'ACCESOS');
+  assert.equal(translations.en.title_apps, 'SHORTCUTS');
+  assert.equal(translations.es.title_most_used, 'MÁS USADOS');
+  assert.equal(translations.en.title_most_used, 'MOST USED');
+  assert.equal(translations.es.hud_clock_no_apps.includes('\u2014'), false);
+  assert.equal(translations.en.hud_clock_no_apps.includes('\u2014'), false);
+
+  const appSource = readFileSync('src/App.tsx', 'utf8');
+  assert.ok(appSource.includes('const isAllCategory = cat.id === ALL_CATEGORY_ID;'));
+  assert.ok(appSource.includes("isAllCategory ? 'w-2.5 h-2.5' : 'w-2 h-2'"));
+  assert.ok(appSource.includes("isAllCategory ? 'text-[15px]' : 'text-sm'"));
+});
+
