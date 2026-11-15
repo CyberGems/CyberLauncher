@@ -1732,6 +1732,7 @@ function showCustomTrayMenu(eventBounds?: any) {
 
   trayMenuAnchor = b;
   if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
+  if (trayMenuIdleTimer) { clearTimeout(trayMenuIdleTimer); trayMenuIdleTimer = null; }
 
   const w = ensureTrayMenuWin();
   if (!w || w.isDestroyed()) return;
@@ -1757,6 +1758,9 @@ function showCustomTrayMenu(eventBounds?: any) {
   w.webContents.send('tray-menu-state', buildTrayMenuState(true));
 }
 
+let trayMenuIdleTimer: NodeJS.Timeout | null = null;
+const TRAY_MENU_IDLE_MS = 15_000;
+
 function hideCustomTrayMenu() {
   if (trayMenuHideTimer) { clearTimeout(trayMenuHideTimer); trayMenuHideTimer = null; }
   if (trayMenuShowFallback) { clearTimeout(trayMenuShowFallback); trayMenuShowFallback = null; }
@@ -1770,6 +1774,14 @@ function hideCustomTrayMenu() {
       trayMenuWin.hide();
     }
     trayMenuWin.webContents.send('tray-menu-reset');
+    // Reuse the menu for quick reopens, then release its renderer while idle.
+    if (!trayMenuIdleTimer) {
+      const window = trayMenuWin;
+      trayMenuIdleTimer = setTimeout(() => {
+        trayMenuIdleTimer = null;
+        if (!trayMenuOpen && !window.isDestroyed()) window.destroy();
+      }, TRAY_MENU_IDLE_MS);
+    }
   }
 }
 
@@ -1947,7 +1959,7 @@ function showTrayPinTip(customAnchor?: any) {
 
 function hideTrayPinTip() {
   if (trayPinTipWin && !trayPinTipWin.isDestroyed()) {
-    trayPinTipWin.hide();
+    trayPinTipWin.destroy();
   }
 }
 
@@ -1958,6 +1970,7 @@ let desktopToastWin: BrowserWindow | null = null;
 let desktopToastAutoDismissTimer: NodeJS.Timeout | null = null;
 let latestToastPayload: any = null;
 let desktopToastVisibilityVersion = 0;
+let desktopToastReady = false;
 let toastDeliverySettings: NotificationDeliverySettings = {
   botEnabled: true,
   bannersEnabled: true,
@@ -2020,20 +2033,24 @@ function ensureDesktopToastWin(): BrowserWindow {
   });
 
   desktopToastWin.setAlwaysOnTop(true, 'screen-saver');
-  if (VITE_DEV_SERVER_URL) {
-    void desktopToastWin.loadURL(new URL('/cyberbot-toast.html', VITE_DEV_SERVER_URL).href);
-  } else {
-    void desktopToastWin.loadFile(htmlPath);
-  }
-
-  desktopToastWin.webContents.on('did-finish-load', () => {
-    if (latestToastPayload && desktopToastWin && !desktopToastWin.isDestroyed()) {
-      desktopToastWin.webContents.send('desktop-toast-data', latestToastPayload);
-    }
+  const window = desktopToastWin;
+  const loaded = VITE_DEV_SERVER_URL
+    ? window.loadURL(new URL('/cyberbot-toast.html', VITE_DEV_SERVER_URL).href)
+    : window.loadFile(htmlPath);
+  void loaded.then(() => {
+    if (window.isDestroyed()) return;
+    desktopToastReady = true;
+    presentDesktopToast(window);
+  }).catch((error) => {
+    if (window.isDestroyed()) return;
+    console.error('[TOAST] Failed to load desktop notification:', error);
+    latestToastPayload = null;
+    window.destroy();
   });
 
   desktopToastWin.on('closed', () => {
     desktopToastWin = null;
+    desktopToastReady = false;
   });
 
   return desktopToastWin;
@@ -2051,7 +2068,7 @@ function showDesktopToastInternal(payload: any) {
   // It must not replace a more important notification already on screen.
   if (payload.source === 'launch') {
     if (launcherVisible || channel !== 'bot') return false;
-    if (desktopToastWin?.isVisible() && latestToastPayload?.source !== 'launch') return false;
+    if (latestToastPayload && latestToastPayload.source !== 'launch') return false;
   }
   if (channel === 'none' || (channel === 'bot' && launcherVisible)) {
     hideDesktopToastInternal();
@@ -2083,21 +2100,21 @@ function showDesktopToastInternal(payload: any) {
     desktopToastAutoDismissTimer = null;
   }
 
-  if (!win.isVisible()) {
-    win.showInactive();
-  }
+  if (desktopToastReady) presentDesktopToast(win);
+  return true;
+}
 
-  if (!win.webContents.isLoading()) {
-    win.webContents.send('desktop-toast-data', latestToastPayload);
-  }
-
+function presentDesktopToast(win: BrowserWindow) {
+  const payload = latestToastPayload;
+  if (!payload) return;
+  if (!win.isVisible()) win.showInactive();
+  win.webContents.send('desktop-toast-data', payload);
   if (payload.type !== 'imminent' && !payload.persistent) {
     const ms = payload.source === 'launch' ? 3000 : payload.action ? 8000 : 4500;
     desktopToastAutoDismissTimer = setTimeout(() => {
       hideDesktopToastInternal();
-    }, channel === 'bot' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
+    }, payload.presentation === 'bot' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
   }
-  return true;
 }
 
 function hideDesktopToastInternal() {
@@ -2107,14 +2124,16 @@ function hideDesktopToastInternal() {
     clearTimeout(desktopToastAutoDismissTimer);
     desktopToastAutoDismissTimer = null;
   }
-  if (desktopToastWin && !desktopToastWin.isDestroyed()) {
-    desktopToastWin.webContents.send('desktop-toast-data', { type: 'hide' });
-    setTimeout(() => {
-      if (desktopToastVisibilityVersion === version && desktopToastWin && !desktopToastWin.isDestroyed()) {
-        desktopToastWin.hide();
-      }
-    }, 220);
+  const window = desktopToastWin;
+  if (!window || window.isDestroyed()) return;
+  if (!window.isVisible()) {
+    window.destroy();
+    return;
   }
+  window.webContents.send('desktop-toast-data', { type: 'hide' });
+  setTimeout(() => {
+    if (desktopToastVisibilityVersion === version && !window.isDestroyed()) window.destroy();
+  }, 220);
 }
 
 
@@ -2134,11 +2153,6 @@ function createTray() {
   if (tray) return;
   tray = new Tray(getTrayIcon());
   rebuildTrayMenu();
-  try {
-    ensureTrayMenuWin();
-  } catch (err: any) {
-    console.warn('[TRAY] Failed to prewarm tray window:', err?.message || err);
-  }
 
   setTimeout(() => {
     if (!hasSeenTrayPinTip()) {
@@ -2315,12 +2329,14 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   }
 });
 
-ipcMain.on('tray-menu-hide', () => {
+ipcMain.on('tray-menu-hide', (event) => {
+  if (!trayMenuWin || trayMenuWin.isDestroyed() || event.sender !== trayMenuWin.webContents) return;
   hideCustomTrayMenu();
 });
 
-ipcMain.on('tray-menu-ready', (_event, rect) => {
-  if (trayMenuWin && !trayMenuWin.isDestroyed() && trayMenuAnchor && rect && rect.height) {
+ipcMain.on('tray-menu-ready', (event, rect) => {
+  if (!trayMenuWin || trayMenuWin.isDestroyed() || event.sender !== trayMenuWin.webContents) return;
+  if (trayMenuAnchor && rect?.height) {
     const pad = TRAY_MENU_SHADOW_PAD;
     const windowW = TRAY_MENU_CARD_WIDTH + 2 * pad;
     const isMain = rect.view === 'main' || !rect.view;
@@ -4017,7 +4033,8 @@ function setupIpcHandlers() {
     return true;
   });
 
-  ipcMain.on('desktop-toast-action', (_event, action: string, payload: any) => {
+  ipcMain.on('desktop-toast-action', (event, action: string, payload: any) => {
+    if (!desktopToastWin || desktopToastWin.isDestroyed() || event.sender !== desktopToastWin.webContents) return;
     if (action === 'cancel-task') {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('cancel-scheduled-task', payload?.taskId);
@@ -4046,7 +4063,8 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.on('desktop-toast-hide', () => {
+  ipcMain.on('desktop-toast-hide', (event) => {
+    if (!desktopToastWin || desktopToastWin.isDestroyed() || event.sender !== desktopToastWin.webContents) return;
     if (latestToastPayload?.persistent && latestToastPayload?.action === 'open-about' && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update:notice-dismissed');
     }
@@ -5502,7 +5520,6 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
-  ensureDesktopToastWin();
 
   const displayHeartbeat = setInterval(() => {
     if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
