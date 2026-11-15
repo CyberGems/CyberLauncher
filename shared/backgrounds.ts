@@ -1,9 +1,9 @@
-export const DEFAULT_BG_IMAGE = 'bg_default.jpg';
+export const DEFAULT_BG_IMAGE = 'bg_waves.jpg';
 
 /** Packaged presets only — relative names so they survive install on any PC. */
 export const PRESET_IMAGES = [
   DEFAULT_BG_IMAGE,
-  'bg_waves.jpg',
+  'bg_default.jpg',
   'bg_bubbles.png',
 ];
 

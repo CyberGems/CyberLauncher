@@ -4064,11 +4064,11 @@ export default function App() {
   const [bgGradient, setBgGradient] = useState(() => localStorage.getItem('bgGradient') || PRESET_GRADIENTS[0]);
   const [glassIntensity, setGlassIntensity] = useState(() => {
     const saved = localStorage.getItem('glassIntensity');
-    return saved ? parseInt(saved, 10) : 60;
+    return saved ? parseInt(saved, 10) : 70;
   });
   const [bgOpacity, setBgOpacity] = useState(() => {
     const saved = localStorage.getItem('bgOpacity');
-    return saved ? parseInt(saved, 10) : 60;
+    return saved ? parseInt(saved, 10) : 70;
   });
   // (CyberTray state removed)
 
@@ -5528,8 +5528,8 @@ export default function App() {
     setCustomSlotImage('');
     setBgColor(PRESET_SOLIDS[0]);
     setBgGradient(PRESET_GRADIENTS[0]);
-    setGlassIntensity(60);
-    setBgOpacity(60);
+    setGlassIntensity(70);
+    setBgOpacity(70);
 
     // System, clock & alerts
     setStartWithWindows(false);
