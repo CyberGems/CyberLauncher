@@ -2,11 +2,13 @@ import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen,
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { exec, execSync, spawn, execFile } from 'node:child_process';
+import { createInterface } from 'node:readline';
 import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import * as pty from 'node-pty';
 import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
+import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
 import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
 import { HotspotGesture, type HotspotPosition } from './hotspot-gesture';
@@ -4072,13 +4074,15 @@ function setupIpcHandlers() {
   });
 
   // --- Obtener aplicaciones de Microsoft Store (UWP/MSIX) ---
-  ipcMain.handle('get-uwp-apps', async () => {
+  ipcMain.handle('get-uwp-apps', async (event) => {
     return new Promise((resolve, reject) => {
       const psScript = `# List installed apps and extract their icons for import
 \$ErrorActionPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-\$startApps = Get-StartApps -ErrorAction Stop | Where-Object { \$_.AppID -like "*!*" -and \$_.AppID -like "*_*" }
+\$startApps = @(Get-StartApps -ErrorAction Stop |
+    Where-Object { \$_.AppID -like "*!*" -and \$_.AppID -like "*_*" } |
+    Sort-Object -Property AppID -Unique)
 
 \$packages = Get-AppxPackage
 \$packageMap = @{}
@@ -4089,13 +4093,14 @@ foreach (\$pkg in \$packages) {
 }
 
 \$uwpApps = @()
+\$processed = 0
+[Console]::Error.WriteLine("CL_STORE_ICONS 0 \$(\$startApps.Count)")
 
 foreach (\$app in \$startApps) {
     \$name = \$app.Name
     \$aumid = \$app.AppID
     
     \$parts = \$aumid.Split('!')
-    if (\$parts.Length -lt 2) { continue }
     \$family = \$parts[0]
     \$appId = \$parts[1]
     
@@ -4173,15 +4178,21 @@ foreach (\$app in \$startApps) {
         aumid = \$aumid
         icon = \$iconBase64
     }
+    \$processed++
+    [Console]::Error.WriteLine("CL_STORE_ICONS \$processed \$(\$startApps.Count)")
 }
 
+[Console]::Error.WriteLine("CL_STORE_PREPARING")
 ConvertTo-Json -InputObject \$uwpApps
 `;
 
       const tmpPs = path.join(os.tmpdir(), `cl-uwp-apps-${Date.now()}.ps1`);
       try {
         fs.writeFileSync(tmpPs, psScript, 'utf-8');
-        exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, { maxBuffer: 25 * 1024 * 1024 }, (err, stdout) => {
+        const child = execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', tmpPs], {
+          maxBuffer: 25 * 1024 * 1024,
+          windowsHide: true,
+        }, (err, stdout) => {
           try {
             if (fs.existsSync(tmpPs)) fs.unlinkSync(tmpPs);
           } catch {}
@@ -4199,6 +4210,21 @@ ConvertTo-Json -InputObject \$uwpApps
             reject(e);
           }
         });
+        if (child.stderr) {
+          createInterface({ input: child.stderr }).on('line', line => {
+            if (event.sender.isDestroyed()) return;
+            let progress: StoreAppDiscoveryProgress;
+            const iconProgress = /^CL_STORE_ICONS (\d+) (\d+)$/.exec(line);
+            if (iconProgress) {
+              progress = { stage: 'icons', processed: Number(iconProgress[1]), total: Number(iconProgress[2]) };
+            } else if (line === 'CL_STORE_PREPARING') {
+              progress = { stage: 'preparing' };
+            } else {
+              return;
+            }
+            event.sender.send('uwp-discovery-progress', progress);
+          });
+        }
       } catch (e) {
         try {
           if (fs.existsSync(tmpPs)) fs.unlinkSync(tmpPs);

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
 
 // =====================================
 // Electron API Bridge — Expone funciones seguras al mundo del navegador (React)
@@ -6,7 +7,15 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   // --- Lanzar aplicación (.exe, .lnk, URL, etc.) ---
   launchApp: (appPath: string, isAdmin?: boolean, keepWindowOpen?: boolean) => ipcRenderer.invoke('launch-app', appPath, isAdmin, keepWindowOpen),
-  getUwpApps: () => ipcRenderer.invoke('get-uwp-apps'),
+  getUwpApps: (onProgress?: (progress: StoreAppDiscoveryProgress) => void) => {
+    const forwardProgress = (_event: Electron.IpcRendererEvent, progress: StoreAppDiscoveryProgress) => {
+      onProgress?.(progress);
+    };
+    ipcRenderer.on('uwp-discovery-progress', forwardProgress);
+    return ipcRenderer.invoke('get-uwp-apps').finally(() => {
+      ipcRenderer.removeListener('uwp-discovery-progress', forwardProgress);
+    });
+  },
 
   // --- Diálogos nativos de archivos ---
   selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>

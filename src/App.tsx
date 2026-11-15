@@ -30,6 +30,7 @@ import { CustomSelect, type CustomSelectOption } from './components/CustomSelect
 import type { UwpImportAppPreview } from './components/UwpImportConfirmModal';
 import { StoreImporterCard } from './components/StoreImporterCard';
 import { StoreImporterModal } from './components/StoreImporterModal';
+import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
 import { AppConfirmModals } from './components/AppConfirmModals';
 import { CyberAnalogClock } from './components/CyberAnalogClock';
 import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from './components/modalTheme';
@@ -258,7 +259,7 @@ declare global {
     electronAPI?: {
       launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<LaunchResult>;
       showNotification?: (options: { title: string; body: string }) => Promise<boolean>;
-      getUwpApps: () => Promise<Array<{ name: string; aumid: string; icon: string }>>;
+      getUwpApps: (onProgress?: (progress: StoreAppDiscoveryProgress) => void) => Promise<UwpImportAppPreview[]>;
       selectFile: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ name: string; path: string; iconPath?: string } | null>;
       selectFolder: () => Promise<{ name: string; path: string; iconPath?: string } | null>;
       locateAppPath: (previousPath?: string) => Promise<string | null>;

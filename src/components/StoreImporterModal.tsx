@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { ArrowDownAZ, ArrowUpZA, LoaderCircle, PackagePlus, RefreshCw, Search, X } from 'lucide-react';
 import type { TranslationKey } from '../locales';
+import type { StoreAppDiscoveryProgress } from '../../shared/storeApps';
 import Tooltip from '../Tooltip';
 import type { CustomSelectOption } from './CustomSelect';
 import { MODAL_SHADOW_CYAN } from './modalTheme';
@@ -14,7 +15,8 @@ const PREVIEW_APPS: UwpImportAppPreview[] = [
 ];
 
 type Discovery =
-  | { status: 'idle' | 'loading' | 'error' }
+  | { status: 'idle' | 'error' }
+  | { status: 'loading'; progress: StoreAppDiscoveryProgress }
   | { status: 'ready'; apps: UwpImportAppPreview[] };
 
 interface StoreImporterModalProps {
@@ -25,7 +27,47 @@ interface StoreImporterModalProps {
   categoryOptions: CustomSelectOption[];
   onCategoryChange: (category: string) => void;
   onImport: (app: UwpImportAppPreview) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+}
+
+function StoreDiscoveryStatus({ progress, t }: {
+  progress: StoreAppDiscoveryProgress;
+  t: StoreImporterModalProps['t'];
+}) {
+  const percent = progress.stage === 'preparing'
+    ? 100
+    : progress.stage === 'icons' && progress.total > 0
+      ? 100 * progress.processed / progress.total
+      : undefined;
+  let message = t('uwp_loading');
+  if (progress.stage === 'icons') {
+    message = progress.total > 0
+      ? t('uwp_loading_icons', { processed: progress.processed, total: progress.total })
+      : t('uwp_loading_preparing');
+  } else if (progress.stage === 'preparing') {
+    message = t('uwp_loading_preparing');
+  }
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4">
+      <div className="flex items-center gap-2 text-sm text-slate-300">
+        <LoaderCircle className="size-4 shrink-0 text-cyan-300 motion-safe:animate-spin" aria-hidden="true" />
+        <span id="store-discovery-status">{message}</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-labelledby="store-discovery-status"
+        aria-valuenow={percent === undefined ? undefined : Math.floor(percent)}
+        className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/10"
+      >
+        {percent === undefined ? (
+          <div className="h-full w-1/3 rounded-full bg-cyan-400/60 motion-safe:animate-pulse" />
+        ) : (
+          <div className="h-full rounded-full bg-cyan-400 motion-safe:transition-[width] motion-safe:duration-150" style={{ width: `${percent}%` }} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function StoreImporterModal({
@@ -78,9 +120,13 @@ export function StoreImporterModal({
     if (discoveringRef.current) return;
     discoveringRef.current = true;
     dialogRef.current?.focus();
-    setDiscovery({ status: 'loading' });
+    setDiscovery({ status: 'loading', progress: { stage: 'listing' } });
     try {
-      const apps = window.electronAPI ? await window.electronAPI.getUwpApps() : PREVIEW_APPS;
+      const apps = window.electronAPI
+        ? await window.electronAPI.getUwpApps(progress => {
+            setDiscovery(current => current.status === 'loading' ? { status: 'loading', progress } : current);
+          })
+        : PREVIEW_APPS;
       setDiscovery({ status: 'ready', apps });
     } catch (error) {
       console.error('Could not load installed Microsoft Store apps:', error);
@@ -155,10 +201,7 @@ export function StoreImporterModal({
           </header>
 
           {discovery.status === 'loading' ? (
-            <div role="status" className="flex flex-1 items-center justify-center gap-2 p-4 text-sm text-slate-300">
-              <LoaderCircle className="size-4 text-cyan-300 motion-safe:animate-spin" aria-hidden="true" />
-              {t('uwp_loading')}
-            </div>
+            <StoreDiscoveryStatus progress={discovery.progress} t={t} />
           ) : discovery.status === 'ready' && discovery.apps.length > 0 ? (
             <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
               {isPreview && <p className="text-xs text-slate-400">{t('uwp_preview')}</p>}
