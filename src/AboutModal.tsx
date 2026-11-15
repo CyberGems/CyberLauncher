@@ -143,6 +143,39 @@ function platformLabel(platform: string): string {
   return platform;
 }
 
+/** Tracks whether a scroll container is scrolled away from its top/bottom edges. */
+function useEdgeFades<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [fades, setFades] = useState({ top: false, bottom: false });
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setFades({
+      top: el.scrollTop > 4,
+      bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 4,
+    });
+  }, []);
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+    return () => observer.disconnect();
+  }, [update]);
+  return { ref, fades, onScroll: update };
+}
+
+/** CSS mask that fades content near the scrolled edges so it does not look hard-cut. */
+function edgeMaskStyle(fades: { top: boolean; bottom: boolean }): React.CSSProperties | undefined {
+  if (!fades.top && !fades.bottom) return undefined;
+  const topEdge = fades.top ? 'transparent 0px, black 28px' : 'black 0px';
+  const bottomEdge = fades.bottom ? 'black calc(100% - 32px), transparent 100%' : 'black 100%';
+  const mask = `linear-gradient(to bottom, ${topEdge}, ${bottomEdge})`;
+  return { WebkitMaskImage: mask, maskImage: mask };
+}
+
 export default function AboutModal({
   language,
   t,
@@ -159,6 +192,7 @@ export default function AboutModal({
   const [diagCopied, setDiagCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHandledSeqRef = useRef(0);
+  const mainFade = useEdgeFades<HTMLDivElement>();
 
   const suitePool = [
     { slug: 'cyberclock', name: 'CyberClock', pitch: t('about_suite_clock') },
@@ -337,7 +371,12 @@ export default function AboutModal({
           </Tooltip>
         </div>
 
-        <div className="overflow-y-auto custom-scrollbar px-7 pb-4 text-center z-10">
+        <div
+          ref={mainFade.ref}
+          onScroll={mainFade.onScroll}
+          className="overflow-y-auto custom-scrollbar px-7 pb-4 text-center z-10"
+          style={edgeMaskStyle(mainFade.fades)}
+        >
           <div className="relative w-[72px] h-[72px] mx-auto mb-3.5 flex items-center justify-center">
             <img
               src="./icon.png"
@@ -384,31 +423,33 @@ export default function AboutModal({
 
             <div className="space-y-2">
               {status.state === 'available' ? (
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-1.5 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{t('about_view_release')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSkip}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-1.5 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 hover:border-slate-500/40 transition-colors cursor-pointer"
-                  >
-                    <SkipForward className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                    <span className="truncate">{t('about_skip_btn')}</span>
-                  </button>
+                <div className="space-y-2">
                   <button
                     type="button"
                     onClick={handleDownload}
-                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-1.5 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{t('about_download_btn')}</span>
+                    <span>{t('about_download_btn')}</span>
                   </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span>{t('about_view_release')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSkip}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 hover:border-slate-500/40 transition-colors cursor-pointer"
+                    >
+                      <SkipForward className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                      <span>{t('about_skip_btn')}</span>
+                    </button>
+                  </div>
                 </div>
               ) : status.state === 'skipped' ? (
                 <div className="space-y-2">
@@ -697,9 +738,7 @@ function ReleaseNotesPanel({
           <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-slate-500 mb-1.5">
             {t('about_release_notes')}
           </div>
-          <div className="min-h-[6.5rem] max-h-[200px] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-black/25 px-3.5 py-3 text-left text-[12.5px] leading-relaxed text-slate-300">
-            <ReleaseNotes body={status.releaseNotes} language={language} />
-          </div>
+          <NotesScroller body={status.releaseNotes} language={language} />
         </div>
       )}
 
@@ -707,7 +746,24 @@ function ReleaseNotesPanel({
   );
 }
 
-function cleanMarkdownChangelog(raw: string, language: 'es' | 'en' = 'en'): string {
+/** Bordered notes box whose inner scroll area fades at the top/bottom edges while scrolling. */
+function NotesScroller({ body, language }: { body: string; language: 'es' | 'en' }) {
+  const notesFade = useEdgeFades<HTMLDivElement>();
+  return (
+    <div className="min-h-[6.5rem] rounded-xl border border-white/10 bg-black/25 overflow-hidden">
+      <div
+        ref={notesFade.ref}
+        onScroll={notesFade.onScroll}
+        className="max-h-[200px] overflow-y-auto custom-scrollbar px-3.5 py-3 text-left text-[12.5px] leading-relaxed text-slate-300"
+        style={edgeMaskStyle(notesFade.fades)}
+      >
+        <ReleaseNotes body={body} language={language} />
+      </div>
+    </div>
+  );
+}
+
+export function cleanMarkdownChangelog(raw: string, language: 'es' | 'en' = 'en'): string {
   const section = extractLanguageSection(raw, language);
   const lines = section.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
   const filtered: string[] = [];
@@ -784,48 +840,95 @@ function renderInline(text: string): ReactNode {
   });
 }
 
-function ReleaseNotes({ body, language }: { body: string; language: 'es' | 'en' }) {
-  const cleaned = cleanMarkdownChangelog(body, language);
+export type ReleaseListItem = { text: string; children: string[] };
+export type ReleaseBlock =
+  | { type: 'heading'; text: string }
+  | { type: 'paragraph'; text: string }
+  | { type: 'list'; items: ReleaseListItem[] };
+
+/**
+ * Parses cleaned changelog markdown into render blocks with one nesting level.
+ * Indented sub-bullets attach to the previous top-level item, markdown soft-wrapped
+ * continuation lines extend the last item, and blockquote markers are stripped.
+ */
+export function parseReleaseBlocks(cleaned: string): ReleaseBlock[] {
   const lines = cleaned.split('\n');
-  const nodes: ReactNode[] = [];
-  let listItems: string[] = [];
+  const blocks: ReleaseBlock[] = [];
+  let items: ReleaseListItem[] = [];
 
   const flushList = () => {
-    if (!listItems.length) return;
-    const items = listItems;
-    listItems = [];
-    nodes.push(
-      <ul key={`list-${nodes.length}`} className="my-1.5 list-disc space-y-1 pl-4 marker:text-cyan-400/70">
-        {items.map((item, i) => (
-          <li key={i}>{renderInline(item)}</li>
-        ))}
-      </ul>
-    );
+    if (!items.length) return;
+    blocks.push({ type: 'list', items });
+    items = [];
   };
 
   for (const line of lines) {
     const heading = line.match(/^#{1,3}\s+(.*)$/);
-    const bullet = line.match(/^[-*]\s+(.*)$/);
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
     if (heading) {
       flushList();
-      nodes.push(
-        <h4 key={`h-${nodes.length}`} className="mb-1 mt-2.5 first:mt-0 text-[13px] font-semibold text-slate-100">
-          {renderInline(heading[1])}
-        </h4>
-      );
+      blocks.push({ type: 'heading', text: heading[1] });
     } else if (bullet) {
-      listItems.push(bullet[1]);
+      const text = bullet[1];
+      if (/^\s/.test(line) && items.length > 0) {
+        items[items.length - 1].children.push(text);
+      } else {
+        items.push({ text, children: [] });
+      }
     } else if (!line.trim() || /^---+/.test(line.trim())) {
       flushList();
+    } else if (items.length > 0) {
+      // Soft-wrapped continuation of the current item (markdown lazy continuation)
+      const last = items[items.length - 1];
+      if (last.children.length > 0) {
+        last.children[last.children.length - 1] += ` ${line.trim()}`;
+      } else {
+        last.text += ` ${line.trim()}`;
+      }
     } else {
-      flushList();
-      nodes.push(
-        <p key={`p-${nodes.length}`} className="text-[12.5px] leading-relaxed">
-          {renderInline(line)}
-        </p>
-      );
+      blocks.push({ type: 'paragraph', text: line.replace(/^>\s?/, '') });
     }
   }
   flushList();
-  return <div className="space-y-0.5">{nodes}</div>;
+  return blocks;
+}
+
+function ReleaseNotes({ body, language }: { body: string; language: 'es' | 'en' }) {
+  const blocks = parseReleaseBlocks(cleanMarkdownChangelog(body, language));
+  return (
+    <div className="space-y-0.5">
+      {blocks.map((block, i) => {
+        if (block.type === 'heading') {
+          return (
+            <h4 key={i} className="mb-1 mt-2.5 first:mt-0 text-[13px] font-semibold text-slate-100">
+              {renderInline(block.text)}
+            </h4>
+          );
+        }
+        if (block.type === 'paragraph') {
+          return (
+            <p key={i} className="text-[12.5px] leading-relaxed">
+              {renderInline(block.text)}
+            </p>
+          );
+        }
+        return (
+          <ul key={i} className="my-1.5 list-disc space-y-1 pl-4 marker:text-cyan-400/70">
+            {block.items.map((item, j) => (
+              <li key={j}>
+                {renderInline(item.text)}
+                {item.children.length > 0 && (
+                  <ul className="mt-1 list-[circle] space-y-1 pl-4 marker:text-slate-500">
+                    {item.children.map((child, k) => (
+                      <li key={k}>{renderInline(child)}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        );
+      })}
+    </div>
+  );
 }
