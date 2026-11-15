@@ -27,7 +27,7 @@ import {
 import Tooltip from './Tooltip';
 import { ToggleSwitch } from './components/ToggleSwitch';
 import { CustomSelect, type CustomSelectOption } from './components/CustomSelect';
-import type { UwpImportAppPreview } from './components/UwpImportConfirmModal';
+import type { UwpImportAppPreview, UwpImportPins } from './components/UwpImportConfirmModal';
 import { StoreImporterCard } from './components/StoreImporterCard';
 import { StoreImporterModal } from './components/StoreImporterModal';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
@@ -6263,7 +6263,9 @@ export default function App() {
     return exists ? candidate : getUncategorizedStorageName();
   }, [uwpImportCategory, categories, language, editableCategoryOptions, getUncategorizedStorageName]);
 
-  const confirmUwpImport = useCallback((app: UwpImportAppPreview) => {
+  const confirmUwpImport = useCallback((app: UwpImportAppPreview, pins: UwpImportPins) => {
+    if (addedStorePaths.has(app.aumid.toLowerCase())) return;
+
     const newApp: LauncherApp = {
       id: Date.now(),
       name: app.name,
@@ -6275,10 +6277,10 @@ export default function App() {
       usage: 0,
     };
     setUwpImportCategory(resolvedUwpImportCategory);
-    setApps(prev => prev.some(existing => existing.path?.toLowerCase() === app.aumid.toLowerCase())
-      ? prev
-      : [...prev, newApp]);
-  }, [resolvedUwpImportCategory]);
+    setApps(prev => [...prev, newApp]);
+    if (pins.pinToFavorites) setFavoriteIds(prev => [...prev, newApp.id]);
+    if (pins.pinToTaskbar) setTaskbarAppIds(prev => [...prev, newApp.id]);
+  }, [addedStorePaths, resolvedUwpImportCategory]);
 
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';

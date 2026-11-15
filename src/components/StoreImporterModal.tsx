@@ -7,7 +7,7 @@ import Tooltip from '../Tooltip';
 import type { CustomSelectOption } from './CustomSelect';
 import { MODAL_SHADOW_CYAN } from './modalTheme';
 import { OverflowMarquee } from './OverflowMarquee';
-import { UwpImportConfirmModal, type UwpImportAppPreview } from './UwpImportConfirmModal';
+import { UwpImportConfirmModal, type UwpImportAppPreview, type UwpImportPins } from './UwpImportConfirmModal';
 
 const PREVIEW_APPS: UwpImportAppPreview[] = [
   { name: 'WhatsApp', aumid: '5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App', icon: '' },
@@ -26,7 +26,7 @@ interface StoreImporterModalProps {
   category: string;
   categoryOptions: CustomSelectOption[];
   onCategoryChange: (category: string) => void;
-  onImport: (app: UwpImportAppPreview) => void;
+  onImport: (app: UwpImportAppPreview, pins: UwpImportPins) => void;
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
@@ -154,8 +154,9 @@ export function StoreImporterModal({
         else close();
       }
       if (event.key !== 'Tab') return;
-      const controls = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')]
-        .filter(control => !control.closest('[inert]'));
+      const controls = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), summary')]
+        .filter(control => !control.closest('[inert]')
+          && (control.tagName === 'SUMMARY' || !control.closest('details:not([open])')));
       const first = controls[0];
       const last = controls.at(-1);
       const active = document.activeElement;
@@ -268,13 +269,14 @@ export function StoreImporterModal({
 
         {selectedApp && (
           <UwpImportConfirmModal
+            key={selectedApp.aumid}
             app={selectedApp}
             category={category}
             categoryOptions={categoryOptions}
             onChangeCategory={onCategoryChange}
             onCancel={() => setSelectedApp(null)}
-            onConfirm={() => {
-              onImport(selectedApp);
+            onConfirm={pins => {
+              onImport(selectedApp, pins);
               setSelectedApp(null);
             }}
             t={t}

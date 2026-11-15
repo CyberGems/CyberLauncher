@@ -1,14 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronDown, Pin, Star } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { TranslationKey } from '../locales';
 import { CustomSelect, type CustomSelectOption } from './CustomSelect';
 import { EnterKeyBadge, EscKeyBadge } from '../KeyBadge';
 import { MODAL_SHADOW_CYAN } from './modalTheme';
+import { ToggleSwitch } from './ToggleSwitch';
 
 export interface UwpImportAppPreview {
   name: string;
   aumid: string;
   icon: string;
+}
+
+export interface UwpImportPins {
+  pinToFavorites: boolean;
+  pinToTaskbar: boolean;
 }
 
 export interface UwpImportConfirmModalProps {
@@ -17,7 +24,7 @@ export interface UwpImportConfirmModalProps {
   onChangeCategory: (category: string) => void;
   categoryOptions: CustomSelectOption[];
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (pins: UwpImportPins) => void;
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
@@ -34,6 +41,11 @@ export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({
   onConfirm,
   t,
 }) => {
+  const [pins, setPins] = useState<UwpImportPins>({
+    pinToFavorites: false,
+    pinToTaskbar: false,
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -92,6 +104,34 @@ export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({
           />
         </div>
 
+        <details className="group rounded-xl border border-white/10 bg-black/25">
+          <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 [&::-webkit-details-marker]:hidden">
+            <Pin className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+            <span className="flex-1">{t('uwp_confirm_pins')}</span>
+            <ChevronDown className="size-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="divide-y divide-white/5 border-t border-white/5 px-3">
+            <div className="flex items-center gap-2 py-2">
+              <Star className="size-3.5 shrink-0 text-blue-400" aria-hidden="true" />
+              <span id="store-import-pin-favorites" className="min-w-0 flex-1 text-xs text-slate-200">{t('app_pin_fav_title')}</span>
+              <ToggleSwitch
+                checked={pins.pinToFavorites}
+                onChange={() => setPins(previous => ({ ...previous, pinToFavorites: !previous.pinToFavorites }))}
+                ariaLabelledBy="store-import-pin-favorites"
+              />
+            </div>
+            <div className="flex items-center gap-2 py-2">
+              <Pin className="size-3.5 shrink-0 text-cyan-400" aria-hidden="true" />
+              <span id="store-import-pin-taskbar" className="min-w-0 flex-1 text-xs text-slate-200">{t('app_pin_taskbar_title')}</span>
+              <ToggleSwitch
+                checked={pins.pinToTaskbar}
+                onChange={() => setPins(previous => ({ ...previous, pinToTaskbar: !previous.pinToTaskbar }))}
+                ariaLabelledBy="store-import-pin-taskbar"
+              />
+            </div>
+          </div>
+        </details>
+
         <div className="flex gap-3 pt-1">
           <button
             type="button"
@@ -104,7 +144,7 @@ export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({
           <button
             type="button"
             autoFocus
-            onClick={onConfirm}
+            onClick={() => onConfirm(pins)}
             className="flex-1 px-4 py-2 bg-cyan-500/12 hover:bg-cyan-500/20 text-cyan-300 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/35 shadow-[0_0_6px_rgba(34,211,238,0.08)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>{t('uwp_confirm_ok')}</span>
