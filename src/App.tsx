@@ -14389,7 +14389,7 @@ export default function App() {
           >
             {/* Ticking countdown badge with generous breathing room */}
             <div className="flex flex-col items-center justify-center shrink-0 min-w-[58px] h-12 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-300 shadow-[inset_0_0_10px_rgba(245,158,11,0.15)]">
-              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-amber-400/70 mb-0.5">T - MINUS</span>
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-amber-400/70 mb-0.5">{t('countdown_remaining')}</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-xl font-digits font-bold text-amber-300 tabular-nums animate-pulse leading-none">
                   {imminentTask.remainingSeconds.toString().padStart(2, '0')}
@@ -14454,7 +14454,7 @@ export default function App() {
             style={{ boxShadow: '0 0 24px rgba(244,63,94,0.15), 0 12px 32px rgba(0,0,0,0.8)' }}
           >
             <div className="flex flex-col items-center justify-center shrink-0 w-[92px] h-12 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 shadow-[inset_0_0_10px_rgba(244,63,94,0.15)]">
-              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-rose-400/70 mb-0.5">T - MINUS</span>
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-rose-400/70 mb-0.5">{t('countdown_remaining')}</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-xl font-digits font-bold text-rose-300 tabular-nums animate-pulse leading-none">
                   {`${Math.floor(powerSchedule.secondsLeft / 60).toString().padStart(2, '0')}:${(powerSchedule.secondsLeft % 60).toString().padStart(2, '0')}`}

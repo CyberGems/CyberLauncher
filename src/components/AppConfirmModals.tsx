@@ -532,9 +532,6 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
               </div>
 
               <div className="space-y-2 px-2">
-                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 text-left">
-                  {t('power_schedule_when')}
-                </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(['now', 5, 10, 15, 30] as const).map((choice) => (
                     <button
@@ -567,6 +564,15 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                       value={powerScheduleCustomMinutes}
                       onChange={(e) => onChangePowerScheduleCustomMinutes(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
                       onFocus={() => onChangePowerScheduleChoice('custom')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!customMinutesInvalid && powerConfirmAction) {
+                            onExecutePowerAction(powerConfirmAction, powerForceClose);
+                          }
+                        }
+                      }}
                       placeholder="60"
                       aria-label={t('power_schedule_custom')}
                       className="w-8 bg-transparent text-center outline-none placeholder:text-slate-500 text-inherit p-0 border-0 cursor-text"
