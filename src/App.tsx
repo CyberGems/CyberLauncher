@@ -191,16 +191,17 @@ const LUCIDE_ICONS: Record<string, React.FC<any>> = {
   FileText,
 };
 
-const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number }) => {
+const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel }: { app: any, className?: string, style?: React.CSSProperties, strokeWidth?: number, broken?: boolean, brokenLabel?: string }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     setImgFailed(false);
   }, [app.iconPath]);
 
+  let content: React.ReactNode;
   // 1. Usar imagen personalizada (Base64 o local) si existe
   if (app.iconPath && !imgFailed) {
-    return (
+    content = (
       <img
         src={app.iconPath}
         alt=""
@@ -210,25 +211,39 @@ const AppIcon = ({ app, className, style, strokeWidth }: { app: any, className?:
         draggable="false"
       />
     );
+  } else {
+    // 2. Usar componente de Lucide si es válido o mapear por nombre de icono
+    if (typeof app.icon === 'function') {
+      const IconComponent = app.icon;
+      content = <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
+    } else if (typeof app.icon === 'string' && LUCIDE_ICONS[app.icon]) {
+      const IconComponent = LUCIDE_ICONS[app.icon];
+      content = <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
+    } else {
+      const builtInIconName = typeof app?.id === 'number' ? DEFAULT_APP_ICON_BY_ID[app.id] : undefined;
+      if (builtInIconName && LUCIDE_ICONS[builtInIconName]) {
+        const IconComponent = LUCIDE_ICONS[builtInIconName];
+        content = <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
+      } else {
+        // 3. Fallback: El ícono global de CyberLauncher (Componente SVG Real)
+        content = <CyberIcon className={className} style={style} />;
+      }
+    }
   }
 
-  // 2. Usar componente de Lucide si es válido o mapear por nombre de icono
-  if (typeof app.icon === 'function') {
-    const IconComponent = app.icon;
-    return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
-  }
-  if (typeof app.icon === 'string' && LUCIDE_ICONS[app.icon]) {
-    const IconComponent = LUCIDE_ICONS[app.icon];
-    return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
-  }
-  const builtInIconName = typeof app?.id === 'number' ? DEFAULT_APP_ICON_BY_ID[app.id] : undefined;
-  if (builtInIconName && LUCIDE_ICONS[builtInIconName]) {
-    const IconComponent = LUCIDE_ICONS[builtInIconName];
-    return <IconComponent className={className} style={style} strokeWidth={strokeWidth} />;
-  }
-  
-  // 3. Fallback: El ícono global de CyberLauncher (Componente SVG Real)
-  return <CyberIcon className={className} style={style} />;
+  if (!broken) return content;
+  return (
+    <span className="relative inline-flex shrink-0">
+      {content}
+      <span
+        className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border border-[#0a0f18] flex items-center justify-center shadow-[0_0_6px_rgba(245,158,11,0.4)]"
+        role="img"
+        aria-label={brokenLabel}
+      >
+        <AlertTriangle className="w-2.5 h-2.5 text-[#0a0f18]" strokeWidth={2.5} />
+      </span>
+    </span>
+  );
 };
 
 // Tipo para la API de Electron expuesta por preload
@@ -2217,6 +2232,8 @@ export default function App() {
     suppressToast?: boolean;
   } | null>(null);
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string; uwp?: boolean } | null>(null);
+  const [brokenUwpAppIds, setBrokenUwpAppIds] = useState<Set<number>>(new Set());
+  const storeSearchQueryRef = useRef('');
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
   const launchingAppsRef = useRef(new Set<number>());
   const [launchingAppIds, setLaunchingAppIds] = useState<Set<number>>(() => new Set());
@@ -4429,6 +4446,8 @@ export default function App() {
       try {
         const missing = await window.electronAPI!.verifyUwpApps(uwpApps.map(app => ({ path: app.path, name: app.name })));
         if (missing.length > 0) {
+          const missingNames = new Set(missing.map(entry => entry.name));
+          setBrokenUwpAppIds(new Set(uwpApps.filter(app => missingNames.has(app.name)).map(app => app.id)));
           setNotification({
             message: t('notif_uwp_missing_title', { count: String(missing.length) }),
             detail: t('notif_uwp_missing_detail', { names: missing.map(entry => entry.name).join(', ') }),
@@ -5247,6 +5266,14 @@ export default function App() {
         }
         windowHidden = !!result.windowHidden;
         pinned = result.pinned ?? isAlwaysOnTop;
+        // Un lanzamiento exitoso limpia la marca de paquete UWP faltante (p. ej. se reinstaló).
+        if (brokenUwpAppIds.has(app.id)) {
+          setBrokenUwpAppIds(prev => {
+            const next = new Set(prev);
+            next.delete(app.id);
+            return next;
+          });
+        }
       }
 
       // Solo los lanzamientos aceptados cuentan en uso, historial y estadísticas.
@@ -9239,7 +9266,7 @@ export default function App() {
                           } transition-[border-color,background-color,box-shadow,opacity] duration-150 ease-out`}
                         >
                           <div className={`absolute inset-0 bg-current ${isFavContextActive ? 'opacity-[0.08]' : 'opacity-0 group-hover:opacity-[0.05]'} rounded-2xl transition-opacity duration-100 pointer-events-none`} />
-                          <AppIcon app={app} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavLaunching ? 'opacity-40' : ''} ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
+                          <AppIcon app={app} broken={brokenUwpAppIds.has(app.id)} brokenLabel={t('missing_uwp_title')} className={`w-6 h-6 z-10 transition-transform duration-100 ${isFavLaunching ? 'opacity-40' : ''} ${isFavContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : ''}`} />
                           {isFavLaunching && (
                             <span role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/30 pointer-events-none">
                               <LoaderCircle className="w-4 h-4 animate-spin text-cyan-300" />
@@ -9496,13 +9523,15 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
+                              broken={brokenUwpAppIds.has(app.id)}
+                              brokenLabel={t('missing_uwp_title')}
                               className={app.color}
                               style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
-                              strokeWidth={1.5} 
+                              strokeWidth={1.5}
                             />
                           )}
                           <div className="w-full">
-                            <h4 
+                            <h4
                               className="font-semibold text-slate-100 leading-tight mb-0.5 drop-shadow-sm truncate w-full cursor-pointer"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
@@ -9526,8 +9555,10 @@ export default function App() {
                             </span>
                           ) : (
                             <AppIcon app={app}
+                              broken={brokenUwpAppIds.has(app.id)}
+                              brokenLabel={t('missing_uwp_title')}
                               className={`flex-shrink-0 ${app.color}`}
-                              style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }} 
+                              style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }}
                               strokeWidth={1.5}
                             />
                           )}
@@ -10113,7 +10144,7 @@ export default function App() {
                         {isMostUsedLaunching ? (
                           <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-cyan-300 animate-spin shrink-0" />
                         ) : (
-                          <AppIcon app={app} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
+                          <AppIcon app={app} broken={brokenUwpAppIds.has(app.id)} brokenLabel={t('missing_uwp_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
                         )}
                         <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
                           {app.name}
@@ -10217,7 +10248,7 @@ export default function App() {
                           {index + 1}.
                         </span>
                         {appInfo ? (
-                          <AppIcon app={appInfo} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
+                          <AppIcon app={appInfo} broken={brokenUwpAppIds.has(appInfo.id)} brokenLabel={t('missing_uwp_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${appInfo.color}`} strokeWidth={1.5} />
                         ) : item.icon ? (
                           <AppIcon app={{ id: -1, name: item.name, iconPath: item.icon }} className="w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 text-slate-400" strokeWidth={1.5} />
                         ) : item.type === 'folder' ? (
