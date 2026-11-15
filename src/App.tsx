@@ -2212,6 +2212,8 @@ export default function App() {
     releaseUrl?: string;
     source?: 'system-alert';
     persistent?: boolean;
+    /** Skip the desktop toast: the in-window UI already shows this feedback. */
+    suppressToast?: boolean;
   } | null>(null);
   const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string; uwp?: boolean } | null>(null);
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
@@ -3141,6 +3143,8 @@ export default function App() {
         time: `${minutes} min`,
       }),
       type: 'info',
+      // El chip de cuenta atrás ya muestra esta información en la ventana.
+      suppressToast: true,
     });
   }, [powerConfirmAction, powerScheduleChoice, powerScheduleCustomMinutes, handleExecutePowerAction, t]);
 
@@ -3703,7 +3707,7 @@ export default function App() {
       }
 
       if (accepted) noticeLedgerRef.current.mark(notification);
-      if (showFloating && (notification.source !== 'system-alert' || isWindowVisible || ongoing)) void window.electronAPI!.showDesktopToast!({
+      if (showFloating && !notification.suppressToast && (notification.source !== 'system-alert' || isWindowVisible || ongoing)) void window.electronAPI!.showDesktopToast!({
         type: notification.type,
         level: notification.level,
         essential: notification.essential,
@@ -10429,6 +10433,7 @@ export default function App() {
                   transition={{ duration: 0.15, ease: 'easeOut' }}
                   onClick={(e) => e.stopPropagation()}
                   data-no-hide
+                  data-cyberbot-obstacle="power-menu"
                   className="absolute right-0 bottom-full mb-3 w-72 min-w-[280px] bg-[#0a0f18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[120] select-none overflow-hidden"
                 >
                   <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between mb-1">
@@ -14528,8 +14533,19 @@ export default function App() {
         onLocate={() => {
           if (!missingShortcut) return;
           if (missingShortcut.uwp) {
-            void window.electronAPI?.openExternal?.(`ms-windows-store://search/?query=${encodeURIComponent(missingShortcut.app.name)}`);
-            setMissingShortcut(null);
+            void (async () => {
+              setNotification({ message: t('missing_uwp_opening'), type: 'info' });
+              try {
+                const result = await window.electronAPI?.openExternal?.(`ms-windows-store://search/?query=${encodeURIComponent(missingShortcut.app.name)}`);
+                if (result && result.success === false) {
+                  setNotification({ message: t('missing_uwp_open_failed'), detail: result.error, type: 'error', essential: true });
+                  return;
+                }
+                setMissingShortcut(null);
+              } catch (err: any) {
+                setNotification({ message: t('missing_uwp_open_failed'), detail: err?.message || String(err), type: 'error', essential: true });
+              }
+            })();
             return;
           }
           void handleRelinkShortcut();
@@ -14538,7 +14554,7 @@ export default function App() {
 
       {/* --- TOAST NOTIFICATIONS --- */}
       <AnimatePresence>
-        {!isElectron && notification && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', essential: notification.essential, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
+        {!isElectron && notification && !notification.suppressToast && chooseNotificationChannel({ botEnabled: cyberBot.enabled, bannersEnabled: cyberBot.bannersEnabled, chatterLevel: cyberBot.chatterLevel, quietHours: cyberBot.quietHours }, { critical: notification.level === 'critical', essential: notification.essential, botAvailable: isCyberBotSpeechVisible }) === 'banner' && (
           <motion.div
             key={notification.message + (notification.detail || '')}
             data-no-hide

@@ -129,9 +129,12 @@ export const translations = {
     missing_uwp_title: "No se encuentra la app de la Microsoft Store",
     missing_uwp_message: "{name} ya no está instalada en este equipo: el paquete se desinstaló o cambió desde que creaste el acceso. Puedes eliminar el acceso o buscar la app de nuevo en la Microsoft Store.",
     missing_uwp_store_search: "Buscar en Microsoft Store",
+    missing_uwp_opening: "Abriendo la Microsoft Store…",
+    missing_uwp_open_failed: "No se pudo abrir Microsoft Store.",
     launch_starting: "Iniciando...",
     launch_failed_message: "No se pudo abrir {name}.",
     launch_missing_path_detail: "No se encontró el destino. Revisa la ubicación guardada.",
+    launch_missing_uwp_detail: "El paquete de la Microsoft Store ya no está instalado en este equipo. Puedes buscar la app de nuevo en la Microsoft Store.",
 
     // About & Updates
     about_title: "CyberLauncher",
@@ -1160,9 +1163,12 @@ export const translations = {
     missing_uwp_title: "Microsoft Store app not found",
     missing_uwp_message: "{name} is no longer installed on this PC: the package was uninstalled or changed since you added this shortcut. You can delete the shortcut or search for the app again in the Microsoft Store.",
     missing_uwp_store_search: "Search Microsoft Store",
+    missing_uwp_opening: "Opening the Microsoft Store…",
+    missing_uwp_open_failed: "Could not open the Microsoft Store.",
     launch_starting: "Starting...",
     launch_failed_message: "Could not open {name}.",
     launch_missing_path_detail: "The target could not be found. Check its saved location.",
+    launch_missing_uwp_detail: "The Microsoft Store package is no longer installed on this PC. You can search for the app again in the Microsoft Store.",
 
     // About & Updates
     about_title: "CyberLauncher",
