@@ -255,6 +255,7 @@ declare global {
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       setUiModalOpen: (open: boolean) => Promise<{ success: boolean; open: boolean }>;
       setPowerScheduleNotice: (notice: { pending: boolean; message: string }) => Promise<boolean>;
+      verifyUwpApps: (apps: Array<{ path: string; name: string }>) => Promise<Array<{ name: string }>>;
       setShowTaskbarIcon: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
@@ -2224,6 +2225,9 @@ export default function App() {
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
     return localStorage.getItem('cyber_auto_check_icons') !== 'false';
   });
+  const [verifyUwpAppsOnStartup, setVerifyUwpAppsOnStartup] = useState<boolean>(() => {
+    return localStorage.getItem('cyber_verify_uwp_apps') !== 'false';
+  });
   const [isRefreshingIcons, setIsRefreshingIcons] = useState(false);
   const [iconRefreshFeedback, setIconRefreshFeedback] = useState<string | null>(null);
   const [refreshingAppId, setRefreshingAppId] = useState<number | null>(null);
@@ -3301,7 +3305,17 @@ export default function App() {
   }, [cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.sayPhrase, cyberBot.deliverPhrase, isCyberBotSpeechVisible, cancelPendingPinBlurReminder, t]);
 
   const reportLaunchFailure = useCallback((name: string, detail: string, action?: 'open-hud-clock', code?: LaunchResult['code']) => {
-    setNotification({ message: t('launch_failed_message', { name }), detail: code === 'not-found' ? t('launch_missing_path_detail') : detail, type: 'error', essential: true, action });
+    setNotification({
+      message: t('launch_failed_message', { name }),
+      detail: code === 'not-found'
+        ? t('launch_missing_path_detail')
+        : code === 'uwp-not-found'
+        ? t('launch_missing_uwp_detail')
+        : detail,
+      type: 'error',
+      essential: true,
+      action,
+    });
   }, [t]);
 
   // Contextual CyberBot commentary on panel opening & settings navigation
@@ -4402,6 +4416,32 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
+
+  // Verificación silenciosa de accesos de la Microsoft Store al iniciar: avisa si un
+  // paquete ya no está instalado para que el usuario decida antes de pulsar el acceso.
+  const uwpVerifyDoneRef = useRef(false);
+  useEffect(() => {
+    if (!isConfigLoaded || !isElectron || !verifyUwpAppsOnStartup || uwpVerifyDoneRef.current) return;
+    const uwpApps = apps.filter(app => typeof app.path === 'string' && app.path.includes('!') && app.path.includes('_'));
+    if (uwpApps.length === 0) return;
+    uwpVerifyDoneRef.current = true;
+    const timer = setTimeout(async () => {
+      try {
+        const missing = await window.electronAPI!.verifyUwpApps(uwpApps.map(app => ({ path: app.path, name: app.name })));
+        if (missing.length > 0) {
+          setNotification({
+            message: t('notif_uwp_missing_title', { count: String(missing.length) }),
+            detail: t('notif_uwp_missing_detail', { names: missing.map(entry => entry.name).join(', ') }),
+            type: 'warning',
+            essential: true,
+          });
+        }
+      } catch (err) {
+        console.warn('[UWP] Startup verification failed:', err);
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [isConfigLoaded, verifyUwpAppsOnStartup, apps, t]);
 
   // Guardar automáticamente cada vez que algo cambie
   const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted, powerSchedule });
@@ -13146,6 +13186,23 @@ export default function App() {
                               localStorage.setItem('cyber_auto_check_icons', String(next));
                             }}
                             ariaLabel={t('settings_icons_auto_check')}
+                          />
+                        </div>
+
+                        {/* Verify Microsoft Store shortcuts at startup */}
+                        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-4">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+                            <div className="text-xs font-medium text-slate-200">{t('settings_uwp_verify')}</div>
+                            <div className="text-[11px] text-slate-500 leading-normal">{t('settings_uwp_verify_desc')}</div>
+                          </div>
+                          <ToggleSwitch
+                            checked={verifyUwpAppsOnStartup}
+                            onChange={() => {
+                              const next = !verifyUwpAppsOnStartup;
+                              setVerifyUwpAppsOnStartup(next);
+                              localStorage.setItem('cyber_verify_uwp_apps', String(next));
+                            }}
+                            ariaLabel={t('settings_uwp_verify')}
                           />
                         </div>
                       </div>

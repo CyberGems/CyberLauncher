@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setUiModalOpen: (open: boolean) => ipcRenderer.invoke('set-ui-modal-open', open),
   setPowerScheduleNotice: (notice: { pending: boolean; message: string }) =>
     ipcRenderer.invoke('set-power-schedule-notice', notice),
+  verifyUwpApps: (apps: Array<{ path: string; name: string }>) =>
+    ipcRenderer.invoke('verify-uwp-apps', apps),
   setShowTaskbarIcon: (enabled: boolean) => ipcRenderer.invoke('set-show-taskbar-icon', enabled),
 
   // --- Info del sistema (CPU/Memoria real) ---

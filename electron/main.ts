@@ -4476,6 +4476,47 @@ foreach (\$app in \$startApps) {
     return true;
   });
 
+  // --- Verificación por lotes de paquetes UWP: devuelve los accesos cuyo paquete ya no está instalado ---
+  ipcMain.handle('verify-uwp-apps', async (_event, apps: Array<{ path: string; name: string }>) => {
+    if (process.platform !== 'win32' || !Array.isArray(apps) || apps.length === 0) return [];
+    const familyOf = (aumid: string) => aumid.trim().split('!')[0];
+    const wantedFamilies = [...new Set(apps
+      .map(app => (typeof app?.path === 'string' ? app.path.trim() : ''))
+      .filter(p => p.includes('!') && p.includes('_'))
+      .map(familyOf))];
+    if (wantedFamilies.length === 0) return [];
+
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const listFile = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.txt`);
+    const psScript = `
+$ErrorActionPreference = 'SilentlyContinue'
+$installed = Get-AppxPackage | ForEach-Object { $_.PackageFamilyName }
+$wanted = Get-Content -LiteralPath '${listFile}'
+foreach ($f in $wanted) {
+  if (-not ($installed -contains $f)) { [Console]::WriteLine($f) }
+}
+`;
+    const tmpPs = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.ps1`);
+    try {
+      await fs.promises.writeFile(listFile, wantedFamilies.join('\n'), 'utf-8');
+      await fs.promises.writeFile(tmpPs, psScript, 'utf-8');
+      const out = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpPs}"`, {
+        encoding: 'utf-8',
+        timeout: 30000,
+        windowsHide: true,
+      });
+      const missingFamilies = new Set(out.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+      return apps.filter(app => typeof app?.path === 'string' && app.path.includes('!') && missingFamilies.has(familyOf(app.path)))
+        .map(app => ({ name: String(app?.name || '') }));
+    } catch (err: any) {
+      console.warn('[UWP] Verification error:', err?.message || err);
+      return [];
+    } finally {
+      await fs.promises.unlink(listFile).catch(() => {});
+      await fs.promises.unlink(tmpPs).catch(() => {});
+    }
+  });
+
   // (CyberTray IPCs removed)
 
   // --- Configurar inicio con Windows (auto-launch) ---
