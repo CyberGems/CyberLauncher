@@ -7,6 +7,7 @@ import { CustomSelect } from '../src/components/CustomSelect';
 import { Checkbox } from '../src/components/Checkbox';
 import { UwpImportConfirmModal } from '../src/components/UwpImportConfirmModal';
 import { AppConfirmModals } from '../src/components/AppConfirmModals';
+import { CyberAnalogClock } from '../src/components/CyberAnalogClock';
 import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from '../src/components/modalTheme';
 import {
   CYBERBOT_BUBBLE_SURFACE,
@@ -237,5 +238,24 @@ test('All Items / Todo headings and shortcut terminology stay aligned in English
   assert.ok(appSource.includes('const isAllCategory = cat.id === ALL_CATEGORY_ID;'));
   assert.ok(appSource.includes('{isAllCategory ? ('));
   assert.ok(appSource.includes("isAllCategory ? 'text-[15px]' : 'text-sm'"));
+  assert.ok(appSource.includes("<LayoutGrid className=\"w-4 h-4 text-slate-400 shrink-0\" />"));
+});
+
+test('CyberAnalogClock renders sober dial with etched CyberLauncher icon watermark and no loud neon filters', () => {
+  const fixedDate = new Date(2026, 10, 14, 15, 34, 23);
+  const markup = renderToStaticMarkup(
+    React.createElement(CyberAnalogClock, {
+      visible: false,
+      timeOverride: fixedDate,
+    })
+  );
+
+  assert.ok(markup.includes('./icon-256.png'));
+  assert.ok(markup.includes('cyber-clock-logo-clip'));
+  assert.ok(markup.includes('cyber-clock-logo-fade'));
+  assert.ok(markup.includes('CYBERLAUNCHER'));
+  assert.ok(markup.includes('15:34:23'));
+  assert.equal(markup.includes('CYBERGEMS'), false);
+  assert.equal(markup.includes('feGaussianBlur'), false);
 });
 

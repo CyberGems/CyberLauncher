@@ -29,6 +29,7 @@ import { ToggleSwitch } from './components/ToggleSwitch';
 import { CustomSelect, type CustomSelectOption } from './components/CustomSelect';
 import { UwpImportConfirmModal } from './components/UwpImportConfirmModal';
 import { AppConfirmModals } from './components/AppConfirmModals';
+import { CyberAnalogClock } from './components/CyberAnalogClock';
 import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from './components/modalTheme';
 
 const QUIET_HOUR_OPTIONS: CustomSelectOption[] = Array.from({ length: 24 }, (_, hour) => {
@@ -535,176 +536,6 @@ const UptimeMonitor = React.memo(() => {
   );
 });
 
-const CyberAnalogClock = () => {
-  const [time, setTime] = useState(() => new Date());
-  const visible = useDocumentVisible();
-
-  useEffect(() => {
-    if (!visible) return;
-    setTime(new Date());
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, [visible]);
-
-  const hrs = time.getHours();
-  const mins = time.getMinutes();
-  const secs = time.getSeconds();
-
-  const hrDeg = ((hrs % 12) * 30) + (mins * 0.5);
-  const minDeg = (mins * 6) + (secs * 0.1);
-  const secDeg = secs * 6;
-
-  const timeStr = time.toLocaleTimeString('en-US', { hour12: false });
-
-  // Precompute 60 ticks
-  const ticks = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < 60; i++) {
-      const angle = (i * 6 * Math.PI) / 180;
-      const isQuarter = i % 15 === 0;
-      const isHour = i % 5 === 0;
-      const rOuter = 80;
-      const rInner = isQuarter ? 69 : isHour ? 72 : 75;
-
-      const cos = Math.cos(angle - Math.PI / 2);
-      const sin = Math.sin(angle - Math.PI / 2);
-
-      list.push({
-        x1: 90 + rInner * cos,
-        y1: 90 + rInner * sin,
-        x2: 90 + rOuter * cos,
-        y2: 90 + rOuter * sin,
-        isQuarter,
-        isHour,
-      });
-    }
-    return list;
-  }, []);
-
-  return (
-    <div className="flex flex-col items-center justify-center my-3 relative select-none">
-      <div className="relative w-44 h-44 rounded-full p-1 bg-gradient-to-b from-cyan-500/20 via-slate-900/60 to-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.18)] flex items-center justify-center">
-        {/* Outer Tech Ring / Glow Frame */}
-        <div className="absolute inset-0 rounded-full border border-cyan-500/30 pointer-events-none" />
-        <div className="absolute inset-1 rounded-full border border-cyan-400/15 pointer-events-none" />
-
-        <svg viewBox="0 0 180 180" className="w-full h-full drop-shadow-[0_0_12px_rgba(34,211,238,0.25)]">
-          <defs>
-            <radialGradient id="dial-bg" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#0c1729" />
-              <stop offset="65%" stopColor="#050a14" />
-              <stop offset="100%" stopColor="#020408" />
-            </radialGradient>
-            <linearGradient id="hour-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#c084fc" />
-              <stop offset="100%" stopColor="#818cf8" />
-            </linearGradient>
-            <linearGradient id="min-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#67e8f9" />
-              <stop offset="100%" stopColor="#06b6d4" />
-            </linearGradient>
-            <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <filter id="hand-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Dial Background */}
-          <circle cx="90" cy="90" r="82" fill="url(#dial-bg)" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
-
-          {/* Inner Radar Rings */}
-          <circle cx="90" cy="90" r="60" fill="none" stroke="#22d3ee" strokeWidth="0.7" strokeDasharray="3 3" strokeOpacity="0.2" />
-          <circle cx="90" cy="90" r="38" fill="none" stroke="#22d3ee" strokeWidth="0.5" strokeOpacity="0.15" />
-
-          {/* Reticle Axes / Crosshairs */}
-          <line x1="90" y1="48" x2="90" y2="54" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
-          <line x1="90" y1="126" x2="90" y2="132" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
-          <line x1="48" y1="90" x2="54" y2="90" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
-          <line x1="126" y1="90" x2="132" y2="90" stroke="#22d3ee" strokeWidth="1" strokeOpacity="0.3" />
-
-          {/* 60 Graduation Ticks */}
-          {ticks.map((t, idx) => (
-            <line
-              key={idx}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              stroke={t.isQuarter ? '#22d3ee' : t.isHour ? '#38bdf8' : '#334155'}
-              strokeWidth={t.isQuarter ? 2.5 : t.isHour ? 1.5 : 0.8}
-              strokeLinecap="round"
-              filter={t.isQuarter ? 'url(#neon-glow)' : undefined}
-            />
-          ))}
-
-          {/* Cardinal Markers */}
-          <text x="90" y="27" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">12</text>
-          <text x="156" y="93" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">03</text>
-          <text x="90" y="158" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">06</text>
-          <text x="24" y="93" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">09</text>
-
-          {/* Brand Emblem */}
-          <text x="90" y="63" textAnchor="middle" fill="#38bdf8" fillOpacity="0.75" fontSize="7" fontWeight="bold" fontFamily="sans-serif" letterSpacing="2.5">
-            CYBERGEMS
-          </text>
-          <circle cx="90" cy="69" r="1" fill="#22d3ee" fillOpacity="0.8" />
-
-          {/* Digital Time Pill */}
-          <g transform="translate(62, 107)">
-            <rect x="0" y="0" width="56" height="15" rx="3.5" fill="#030712" stroke="#22d3ee" strokeWidth="0.8" strokeOpacity="0.35" />
-            <text x="28" y="10.5" textAnchor="middle" fill="#22d3ee" fontSize="8" fontWeight="bold" fontFamily="monospace" letterSpacing="0.5">
-              {timeStr}
-            </text>
-          </g>
-
-          {/* Hour Hand (Faceted Sword) */}
-          <g transform={`rotate(${hrDeg} 90 90)`} filter="url(#hand-glow)">
-            {/* Body */}
-            <path d="M87.5 90 L88.5 54 L90 48 L91.5 54 L92.5 90 L91 97 L89 97 Z" fill="url(#hour-grad)" stroke="#c084fc" strokeWidth="0.6" />
-            {/* Slotted Center Lumen */}
-            <path d="M89.3 84 L89.3 57 L90.7 57 L90.7 84 Z" fill="#f5d0fe" />
-          </g>
-
-          {/* Minute Hand (Extended Lance) */}
-          <g transform={`rotate(${minDeg} 90 90)`} filter="url(#hand-glow)">
-            {/* Body */}
-            <path d="M88 90 L88.8 33 L90 26 L91.2 33 L92 90 L91 101 L89 101 Z" fill="url(#min-grad)" stroke="#22d3ee" strokeWidth="0.7" />
-            {/* Slotted Center Lumen */}
-            <path d="M89.3 84 L89.3 36 L90.7 36 L90.7 84 Z" fill="#e0f2fe" />
-          </g>
-
-          {/* Second Hand (Neon Precision Needle with Counterweight) */}
-          <g transform={`rotate(${secDeg} 90 90)`}>
-            {/* Long needle */}
-            <line x1="90" y1="108" x2="90" y2="18" stroke="#f43f5e" strokeWidth="1.2" strokeLinecap="round" filter="url(#neon-glow)" />
-            {/* Arrow/Diamond tip */}
-            <polygon points="90,16 88,21 92,21" fill="#f43f5e" />
-            {/* Counterbalance Ring */}
-            <circle cx="90" cy="101" r="3.5" fill="#050a14" stroke="#f43f5e" strokeWidth="1.2" />
-          </g>
-
-          {/* Center Turret / Spindle Cap */}
-          <circle cx="90" cy="90" r="5.5" fill="#0f172a" stroke="#22d3ee" strokeWidth="1.5" />
-          <circle cx="90" cy="90" r="2.5" fill="#f43f5e" />
-          <circle cx="90" cy="90" r="1" fill="#ffffff" />
-        </svg>
-      </div>
-    </div>
-  );
-};
-
-/** Isolated digital clock — ticks without re-rendering the full App tree. */
-/** Isolated digital clock — ticks without re-rendering the full App tree. */
 const HeaderClock = React.memo(({ onClick, title, ariaLabel, activeTasksCount = 0 }: { onClick: () => void; title: ReactNode; ariaLabel: string; activeTasksCount?: number }) => {
   const [time, setTime] = useState(() => new Date());
   const visible = useDocumentVisible();
@@ -9191,14 +9022,28 @@ export default function App() {
           {/* All Apps Section */}
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm">
-                {activeCategory === 'all'
-                  ? t('title_all_apps')
-                  : (() => {
-                      const cat = categories.find(c => c.id === activeCategory);
-                      if (!cat) return '';
-                      return getCatDisplayName(cat).toUpperCase();
-                    })()}
+              <h3 className="text-[11px] font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                {activeCategory === 'all' ? (
+                  <>
+                    <LayoutGrid className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>{t('title_all_apps')}</span>
+                  </>
+                ) : (() => {
+                    const cat = categories.find(c => c.id === activeCategory);
+                    if (!cat) return null;
+                    return (
+                      <>
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: cat.color,
+                            boxShadow: `0 0 6px ${cat.color}80`,
+                          }}
+                        />
+                        <span>{getCatDisplayName(cat).toUpperCase()}</span>
+                      </>
+                    );
+                  })()}
               </h3>
               
               <div className="flex items-center bg-black/30 backdrop-blur-md rounded-lg p-1 border border-white/5">
