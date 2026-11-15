@@ -4234,6 +4234,17 @@ export default function App() {
           if (source.favoriteIds) setFavoriteIds(source.favoriteIds);
           if (source.taskbarAppIds) setTaskbarAppIds(source.taskbarAppIds);
           if (Array.isArray(source.scheduledTasks)) setScheduledTasks(parseScheduledTasks(source.scheduledTasks));
+          if (source.powerSchedule && typeof source.powerSchedule === 'object') {
+            const ps = source.powerSchedule as { action?: string; secondsLeft?: number; force?: boolean };
+            const validActions = ['shutdown', 'restart', 'sleep', 'lock', 'signout'];
+            if (validActions.includes(ps.action as string) && typeof ps.secondsLeft === 'number' && ps.secondsLeft > 0 && ps.secondsLeft <= 24 * 60 * 60) {
+              // Semántica congelada: la cuenta atrás continúa con el tiempo restante guardado.
+              setPowerSchedule({ action: ps.action as 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout', secondsLeft: Math.floor(ps.secondsLeft), force: ps.force === true });
+            } else if (ps.action) {
+              // Vencida o inválida: se descarta al arrancar (nunca dispara con la app recién abierta).
+              setNotification({ message: t('power_schedule_expired'), type: 'info' });
+            }
+          }
           // Datos de UI pueden variar entre versiones sin problema
           if (source.bgType) setBgType(source.bgType);
           if (source.bgImage) setBgImage(normalizeBgImage(source.bgImage));
@@ -4368,8 +4379,8 @@ export default function App() {
   }, [isConfigLoaded, autoCheckIconsOnStartup, apps]);
 
   // Guardar automáticamente cada vez que algo cambie
-  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted });
-  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted };
+  const configRef = useRef({ apps, categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted, powerSchedule });
+  configRef.current = { apps: sanitizeAppsForSave(apps), categories, favoriteIds, taskbarAppIds, scheduledTasks, bgType, bgImage, customImageUrl, customSlotImage, bgColor, bgGradient, glassIntensity, bgOpacity, startWithWindows, startMinimized, activationShortcut, cyberBotShortcut, hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen, leftSidebarWidth, leftSidebarCollapsed, rightSidebarWidth, rightSidebarCollapsed, hideOnClickDeadSpot, hideOnBlur, showTaskbarIcon, resetOnLaunch, enableTooltips, showHeaderClock, showFooterDateTime, showFooterUptime, showFooterLaunches, systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled, selectedMonitor, autoUpdate, language, autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder, showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted, powerSchedule };
 
   const forceSaveConfig = useCallback(async () => {
     if (!isElectron || !isConfigLoaded) return;
@@ -4390,6 +4401,14 @@ export default function App() {
     void forceSaveConfig();
   }, [scheduledTasksSignature, forceSaveConfig, isElectron, isConfigLoaded]);
 
+  // Persistir la programación de energía en cambios estructurales (crear / cancelar);
+  // los ticks no escriben a disco y el cierre guarda el snapshot final vía beforeunload.
+  const powerScheduleSignature = powerSchedule ? `${powerSchedule.action}:${powerSchedule.force}` : '';
+  useEffect(() => {
+    if (!isElectron || !isConfigLoaded) return;
+    void forceSaveConfig();
+  }, [powerScheduleSignature, forceSaveConfig, isElectron, isConfigLoaded]);
+
   useEffect(() => {
     const saveAll = async () => {
       if (!isElectron || !isConfigLoaded) return;
@@ -4409,7 +4428,7 @@ export default function App() {
           systemAlertsEnabled, diskAlertsEnabled, ramAlertsEnabled, ramThresholdPercent, ramLowAbsoluteAlertEnabled,
           selectedMonitor, autoUpdate, language,
           autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
-          showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted
+          showTrayRecents, showSuiteRecommendations, cyberBotSettings: cyberBot.settings, onboardingCompleted, powerSchedule
         }));
       } catch (e) {
         console.error('[SAVE] Error sanitizando config:', e);
@@ -14433,7 +14452,21 @@ export default function App() {
               </p>
             </div>
 
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <Tooltip label={t('power_schedule_apply_now')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { action, force } = powerSchedule;
+                    setPowerSchedule(null);
+                    handleExecutePowerAction(action, force);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/60 font-cyber font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>{t('power_schedule_apply_now')}</span>
+                </button>
+              </Tooltip>
               <Tooltip label={t('power_schedule_cancel')} placement="top">
                 <button
                   type="button"
