@@ -7,6 +7,11 @@ import { CyberBotTypingText } from './CyberBotTypingText';
 import type { CyberBotMessage } from './companionTypes';
 import Tooltip from '../../Tooltip';
 import { CYBERBOT_NAME_MAX_LENGTH, normalizeCyberBotName } from './cyberBotName';
+import {
+  CYBERBOT_BUBBLE_SURFACE,
+  CYBERBOT_BUBBLE_TAIL_SURFACE,
+  CYBERBOT_BUBBLE_TONES,
+} from './cyberBotBubbleTheme';
 
 interface CyberSpeechBubbleProps {
   message: CyberBotMessage;
@@ -33,12 +38,12 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   React.useLayoutEffect(() => () => onTypingChange?.(message.id, false), [message.id, onTypingChange]);
   const isAlert = message.emotion === 'alert';
   const isSuccess = message.emotion === 'success';
-
-  const borderColor = isAlert
-    ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+  const bubbleTone = isAlert
+    ? CYBERBOT_BUBBLE_TONES.alert
     : isSuccess
-    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
-    : 'border-cyan-500/40 shadow-[0_0_25px_rgba(34,211,238,0.2)]';
+    ? CYBERBOT_BUBBLE_TONES.success
+    : CYBERBOT_BUBBLE_TONES.default;
+  const borderColor = bubbleTone.frame;
 
   const tagBg = isAlert
     ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
@@ -65,7 +70,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       aria-atomic="true"
       data-no-hide
       onPointerDown={(event) => event.stopPropagation()}
-      className={`relative w-fit max-w-full min-w-[200px] rounded-2xl bg-[#070d1d]/95 backdrop-blur-xl border ${borderColor} p-3 text-slate-200 select-none z-50`}
+      className={`relative w-fit max-w-full min-w-[200px] rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
       <Tooltip label={closeLabel} placement="top">
         <button
@@ -184,9 +189,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
 
       {/* Speech Bubble Tail Pointing Down */}
       <div
-        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#070d1d] border-r border-b ${
-          isAlert ? 'border-amber-500/50' : isSuccess ? 'border-emerald-500/50' : 'border-cyan-500/40'
-        } transform rotate-45`}
+        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 ${CYBERBOT_BUBBLE_TAIL_SURFACE} border-r border-b ${bubbleTone.tailBorder} transform rotate-45`}
       />
     </motion.div>
   );

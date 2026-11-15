@@ -26,6 +26,11 @@ import {
 import type { TranslationKey } from '../../locales';
 import type { CyberBotQuietHoursConfig } from './companionTypes';
 import Tooltip from '../../Tooltip';
+import {
+  CYBERBOT_BUBBLE_SURFACE,
+  CYBERBOT_BUBBLE_TAIL_SURFACE,
+  CYBERBOT_BUBBLE_TONES,
+} from './cyberBotBubbleTheme';
 
 export interface PromptLauncherApp {
   id: number;
@@ -168,7 +173,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       id: 'action-system',
       type: 'action',
       label: t('cyberbot_prompt_action_system'),
-      shortLabel: 'Monitor Sistema',
+      shortLabel: t('cyberbot_prompt_action_system'),
       description: t('cyberbot_prompt_action_system_desc'),
       keywords: 'system sistema monitor cpu ram memoria hardware recursos monitoreo performance rendimiento procesador diagnostico',
       shortcut: 'Ctrl+H',
@@ -245,7 +250,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       id: 'action-cyberbot-settings',
       type: 'action' as const,
       label: t('cyberbot_prompt_action_cyberbot_settings'),
-      shortLabel: 'Ajustes CyberBot',
+      shortLabel: t('cyberbot_prompt_action_cyberbot_settings_short'),
       description: t('cyberbot_prompt_action_cyberbot_settings_desc'),
       keywords: 'cyberbot bot ajustes config asistente companion avatar nombre name silencio quiet horas silenciosas chatter comportamiento',
       icon: <Bot className="w-3.5 h-3.5" />,
@@ -328,7 +333,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       id: 'action-quiet',
       type: 'action' as const,
       label: isQuietHoursActive ? t('cyberbot_prompt_action_quiet_disable') : t('cyberbot_prompt_action_quiet_enable'),
-      shortLabel: isQuietHoursActive ? 'Activar Sonido' : 'Modo Silencio',
+      shortLabel: isQuietHoursActive ? t('cyberbot_prompt_action_quiet_disable_short') : t('cyberbot_prompt_action_quiet_enable_short'),
       description: t('cyberbot_prompt_action_quiet_desc'),
       keywords: 'silencio quiet mute callar modo horas silenciosas sonido notificaciones dormir no molestar',
       icon: isQuietHoursActive ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />,
@@ -568,7 +573,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       aria-label={t('cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
-      className="relative w-[440px] max-w-[calc(100vw-32px)] rounded-2xl bg-[#080d1a]/95 backdrop-blur-2xl border border-cyan-500/30 shadow-[0_12px_36px_rgba(0,0,0,0.65),0_0_20px_rgba(34,211,238,0.12)] p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5"
+      className={`relative w-[440px] max-w-[calc(100vw-32px)] rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
@@ -911,7 +916,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
 
       {/* Speech Bubble Tail Pointing Down To CyberBot */}
       <div
-        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 bg-[#080d1a] border-r border-b border-cyan-500/30 transform rotate-45 pointer-events-none z-10`}
+        className={`absolute -bottom-[7px] ${tailPositionClass} w-3.5 h-3.5 ${CYBERBOT_BUBBLE_TAIL_SURFACE} border-r border-b ${CYBERBOT_BUBBLE_TONES.default.tailBorder} transform rotate-45 pointer-events-none z-10`}
       />
     </div>
   );

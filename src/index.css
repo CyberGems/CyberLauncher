@@ -311,3 +311,61 @@ button[disabled] .btn-kbd {
 .help-submenu-item {
   cursor: pointer;
 }
+
+/* CustomSelect portal listbox thin scrollbar */
+.cyber-select-listbox {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.25) transparent;
+}
+.cyber-select-listbox::-webkit-scrollbar {
+  width: 6px;
+}
+.cyber-select-listbox::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cyber-select-listbox::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.25);
+  border-radius: 9999px;
+}
+.cyber-select-listbox::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.45);
+}
+
+/* Native <select> fallback aligned with CyberClock selects.css */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  ::picker(select) {
+    background: rgba(10, 16, 29, 0.96);
+    color: #f1f5f9;
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.72), 0 0 20px rgba(34, 211, 238, 0.14);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    margin-block: 4px;
+  }
+
+  option {
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  option:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+  }
+
+  option:checked {
+    background: rgba(6, 182, 212, 0.18);
+    color: #a5f3fc;
+    font-weight: 600;
+  }
+}

@@ -86,7 +86,14 @@ html, body {
   height: 96.6px;
   align-self: flex-end;
 }
-.cyberbot-card:is(.alert, .storage) .cyberbot-bubble { border-color: rgba(245, 158, 11, 0.55); }
+.cyberbot-card:is(.alert, .storage) .cyberbot-bubble {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(245, 158, 11, 0.15);
+}
+.cyberbot-card:is(.alert, .storage) .cyberbot-bubble::after {
+  border-left-color: rgba(245, 158, 11, 0.35);
+  border-bottom-color: rgba(245, 158, 11, 0.35);
+}
 .cyberbot-bubble {
   position: relative;
   align-self: flex-start;
@@ -98,9 +105,11 @@ html, body {
   overflow: visible;
   padding: 11px 13px;
   border-radius: 17px;
-  background: rgba(7, 13, 29, 0.96);
-  border: 1px solid rgba(34, 211, 238, 0.45);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.55), 0 0 22px rgba(34,211,238,0.16);
+  background: rgba(8, 13, 26, 0.95);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(6, 182, 212, 0.30);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(34, 211, 238, 0.12);
 }
 .cyberbot-bubble::after {
   content: '';
@@ -110,9 +119,9 @@ html, body {
   width: 10px;
   height: 10px;
   transform: rotate(45deg);
-  background: #070d1d;
-  border-left: 1px solid rgba(34, 211, 238, 0.45);
-  border-bottom: 1px solid rgba(34, 211, 238, 0.45);
+  background: #080d1a;
+  border-left: 1px solid rgba(6, 182, 212, 0.30);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.30);
 }
 .cyberbot-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .cyberbot-brand { color: #fbbf24; font-size: 10px; font-weight: 800; letter-spacing: .12em; }

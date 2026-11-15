@@ -26,6 +26,13 @@ import {
 } from '../shared/categories';
 import Tooltip from './Tooltip';
 import { ToggleSwitch } from './components/ToggleSwitch';
+import { CustomSelect, type CustomSelectOption } from './components/CustomSelect';
+import { Checkbox } from './components/Checkbox';
+
+const QUIET_HOUR_OPTIONS: CustomSelectOption[] = Array.from({ length: 24 }, (_, hour) => {
+  const formatted = `${String(hour).padStart(2, '0')}:00`;
+  return { value: formatted, label: formatted };
+});
 import CyberTerminal from './CyberTerminal';
 import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
@@ -6222,6 +6229,21 @@ export default function App() {
     return categories.find(c => c.id === UNCATEGORIZED_ID)?.name || getPresetCategoryName(UNCATEGORIZED_ID, language);
   }, [categories, language]);
 
+  const editableCategoryOptions = useMemo<CustomSelectOption[]>(() => {
+    const locale = language === 'es' ? 'es' : 'en';
+    return categories
+      .filter(c => c.id !== ALL_CATEGORY_ID)
+      .sort((a, b) => {
+        if (a.id === UNCATEGORIZED_ID) return -1;
+        if (b.id === UNCATEGORIZED_ID) return 1;
+        return getCatDisplayName(a).localeCompare(getCatDisplayName(b), locale, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      })
+      .map(cat => ({ value: cat.name, label: getCatDisplayName(cat) }));
+  }, [categories, getCatDisplayName, language]);
+
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
 
@@ -11104,26 +11126,13 @@ export default function App() {
                   {/* Category Field */}
                   <div>
                     <label className="text-xs font-bold text-slate-400 tracking-wider mb-2 block min-w-[max-content]">{t('app_field_category')}</label>
-                    <div className="relative">
-                      <select
-                        value={resolveCategoryStorageValue(editForm.category, categories, language)}
-                        onChange={(e) => setEditForm(prev => ({...prev, category: e.target.value}))}
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors appearance-none"
-                      >
-                        {categories.filter(c => c.id !== ALL_CATEGORY_ID).sort((a, b) => {
-                          if (a.id === UNCATEGORIZED_ID) return -1;
-                          if (b.id === UNCATEGORIZED_ID) return 1;
-                          const nameA = getCatDisplayName(a);
-                          const nameB = getCatDisplayName(b);
-                          return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
-                        }).map(cat => (
-                          <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-sm">
-                            {getCatDisplayName(cat)}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronRight className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
-                    </div>
+                    <CustomSelect
+                      value={resolveCategoryStorageValue(editForm.category, categories, language)}
+                      onChange={(val) => setEditForm(prev => ({ ...prev, category: val }))}
+                      ariaLabel={t('app_field_category')}
+                      triggerClassName="bg-black/30 rounded-lg px-4 py-2 text-sm text-white"
+                      options={editableCategoryOptions}
+                    />
                   </div>
                 </div>
 
@@ -12620,31 +12629,27 @@ export default function App() {
                             <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs text-slate-400">{t('cyberbot_quiet_from')}</span>
-                                <select
+                                <CustomSelect
+                                  size="sm"
                                   value={cyberBot.quietHours.from}
-                                  onChange={(e) => cyberBot.updateQuietHours({ from: e.target.value })}
-                                  aria-label={t('cyberbot_quiet_from')}
-                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
-                                >
-                                  {Array.from({ length: 24 }).map((_, i) => {
-                                    const h = String(i).padStart(2, '0') + ':00';
-                                    return <option key={h} value={h}>{h}</option>;
-                                  })}
-                                </select>
+                                  onChange={(val) => cyberBot.updateQuietHours({ from: val })}
+                                  ariaLabel={t('cyberbot_quiet_from')}
+                                  className="!w-[92px]"
+                                  triggerClassName="bg-[#0f172a] font-mono"
+                                  options={QUIET_HOUR_OPTIONS}
+                                />
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs text-slate-400">{t('cyberbot_quiet_to')}</span>
-                                <select
+                                <CustomSelect
+                                  size="sm"
                                   value={cyberBot.quietHours.to}
-                                  onChange={(e) => cyberBot.updateQuietHours({ to: e.target.value })}
-                                  aria-label={t('cyberbot_quiet_to')}
-                                  className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-white/10 focus:border-cyan-500/50 outline-none cursor-pointer font-mono"
-                                >
-                                  {Array.from({ length: 24 }).map((_, i) => {
-                                    const h = String(i).padStart(2, '0') + ':00';
-                                    return <option key={h} value={h}>{h}</option>;
-                                  })}
-                                </select>
+                                  onChange={(val) => cyberBot.updateQuietHours({ to: val })}
+                                  ariaLabel={t('cyberbot_quiet_to')}
+                                  className="!w-[92px]"
+                                  triggerClassName="bg-[#0f172a] font-mono"
+                                  options={QUIET_HOUR_OPTIONS}
+                                />
                               </div>
                             </div>
                           </div>
@@ -12838,17 +12843,22 @@ export default function App() {
                               <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_frequency_desc')}</div>
                             </div>
                           </div>
-                          <select
-                            value={autoBackupHours}
-                            onChange={(e) => setAutoBackupHours(Number(e.target.value))}
+                          <CustomSelect
+                            size="sm"
+                            align="right"
+                            value={String(autoBackupHours)}
+                            onChange={(val) => setAutoBackupHours(Number(val))}
                             disabled={!autoBackupEnabled}
-                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                          >
-                            <option value={6}>{t('backup_auto_frequency_6h')}</option>
-                            <option value={12}>{t('backup_auto_frequency_12h')}</option>
-                            <option value={24}>{t('backup_auto_frequency_24h')}</option>
-                            <option value={168}>{t('backup_auto_frequency_168h')}</option>
-                          </select>
+                            ariaLabel={t('backup_auto_frequency_label')}
+                            className="!w-auto min-w-[184px] shrink-0"
+                            triggerClassName="bg-[#0f172a]"
+                            options={[
+                              { value: '6', label: t('backup_auto_frequency_6h') },
+                              { value: '12', label: t('backup_auto_frequency_12h') },
+                              { value: '24', label: t('backup_auto_frequency_24h') },
+                              { value: '168', label: t('backup_auto_frequency_168h') },
+                            ]}
+                          />
                         </div>
 
                         {/* Selector de Copias Conservadas */}
@@ -12862,17 +12872,22 @@ export default function App() {
                               <div className="text-xs text-slate-500 leading-relaxed">{t('backup_auto_keep_desc')}</div>
                             </div>
                           </div>
-                          <select
-                            value={autoBackupKeep}
-                            onChange={(e) => setAutoBackupKeep(Number(e.target.value))}
+                          <CustomSelect
+                            size="sm"
+                            align="right"
+                            value={String(autoBackupKeep)}
+                            onChange={(val) => setAutoBackupKeep(Number(val))}
                             disabled={!autoBackupEnabled}
-                            className="bg-[#0f172a] text-slate-200 text-xs rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-500/50 outline-none disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                          >
-                            <option value={1}>1</option>
-                            <option value={3}>3</option>
-                            <option value={5}>5</option>
-                            <option value={7}>7</option>
-                          </select>
+                            ariaLabel={t('backup_auto_keep_label')}
+                            className="!w-[76px] shrink-0"
+                            triggerClassName="bg-[#0f172a] font-mono"
+                            options={[
+                              { value: '1', label: '1' },
+                              { value: '3', label: '3' },
+                              { value: '5', label: '5' },
+                              { value: '7', label: '7' },
+                            ]}
+                          />
                         </div>
 
                         {/* Selector de Carpeta de Destino */}
@@ -13318,23 +13333,14 @@ export default function App() {
 
                             <div className="space-y-2">
                               <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('uwp_confirm_category')}</label>
-                              <select
+                              <CustomSelect
+                                size="sm"
                                 value={resolveCategoryStorageValue(uwpImportCategory, categories, language)}
-                                onChange={(e) => setUwpImportCategory(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/40"
-                              >
-                                {categories.filter(c => c.id !== ALL_CATEGORY_ID).sort((a, b) => {
-                                  if (a.id === UNCATEGORIZED_ID) return -1;
-                                  if (b.id === UNCATEGORIZED_ID) return 1;
-                                  const nameA = getCatDisplayName(a);
-                                  const nameB = getCatDisplayName(b);
-                                  return nameA.localeCompare(nameB, language === 'es' ? 'es' : 'en', { numeric: true, sensitivity: 'base' });
-                                }).map(cat => (
-                                  <option key={cat.id} value={cat.name} className="bg-[#0f172a] text-slate-200">
-                                    {getCatDisplayName(cat)}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(val) => setUwpImportCategory(val)}
+                                ariaLabel={t('uwp_confirm_category')}
+                                triggerClassName="bg-black/40 rounded-xl px-3 py-2 text-xs text-slate-200"
+                                options={editableCategoryOptions}
+                              />
                             </div>
 
                             <div className="flex gap-3 pt-2">
@@ -13391,16 +13397,22 @@ export default function App() {
                       </div>
                       
                       {/* Master Toggle */}
-                      <button
-                        onClick={() => handleToggleIndexer(!indexerSettings.enabled)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-cyber font-bold transition-all border ${
-                          indexerSettings.enabled
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
-                      </button>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-cyber font-bold border tracking-wider ${
+                            indexerSettings.enabled
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.12)]'
+                              : 'bg-slate-800/80 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
+                        </span>
+                        <ToggleSwitch
+                          checked={indexerSettings.enabled}
+                          onChange={() => handleToggleIndexer(!indexerSettings.enabled)}
+                          ariaLabel={t('idx_title')}
+                        />
+                      </div>
                     </div>
 
                     {/* Stats Card */}
@@ -14329,11 +14341,9 @@ export default function App() {
                 </p>
 
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={dontAskAgainOnAppDelete}
-                    onChange={(e) => setDontAskAgainOnAppDelete(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                    onChange={setDontAskAgainOnAppDelete}
                   />
                   <span>{t('confirm_delete_app_dont_ask')}</span>
                 </label>
@@ -14714,11 +14724,11 @@ export default function App() {
                 </p>
 
                 <label className="flex items-start gap-3 p-3.5 rounded-xl bg-black/30 border border-white/10 hover:border-amber-500/30 transition-colors cursor-pointer select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
+                    tone="amber"
                     checked={factoryResetIncludeApps}
-                    onChange={(e) => setFactoryResetIncludeApps(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/60 accent-amber-500 cursor-pointer shrink-0"
+                    onChange={setFactoryResetIncludeApps}
+                    className="mt-0.5"
                   />
                   <div className="space-y-1">
                     <div className="text-xs font-medium text-slate-200 leading-snug">
@@ -14852,11 +14862,9 @@ export default function App() {
               {/* Force Option (for shutdown/restart/signout) */}
               {(powerConfirmAction === 'shutdown' || powerConfirmAction === 'restart' || powerConfirmAction === 'signout') && (
                 <label className="flex items-center justify-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={powerForceClose}
-                    onChange={(e) => setPowerForceClose(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border border-white/20 bg-black/40 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400"
+                    onChange={setPowerForceClose}
                   />
                   <span>{t('power_confirm_force')}</span>
                 </label>
