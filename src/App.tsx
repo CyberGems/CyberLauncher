@@ -2175,7 +2175,7 @@ export default function App() {
     return text;
   }, [language]);
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'cybertray' | 'uwp' | 'indexer'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'uwp' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
