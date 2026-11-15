@@ -46,7 +46,7 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
           onClick={(e) => e.stopPropagation()}
           data-no-hide
           data-cyberbot-obstacle="center"
-          className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/35 bg-[#070b13]/95 shadow-[0_0_35px_rgba(245,158,11,0.14)] backdrop-blur-2xl"
+          className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/30 bg-[#070b13]/95 shadow-[0_16px_36px_rgba(0,0,0,0.75),0_0_12px_rgba(245,158,11,0.06)] backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/[0.07] px-5 py-4">
             <h2 id="missing-shortcut-title" className="flex items-center gap-2.5 text-base font-semibold text-amber-300">

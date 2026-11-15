@@ -96,7 +96,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             aria-labelledby="onboarding-title"
             onSubmit={handleSubmit}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg rounded-2xl border border-cyan-500/30 bg-[#090e17]/95 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.85),0_0_25px_rgba(34,211,238,0.14)] overflow-hidden select-none"
+            className="w-full max-w-lg rounded-2xl border border-cyan-500/25 bg-[#090e17]/95 backdrop-blur-2xl shadow-[0_18px_40px_rgba(0,0,0,0.78),0_0_12px_rgba(34,211,238,0.06)] overflow-hidden select-none"
           >
             {/* Header */}
             <div className="px-6 pt-6 pb-5 border-b border-white/10 flex items-center gap-4 bg-gradient-to-br from-cyan-500/10 via-transparent to-indigo-500/5">

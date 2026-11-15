@@ -140,7 +140,7 @@ export function CommandPalette({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={handleDialogKeyDown}
             data-no-hide
-            className="flex max-h-[72vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-cyan-500/30 bg-[#090e17]/95 shadow-[0_0_50px_rgba(0,0,0,0.85),0_0_20px_rgba(34,211,238,0.12)] backdrop-blur-2xl select-none"
+            className="flex max-h-[72vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#090e17]/95 shadow-[0_18px_40px_rgba(0,0,0,0.78),0_0_10px_rgba(34,211,238,0.05)] backdrop-blur-2xl select-none"
           >
             {/* Top Search Bar */}
             <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-white/[0.02]">

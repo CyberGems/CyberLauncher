@@ -27,7 +27,9 @@ import {
 import Tooltip from './Tooltip';
 import { ToggleSwitch } from './components/ToggleSwitch';
 import { CustomSelect, type CustomSelectOption } from './components/CustomSelect';
-import { Checkbox } from './components/Checkbox';
+import { UwpImportConfirmModal } from './components/UwpImportConfirmModal';
+import { AppConfirmModals } from './components/AppConfirmModals';
+import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from './components/modalTheme';
 
 const QUIET_HOUR_OPTIONS: CustomSelectOption[] = Array.from({ length: 24 }, (_, hour) => {
   const formatted = `${String(hour).padStart(2, '0')}:00`;
@@ -6244,6 +6246,33 @@ export default function App() {
       .map(cat => ({ value: cat.name, label: getCatDisplayName(cat) }));
   }, [categories, getCatDisplayName, language]);
 
+  const resolvedUwpImportCategory = useMemo(() => {
+    const candidate = uwpImportCategory
+      ? resolveCategoryStorageValue(uwpImportCategory, categories, language)
+      : '';
+    const exists = Boolean(candidate) && editableCategoryOptions.some(opt => opt.value === candidate);
+    return exists ? candidate : getUncategorizedStorageName();
+  }, [uwpImportCategory, categories, language, editableCategoryOptions, getUncategorizedStorageName]);
+
+  const confirmUwpImport = useCallback(() => {
+    if (!importingUwpApp) return;
+    const targetCategory = resolvedUwpImportCategory;
+    const newApp = {
+      id: Date.now(),
+      name: importingUwpApp.name,
+      category: targetCategory,
+      path: importingUwpApp.aumid,
+      iconPath: importingUwpApp.icon || '',
+      color: 'text-cyan-400',
+      isFav: false,
+      usage: 0,
+    };
+    setUwpImportCategory(targetCategory);
+    // @ts-ignore
+    setApps(prev => [...prev, newApp]);
+    setImportingUwpApp(null);
+  }, [importingUwpApp, resolvedUwpImportCategory]);
+
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
 
@@ -7511,19 +7540,7 @@ export default function App() {
         }
         if (importingUwpApp) {
           e.preventDefault();
-          const newApp = {
-            id: Date.now(),
-            name: importingUwpApp.name,
-            category: uwpImportCategory,
-            path: importingUwpApp.aumid,
-            iconPath: importingUwpApp.icon || '',
-            color: 'text-cyan-400',
-            isFav: false,
-            usage: 0
-          };
-          // @ts-ignore
-          setApps(prev => [...prev, newApp]);
-          setImportingUwpApp(null);
+          confirmUwpImport();
           return;
         }
         if (confirmResetType) {
@@ -13293,10 +13310,12 @@ export default function App() {
                                   ) : (
                                       <button
                                         onClick={() => {
+                                          if (!uwpImportCategory) {
+                                            setUwpImportCategory(resolvedUwpImportCategory);
+                                          }
                                           setImportingUwpApp(app);
-                                          setUwpImportCategory(getUncategorizedStorageName());
                                         }}
-                                      className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.3)] cursor-pointer"
+                                      className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.2)] cursor-pointer"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>{t('uwp_import_btn')}</span>
@@ -13313,70 +13332,15 @@ export default function App() {
                     {/* Selector de Categoría para Importación */}
                     <AnimatePresence>
                       {importingUwpApp && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute inset-0 bg-black/90 backdrop-blur-md rounded-2xl flex items-center justify-center p-4 z-40 border border-cyan-500/20"
-                        >
-                          <motion.div
-                            initial={{ scale: 0.95, y: 10 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 10 }}
-                            className="bg-[#0f172a] border border-cyan-500/30 rounded-2xl p-6 max-w-sm w-full space-y-5 shadow-[0_0_30px_rgba(34,211,238,0.2)]"
-                          >
-                            <div className="text-center space-y-1.5">
-                              <h4 className="text-sm font-cyber font-bold text-cyan-400 tracking-wider uppercase">{t('uwp_confirm_title')}</h4>
-                              <p className="text-xs text-slate-200 font-bold leading-tight font-sans">{importingUwpApp.name}</p>
-                              <p className="text-[9px] text-slate-500 font-mono truncate">{importingUwpApp.aumid}</p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('uwp_confirm_category')}</label>
-                              <CustomSelect
-                                size="sm"
-                                value={resolveCategoryStorageValue(uwpImportCategory, categories, language)}
-                                onChange={(val) => setUwpImportCategory(val)}
-                                ariaLabel={t('uwp_confirm_category')}
-                                triggerClassName="bg-black/40 rounded-xl px-3 py-2 text-xs text-slate-200"
-                                options={editableCategoryOptions}
-                              />
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                              <button
-                                type="button"
-                                onClick={() => setImportingUwpApp(null)}
-                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors border border-slate-700 inline-flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <span>{t('uwp_confirm_cancel')}</span>
-                                <EscKeyBadge />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newApp = {
-                                    id: Date.now(),
-                                    name: importingUwpApp.name,
-                                    category: uwpImportCategory,
-                                    path: importingUwpApp.aumid,
-                                    iconPath: importingUwpApp.icon || '',
-                                    color: 'text-cyan-400',
-                                    isFav: false,
-                                    usage: 0
-                                  };
-                                  // @ts-ignore
-                                  setApps(prev => [...prev, newApp]);
-                                  setImportingUwpApp(null);
-                                }}
-                                className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/40 shadow-[0_0_10px_rgba(34,211,238,0.15)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <span>{t('uwp_confirm_ok')}</span>
-                                <EnterKeyBadge variant="primary" />
-                              </button>
-                            </div>
-                          </motion.div>
-                        </motion.div>
+                        <UwpImportConfirmModal
+                          app={importingUwpApp}
+                          category={resolvedUwpImportCategory}
+                          onChangeCategory={setUwpImportCategory}
+                          categoryOptions={editableCategoryOptions}
+                          onCancel={() => setImportingUwpApp(null)}
+                          onConfirm={confirmUwpImport}
+                          t={t}
+                        />
                       )}
                     </AnimatePresence>
                   </div>
@@ -13630,7 +13594,7 @@ export default function App() {
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
               data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),0_0_20px_rgba(34,211,238,0.1)] overflow-hidden"
+              className={`w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/20 rounded-2xl ${MODAL_SHADOW_CYAN} overflow-hidden`}
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/20">
                 <h2 className="text-lg font-cyber font-bold text-white flex items-center gap-2">
@@ -14300,615 +14264,60 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- APP DELETE CONFIRMATION MODAL --- */}
-      <AnimatePresence>
-        {appToDelete && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setAppToDelete(null)}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
-                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
-                  {t('confirm_delete_app_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={() => setAppToDelete(null)}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {t('confirm_delete_app_desc', { name: appToDelete.name })}
-                </p>
-
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
-                  <Checkbox
-                    checked={dontAskAgainOnAppDelete}
-                    onChange={setDontAskAgainOnAppDelete}
-                  />
-                  <span>{t('confirm_delete_app_dont_ask')}</span>
-                </label>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setAppToDelete(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_reset_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (dontAskAgainOnAppDelete) setAppDeleteConfirmationPreference(false);
-                      deleteApp(appToDelete);
-                      setAppToDelete(null);
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('ctx_delete_app')}</span>
-                    <EnterKeyBadge variant="danger" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- CATEGORY DELETE CONFIRMATION MODAL --- */}
-      <AnimatePresence>
-        {categoryToDelete && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setCategoryToDelete(null); }}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
-                <h2 className="text-base font-semibold text-red-400 flex items-center gap-2">
-                  <Trash2 className="w-5 h-5 text-red-400" />
-                  {t('confirm_delete_category_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button 
-                    type="button"
-                    onClick={() => setCategoryToDelete(null)}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {t('confirm_delete_category_desc', { 
-                    name: getCatDisplayName(categoryToDelete)
-                  })}
-                </p>
-
-                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/10">
-                  <div 
-                    className="w-3 h-3 rounded-full flex-shrink-0" 
-                    style={{ 
-                      backgroundColor: categoryToDelete.color,
-                      boxShadow: `0 0 8px ${categoryToDelete.color}`
-                    }} 
-                  />
-                  <span className="text-sm font-semibold text-white truncate">
-                    {getCatDisplayName(categoryToDelete)}
-                  </span>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    type="button"
-                    onClick={() => setCategoryToDelete(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_delete_category_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => handleConfirmDeleteCategory(categoryToDelete)}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-cyber font-bold text-sm border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_delete_category_btn_confirm')}</span>
-                    <EnterKeyBadge variant="danger" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- RESET MOST USED / RECENTS CONFIRMATION MODAL --- */}
-      <AnimatePresence>
-        {confirmResetType && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setConfirmResetType(null); }}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
-                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
-                  <RotateCcw className="w-5 h-5 text-cyan-400" />
-                  {confirmResetType === 'most-used' 
-                    ? t('confirm_reset_most_used_title') 
-                    : t('confirm_reset_recents_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button 
-                    type="button"
-                    onClick={() => setConfirmResetType(null)}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {confirmResetType === 'most-used'
-                    ? t('confirm_reset_most_used_desc')
-                    : t('confirm_reset_recents_desc')}
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    type="button"
-                    onClick={() => setConfirmResetType(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_reset_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (confirmResetType === 'most-used') {
-                        handleResetMostUsed();
-                      } else {
-                        handleResetRecents();
-                      }
-                      setConfirmResetType(null);
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_reset_btn_confirm')}</span>
-                    <EnterKeyBadge variant="primary" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- CONFIRM RESTORE BACKUP MODAL --- */}
-      <AnimatePresence>
-        {backupToRestore && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setBackupToRestore(null)}
-            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-cyan-500/10">
-                <h2 className="text-base font-semibold text-cyan-300 flex items-center gap-2">
-                  <RotateCcw className="w-5 h-5 text-cyan-400" />
-                  {t('backup_auto_confirm_restore_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={() => setBackupToRestore(null)}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {t('backup_auto_confirm_restore_desc', { file: backupToRestore.file })}
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setBackupToRestore(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_reset_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = backupToRestore;
-                      setBackupToRestore(null);
-                      void handleConfirmRestoreBackup(target);
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl font-cyber font-bold text-sm border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('backup_auto_btn_restore')}</span>
-                    <EnterKeyBadge variant="primary" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- CONFIRM DELETE BACKUP MODAL --- */}
-      <AnimatePresence>
-        {backupToDelete && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setBackupToDelete(null)}
-            className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-sm bg-[#0d131f]/95 backdrop-blur-2xl border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-red-500/10">
-                <h2 className="text-base font-semibold text-red-300 flex items-center gap-2">
-                  <Trash2 className="w-5 h-5 text-red-400" />
-                  {t('backup_auto_confirm_delete_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={() => setBackupToDelete(null)}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  {t('backup_auto_confirm_delete_desc', { file: backupToDelete.file })}
-                </p>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setBackupToDelete(null)}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('confirm_reset_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = backupToDelete;
-                      setBackupToDelete(null);
-                      void handleConfirmDeleteBackup(target);
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl font-cyber font-bold text-sm border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('backup_auto_btn_delete')}</span>
-                    <EnterKeyBadge variant="danger" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- FACTORY RESET CONFIRMATION MODAL --- */}
-      <AnimatePresence>
-        {isFactoryResetModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => {
-              setIsFactoryResetModalOpen(false);
-              setFactoryResetIncludeApps(false);
-            }}
-            className="fixed inset-0 z-[155] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              data-cyberbot-obstacle="center"
-              className="w-full max-w-lg bg-[#0d131f]/95 backdrop-blur-2xl border border-amber-500/35 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-amber-500/10">
-                <h2 className="text-base font-semibold text-amber-300 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-400" />
-                  {t('factory_reset_modal_title')}
-                </h2>
-                <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsFactoryResetModalOpen(false);
-                      setFactoryResetIncludeApps(false);
-                    }}
-                    aria-label={t('confirm_reset_btn_cancel')}
-                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white focus:outline-none cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-200 leading-relaxed">
-                  {t('factory_reset_modal_intro')}
-                </p>
-
-                <ul className="space-y-2 text-xs text-slate-300 leading-relaxed bg-black/30 border border-white/10 rounded-xl p-3.5 list-disc pl-7">
-                  <li>{t('factory_reset_item_general')}</li>
-                  <li>{t('factory_reset_item_appearance')}</li>
-                  <li>{t('factory_reset_item_system')}</li>
-                  <li>{t('factory_reset_item_cyberbot')}</li>
-                </ul>
-
-                <p className="text-[11px] text-cyan-300/85 bg-cyan-500/10 border border-cyan-500/20 rounded-xl px-3.5 py-2.5 leading-relaxed">
-                  {t('factory_reset_preserve_note')}
-                </p>
-
-                <label className="flex items-start gap-3 p-3.5 rounded-xl bg-black/30 border border-white/10 hover:border-amber-500/30 transition-colors cursor-pointer select-none">
-                  <Checkbox
-                    tone="amber"
-                    checked={factoryResetIncludeApps}
-                    onChange={setFactoryResetIncludeApps}
-                    className="mt-0.5"
-                  />
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-slate-200 leading-snug">
-                      {t('factory_reset_include_apps_label')}
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-relaxed">
-                      {t('factory_reset_include_apps_desc')}
-                    </div>
-                  </div>
-                </label>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsFactoryResetModalOpen(false);
-                      setFactoryResetIncludeApps(false);
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('factory_reset_btn_cancel')}</span>
-                    <EscKeyBadge />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFactoryReset(factoryResetIncludeApps)}
-                    className="flex-1 px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-xl font-cyber font-bold text-sm border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.18)] transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>{t('factory_reset_btn_confirm')}</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- SYSTEM POWER CONFIRMATION MODAL --- */}
-      <AnimatePresence>
-        {powerConfirmAction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            data-no-hide
-            className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-            onClick={() => setPowerConfirmAction(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-              data-no-hide
-              data-cyberbot-obstacle="center"
-              className={`w-full max-w-md bg-[#070b13]/95 border rounded-2xl p-6 shadow-2xl space-y-5 text-center ${
-                powerConfirmAction === 'shutdown'
-                  ? 'border-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.2)]'
-                  : powerConfirmAction === 'restart'
-                  ? 'border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
-                  : powerConfirmAction === 'sleep'
-                  ? 'border-sky-500/40 shadow-[0_0_30px_rgba(56,189,248,0.2)]'
-                  : powerConfirmAction === 'signout'
-                  ? 'border-purple-500/40 shadow-[0_0_30px_rgba(192,132,252,0.2)]'
-                  : 'border-cyan-500/40 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
-              }`}
-            >
-              {/* Glowing Icon & Header */}
-              <div className="flex flex-col items-center justify-center pt-2">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border shadow-inner ${
-                  powerConfirmAction === 'shutdown'
-                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
-                    : powerConfirmAction === 'restart'
-                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                    : powerConfirmAction === 'sleep'
-                    ? 'bg-sky-500/15 border-sky-500/30 text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]'
-                    : powerConfirmAction === 'signout'
-                    ? 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.3)]'
-                    : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
-                }`}>
-                  {powerConfirmAction === 'shutdown' && <Power className="w-8 h-8" />}
-                  {powerConfirmAction === 'restart' && <RotateCcw className="w-8 h-8" />}
-                  {powerConfirmAction === 'sleep' && <Moon className="w-8 h-8" />}
-                  {powerConfirmAction === 'signout' && <LogOut className="w-8 h-8" />}
-                  {powerConfirmAction === 'lock' && <Lock className="w-8 h-8" />}
-                </div>
-
-                <h3 className="text-lg font-cyber font-bold text-white tracking-wider">
-                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_title')}
-                  {powerConfirmAction === 'restart' && t('power_confirm_restart_title')}
-                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_title')}
-                  {powerConfirmAction === 'signout' && t('power_confirm_signout_title')}
-                  {powerConfirmAction === 'lock' && t('power_confirm_lock_title')}
-                </h3>
-
-                <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                  {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_msg', { seconds: powerCountdown.toString() })}
-                  {powerConfirmAction === 'restart' && t('power_confirm_restart_msg', { seconds: powerCountdown.toString() })}
-                  {powerConfirmAction === 'sleep' && t('power_confirm_sleep_msg', { seconds: powerCountdown.toString() })}
-                  {powerConfirmAction === 'signout' && t('power_confirm_signout_msg', { seconds: powerCountdown.toString() })}
-                  {powerConfirmAction === 'lock' && t('power_confirm_lock_msg', { seconds: powerCountdown.toString() })}
-                </p>
-              </div>
-
-              {/* Countdown Progress Bar */}
-              <div className="space-y-1.5 px-4">
-                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                  <span className="uppercase tracking-wider">{t('power_confirm_countdown_label')}</span>
-                  <span className="font-bold text-white font-digits text-xs tabular-nums">{powerCountdown}s</span>
-                </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ${
-                      powerConfirmAction === 'shutdown'
-                        ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
-                        : powerConfirmAction === 'restart'
-                        ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
-                        : powerConfirmAction === 'sleep'
-                        ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
-                        : powerConfirmAction === 'signout'
-                        ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]'
-                        : 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]'
-                    }`}
-                    style={{ width: `${(powerCountdown / 10) * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Force Option (for shutdown/restart/signout) */}
-              {(powerConfirmAction === 'shutdown' || powerConfirmAction === 'restart' || powerConfirmAction === 'signout') && (
-                <label className="flex items-center justify-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white select-none py-1">
-                  <Checkbox
-                    checked={powerForceClose}
-                    onChange={setPowerForceClose}
-                  />
-                  <span>{t('power_confirm_force')}</span>
-                </label>
-              )}
-
-              {/* Action Buttons with Suite Badges */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPowerConfirmAction(null)}
-                  className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-medium text-sm border border-white/10 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                >
-                  <span>{t('power_confirm_cancel')}</span>
-                  <EscKeyBadge />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExecutePowerAction(powerConfirmAction, powerForceClose)}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
-                    powerConfirmAction === 'shutdown'
-                      ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-                      : powerConfirmAction === 'restart'
-                      ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                      : powerConfirmAction === 'sleep'
-                      ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.2)]'
-                      : powerConfirmAction === 'signout'
-                      ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(192,132,252,0.2)]'
-                      : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
-                  }`}
-                >
-                  <span>
-                    {powerConfirmAction === 'shutdown' && t('power_confirm_shutdown_now')}
-                    {powerConfirmAction === 'restart' && t('power_confirm_restart_now')}
-                    {powerConfirmAction === 'sleep' && t('power_confirm_sleep_now')}
-                    {powerConfirmAction === 'signout' && t('power_confirm_signout_now')}
-                    {powerConfirmAction === 'lock' && t('power_confirm_lock_now')}
-                  </span>
-                  <EnterKeyBadge variant={powerConfirmAction === 'shutdown' ? 'danger' : 'primary'} />
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* --- CONFIRMATION & POWER MODALS --- */}
+      <AppConfirmModals
+        t={t}
+        getCategoryDisplayName={getCatDisplayName}
+        appToDelete={appToDelete}
+        dontAskAgainOnAppDelete={dontAskAgainOnAppDelete}
+        onChangeDontAskAgainOnAppDelete={setDontAskAgainOnAppDelete}
+        onCancelDeleteApp={() => setAppToDelete(null)}
+        onConfirmDeleteApp={() => {
+          if (!appToDelete) return;
+          if (dontAskAgainOnAppDelete) setAppDeleteConfirmationPreference(false);
+          deleteApp(appToDelete);
+          setAppToDelete(null);
+        }}
+        categoryToDelete={categoryToDelete}
+        onCancelDeleteCategory={() => setCategoryToDelete(null)}
+        onConfirmDeleteCategory={handleConfirmDeleteCategory}
+        confirmResetType={confirmResetType}
+        onCancelReset={() => setConfirmResetType(null)}
+        onConfirmReset={(type) => {
+          if (type === 'most-used') {
+            handleResetMostUsed();
+          } else {
+            handleResetRecents();
+          }
+          setConfirmResetType(null);
+        }}
+        backupToRestore={backupToRestore}
+        onCancelRestoreBackup={() => setBackupToRestore(null)}
+        onConfirmRestoreBackup={(target) => {
+          setBackupToRestore(null);
+          void handleConfirmRestoreBackup(target);
+        }}
+        backupToDelete={backupToDelete}
+        onCancelDeleteBackup={() => setBackupToDelete(null)}
+        onConfirmDeleteBackup={(target) => {
+          setBackupToDelete(null);
+          void handleConfirmDeleteBackup(target);
+        }}
+        isFactoryResetOpen={isFactoryResetModalOpen}
+        factoryResetIncludeApps={factoryResetIncludeApps}
+        onChangeFactoryResetIncludeApps={setFactoryResetIncludeApps}
+        onCancelFactoryReset={() => {
+          setIsFactoryResetModalOpen(false);
+          setFactoryResetIncludeApps(false);
+        }}
+        onConfirmFactoryReset={handleFactoryReset}
+        powerConfirmAction={powerConfirmAction}
+        powerCountdown={powerCountdown}
+        powerForceClose={powerForceClose}
+        onChangePowerForceClose={setPowerForceClose}
+        onCancelPowerAction={() => setPowerConfirmAction(null)}
+        onExecutePowerAction={handleExecutePowerAction}
+      />
 
       {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
       <AnimatePresence>
@@ -14920,7 +14329,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.95 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-amber-500/40 backdrop-blur-2xl shadow-[0_0_35px_rgba(245,158,11,0.25)] select-none max-w-lg min-w-[360px]"
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-amber-500/35 backdrop-blur-2xl ${MODAL_SHADOW_AMBER} select-none max-w-lg min-w-[360px]`}
           >
             {/* Ticking countdown badge with generous breathing room */}
             <div className="flex flex-col items-center justify-center shrink-0 min-w-[58px] h-12 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-300 shadow-[inset_0_0_10px_rgba(245,158,11,0.15)]">

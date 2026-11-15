@@ -4,6 +4,8 @@ import App from './App';
 import './index.css';
 import './components/companion/approved/cyberbot-review.css';
 import { CyberBotReviewContext, type CyberBotReviewState } from './components/companion/approved/CyberBotReviewContext';
+import { CustomSelect } from './components/CustomSelect';
+import { Checkbox } from './components/Checkbox';
 
 const labels = {
   es: { title: 'Revisión de CyberBot', description: 'Diseño aprobado dentro de CyberLauncher, a tamaño real.',
@@ -31,17 +33,27 @@ function Review() {
     <aside className="cyberbot-review-controls" data-no-hide data-cyberbot-obstacle={live ? undefined : "bounds"} aria-label={t.title}>
       {visible ? <>
         <div className="cyberbot-review-heading"><strong>{t.title}</strong>
-          <select aria-label={language === 'es' ? 'Idioma de los controles' : 'Controls language'} value={language} onChange={e => setLanguage(e.target.value as 'es' | 'en')}>
-            <option value="es">Español</option><option value="en">English</option>
-          </select>
+          <CustomSelect
+            size="sm"
+            align="right"
+            className="!w-[116px] shrink-0"
+            triggerClassName="bg-[#0f172a]"
+            ariaLabel={language === 'es' ? 'Idioma de los controles' : 'Controls language'}
+            value={language}
+            onChange={(val) => setLanguage(val as 'es' | 'en')}
+            options={[
+              { value: 'es', label: 'Español' },
+              { value: 'en', label: 'English' },
+            ]}
+          />
         </div>
         <p>{t.description}</p>
         <button type="button" aria-pressed={live} onClick={() => setLive(value => !value)}>{live ? t.inspect : t.live}</button>
         <div className="cyberbot-review-faces">{(['launcher', 'marquee', 'terminal', 'curious', 'flight', 'sleeping', 'alert', 'launcher-top', 'default', 'happy', 'delighted', 'affectionate', 'sparkle', 'wink', 'scared', 'storage', 'success', 'speaking'] as const).map(face =>
           <button type="button" key={face} aria-pressed={!live && state.face === face} onClick={() => { setLive(false); setState(s => ({ ...s, face })); }}>{t[face === "speaking" ? "speakingFace" : face]}</button>)}</div>
-        <label><input type="checkbox" disabled={live} checked={state.marqueeMode === 'screen'} onChange={e => setState(s => ({ ...s, marqueeMode: e.target.checked ? 'screen' : 'paused' }))} />{t.screen}</label>
-        <label><input type="checkbox" checked={state.speaking} onChange={e => setState(s => ({ ...s, speaking: e.target.checked }))} />{t.speaking}</label>
-        <label><input type="checkbox" checked={state.motion} onChange={e => setState(s => ({ ...s, motion: e.target.checked }))} />{t.motion}</label>
+        <label><Checkbox disabled={live} checked={state.marqueeMode === 'screen'} onChange={(checked) => setState(s => ({ ...s, marqueeMode: checked ? 'screen' : 'paused' }))} /><span>{t.screen}</span></label>
+        <label><Checkbox checked={state.speaking} onChange={(checked) => setState(s => ({ ...s, speaking: checked }))} /><span>{t.speaking}</span></label>
+        <label><Checkbox checked={state.motion} onChange={(checked) => setState(s => ({ ...s, motion: checked }))} /><span>{t.motion}</span></label>
         <p>{t.note}</p>
         <button type="button" onClick={() => setVisible(false)}>{t.close}</button>
       </> : <button type="button" onClick={() => setVisible(true)}>{t.show}</button>}

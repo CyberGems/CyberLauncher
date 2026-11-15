@@ -5,6 +5,9 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CustomSelect } from '../src/components/CustomSelect';
 import { Checkbox } from '../src/components/Checkbox';
+import { UwpImportConfirmModal } from '../src/components/UwpImportConfirmModal';
+import { AppConfirmModals } from '../src/components/AppConfirmModals';
+import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from '../src/components/modalTheme';
 import {
   CYBERBOT_BUBBLE_SURFACE,
   CYBERBOT_BUBBLE_TAIL_SURFACE,
@@ -67,13 +70,123 @@ test('Checkbox renders custom cyan and amber states around accessible input', ()
   assert.ok(checkedAmber.includes('bg-amber-500'));
 });
 
-test('App.tsx replaces all native select and checkbox controls with suite components', () => {
+test('App.tsx, AppConfirmModals, and cyberbot-review replace all native select and checkbox controls', () => {
+  const appSource = readFileSync('src/App.tsx', 'utf8');
+  const confirmSource = readFileSync('src/components/AppConfirmModals.tsx', 'utf8');
+  const reviewSource = readFileSync('src/cyberbot-review.tsx', 'utf8');
+
+  for (const [name, source] of [
+    ['src/App.tsx', appSource],
+    ['src/components/AppConfirmModals.tsx', confirmSource],
+    ['src/cyberbot-review.tsx', reviewSource],
+  ] as const) {
+    assert.equal(/<select[\s>]/.test(source), false, `${name} must not render native <select> elements`);
+    assert.equal(/type="checkbox"/.test(source), false, `${name} must not render native checkbox inputs`);
+  }
+
+  assert.ok(appSource.includes('<CustomSelect'));
+  assert.ok(appSource.includes('<UwpImportConfirmModal'));
+  assert.ok(appSource.includes('<AppConfirmModals'));
+  assert.ok(confirmSource.includes('<Checkbox'));
+  assert.ok(reviewSource.includes('<CustomSelect'));
+  assert.ok(reviewSource.includes('<Checkbox'));
+});
+
+test('UwpImportConfirmModal prioritizes app icon and name over subtle action header', () => {
+  const withIcon = renderToStaticMarkup(
+    React.createElement(UwpImportConfirmModal, {
+      app: {
+        name: 'Affinity',
+        aumid: 'Canva.Affinity_8a0j1tnjnt4a4!Canva.Affinity',
+        icon: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+      category: 'Design',
+      onChangeCategory: () => {},
+      categoryOptions: [
+        { value: 'Uncategorized', label: 'Uncategorized' },
+        { value: 'Design', label: 'Design' },
+      ],
+      onCancel: () => {},
+      onConfirm: () => {},
+      t: (key) => translations.en[key],
+    })
+  );
+
+  assert.ok(withIcon.includes('Affinity'));
+  assert.ok(withIcon.includes('src="data:image/png;base64,iVBORw0KGgo="'));
+  assert.ok(withIcon.includes('text-base font-bold text-white'));
+  assert.ok(withIcon.includes('text-[10px] font-cyber font-bold text-slate-400'));
+  assert.ok(withIcon.includes(MODAL_SHADOW_CYAN));
+  assert.equal(withIcon.includes('shadow-[0_0_30px_rgba(34,211,238,0.2)]'), false);
+
+  const withoutIcon = renderToStaticMarkup(
+    React.createElement(UwpImportConfirmModal, {
+      app: {
+        name: 'Affinity',
+        aumid: 'Canva.Affinity_8a0j1tnjnt4a4!Canva.Affinity',
+        icon: '',
+      },
+      category: 'Design',
+      onChangeCategory: () => {},
+      categoryOptions: [{ value: 'Design', label: 'Design' }],
+      onCancel: () => {},
+      onConfirm: () => {},
+      t: (key) => translations.en[key],
+    })
+  );
+  assert.ok(withoutIcon.includes('>UWP<'));
+});
+
+test('Modals use calmed glow tokens across UWP, Power, Onboarding, CommandPalette, and MissingShortcut', () => {
+  const onboardingSource = readFileSync('src/components/OnboardingModal.tsx', 'utf8');
+  const missingSource = readFileSync('src/components/MissingShortcutModal.tsx', 'utf8');
+  const paletteSource = readFileSync('src/CommandPalette.tsx', 'utf8');
+  const confirmSource = readFileSync('src/components/AppConfirmModals.tsx', 'utf8');
   const appSource = readFileSync('src/App.tsx', 'utf8');
 
-  assert.equal(/<select[\s>]/.test(appSource), false, 'App.tsx must not render native <select> elements');
-  assert.equal(/type="checkbox"/.test(appSource), false, 'App.tsx must not render native checkbox inputs');
-  assert.ok(appSource.includes('<CustomSelect'));
-  assert.ok(appSource.includes('<Checkbox'));
+  assert.equal(onboardingSource.includes('0_0_25px_rgba(34,211,238,0.14)'), false);
+  assert.equal(missingSource.includes('0_0_35px_rgba(245,158,11,0.14)'), false);
+  assert.equal(paletteSource.includes('0_0_20px_rgba(34,211,238,0.12)'), false);
+  assert.equal(confirmSource.includes('0_0_30px_rgba'), false);
+  assert.equal(appSource.includes('0_0_35px_rgba(245,158,11,0.25)'), false);
+  assert.equal(appSource.includes('0_0_20px_rgba(34,211,238,0.1)'), false);
+
+  const factoryMarkup = renderToStaticMarkup(
+    React.createElement(AppConfirmModals, {
+      t: (key) => translations.en[key],
+      getCategoryDisplayName: (cat) => cat.name,
+      appToDelete: null,
+      dontAskAgainOnAppDelete: false,
+      onChangeDontAskAgainOnAppDelete: () => {},
+      onCancelDeleteApp: () => {},
+      onConfirmDeleteApp: () => {},
+      categoryToDelete: null,
+      onCancelDeleteCategory: () => {},
+      onConfirmDeleteCategory: () => {},
+      confirmResetType: null,
+      onCancelReset: () => {},
+      onConfirmReset: () => {},
+      backupToRestore: null,
+      onCancelRestoreBackup: () => {},
+      onConfirmRestoreBackup: () => {},
+      backupToDelete: null,
+      onCancelDeleteBackup: () => {},
+      onConfirmDeleteBackup: () => {},
+      isFactoryResetOpen: true,
+      factoryResetIncludeApps: true,
+      onChangeFactoryResetIncludeApps: () => {},
+      onCancelFactoryReset: () => {},
+      onConfirmFactoryReset: () => {},
+      powerConfirmAction: null,
+      powerCountdown: 10,
+      powerForceClose: false,
+      onChangePowerForceClose: () => {},
+      onCancelPowerAction: () => {},
+      onExecutePowerAction: () => {},
+    })
+  );
+  assert.ok(factoryMarkup.includes(MODAL_SHADOW_AMBER));
+  assert.ok(factoryMarkup.includes('bg-amber-500 border-amber-400'));
 });
 
 test('CyberBot prompt, speech bubble, and desktop toast share unified Capture-1 border and glow tokens', () => {
