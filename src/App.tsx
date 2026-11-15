@@ -2213,7 +2213,7 @@ export default function App() {
     source?: 'system-alert';
     persistent?: boolean;
   } | null>(null);
-  const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string } | null>(null);
+  const [missingShortcut, setMissingShortcut] = useState<{ app: LauncherApp; path: string; uwp?: boolean } | null>(null);
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
   const launchingAppsRef = useRef(new Set<number>());
   const [launchingAppIds, setLaunchingAppIds] = useState<Set<number>>(() => new Set());
@@ -5194,6 +5194,8 @@ export default function App() {
         if (!result.success) {
           if (result.code === 'not-found') {
             setMissingShortcut({ app, path: appPath });
+          } else if (result.code === 'uwp-not-found') {
+            setMissingShortcut({ app, path: appPath, uwp: true });
           } else {
             reportLaunchFailure(app.name, result.error || '', undefined, result.code);
           }
@@ -14514,6 +14516,7 @@ export default function App() {
         appName={missingShortcut?.app.name ?? ''}
         savedPath={missingShortcut?.path ?? ''}
         isRelinking={isRelinkingShortcut}
+        variant={missingShortcut?.uwp ? 'uwp' : 'normal'}
         t={t}
         onClose={() => setMissingShortcut(null)}
         onDelete={() => {
@@ -14522,7 +14525,15 @@ export default function App() {
             setMissingShortcut(null);
           }
         }}
-        onLocate={() => { void handleRelinkShortcut(); }}
+        onLocate={() => {
+          if (!missingShortcut) return;
+          if (missingShortcut.uwp) {
+            void window.electronAPI?.openExternal?.(`ms-windows-store://search/?query=${encodeURIComponent(missingShortcut.app.name)}`);
+            setMissingShortcut(null);
+            return;
+          }
+          void handleRelinkShortcut();
+        }}
       />
 
       {/* --- TOAST NOTIFICATIONS --- */}

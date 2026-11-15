@@ -3,7 +3,7 @@ import { isNotificationQuietTime, type NotificationDeliverySettings } from './no
 export interface LaunchResult {
   success: boolean;
   error?: string;
-  code?: 'not-found' | 'launch-failed';
+  code?: 'not-found' | 'launch-failed' | 'uwp-not-found';
   windowHidden?: boolean;
   pinned?: boolean;
 }

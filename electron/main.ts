@@ -3746,9 +3746,18 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
     const isUwp = trimmedPath.includes('!') && trimmedPath.includes('_');
     if (isUwp) {
       const helperPath = resolveStoreAppLauncher(app.isPackaged, process.resourcesPath, app.getAppPath(), __dirname);
-      const processId = await activateStoreApp(trimmedPath, helperPath);
-      console.log(`[LAUNCH] Windows Store app activated: ${trimmedPath} (PID ${processId})`);
-      return finishSuccessfulLaunch(keepWindowOpen);
+      try {
+        const processId = await activateStoreApp(trimmedPath, helperPath);
+        console.log(`[LAUNCH] Windows Store app activated: ${trimmedPath} (PID ${processId})`);
+        return finishSuccessfulLaunch(keepWindowOpen);
+      } catch (uwpErr: any) {
+        const uwpMessage = String(uwpErr?.message || uwpErr);
+        // Paquete desinstalado o renombrado: el usuario decide desde el modal de recuperación.
+        if (/0x80073CF1|0x80073CF3|0x80070002|no se encontr[oó] el paquete|package.*not found/i.test(uwpMessage)) {
+          return { success: false, error: uwpMessage, code: 'uwp-not-found' };
+        }
+        throw uwpErr;
+      }
     }
 
     let targetPath = path.normalize(trimmedPath);

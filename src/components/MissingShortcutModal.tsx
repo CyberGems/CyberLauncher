@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, FolderSearch, Trash2, X } from 'lucide-react';
+import { AlertTriangle, FolderSearch, Store, Trash2, X } from 'lucide-react';
 import Tooltip from '../Tooltip';
 import type { TranslationKey } from '../locales';
 
@@ -9,6 +9,8 @@ export interface MissingShortcutModalProps {
   appName: string;
   savedPath: string;
   isRelinking: boolean;
+  /** 'uwp': the target is a Microsoft Store package (AUMID), so there is no path to relink. */
+  variant?: 'normal' | 'uwp';
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
   onClose: () => void;
   onDelete: () => void;
@@ -21,6 +23,7 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
   appName,
   savedPath,
   isRelinking,
+  variant = 'normal',
   t,
   onClose,
   onDelete,
@@ -51,7 +54,7 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
           <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/[0.07] px-5 py-4">
             <h2 id="missing-shortcut-title" className="flex items-center gap-2.5 text-base font-semibold text-amber-300">
               <AlertTriangle className="h-5 w-5 shrink-0" />
-              {t('missing_shortcut_title')}
+              {variant === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')}
             </h2>
             <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
               <button
@@ -68,21 +71,27 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
 
           <div className="space-y-4 p-5">
             <p className="text-sm leading-relaxed text-slate-300">
-              {t('missing_shortcut_message', { name: appName })}
+              {variant === 'uwp'
+                ? t('missing_uwp_message', { name: appName })
+                : t('missing_shortcut_message', { name: appName })}
             </p>
 
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                {t('missing_shortcut_path')}
-              </span>
-              <div className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-slate-300">
-                {savedPath}
+            {variant !== 'uwp' && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {t('missing_shortcut_path')}
+                </span>
+                <div className="break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-slate-300">
+                  {savedPath}
+                </div>
               </div>
-            </div>
+            )}
 
-            <p className="text-xs leading-relaxed text-slate-500">
-              {t('missing_shortcut_hint')}
-            </p>
+            {variant !== 'uwp' && (
+              <p className="text-xs leading-relaxed text-slate-500">
+                {t('missing_shortcut_hint')}
+              </p>
+            )}
 
             <div className="flex gap-3 pt-1">
               <button
@@ -100,8 +109,17 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
                 onClick={onLocate}
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.1)] transition-colors hover:bg-cyan-500/25 disabled:cursor-wait disabled:opacity-60 cursor-pointer"
               >
-                <FolderSearch className="h-4 w-4" />
-                {isRelinking ? t('missing_shortcut_locating') : t('missing_shortcut_locate')}
+                {variant === 'uwp' ? (
+                  <>
+                    <Store className="h-4 w-4" />
+                    {t('missing_uwp_store_search')}
+                  </>
+                ) : (
+                  <>
+                    <FolderSearch className="h-4 w-4" />
+                    {isRelinking ? t('missing_shortcut_locating') : t('missing_shortcut_locate')}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -110,4 +128,3 @@ export const MissingShortcutModal: React.FC<MissingShortcutModalProps> = ({
     )}
   </AnimatePresence>
 );
-
