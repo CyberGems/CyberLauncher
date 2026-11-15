@@ -65,8 +65,8 @@ export const translations = {
     // Add/Edit App drawer
     app_add_title: "Agregar nuevo acceso",
     app_add_guide_title: "¿Qué tipos de accesos puedes agregar?",
-    app_add_guide_dismiss: "Ocultar guía",
-    app_add_guide_show: "Mostrar guía de tipos de accesos",
+    app_add_guide_dismiss: "Contraer guía",
+    app_add_guide_show: "Expandir guía",
     app_add_guide_type_apps_title: "Programas y scripts",
     app_add_guide_type_apps_desc: ".exe, .lnk, .bat, .cmd o scripts .ps1",
     app_add_guide_type_folders_title: "Carpetas del sistema",
@@ -1103,8 +1103,8 @@ export const translations = {
     // Add/Edit App drawer
     app_add_title: "Add new shortcut",
     app_add_guide_title: "What types of shortcuts can you add?",
-    app_add_guide_dismiss: "Hide guide",
-    app_add_guide_show: "Show shortcut types guide",
+    app_add_guide_dismiss: "Collapse guide",
+    app_add_guide_show: "Expand guide",
     app_add_guide_type_apps_title: "Programs & scripts",
     app_add_guide_type_apps_desc: ".exe, .lnk, .bat, .cmd or .ps1 scripts",
     app_add_guide_type_folders_title: "System folders",

@@ -42,6 +42,42 @@ body {
   -webkit-user-select: none;
 }
 
+.access-name-marquee {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.access-name-marquee__text {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-name-marquee[data-overflow="true"]:hover .access-name-marquee__text {
+  width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+  animation: accessNameMarquee var(--access-name-duration, 2s) ease-in-out 50ms infinite alternate;
+}
+
+@keyframes accessNameMarquee {
+  0%, 5% { transform: translateX(0); }
+  90%, 100% { transform: translateX(var(--access-name-offset, 0px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-name-marquee[data-overflow="true"]:hover .access-name-marquee__text {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: none;
+  }
+}
+
 /* Keep real text fields and explicitly selectable paths selectable */
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="color"]):not([type="file"]),
 textarea,

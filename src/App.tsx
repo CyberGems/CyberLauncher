@@ -66,6 +66,7 @@ import { isInQuietHours, useCyberBot } from './components/companion/useCyberBot'
 import { TextFieldContextMenu } from './components/TextFieldContextMenu';
 import { OnboardingModal } from './components/OnboardingModal';
 import { MissingShortcutModal } from './components/MissingShortcutModal';
+import { OverflowMarquee } from './components/OverflowMarquee';
 import { useLauncherVisibility } from './useLauncherVisibility';
 import { CYBERBOT_NAME_MAX_LENGTH, isCyberBotNamePromptDue, normalizeCyberBotName } from './components/companion/cyberBotName';
 import { isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from './components/companion/cyberBotSetup';
@@ -2484,13 +2485,10 @@ export default function App() {
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [openedViaDrop, setOpenedViaDrop] = useState(false);
-  const [isGuideCardDismissed, setIsGuideCardDismissed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('hide_add_app_guide_card') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isAddGuideExpanded, setIsAddGuideExpanded] = useState(false);
+  useLayoutEffect(() => {
+    if (isAddingApp) setIsAddGuideExpanded(false);
+  }, [isAddingApp]);
   const [editForm, setEditForm] = useState(emptyEditForm);
   const [isResolvingIcon, setIsResolvingIcon] = useState(false);
   const [browseDropdownOpen, setBrowseDropdownOpen] = useState(false);
@@ -2968,11 +2966,15 @@ export default function App() {
 
   const submitAppForm = () => {
     if (isAddingApp) {
+      const name = editForm.name.trim();
+      const path = editForm.path.trim();
+      if (!name || !path) return;
+
       const newId = Date.now();
       const newApp = {
         id: newId,
-        name: editForm.name || 'Nueva App',
-        path: editForm.path,
+        name,
+        path,
         iconPath: editForm.iconPath,
         icon: Package,
         category: resolveCategoryStorageValue(editForm.category || getUncategorizedStorageName(), categories, language),
@@ -3029,6 +3031,8 @@ export default function App() {
       setBrowseDropdownOpen(false);
     }
   };
+
+  const canSubmitAppForm = !isAddingApp || (editForm.name.trim().length > 0 && editForm.path.trim().length > 0);
 
   const deleteApp = (app: LauncherApp) => {
     setApps(prev => prev.filter(item => item.id !== app.id));
@@ -5554,7 +5558,7 @@ export default function App() {
     setRamThresholdPercent(80);
     setRamLowAbsoluteAlertEnabled(true);
     setAutoCheckIconsOnStartup(true);
-    setIsGuideCardDismissed(false);
+    setIsAddGuideExpanded(false);
     setLastBrowseMode('file');
 
     // Auto backup preferences (keeps existing .json files on disk intact)
@@ -9565,7 +9569,7 @@ export default function App() {
                               className="font-semibold text-slate-100 leading-tight mb-0.5 drop-shadow-sm truncate w-full cursor-pointer"
                               style={{ fontSize: `${12 * (cardScale / 100)}px` }}
                             >
-                              {app.name}
+                              <OverflowMarquee className="w-full">{app.name}</OverflowMarquee>
                             </h4>
                             <p 
                               className="text-slate-400 truncate w-full cursor-pointer"
@@ -9597,7 +9601,7 @@ export default function App() {
                               className="font-medium text-slate-100 truncate cursor-pointer"
                               style={{ fontSize: `${14 * (cardScale / 100)}px` }}
                             >
-                              {app.name}
+                              <OverflowMarquee className="w-full">{app.name}</OverflowMarquee>
                             </h4>
                             <p 
                               className="text-slate-400 truncate cursor-pointer"
@@ -10176,9 +10180,9 @@ export default function App() {
                         ) : (
                           <AppIcon app={app} miniBadge broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-3.5 h-3.5 lg:w-4 lg:h-4 drop-shadow-md shrink-0 ${app.color}`} strokeWidth={1.5} />
                         )}
-                        <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                        <OverflowMarquee className="flex-1 min-w-0 text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors text-left drop-shadow-sm">
                           {app.name}
-                        </span>
+                        </OverflowMarquee>
                       </div>
                       <span className="text-[9px] lg:text-[10px] font-digits font-bold tracking-wider text-cyan-400/90 group-hover:text-cyan-300 transition-colors shrink-0 ml-1.5 bg-cyan-500/[0.07] group-hover:bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 group-hover:border-cyan-500/30 tabular-nums">
                         {app.usage > 0 ? app.usage : '-'}
@@ -10286,9 +10290,9 @@ export default function App() {
                         ) : (
                           <File className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-400 shrink-0" />
                         )}
-                        <span className="text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors truncate text-left drop-shadow-sm min-w-0">
+                        <OverflowMarquee className="flex-1 min-w-0 text-[11px] lg:text-xs font-medium text-slate-300 group-hover:text-white transition-colors text-left drop-shadow-sm">
                           {item.name}
-                        </span>
+                        </OverflowMarquee>
                       </div>
                       <span className="text-[9px] lg:text-[10px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors shrink-0 ml-1.5 bg-white/[0.03] group-hover:bg-white/[0.05] px-1.5 py-0.5 rounded-md border border-white/10 group-hover:border-white/15 tabular-nums">
                         {formatRelativeTime(item.timestamp, t)}
@@ -10855,20 +10859,6 @@ export default function App() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {isAddingApp && !openedViaDrop && isGuideCardDismissed && (
-                    <Tooltip label={t('app_add_guide_show')} placement="left">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsGuideCardDismissed(false);
-                          try { localStorage.removeItem('hide_add_app_guide_card'); } catch {}
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
-                      >
-                        <HelpCircle className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                  )}
                   <Tooltip label={t('confirm_reset_btn_cancel')} placement="bottom">
                     <button
                       type="button"
@@ -10884,87 +10874,98 @@ export default function App() {
 
               <div ref={modalScrollContainerRef} className="p-5 overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 space-y-5">
                 {/* Informative / friendly card describing supported shortcut types */}
-                {isAddingApp && !openedViaDrop && !isGuideCardDismissed && (
+                {isAddingApp && !openedViaDrop && (
                   <div className="p-3.5 bg-gradient-to-br from-white/[0.04] to-cyan-950/20 border border-cyan-500/25 rounded-xl relative shadow-[0_4px_20px_rgba(0,0,0,0.25)] min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <h4 className="text-xs font-cyber font-bold text-cyan-300 tracking-wide">
+                        <h4 className="text-xs font-cyber font-bold text-cyan-300 tracking-wide leading-tight">
                           {t('app_add_guide_title')}
                         </h4>
                       </div>
-                      <Tooltip label={t('app_add_guide_dismiss')} placement="left">
+                      <Tooltip label={isAddGuideExpanded ? t('app_add_guide_dismiss') : t('app_add_guide_show')} placement="left">
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsGuideCardDismissed(true);
-                            try { localStorage.setItem('hide_add_app_guide_card', 'true'); } catch {}
-                          }}
-                          className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+                          onClick={() => setIsAddGuideExpanded(prev => !prev)}
+                          aria-label={isAddGuideExpanded ? t('app_add_guide_dismiss') : t('app_add_guide_show')}
+                          aria-expanded={isAddGuideExpanded}
+                          aria-controls="app-add-guide-content"
+                          className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-white/10 rounded-md transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isAddGuideExpanded ? 'rotate-180 text-cyan-300' : ''}`} />
                         </button>
                       </Tooltip>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
-                      {/* Apps & Scripts */}
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
-                        <Package className="w-3.5 h-3.5 text-violet-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
-                            {t('app_add_guide_type_apps_title')}
+                    <motion.div
+                      id="app-add-guide-content"
+                      initial={false}
+                      animate={{ height: isAddGuideExpanded ? 'auto' : 0, opacity: isAddGuideExpanded ? 1 : 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      aria-hidden={!isAddGuideExpanded}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
+                          {/* Apps & Scripts */}
+                          <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                            <Package className="w-3.5 h-3.5 text-violet-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                                {t('app_add_guide_type_apps_title')}
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                {t('app_add_guide_type_apps_desc')}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
-                            {t('app_add_guide_type_apps_desc')}
+
+                          {/* System Folders */}
+                          <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                            <Folder className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                                {t('app_add_guide_type_folders_title')}
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                {t('app_add_guide_type_folders_desc')}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Web Links / URLs */}
+                          <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                            <Globe className="w-3.5 h-3.5 text-cyan-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                                {t('app_add_guide_type_urls_title')}
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                {t('app_add_guide_type_urls_desc')}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Files & Documents */}
+                          <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                            <FileText className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-semibold text-slate-200 leading-tight">
+                                {t('app_add_guide_type_docs_title')}
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                {t('app_add_guide_type_docs_desc')}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* System Folders */}
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
-                        <Folder className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
-                            {t('app_add_guide_type_folders_title')}
-                          </div>
-                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
-                            {t('app_add_guide_type_folders_desc')}
-                          </div>
+                        <div className="text-[10px] text-slate-400/90 italic flex items-center gap-1.5 border-t border-white/5 pt-2">
+                          <Sparkles className="w-2.5 h-2.5 text-cyan-400/70 shrink-0" />
+                          <span>{t('app_add_guide_tip')}</span>
                         </div>
                       </div>
-
-                      {/* Web Links / URLs */}
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
-                        <Globe className="w-3.5 h-3.5 text-cyan-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
-                            {t('app_add_guide_type_urls_title')}
-                          </div>
-                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
-                            {t('app_add_guide_type_urls_desc')}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Files & Documents */}
-                      <div className="flex items-start gap-2 p-2 rounded-lg bg-black/30 border border-white/5">
-                        <FileText className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-200 leading-tight">
-                            {t('app_add_guide_type_docs_title')}
-                          </div>
-                          <div className="text-[10px] text-slate-400 leading-tight mt-0.5">
-                            {t('app_add_guide_type_docs_desc')}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-[10px] text-slate-400/90 italic flex items-center gap-1.5 border-t border-white/5 pt-2">
-                      <Sparkles className="w-2.5 h-2.5 text-cyan-400/70 shrink-0" />
-                      <span>{t('app_add_guide_tip')}</span>
-                    </div>
+                    </motion.div>
                   </div>
                 )}
                 {/* Tarjeta de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
@@ -11360,7 +11361,8 @@ export default function App() {
                 <button
                   type="button"
                   onClick={submitAppForm}
-                  className="px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl font-cyber font-bold text-sm shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                  disabled={!canSubmitAppForm}
+                  className="px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl font-cyber font-bold text-sm shadow-[0_0_15px_rgba(34,211,238,0.2)] transition-all inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:shadow-none disabled:hover:bg-cyan-500/20 disabled:active:scale-100"
                 >
                   <span>{isAddingApp ? t('app_add_submit') : t('app_edit_submit')}</span>
                   <EnterKeyBadge variant="primary" />
@@ -13473,7 +13475,9 @@ export default function App() {
                                     )}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">{app.name}</h4>
+                                    <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">
+                                      <OverflowMarquee className="w-full">{app.name}</OverflowMarquee>
+                                    </h4>
                                     <Tooltip label={app.aumid} placement="top">
                                       <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
                                     </Tooltip>
