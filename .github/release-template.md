@@ -8,67 +8,67 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
-Companion gains an interactive quick command prompt on click, global shortcut activation, and stays visible on the main panel during routine idle. Automated backups support custom destination folders with flexible retention, while tray branding and settings controls receive refined polish.
+Bilingual onboarding with starter categories, portable cross-PC backups with embedded icons and wallpapers, original preset art, full editable text context menus, standardized suite controls, missing-target recovery, collapsible favorites, and scheduler search refine the launcher experience.
 <!-- changelog-summary:end -->
 
-> **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps from a unified panel.
+> **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps, files, shortcuts, and console commands from a unified panel.
 
 ---
 
 ### ✨ Key Features & Highlights
 
-- ⚡ **Interactive CyberBot Command Prompt**:
-  - Click CyberBot or press `Ctrl+Alt+B` (customizable) to summon an interactive quick command prompt anchored directly above the companion.
-  - Search launcher actions, launch apps, trigger system power operations, or jump to settings with smart ranking, hotkey badges, and chip highlights.
-  - Full keyboard navigation, dynamic bubble alignment, and click-outside dismissal.
+- 🧭 **Bilingual Onboarding & Optional CyberBot Assistant**:
+  - First-run wizard sets interface language cleanly and initializes 5 starter categories, 5 favorites, and 5 taskbar pins ready to customize.
+  - Opt in to the CyberBot Assistant during setup (or toggle anytime in Settings), backed by factory reset with double confirmation.
+  - Fixed-to-screen maximized bounds keep the launcher taskbar flush with the screen edge across monitors.
 
-- 🤖 **Refined Companion Presence**:
-  - CyberBot now stays visible on the main panel during routine idle instead of vanishing, performing facial expressions, status tickers, blinking, and quiet naps.
-  - Retains contextual retirement: steps aside after speaking when dialogs, settings, or the terminal are open, and returns smoothly when closed.
+- 💾 **Portable Backups & Original Visuals**:
+  - Automatic backups (default 3 retained copies) and manual JSON exports embed custom local icons and wallpapers so restores match across PCs.
+  - Original 16:9 CyberLauncher preset backgrounds paired with crisp thumbnail selection and a dark suite-aligned NSIS installer sidebar.
+  - Hide-on-blur is disabled by default on fresh installs so accidental focus changes stay friendly for new users.
 
-- 💾 **Customizable Automated Backups**:
-  - Set a custom backup destination folder outside the system drive, with integrated folder picker and quick reset.
-  - Flexible retention choices: choose to keep 1, 3, 5, or 7 backup copies (default: 3).
-  - Standardized switches and updated section labels for clarity and consistency.
+- 🎨 **Suite-Standard UI & Organization Upgrades**:
+  - Shared styled bilingual context menu (`Undo`, `Redo`, `Cut`, `Copy`, `Paste`, `Select All`, `Delete`) on every editable text field.
+  - Standardized custom `ToggleSwitch`, `CustomSelect`, and `Checkbox` controls (including the tray pin popup), unified CyberBot bubbles, and calmed modal glows.
+  - Renamed `All` to `All Items` (`Todo` in Spanish) with matching section icons, plus a clickable collapsible `FAVORITES` header with hover chevron and count badge.
 
-- 🎨 **Visual & Tray Polish**:
-  - Tray menu branding logo desaturation in idle reduced from 100% to 50% for clearer visibility.
-  - User icon replaces heart icon in the preferred name settings card.
-  - Alternative banners card relocated to the end of CyberBot settings.
-  - Synchronized high-resolution suite recommendation icons and metadata.
+- ⏱️ **Scheduler, UWP & Missing-Target Improvements**:
+  - Redesigned dark-glass analog clock with etched app watermark and enlarged digital readout alongside inline shortcut filtering inside the Scheduler selector.
+  - UWP import dialog highlights app icon and name while remembering the last picked category per session.
+  - Missing shortcut modal offers one-click target browsing or direct deletion when paths move.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-El compañero añade una paleta interactiva de comandos al hacer clic, activación por atajo global y permanece visible en el panel principal durante la inactividad. Los respaldos automáticos admiten carpeta personalizada con retención flexible, y los ajustes y el menú de bandeja se perfeccionan.
+La configuración inicial bilingüe con accesos curados, copias portables con iconos y fondos incrustados, fondos originales, menú contextual en todo campo de texto, controles unificados de la suite, recuperación de rutas, favoritos plegables y búsqueda en el Programador refinan el lanzador.
 
-> **¿Nuevo en CyberLauncher?** Un lanzador Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps desde un panel unificado.
+> **¿Nuevo en CyberLauncher?** Un lanzador para Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps, archivos, accesos directos y comandos desde un panel unificado.
 
 ---
 
 ### ✨ Novedades destacadas
 
-- ⚡ **Paleta rápida interactiva de comandos**:
-  - Haz clic en CyberBot o pulsa `Ctrl+Alt+B` (personalizable) para abrir una paleta rápida de comandos anclada directamente sobre el compañero.
-  - Busca acciones del lanzador, abre apps, ejecuta operaciones de energía o accede a ajustes con orden inteligente e insignias de atajos.
-  - Navegación completa por teclado, alineación dinámica del globo y cierre al pulsar fuera.
+- 🧭 **Configuración inicial bilingüe y Asistente CyberBot opcional**:
+  - El asistente inicial ajusta el idioma y prepara 5 categorías básicas, 5 favoritos y 5 anclajes en barra listos para personalizar.
+  - Permite activar o dejar desactivado el Asistente CyberBot desde el primer inicio, junto a un restablecimiento de fábrica con confirmación.
+  - Límites exactos al maximizar para mantener la barra inferior alineada hasta el borde en cualquier monitor.
 
-- 🤖 **Presencia refinada del compañero**:
-  - CyberBot permanece visible en el panel principal durante la inactividad en lugar de desaparecer, mostrando expresiones, marquesina, parpadeo y siestas tranquilas.
-  - Conserva el retiro contextual: se aparta tras hablar cuando hay diálogos, ajustes o la terminal abiertos, y regresa con suavidad al cerrarlos.
+- 💾 **Copias portables entre equipos y arte original**:
+  - Los respaldos automáticos (3 copias por defecto) y exportaciones JSON incrustan iconos personalizados y fondos locales para restaurar todo intacto incluso en otro PC.
+  - Fondos 16:9 originales de CyberLauncher con selector de miniaturas nítido y barra lateral oscura para el instalador NSIS acorde a la suite.
+  - Ocultar al perder el foco desactivado por defecto en instalaciones nuevas para ofrecer una primera experiencia más cómoda.
 
-- 💾 **Respaldos automáticos personalizables**:
-  - Configura una carpeta de destino personalizada fuera del disco del sistema, con selector de carpetas y restablecimiento rápido.
-  - Opciones de retención flexibles: elige conservar 1, 3, 5 o 7 copias de respaldo (predeterminado: 3).
-  - Conmutadores estandarizados y etiquetas de sección renombradas para mayor claridad.
+- 🎨 **Controles de la suite y mejoras de organización**:
+  - Menú contextual bilingüe compartido (`Deshacer`, `Rehacer`, `Cortar`, `Copiar`, `Pegar`, `Seleccionar todo`, `Eliminar`) en todos los campos de texto editables.
+  - Controles `ToggleSwitch`, `CustomSelect` y `Checkbox` unificados (incluido el aviso de bandeja), globos consistentes en CyberBot y brillos moderados en modales.
+  - Sección renombrada a `Todo` (`All Items` en inglés) con icono en barra y cabecera, y título `FAVORITOS` clicable para contraer o expandir con tooltip y contador.
 
-- 🎨 **Ajustes visuales y de bandeja**:
-  - Desaturación del logo en el menú de la bandeja reducida del 100% al 50% en reposo para mayor visibilidad.
-  - Icono de usuario en lugar del corazón en la tarjeta de nombre preferido.
-  - Tarjeta de banners alternativos reubicada al final de los ajustes de CyberBot.
-  - Iconos de recomendaciones de la suite y metadatos sincronizados en alta resolución.
+- ⏱️ **Programador, UWP y recuperación de accesos**:
+  - Reloj analógico rediseñado en cristal oscuro con marca de agua del cohete, lectura digital ampliada y buscador inline dentro del selector del Programador.
+  - El diálogo de importación UWP prioriza el icono y el nombre de la app y recuerda la última categoría elegida en la sesión.
+  - El aviso de destino no encontrado permite reubicar la ruta o eliminar el acceso directamente desde el modal.
 
 ### ⚠️ Antes de instalar
 

@@ -2,6 +2,26 @@
 
 All notable changes to CyberLauncher are documented here.
 
+## [1.15.0] - 2026-11-14
+
+### 🇺🇸 English
+
+- **Bilingual Onboarding & Starter Setup**: Added a first-run wizard with language sync, curated starter items (5 categories, 5 favorites, 5 taskbar pins), and optional CyberBot Assistant activation, plus factory reset with confirmation.
+- **Portable Backups Across PCs**: Automatic backups (3 retained copies by default) and manual JSON exports now embed custom local icons and wallpapers, pruning unused imported backgrounds on restore or removal.
+- **Original Backgrounds & Installer Artwork**: Added original 16:9 CyberLauncher wallpapers with a visual thumbnail selector and a dark suite-aligned NSIS installer sidebar.
+- **Suite-Standard UI & Text Context Menus**: Added a shared bilingual context menu (Undo, Redo, Cut, Copy, Paste, Select All, Delete) across every editable text field, standardized custom selects, checkboxes, and toggle switches, unified CyberBot command bubbles, calmed modal glows, and matched tray popup controls.
+- **Smarter Organization & Window Behavior**: Updated `All` to `All Items` / `Todo` with aligned section icons, added a collapsible `FAVORITES` header with count badge and tooltip, disabled hide-on-blur by default so launches stay focused on explicit opens, and synchronized maximized taskbar bounds.
+- **Scheduler, UWP & Missing-Target Polish**: Redesigned the analog clock dial with the etched CyberLauncher watermark and larger digital readout, replaced the placeholder dropdown item with inline shortcut search, prioritized app name/icon with session category memory in UWP imports, and added locate/delete recovery when a shortcut target is missing.
+
+### 🇪🇸 Español
+
+- **Configuración Inicial Bilingüe**: Nuevo asistente de primera ejecución con sincronización de idioma, accesos iniciales curados (5 categorías, 5 favoritos, 5 anclajes en barra) y activación opcional del Asistente CyberBot, junto al restablecimiento de fábrica con confirmación.
+- **Respaldos Portables Entre Equipos**: Las copias automáticas (3 copias por defecto) y exportaciones JSON incrustan iconos personalizados y fondos locales, limpiando fondos importados huérfanos al restaurar o eliminar.
+- **Fondos Originales y Barra del Instalador**: Nuevos fondos 16:9 propios con selector visual por miniaturas y barra lateral oscura para el instalador NSIS alineada con la suite.
+- **Controles de la Suite y Menú Contextual de Texto**: Menú contextual bilingüe compartido (Deshacer, Rehacer, Cortar, Copiar, Pegar, Seleccionar todo, Eliminar) en cada campo de texto editable, selectores, casillas y conmutadores estandarizados, globos unificados en CyberBot, brillos moderados en modales y casilla estilizada en el aviso de bandeja.
+- **Mejor Organización y Comportamiento de Ventana**: Sección `TODO` / `ALL ITEMS` con icono en cabecera y barra lateral, cabecera `FAVORITOS` plegable con contador y tooltip, ocultar al perder foco desactivado por defecto y ajuste exacto de la barra inferior al maximizar.
+- **Programador, UWP y Accesos No Encontrados**: Reloj analógico rediseñado con marca de agua del icono y lectura digital ampliada, buscador inline en el selector de accesos del Programador, diálogo de importación UWP centrado en icono/nombre con memoria de categoría por sesión y modal para reubicar o eliminar accesos rotos.
+
 ## [1.14.0] - 2026-10-28
 
 ### 🇺🇸 English
