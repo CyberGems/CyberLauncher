@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### Apps, files, commands and a real terminal, one hotkey away — with your system stats in the same panel
+### Shortcuts, files, commands and a real terminal, one hotkey away, with your system stats in the same panel
 
 </div>
 
@@ -93,51 +93,53 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 ## ✨ Key Features
 
 ### 🔍 Launch & Search
-- **Instant Launch**: Open any app, folder, file/document, shortcut (.lnk), or URL with a single click or Enter
-- **Fuzzy Search**: Start typing to instantly filter your app library (no exact match needed)
+- **Instant Launch**: Open any app, folder, file/document, shortcut (.lnk), script, or URL with a single click or Enter
+- **Fuzzy Search**: Start typing to instantly filter your shortcut library (`All Items` or active category, no exact match needed)
 - **Command Palette**: Press `Ctrl+K` for instant launcher command execution and quick navigation
-- **System-Wide File Search**: Hybrid indexing engine finds files, folders, and apps across all drives
-- **Microsoft Store Apps**: Natively scan, import and launch Store apps (UWP and MSIX) via AUMID
+- **System-Wide File Search**: Hybrid indexing engine finds files, folders, and programs across all drives
+- **Microsoft Store Apps**: Natively scan, import (with per-session category selection), and launch Store apps (UWP and MSIX) via AUMID
 - **Cyber Terminal**: Type `>` in search to open a persistent, interactive PowerShell or CMD session in the panel. Type at the shell prompt, use native history and interactive programs, and switch shells from the toolbar.
 
 ### 📂 Organization
-- **Custom Categories**: Organize apps into color-coded categories with inline editing
+- **Bilingual Initial Setup**: Quick onboarding wizard lets you pick English or Spanish with 5 starter categories, 5 default favorites, 5 essential Windows taskbar shortcuts, and optional CyberBot setup
+- **Custom Categories**: Organize shortcuts into color-coded categories under `All Items`, with inline editing and automatic hiding of `Uncategorized` when empty
 - **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+B` or hover
-- **Favorites & Drag-to-Reorder**: Pin most-used apps with fluid live drag & drop reordering
-- **Taskbar**: Customizable bottom bar with pinned apps for quick access
-- **Resizable Panels**: Drag to resize the category sidebar and most-used panel
+- **Favorites & Drag-to-Reorder**: Pin frequent shortcuts with fluid live drag & drop reordering
+- **Taskbar**: Customizable bottom bar with pinned shortcuts for instant access
+- **Resizable Panels**: Drag to resize the category sidebar and most-used/recent panel
 
 ### 🎯 Activation
 - **Global Shortcut**: Show/hide with a customizable keyboard shortcut (default: `Alt+Shift+L`)
 - **Hot Corners (Display-Aware)**: Activate the launcher by moving your cursor to any screen corner. Includes smart full-screen suppression: automatically ignores triggers on displays playing full-screen videos or games, while other monitors continue responding normally.
 - **Multi-Monitor Support**: Choose which display CyberLauncher appears on (including "Follow cursor")
-- **Auto-Hide on Blur**: Launcher hides automatically when switching to another window
+- **Smart Auto-Hide**: Hides on shortcut launch, with optional hide-on-blur in Settings (disabled by default)
 
-### 🤖 CyberBot Companion
+### 🤖 CyberBot Assistant
 - **Interactive Quick Command Prompt**: Click CyberBot or press `Ctrl+Alt+B` to summon a sleek command prompt anchored right above the companion with smart search, action ranking, and hotkey badges.
 - **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
 - **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
-- **Personalize the experience**: Enter your name directly in its invitation, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
+- **Personalize the experience**: Enter your name directly in onboarding or its bubble, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
 - **Calmer and persistent presence**: Stays visible on the main panel during routine idle with facial expressions, status screens, and peaceful naps. CyberBot retires after speaking in dialogs or the terminal and returns after a short delay when they close.
-- **Optional companion**: CyberBot uses built-in contextual messages. Disable it through Settings or its quick toggle; a visible bot gives a short farewell. Alternative banners can show notices in its place.
+- **Optional companion**: Toggle CyberBot Assistant on or off during onboarding, in Settings, or from its quick command action. A visible bot gives a short farewell, and alternative banners can show notices in its place.
 
 ### 📊 System & Monitoring
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
 - **System Power Hub**: Fast access to Shutdown, Restart, Sleep, and Lock with a 10s safety confirmation modal
 - **Storage HUD**: View free space and status of all system drives
-- **Execution Scheduler**: Schedule app launches or console commands with standalone desktop alert countdowns
+- **Execution Scheduler**: Schedule shortcut launches or console commands with standalone desktop alert countdowns
 - **Execution History**: Track and reopen everything you've launched, with clear-history option
-- **Scheduled Auto-Backups**: Automated recurring configuration backups with custom destination folder and flexible retention policies (1, 3, 5, or 7 copies)
+- **Portable Auto-Backups**: Automated recurring JSON backups that embed custom local icons and wallpapers, with custom destination folder and flexible retention policies (default: 3; options: 1, 3, 5, or 7 copies)
 
 ### 🎨 Customization
-- **Theming**: Background images, gradients, solid colors, glass intensity, and opacity controls
+- **Theming**: Preset or custom background images, gradients, solid colors, glass intensity, and opacity controls
 - **UI Scale**: Adjust the interface size to your preference
-- **Bilingual UI**: Full English and Spanish interface with instant language switcher
+- **Bilingual UI & Text Menu**: Full English and Spanish interface with instant language switcher and custom themed right-click context menus across all editable text fields
 
 ### ⚡ Power User
 - **Portable Mode**: Run CyberLauncher without installation, storing configuration beside the executable
-- **Run as Administrator**: Per-app option to request elevated privileges on launch
-- **Per-App Global Shortcuts**: Assign custom hotkeys to launch any app from anywhere
+- **Run as Administrator**: Per-shortcut option to request elevated privileges on launch
+- **Per-Shortcut Global Hotkeys**: Assign custom hotkeys to launch any shortcut from anywhere
+- **Missing Target Recovery**: Detects moved or deleted targets and lets you locate a new file or remove the broken shortcut cleanly
 - **Drag & Drop from Explorer**: Drag applications, folders, or files directly into the launcher to create instant shortcuts
 - **Auto-Updates**: Automatic update checks and downloads via GitHub releases
 - **Export / Import**: Backup and restore your entire configuration as JSON
@@ -187,9 +189,9 @@ CyberLauncher stays out of the way until you press `Alt+Shift+L`.
 
 1. Press `Alt+Shift+L` from anywhere and just start typing: `chr` finds Chrome even if you misspell it.
 2. Press **Enter** to launch the highlighted result.
-3. Open **Cyber Terminal** with `Ctrl+J` when you need a command instead of an app.
+3. Open **Cyber Terminal** with `Ctrl+J` when you need a command instead of a shortcut.
 
-Frequently used apps rank higher automatically. The global hotkey is customizable and `Alt+Q` closes Cyber Terminal.
+Frequently used shortcuts rank higher automatically. The global hotkey is customizable and `Alt+Q` closes Cyber Terminal.
 
 See [How Do You Use CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) for everyday examples and the full guides.
 
@@ -265,7 +267,7 @@ npm run lint
 |---|---|
 | `Alt+Shift+L` | Show/hide CyberLauncher (customizable) |
 | `Ctrl+J` | Open/close Cyber Terminal |
-| `Enter` | Launch selected app / run the command at the terminal prompt |
+| `Enter` | Launch selected shortcut / run the command at the terminal prompt |
 | `Ctrl+C` (in terminal) | Interrupt the foreground command |
 | `Alt+Q` (in terminal) | Close Cyber Terminal |
 | `Alt+1` / `Alt+2` (in terminal) | Switch to PowerShell / CMD |
@@ -276,7 +278,7 @@ npm run lint
 | `Esc` | Close menu / clear search; in the terminal, send Escape to the shell |
 | `↑` `↓` | Navigate search results |
 | `←` `→` | Navigate sidebar menu |
-| `Ctrl+←` / `Ctrl+→` | Cycle search filter (Mixed / Apps / Folders / Files) |
+| `Ctrl+←` / `Ctrl+→` | Cycle search filter (Mixed / Programs / Folders / Files) |
 | `Tab` (in system search) | Return to normal launcher search |
 
 ---

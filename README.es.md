@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### Apps, archivos, comandos y una terminal real a un atajo de distancia, con las estadísticas del sistema en el mismo panel
+### Accesos, archivos, comandos y una terminal real a un atajo de distancia, con las estadísticas del sistema en el mismo panel
 
 </div>
 
@@ -93,51 +93,53 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 ## ✨ Funciones principales
 
 ### 🔍 Lanzamiento y búsqueda
-- **Lanzamiento instantáneo**: abre cualquier app, carpeta, archivo o documento, acceso directo (`.lnk`) o URL con un solo clic o Intro
-- **Búsqueda difusa**: empieza a escribir para filtrar al instante tu biblioteca de apps (sin necesidad de coincidencia exacta)
+- **Lanzamiento instantáneo**: abre cualquier app, carpeta, archivo o documento, acceso directo (`.lnk`), script o URL con un solo clic o Intro
+- **Búsqueda difusa**: empieza a escribir para filtrar al instante tu biblioteca de accesos (`Todo` o categoría activa, sin necesidad de coincidencia exacta)
 - **Paleta de comandos**: presiona `Ctrl+K` para ejecutar comandos del lanzador y navegar al instante
-- **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y apps en todas las unidades
-- **Apps de Microsoft Store**: escanea, importa y lanza apps de la Tienda (UWP y MSIX) de forma nativa mediante AUMID
+- **Búsqueda de archivos en todo el sistema**: el motor de índice híbrido encuentra archivos, carpetas y programas en todas las unidades
+- **Apps de Microsoft Store**: escanea, importa (recordando la última categoría elegida en la sesión) y lanza apps de la Tienda (UWP y MSIX) de forma nativa mediante AUMID
 - **Cyber Terminal**: escribe `>` en la búsqueda para abrir una sesión persistente e interactiva de PowerShell o CMD dentro del panel. Escribe en el prompt, usa el historial nativo y programas interactivos, y cambia de shell desde la barra.
 
 ### 📂 Organización
-- **Categorías personalizadas**: organiza apps en categorías con código de color y edición en línea
+- **Asistente inicial bilingüe**: configuración inicial rápida para elegir español o inglés con 5 categorías base, 5 favoritos iniciales, 5 accesos esenciales en la barra de tareas y activación opcional de CyberBot
+- **Categorías personalizadas**: organiza tus accesos en categorías con código de color bajo `Todo`, edición en línea y ocultamiento automático de `Sin Categoría` cuando está vacía
 - **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+B` o al pasar el cursor
-- **Favoritos y reordenar con arrastrar**: fija tus apps más usadas y reordénalas con arrastre fluido en tiempo real
-- **Barra de tareas**: barra inferior personalizable con apps ancladas de acceso rápido
-- **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usadas
+- **Favoritos y reordenar con arrastrar**: fija tus accesos más usados y reordénalos con arrastre fluido en tiempo real
+- **Barra de tareas**: barra inferior personalizable con accesos anclados de apertura rápida
+- **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usados y recientes
 
 ### 🎯 Activación
 - **Atajo global**: muestra u oculta con un atajo de teclado personalizable (predeterminado: `Alt+Shift+L`)
 - **Esquinas activas (detección por monitor)**: activa el lanzador llevando el cursor a cualquier esquina de la pantalla. Incluye supresión inteligente en pantalla completa: ignora esquinas en monitores con videos o juegos a pantalla completa para evitar interrupciones, mientras tus demás monitores siguen respondiendo con normalidad.
 - **Soporte multi-monitor**: elige en qué pantalla aparece CyberLauncher (incluido "Seguir al cursor")
-- **Ocultar al perder el foco**: el lanzador se oculta automáticamente al cambiar a otra ventana
+- **Ocultamiento inteligente**: se oculta al lanzar un acceso, con opción en Configuración para ocultar también al perder el foco (desactivada por defecto)
 
-### 🤖 Compañero CyberBot
+### 🤖 Asistente CyberBot
 - **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Ctrl+Alt+B` para abrir una paleta rápida de comandos anclada directamente sobre el compañero con búsqueda inteligente, orden de acciones e insignias de atajos.
 - **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
-- **Mensajes progresivos**: Los comentarios al abrir apps, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
-- **Personaliza la experiencia**: Introduce tu nombre en el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.
+- **Mensajes progresivos**: Los comentarios al abrir accesos, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
+- **Personaliza la experiencia**: Introduce tu nombre desde el asistente inicial o el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.
 - **Presencia más tranquila y permanente**: Permanece visible en el panel principal durante la inactividad rutinaria con expresiones, pantallas de estado y siestas tranquilas. CyberBot se retira tras hablar en diálogos o la terminal y vuelve con una pequeña demora al cerrarlos.
-- **Compañero opcional**: CyberBot usa mensajes contextuales integrados. Desactívalo desde Configuración o su toggle rápido; si está visible, se despide brevemente. Los banners alternativos pueden mostrar avisos en su lugar.
+- **Compañero opcional**: Activa o desactiva el Asistente CyberBot desde el asistente inicial, en Configuración o desde su menú rápido. Si está visible, se despide brevemente y los banners alternativos muestran los avisos en su lugar.
 
 ### 📊 Sistema y monitorización
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior
 - **Centro de energía del sistema**: acceso rápido a Apagar, Reiniciar, Suspender y Bloquear con cuenta regresiva de seguridad de 10s
 - **HUD de almacenamiento**: espacio libre y estado de todas las unidades del sistema
-- **Programador de ejecuciones**: programa lanzamientos de apps o comandos con alertas flotantes independientes en el escritorio
+- **Programador de ejecuciones**: programa lanzamientos de accesos o comandos con alertas flotantes independientes en el escritorio
 - **Historial de ejecución**: registra y reabre todo lo que has lanzado, con opción de limpiar el historial
-- **Copias de seguridad automáticas**: copias de seguridad recurrentes programables con carpeta personalizada y retención flexible (1, 3, 5 o 7 copias)
+- **Copias de seguridad portables**: copias automáticas programables en JSON que incrustan íconos y fondos locales personalizados, con carpeta de destino configurable y retención flexible (3 copias por defecto; opciones de 1, 3, 5 o 7)
 
 ### 🎨 Personalización
-- **Temas**: imágenes de fondo, degradados, colores sólidos, intensidad del cristal y controles de opacidad
+- **Temas**: imágenes de fondo predeterminadas o personalizadas, degradados, colores sólidos, intensidad del cristal y controles de opacidad
 - **Escala de la interfaz**: ajusta el tamaño de la interfaz a tu gusto
-- **Interfaz bilingüe**: interfaz completa en inglés y español con selector de idioma instantáneo
+- **Interfaz bilingüe y menú contextual**: interfaz completa en inglés y español con selector de idioma instantáneo y menú contextual estilizado propio en todos los campos de texto editables
 
 ### ⚡ Usuarios avanzados
 - **Modo portable**: ejecuta CyberLauncher sin instalación, almacenando la configuración junto al ejecutable
-- **Ejecutar como Administrador**: opción por app para solicitar privilegios elevados al iniciar
-- **Atajos globales por app**: asigna atajos personalizados para lanzar cualquier app desde cualquier lugar
+- **Ejecutar como Administrador**: opción por acceso para solicitar privilegios elevados al iniciar
+- **Atajos globales por acceso**: asigna atajos personalizados para lanzar cualquier acceso desde cualquier lugar
+- **Recuperación de rutas faltantes**: detecta destinos movidos o eliminados y permite buscar una nueva ubicación o quitar el acceso roto fácilmente
 - **Arrastrar y soltar desde el Explorador**: arrastra aplicaciones, carpetas o cualquier archivo directamente al lanzador para agregarlos como accesos directos
 - **Actualizaciones automáticas**: comprobación y descarga automáticas mediante GitHub releases
 - **Exportar / Importar**: copia de seguridad y restauración de toda tu configuración en JSON
@@ -187,9 +189,9 @@ CyberLauncher se aparta hasta que pulsas `Alt+Shift+L`.
 
 1. Pulsa `Alt+Shift+L` desde cualquier parte y empieza a escribir: `chr` encuentra Chrome incluso si lo escribes mal.
 2. Pulsa **Intro** para abrir el resultado resaltado.
-3. Abre **Cyber Terminal** con `Ctrl+J` cuando necesites un comando en lugar de una app.
+3. Abre **Cyber Terminal** con `Ctrl+J` cuando necesites un comando en lugar de un acceso directo.
 
-Las apps que más usas suben automáticamente en los resultados. El atajo global es personalizable y `Alt+Q` cierra Cyber Terminal.
+Los accesos que más usas suben automáticamente en los resultados. El atajo global es personalizable y `Alt+Q` cierra Cyber Terminal.
 
 Consulta [¿Cómo se usa CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) para ver ejemplos cotidianos y las guías completas de la wiki (en inglés).
 
@@ -265,7 +267,7 @@ npm run lint
 |---|---|
 | `Alt+Shift+L` | Mostrar/ocultar CyberLauncher (personalizable) |
 | `Ctrl+J` | Abrir/cerrar Cyber Terminal |
-| `Intro` | Lanzar la app seleccionada / ejecutar el comando en el prompt |
+| `Intro` | Lanzar el acceso seleccionado / ejecutar el comando en el prompt |
 | `Ctrl+C` (en la terminal) | Interrumpir el comando activo |
 | `Alt+Q` (en la terminal) | Cerrar Cyber Terminal |
 | `Alt+1` / `Alt+2` (en la terminal) | Cambiar a PowerShell / CMD |
@@ -276,7 +278,7 @@ npm run lint
 | `Escape` | Cerrar el menú / limpiar la búsqueda; en la terminal, enviar Escape a la shell |
 | `↑` `↓` | Navegar por los resultados de búsqueda |
 | `←` `→` | Navegar por el menú de la barra lateral |
-| `Ctrl+←` / `Ctrl+→` | Cambiar el filtro de búsqueda (Mixto / Apps / Carpetas / Archivos) |
+| `Ctrl+←` / `Ctrl+→` | Cambiar el filtro de búsqueda (Mezclado / Programas / Carpetas / Archivos) |
 | `Tab` (en la búsqueda del sistema) | Volver a la búsqueda normal del lanzador |
 
 ---
