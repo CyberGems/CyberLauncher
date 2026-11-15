@@ -586,7 +586,9 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       aria-label={t(isDesktop ? 'cyberbot_desktop_tag' : 'cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
-      className={`relative w-[440px] max-w-[calc(100vw-32px)] ${isDesktop ? 'min-h-[190px]' : ''} rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5`}
+      className={`relative rounded-2xl border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5 ${
+        isDesktop ? 'desktop-cyberbot-bubble min-h-[190px] w-full' : `w-[440px] max-w-[calc(100vw-32px)] ${CYBERBOT_BUBBLE_SURFACE}`
+      }`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">

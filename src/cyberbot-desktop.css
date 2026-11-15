@@ -3,3 +3,8 @@ html[data-desktop-cyberbot] body,
 html[data-desktop-cyberbot] #root {
   background: transparent;
 }
+
+.desktop-cyberbot-bubble {
+  background-color: rgb(8 13 26 / 99%);
+  box-shadow: 0 12px 26px rgb(0 0 0 / 60%), 0 0 18px rgb(34 211 238 / 12%);
+}

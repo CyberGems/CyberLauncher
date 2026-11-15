@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'node:path';
-import type { DesktopCyberBotContext, DesktopCyberBotShortcut } from '../shared/desktopCyberBot';
+import { DESKTOP_CYBERBOT_LAYOUT, type DesktopCyberBotContext, type DesktopCyberBotShortcut } from '../shared/desktopCyberBot';
 import type { LaunchResult } from '../src/launchFlow';
 
 interface DesktopCyberBotOptions {
@@ -68,11 +68,12 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
       return;
     }
     const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-    const width = Math.min(472, workArea.width - margin * 2);
+    const { bubbleWidth, sidePadding, topPadding, bottomPadding } = DESKTOP_CYBERBOT_LAYOUT;
+    const width = Math.min(bubbleWidth + sidePadding * 2, workArea.width - margin * 2);
     const height = Math.min(600, workArea.height - margin * 2);
     const context: DesktopCyberBotContext = {
       ...options.getCatalog(),
-      resultsHeight: Math.max(48, height - 260),
+      resultsHeight: Math.max(48, height - topPadding - bottomPadding - 240),
     };
     const window = new BrowserWindow({
       title: 'CyberBot',

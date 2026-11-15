@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { DesktopCyberBotContext } from '../shared/desktopCyberBot';
+import { DESKTOP_CYBERBOT_LAYOUT, type DesktopCyberBotContext } from '../shared/desktopCyberBot';
 import type { LaunchResult } from './launchFlow';
 import { translations, type TranslationKey } from './locales';
 import { CyberBotPrompt, type PromptLauncherApp } from './components/companion/CyberBotPrompt';
@@ -87,7 +87,15 @@ function DesktopCyberBot({ context }: { context: DesktopCyberBotContext }) {
   };
 
   return (
-    <main ref={shellRef} className="flex flex-col items-end gap-2 px-4 pt-3 pb-2">
+    <main
+      ref={shellRef}
+      className="flex flex-col items-end gap-2"
+      style={{
+        paddingInline: DESKTOP_CYBERBOT_LAYOUT.sidePadding,
+        paddingTop: DESKTOP_CYBERBOT_LAYOUT.topPadding,
+        paddingBottom: DESKTOP_CYBERBOT_LAYOUT.bottomPadding,
+      }}
+    >
       <CyberBotPrompt
         isOpen
         onClose={api.close}
