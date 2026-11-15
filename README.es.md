@@ -193,7 +193,7 @@ CyberLauncher se aparta hasta que pulsas `Alt+Shift+L`.
 
 Los accesos que más usas suben automáticamente en los resultados. El atajo global es personalizable y `Alt+Q` cierra Cyber Terminal.
 
-Consulta [¿Cómo se usa CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) para ver ejemplos cotidianos y las guías completas de la wiki (en inglés).
+Consulta [¿Cómo se usa CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use-es) para ver ejemplos cotidianos y las guías completas de la wiki.
 
 ---
 
