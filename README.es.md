@@ -104,7 +104,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Asistente inicial bilingüe**: configuración inicial rápida para elegir español o inglés con 5 categorías base, 5 favoritos iniciales, 5 accesos esenciales en la barra de tareas y activación opcional de CyberBot
 - **Categorías personalizadas**: organiza tus accesos en categorías con código de color bajo `Todo`, edición en línea y ocultamiento automático de `Sin Categoría` cuando está vacía
 - **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+B` o al pasar el cursor
-- **Favoritos y reordenar con arrastrar**: fija tus accesos más usados y reordénalos con arrastre fluido en tiempo real
+- **Favoritos y reordenar con arrastrar**: fija tus accesos más usados bajo una cabecera plegable de Favoritos con arrastre fluido en tiempo real
 - **Barra de tareas**: barra inferior personalizable con accesos anclados de apertura rápida
 - **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usados y recientes
 
@@ -126,7 +126,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Monitor del sistema**: uso de RAM, CPU y disco en tiempo real en la barra superior
 - **Centro de energía del sistema**: acceso rápido a Apagar, Reiniciar, Suspender y Bloquear con cuenta regresiva de seguridad de 10s
 - **HUD de almacenamiento**: espacio libre y estado de todas las unidades del sistema
-- **Programador de ejecuciones**: programa lanzamientos de accesos o comandos con alertas flotantes independientes en el escritorio
+- **Programador de ejecuciones**: programa lanzamientos de accesos (con buscador inline de accesos) o comandos con alertas flotantes independientes en el escritorio
 - **Historial de ejecución**: registra y reabre todo lo que has lanzado, con opción de limpiar el historial
 - **Copias de seguridad portables**: copias automáticas programables en JSON que incrustan íconos y fondos locales personalizados, con carpeta de destino configurable y retención flexible (3 copias por defecto; opciones de 1, 3, 5 o 7)
 

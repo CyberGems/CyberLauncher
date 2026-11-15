@@ -104,7 +104,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Bilingual Initial Setup**: Quick onboarding wizard lets you pick English or Spanish with 5 starter categories, 5 default favorites, 5 essential Windows taskbar shortcuts, and optional CyberBot setup
 - **Custom Categories**: Organize shortcuts into color-coded categories under `All Items`, with inline editing and automatic hiding of `Uncategorized` when empty
 - **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+B` or hover
-- **Favorites & Drag-to-Reorder**: Pin frequent shortcuts with fluid live drag & drop reordering
+- **Favorites & Drag-to-Reorder**: Pin frequent shortcuts under a collapsible Favorites header with fluid live drag & drop reordering
 - **Taskbar**: Customizable bottom bar with pinned shortcuts for instant access
 - **Resizable Panels**: Drag to resize the category sidebar and most-used/recent panel
 
@@ -126,7 +126,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **System Monitor**: Real-time RAM, CPU, and disk usage in the top bar
 - **System Power Hub**: Fast access to Shutdown, Restart, Sleep, and Lock with a 10s safety confirmation modal
 - **Storage HUD**: View free space and status of all system drives
-- **Execution Scheduler**: Schedule shortcut launches or console commands with standalone desktop alert countdowns
+- **Execution Scheduler**: Schedule shortcut launches (with inline shortcut search) or console commands with standalone desktop alert countdowns
 - **Execution History**: Track and reopen everything you've launched, with clear-history option
 - **Portable Auto-Backups**: Automated recurring JSON backups that embed custom local icons and wallpapers, with custom destination folder and flexible retention policies (default: 3; options: 1, 3, 5, or 7 copies)
 
