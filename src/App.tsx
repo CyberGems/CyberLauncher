@@ -4426,14 +4426,7 @@ export default function App() {
   }, [hideOnBlur]);
 
   // While Add/Edit App, Onboarding or HUD modals are open, block hide-on-blur (separate from native dialogs).
-  useEffect(() => {
-    if (!isElectron || !window.electronAPI) return;
-    const open = !!(isOnboardingOpen || isAddingApp || editingApp || missingShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen);
-    window.electronAPI.setUiModalOpen(open);
-    return () => {
-      window.electronAPI?.setUiModalOpen(false);
-    };
-  }, [isOnboardingOpen, isAddingApp, editingApp, missingShortcut, isClockHUDOpen, isSystemHUDOpen, isStorageHUDOpen]);
+  // The complete overlay list lives in isAnyModalOpen (declared below); the sync effect runs there too.
 
   // Sincronizar showTaskbarIcon con el proceso principal de Electron
   useEffect(() => {
@@ -6309,6 +6302,15 @@ export default function App() {
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0 && !isFavoritesCollapsed;
   const isAnyModalOpen = isOnboardingOpen || isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+
+  // While any modal or blocking overlay is open, block hide-on-blur (separate from native dialogs).
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI) return;
+    window.electronAPI.setUiModalOpen(isAnyModalOpen);
+    return () => {
+      window.electronAPI?.setUiModalOpen(false);
+    };
+  }, [isAnyModalOpen]);
 
   const [setupInviteLastShownAt, setSetupInviteLastShownAt] = useState(() => {
     try { return Number(localStorage.getItem('cyberbot_setup_invite_at')) || 0; }
