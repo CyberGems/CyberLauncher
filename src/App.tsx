@@ -9522,8 +9522,8 @@ export default function App() {
                 className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none"
               >
                 {rightSidebarCollapsed
-                  ? <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                  : <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />}
+                  ? <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:scale-110 transition-transform" />
+                  : <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:scale-110 transition-transform" />}
               </button>
             </Tooltip>
             {/* Update Available Button (CyberWall style - only if autoUpdate is enabled) */}
@@ -9569,7 +9569,7 @@ export default function App() {
                   {cyberBot.enabled ? (
                     <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
                   ) : (
-                    <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+                    <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 group-hover:scale-110 transition-transform" />
                   )}
                 </button>
               </Tooltip>
@@ -9585,7 +9585,7 @@ export default function App() {
                 onClick={() => setIsSettingsOpen(true)}
                 className="flex items-center justify-center w-7 h-7 hover:bg-white/10 rounded-md transition-colors group cursor-pointer focus:outline-none"
               >
-                <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:scale-110 transition-transform" />
               </button>
             </Tooltip>
 
@@ -9602,7 +9602,7 @@ export default function App() {
                     isMoreMenuOpen ? 'bg-white/15 text-white' : 'hover:bg-white/10 text-slate-400 hover:text-white'
                   }`}
                 >
-                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <MoreHorizontal className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </button>
               </Tooltip>
 
