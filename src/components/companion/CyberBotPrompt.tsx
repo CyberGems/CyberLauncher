@@ -17,7 +17,7 @@ import {
   FolderPlus,
   Sparkles,
   Settings,
-  ScanSearch,
+  PackagePlus,
   RefreshCw,
   Info,
   Pin,
@@ -65,7 +65,8 @@ export interface CyberBotPromptProps {
   onAddNewApp: (prefillName?: string) => void;
   onAddNewCategory?: () => void;
   onOpenPowerMenu?: () => void;
-  onOpenSettings?: (tab?: 'general' | 'cyberbot' | 'backup' | 'uwp') => void;
+  onOpenSettings?: (tab?: 'general' | 'cyberbot' | 'backup') => void;
+  onOpenStoreImporter?: () => void;
   onOpenAbout?: () => void;
   onRefreshIcons?: () => void;
   onTogglePin?: () => void;
@@ -128,6 +129,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   onAddNewCategory,
   onOpenPowerMenu,
   onOpenSettings,
+  onOpenStoreImporter,
   onOpenAbout,
   onRefreshIcons,
   onTogglePin,
@@ -282,15 +284,15 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       run: onAddNewCategory,
     }] : []),
 
-    // 11. Escanear Apps UWP
-    ...(onOpenSettings ? [{
+    // 11. Microsoft Store app import
+    ...(onOpenStoreImporter ? [{
       id: 'action-uwp',
       type: 'action' as const,
-      label: t('cyberbot_prompt_action_uwp'),
-      description: t('cyberbot_prompt_action_uwp_desc'),
+      label: t('uwp_header_title'),
+      description: t('cmd_palette_action_uwp_desc'),
       keywords: 'uwp store windows microsoft games scan escanear tienda juegos apps microsoft store import importar',
-      icon: <ScanSearch className="w-3.5 h-3.5" />,
-      run: () => onOpenSettings('uwp'),
+      icon: <PackagePlus className="w-3.5 h-3.5" />,
+      run: onOpenStoreImporter,
     }] : []),
 
     // 12. Refrescar Iconos
@@ -351,7 +353,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       run: onOpenPowerMenu,
     }] : []),
   ], [
-    t, isQuietHoursActive, isPinned, onOpenSettings, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal,
+    t, isQuietHoursActive, isPinned, onOpenSettings, onOpenStoreImporter, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal,
     onOpenClockHUD, onBackupNow, onOpenCommandPalette, onAddNewApp, onAddNewCategory,
     onRefreshIcons, onOpenAbout, onTogglePin, onToggleQuietHours, onOpenPowerMenu,
   ]);

@@ -4073,12 +4073,12 @@ function setupIpcHandlers() {
 
   // --- Obtener aplicaciones de Microsoft Store (UWP/MSIX) ---
   ipcMain.handle('get-uwp-apps', async () => {
-    return new Promise((resolve) => {
-      const psScript = `# Full UWP Scanner with Icon Extraction (Standard User version)
+    return new Promise((resolve, reject) => {
+      const psScript = `# List installed apps and extract their icons for import
 \$ErrorActionPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-\$startApps = Get-StartApps | Where-Object { \$_.AppID -like "*!*" -and \$_.AppID -like "*_*" }
+\$startApps = Get-StartApps -ErrorAction Stop | Where-Object { \$_.AppID -like "*!*" -and \$_.AppID -like "*_*" }
 
 \$packages = Get-AppxPackage
 \$packageMap = @{}
@@ -4175,7 +4175,7 @@ foreach (\$app in \$startApps) {
     }
 }
 
-\$uwpApps | ConvertTo-Json
+ConvertTo-Json -InputObject \$uwpApps
 `;
 
       const tmpPs = path.join(os.tmpdir(), `cl-uwp-apps-${Date.now()}.ps1`);
@@ -4187,25 +4187,23 @@ foreach (\$app in \$startApps) {
           } catch {}
 
           if (err) {
-            console.error('[UWP] Error ejecutando script de escaneo:', err);
-            resolve([]);
+            reject(err);
             return;
           }
 
           try {
-            const apps = JSON.parse(stdout.trim() || '[]');
+            const apps = JSON.parse(stdout.trim());
+            if (!Array.isArray(apps)) throw new Error('Expected a list of installed apps.');
             resolve(apps);
           } catch (e) {
-            console.error('[UWP] Error parseando salida JSON de escaneo:', e);
-            resolve([]);
+            reject(e);
           }
         });
       } catch (e) {
-        console.error('[UWP] Error escribiendo o preparando script de escaneo:', e);
         try {
           if (fs.existsSync(tmpPs)) fs.unlinkSync(tmpPs);
         } catch {}
-        resolve([]);
+        reject(e);
       }
     });
   });

@@ -47,12 +47,15 @@ export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         onClick={(e) => e.stopPropagation()}
-        className={`bg-[#0b1220] border border-cyan-500/25 rounded-2xl p-6 max-w-sm w-full space-y-5 ${MODAL_SHADOW_CYAN}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="store-import-confirm-title"
+        className={`bg-[#0b1220] border border-cyan-500/25 rounded-2xl p-6 max-w-sm w-full max-h-full overflow-y-auto custom-scrollbar space-y-5 ${MODAL_SHADOW_CYAN}`}
       >
         <div className="space-y-3">
-          <div className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">
+          <h2 id="store-import-confirm-title" className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase">
             {t('uwp_confirm_title')}
-          </div>
+          </h2>
 
           <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-black/35 border border-white/10">
             <div className="w-12 h-12 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
@@ -100,6 +103,7 @@ export const UwpImportConfirmModal: React.FC<UwpImportConfirmModalProps> = ({
           </button>
           <button
             type="button"
+            autoFocus
             onClick={onConfirm}
             className="flex-1 px-4 py-2 bg-cyan-500/12 hover:bg-cyan-500/20 text-cyan-300 rounded-xl text-xs font-cyber font-bold transition-all border border-cyan-400/35 shadow-[0_0_6px_rgba(34,211,238,0.08)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
           >

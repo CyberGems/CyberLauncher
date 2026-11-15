@@ -27,7 +27,9 @@ import {
 import Tooltip from './Tooltip';
 import { ToggleSwitch } from './components/ToggleSwitch';
 import { CustomSelect, type CustomSelectOption } from './components/CustomSelect';
-import { UwpImportConfirmModal } from './components/UwpImportConfirmModal';
+import type { UwpImportAppPreview } from './components/UwpImportConfirmModal';
+import { StoreImporterCard } from './components/StoreImporterCard';
+import { StoreImporterModal } from './components/StoreImporterModal';
 import { AppConfirmModals } from './components/AppConfirmModals';
 import { CyberAnalogClock } from './components/CyberAnalogClock';
 import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from './components/modalTheme';
@@ -50,7 +52,7 @@ import {
   HardDrive, Minimize2, Shrink, Download, SkipForward, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
-  RefreshCw, Calculator, Activity, FileText, ScanSearch,
+  RefreshCw, Calculator, Activity, FileText, PackagePlus,
   MoreHorizontal, Heart, User, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
   Bot, BotOff
@@ -2199,7 +2201,7 @@ export default function App() {
     return text;
   }, [language]);
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'uwp' | 'indexer'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'indexer'>('general');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
@@ -2870,99 +2872,11 @@ export default function App() {
     return () => window.removeEventListener('resize', place);
   }, [isHelpSubmenuOpen]);
 
-  // Microsoft Store UWP states
-  const [uwpAppsList, setUwpAppsList] = useState<Array<{ name: string; aumid: string; icon: string }>>([]);
-  const [isScanningUwp, setIsScanningUwp] = useState(false);
-  const [uwpSearchQuery, setUwpSearchQuery] = useState('');
-  const [uwpScanLogs, setUwpScanLogs] = useState<string[]>([]);
-  const [importingUwpApp, setImportingUwpApp] = useState<{ name: string; aumid: string; icon: string } | null>(null);
+  const [isStoreImporterOpen, setIsStoreImporterOpen] = useState(false);
   const [uwpImportCategory, setUwpImportCategory] = useState('');
-  const [uwpSortOrder, setUwpSortOrder] = useState<'asc' | 'desc'>('asc');
-
-  const displayedUwpApps = React.useMemo(() => {
-    const filtered = uwpAppsList.filter(app => 
-      app.name.toLowerCase().includes(uwpSearchQuery.toLowerCase().trim())
-    );
-    filtered.sort((a, b) => {
-      const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-      return uwpSortOrder === 'asc' ? cmp : -cmp;
-    });
-    return filtered;
-  }, [uwpAppsList, uwpSearchQuery, uwpSortOrder]);
-
-  const CYBER_LOGS_PRESETS = [
-    t('uwp_log_init'),
-    t('uwp_log_connect'),
-    t('uwp_log_decrypt'),
-    t('uwp_log_load_aumid'),
-    t('uwp_log_ntfs'),
-    t('uwp_log_icons'),
-    t('uwp_log_hashes'),
-    t('uwp_log_success')
-  ];
-
-  const handleScanUwpApps = async () => {
-    if (isScanningUwp) return;
-    setIsScanningUwp(true);
-    setUwpScanLogs([CYBER_LOGS_PRESETS[0]]);
-    setUwpAppsList([]);
-    setUwpSearchQuery('');
-
-    // Simulate cyber log scrolling
-    let logIndex = 1;
-    const logsInterval = setInterval(() => {
-      if (logIndex < CYBER_LOGS_PRESETS.length) {
-        setUwpScanLogs(prev => [...prev, CYBER_LOGS_PRESETS[logIndex]]);
-        logIndex++;
-      } else {
-        clearInterval(logsInterval);
-      }
-    }, 320);
-
-    try {
-      if (isElectron) {
-        const apps = await window.electronAPI!.getUwpApps();
-        clearInterval(logsInterval);
-        setUwpScanLogs([
-          ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          t('uwp_log_connected_count', { count: apps.length.toString() }),
-          t('uwp_log_import_panel')
-        ]);
-        setUwpAppsList(apps);
-      } else {
-        // Mock data for browser testing
-        await new Promise(r => setTimeout(r, 2800));
-        clearInterval(logsInterval);
-        setUwpScanLogs([
-          ...CYBER_LOGS_PRESETS.slice(0, CYBER_LOGS_PRESETS.length - 1),
-          t('uwp_log_connected_mock', { count: '10' }),
-          t('uwp_log_mock_active')
-        ]);
-        setUwpAppsList([
-          { name: 'Windows Terminal', aumid: 'Microsoft.WindowsTerminal_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Xbox App', aumid: 'Microsoft.XboxApp_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Calculadora UWP', aumid: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'WhatsApp Store', aumid: '5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App', icon: '' },
-          { name: 'Microsoft To Do', aumid: 'Microsoft.Todos_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Spotify Music', aumid: 'SpotifyAB.SpotifyMusic_zpdnekdrzrea0!App', icon: '' },
-          { name: 'Paint 3D', aumid: 'Microsoft.MSPaint_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Notas Rápidas', aumid: 'Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe!App', icon: '' },
-          { name: 'Microsoft Clipchamp', aumid: 'Clipchamp.Clipchamp_yxz26nhyzhsrt!App', icon: '' },
-          { name: 'Cámara Windows', aumid: 'Microsoft.WindowsCamera_8wekyb3d8bbwe!App', icon: '' }
-        ]);
-      }
-    } catch (e) {
-      console.error(e);
-      clearInterval(logsInterval);
-      setUwpScanLogs(prev => [
-        ...prev, 
-        t('uwp_log_critical_error'), 
-        t('uwp_log_aborted')
-      ]);
-    } finally {
-      setIsScanningUwp(false);
-    }
-  };
+  const addedStorePaths = useMemo(() => new Set(apps.map(app => app.path?.toLowerCase() || '')), [apps]);
+  const openStoreImporter = useCallback(() => setIsStoreImporterOpen(true), []);
+  const closeStoreImporter = useCallback(() => setIsStoreImporterOpen(false), []);
 
   const submitAppForm = () => {
     if (isAddingApp) {
@@ -6344,24 +6258,22 @@ export default function App() {
     return exists ? candidate : getUncategorizedStorageName();
   }, [uwpImportCategory, categories, language, editableCategoryOptions, getUncategorizedStorageName]);
 
-  const confirmUwpImport = useCallback(() => {
-    if (!importingUwpApp) return;
-    const targetCategory = resolvedUwpImportCategory;
-    const newApp = {
+  const confirmUwpImport = useCallback((app: UwpImportAppPreview) => {
+    const newApp: LauncherApp = {
       id: Date.now(),
-      name: importingUwpApp.name,
-      category: targetCategory,
-      path: importingUwpApp.aumid,
-      iconPath: importingUwpApp.icon || '',
+      name: app.name,
+      category: resolvedUwpImportCategory,
+      path: app.aumid,
+      iconPath: app.icon,
       color: 'text-cyan-400',
       isFav: false,
       usage: 0,
     };
-    setUwpImportCategory(targetCategory);
-    // @ts-ignore
-    setApps(prev => [...prev, newApp]);
-    setImportingUwpApp(null);
-  }, [importingUwpApp, resolvedUwpImportCategory]);
+    setUwpImportCategory(resolvedUwpImportCategory);
+    setApps(prev => prev.some(existing => existing.path?.toLowerCase() === app.aumid.toLowerCase())
+      ? prev
+      : [...prev, newApp]);
+  }, [resolvedUwpImportCategory]);
 
   const categoriesWithCount = useMemo(() => {
     const locale = language === 'es' ? 'es' : 'en';
@@ -6472,7 +6384,7 @@ export default function App() {
   const animateAppCards = filteredApps.length <= 48;
 
   const isFavoritesVisible = !searchQuery && activeCategory === 'all' && favorites.length > 0 && !isFavoritesCollapsed;
-  const isAnyModalOpen = isOnboardingOpen || isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || !!importingUwpApp || isPowerMenuOpen || !!powerConfirmAction;
+  const isAnyModalOpen = isOnboardingOpen || isCyberBotPromptOpen || isCommandPaletteOpen || isSettingsOpen || isAboutOpen || !!editingApp || isAddingApp || !!missingShortcut || isRecordingShortcut || isRecordingCyberBotShortcut || isRecordingAppShortcut || isClockHUDOpen || isSystemHUDOpen || isStorageHUDOpen || !!editingCategory || isAddingCategory || !!categoryToDelete || !!appToDelete || !!confirmResetType || isMoreMenuOpen || !!backupToRestore || !!backupToDelete || isFactoryResetModalOpen || isStoreImporterOpen || isPowerMenuOpen || !!powerConfirmAction;
 
   // While any modal or blocking overlay is open, block hide-on-blur (separate from native dialogs).
   useEffect(() => {
@@ -6676,14 +6588,11 @@ export default function App() {
       {
         id: 'action-uwp',
         group: t('cmd_palette_group_actions'),
-        label: t('cmd_palette_action_uwp'),
+        label: t('uwp_header_title'),
         description: t('cmd_palette_action_uwp_desc'),
-        keywords: 'uwp store windows microsoft games scan escanear tienda',
-        icon: <ScanSearch className="w-4 h-4 text-cyan-400" />,
-        onSelect: () => {
-          setSettingsTab('uwp');
-          setIsSettingsOpen(true);
-        },
+        keywords: 'uwp store windows microsoft games juegos import importar tienda scan escanear',
+        icon: <PackagePlus className="w-4 h-4 text-cyan-400" />,
+        onSelect: openStoreImporter,
       },
       {
         id: 'action-refresh-icons',
@@ -7412,7 +7321,7 @@ export default function App() {
   // Keyboard Shortcuts globales
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || isRecordingShortcut) return;
+      if (e.defaultPrevented || isRecordingShortcut || isStoreImporterOpen) return;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyJ' && !isAnyModalOpen) {
         e.preventDefault();
         if (isTerminalOpen) closeTerminal();
@@ -7637,11 +7546,6 @@ export default function App() {
           void handleConfirmDeleteBackup(target);
           return;
         }
-        if (importingUwpApp) {
-          e.preventDefault();
-          confirmUwpImport();
-          return;
-        }
         if (confirmResetType) {
           e.preventDefault();
           if (confirmResetType === 'most-used') {
@@ -7724,8 +7628,6 @@ export default function App() {
         } else if (isFactoryResetModalOpen) {
           setIsFactoryResetModalOpen(false);
           setFactoryResetIncludeApps(false);
-        } else if (importingUwpApp) {
-          setImportingUwpApp(null);
         } else if (confirmResetType) {
           setConfirmResetType(null);
         } else if (categoryToDelete) {
@@ -7813,7 +7715,7 @@ export default function App() {
       if (altNumpadTimerRef.current) clearTimeout(altNumpadTimerRef.current);
     };
   }, [
-    isCommandPaletteOpen, isSettingsOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
+    isCommandPaletteOpen, isSettingsOpen, isStoreImporterOpen, isRecordingShortcut, isAboutOpen, editingApp, isAddingApp,
     editingCategory, isAddingCategory, newCategoryForm, categoryToDelete, appToDelete, confirmResetType, isFactoryResetModalOpen,
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
@@ -9420,16 +9322,14 @@ export default function App() {
                     <Plus className="w-4 h-4" />
                   </button>
                 </Tooltip>
-                <Tooltip label={t('tooltip_ws_scanner')} placement="bottom">
+                <Tooltip label={t('uwp_header_title')} placement="bottom">
                   <button
-                    onClick={() => {
-                      setSettingsTab('uwp');
-                      setIsSettingsOpen(true);
-                    }}
-                    aria-label={t('tooltip_ws_scanner')}
+                    type="button"
+                    onClick={openStoreImporter}
+                    aria-label={t('uwp_header_title')}
                     className="p-1.5 rounded-md text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
                   >
-                    <ScanSearch className="w-4 h-4" />
+                    <PackagePlus className="w-4 h-4" />
                   </button>
                 </Tooltip>
               </div>
@@ -9836,13 +9736,12 @@ export default function App() {
                       tabIndex={-1}
                       onClick={() => {
                         setIsMoreMenuOpen(false);
-                        setSettingsTab('uwp');
-                        setIsSettingsOpen(true);
+                        openStoreImporter();
                       }}
                       className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
-                      <ScanSearch className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
-                      <span>{t('more_menu_uwp_scanner')}</span>
+                      <PackagePlus className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{t('uwp_header_title')}</span>
                     </button>
 
                     <button
@@ -10970,38 +10869,7 @@ export default function App() {
                     </motion.div>
                   </div>
                 )}
-                {/* Tarjeta de acceso directo a Escáner WS (solo al agregar nueva app via botón) */}
-                {isAddingApp && !openedViaDrop && (
-                  <div className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3 min-w-0 group/uwp">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-black/30 rounded-lg border border-white/5 shrink-0 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors">
-                        <ScanSearch className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-cyber font-semibold text-slate-200 group-hover/uwp:text-white transition-colors leading-tight">
-                          {t('app_add_uwp_banner_title')}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
-                          {t('app_add_uwp_banner_desc')}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingApp(false);
-                        setEditingApp(null);
-                        setOpenedViaDrop(false);
-                        setSettingsTab('uwp');
-                        setIsSettingsOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 text-xs font-cyber font-medium tracking-wide transition-all shrink-0 cursor-pointer active:scale-95"
-                    >
-                      <span>{t('app_add_uwp_banner_btn')}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors" />
-                    </button>
-                  </div>
-                )}
+                {isAddingApp && !openedViaDrop && <StoreImporterCard t={t} onOpen={openStoreImporter} />}
 
                 <div className="space-y-4 min-w-0">
                   {/* Name field */}
@@ -11317,38 +11185,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Tarjeta de acceso directo a Escáner WS (en la parte inferior si se abrió arrastrando) */}
-                {isAddingApp && openedViaDrop && (
-                  <div className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3 mt-2 min-w-0 group/uwp">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-black/30 rounded-lg border border-white/5 shrink-0 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors">
-                        <ScanSearch className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-cyber font-semibold text-slate-200 group-hover/uwp:text-white transition-colors leading-tight">
-                          {t('app_add_uwp_banner_title')}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 leading-tight font-sans mt-0.5">
-                          {t('app_add_uwp_banner_desc')}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingApp(false);
-                        setEditingApp(null);
-                        setOpenedViaDrop(false);
-                        setSettingsTab('uwp');
-                        setIsSettingsOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/15 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 text-xs font-cyber font-medium tracking-wide transition-all shrink-0 cursor-pointer active:scale-95"
-                    >
-                      <span>{t('app_add_uwp_banner_btn')}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/uwp:text-cyan-400 transition-colors" />
-                    </button>
-                  </div>
-                )}
+                {isAddingApp && openedViaDrop && <StoreImporterCard t={t} onOpen={openStoreImporter} />}
               </div>
 
               <div className="px-5 py-4 border-t border-cyan-500/20 flex justify-end gap-3 bg-black/20">
@@ -11375,6 +11212,17 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      <StoreImporterModal
+        open={isStoreImporterOpen}
+        onClose={closeStoreImporter}
+        addedPaths={addedStorePaths}
+        category={resolvedUwpImportCategory}
+        categoryOptions={editableCategoryOptions}
+        onCategoryChange={setUwpImportCategory}
+        onImport={confirmUwpImport}
+        t={t}
+      />
 
       {/* --- SETTINGS DRAWER --- */}
       <AnimatePresence>
@@ -11430,8 +11278,7 @@ export default function App() {
                       ['system', t('tab_system'), Settings],
                       ['cyberbot', t('tab_cyberbot'), Bot],
                       ['backup', t('tab_backup'), HardDrive],
-                      ['indexer', t('tab_indexer'), Search],
-                      ['uwp', t('tab_uwp'), ScanSearch]
+                      ['indexer', t('tab_indexer'), Search]
                     ] as const).map(([id,label,IconComponent]) => (
                       <button 
                         key={id} 
@@ -11460,7 +11307,7 @@ export default function App() {
                 </div>
 
                 {/* Right Scrollable Panel Content */}
-                <div className={`p-6 custom-scrollbar flex-1 text-slate-300 ${settingsTab === 'uwp' ? 'flex flex-col min-h-0 overflow-hidden' : 'overflow-y-auto space-y-8'}`}>
+                <div className="p-6 custom-scrollbar flex-1 text-slate-300 overflow-y-auto space-y-8">
 
                 {settingsTab === 'general' && (<>
                 {/* Language Selection Config */}
@@ -13375,162 +13222,6 @@ export default function App() {
                   </div>
                 </>)}
 
-                {settingsTab === 'uwp' && (
-                  <div className="flex flex-col flex-1 min-h-0 relative">
-                    <div className="flex flex-col gap-1 border-b border-white/5 pb-4 shrink-0">
-                      <h3 className="text-lg font-cyber font-bold text-cyan-400 tracking-wider flex items-center gap-2 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
-                        <ScanSearch className="w-5 h-5 text-cyan-400" /> {t('uwp_header_title')}
-                      </h3>
-                      <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                        {t('uwp_header_desc')}
-                      </p>
-                    </div>
-
-                    {/* Botón de Escaneo / Estado Inicial */}
-                    {uwpAppsList.length === 0 && !isScanningUwp && (
-                      <div className="flex flex-col items-center justify-center flex-1 my-auto p-8 bg-black/30 border border-white/5 rounded-2xl hover:border-cyan-500/20 transition-all text-center">
-                        <ScanSearch className="w-12 h-12 text-cyan-400/30 animate-pulse mb-4 drop-shadow-[0_0_12px_rgba(34,211,238,0.2)]" />
-                        <h4 className="text-sm font-medium text-slate-200 mb-2">{t('uwp_req_title')}</h4>
-                        <p className="text-xs text-slate-500 max-w-sm mb-6 leading-normal font-sans">
-                          {t('uwp_req_desc')}
-                        </p>
-                        <button
-                          onClick={handleScanUwpApps}
-                          className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl transition-all text-sm font-cyber font-bold border border-cyan-400/40 shadow-[0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_25px_rgba(34,211,238,0.4)] active:scale-[0.98] cursor-pointer"
-                        >
-                          {t('uwp_req_btn')}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Consola Terminal Shimmer durante Escaneo */}
-                    {isScanningUwp && (
-                      <div className="flex flex-col h-80 my-auto bg-black/40 border border-cyan-500/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(34,211,238,0.15)] relative overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4 shrink-0">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-                            <span className="text-xs font-cyber font-bold text-cyan-400 tracking-wider">{t('uwp_terminal_title')}</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-cyan-500 animate-pulse">{t('uwp_terminal_status')}</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto space-y-1.5 font-mono text-[11px] text-cyan-300/80 leading-normal custom-scrollbar">
-                          {uwpScanLogs.map((log, i) => (
-                            <div key={i} className="flex items-start gap-1">
-                              <span className="text-cyan-500 shrink-0">&gt;</span>
-                              <span className={i === uwpScanLogs.length - 1 ? "text-cyan-400 font-bold" : ""}>{log}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Resultados de Búsqueda y Lista que aprovecha TODO el alto */}
-                    {uwpAppsList.length > 0 && !isScanningUwp && (
-                      <div className="flex flex-col flex-1 min-h-0 pt-4 space-y-3">
-                        {/* Buscador Superior */}
-                        <div className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl px-3.5 py-2.5 focus-within:border-cyan-500/30 focus-within:ring-1 focus-within:ring-cyan-500/30 transition-all shrink-0">
-                          <Search className="w-4 h-4 text-slate-500 shrink-0" />
-                          <input
-                            type="text"
-                            placeholder={t('uwp_search_placeholder')}
-                            value={uwpSearchQuery}
-                            onChange={(e) => setUwpSearchQuery(e.target.value)}
-                            className="bg-transparent border-none outline-none text-slate-200 text-xs w-full focus:ring-0 placeholder:text-slate-600"
-                          />
-
-                          {/* A-Z / Z-A Sorting toggle button */}
-                          <Tooltip label={uwpSortOrder === 'asc' ? t('tooltip_sort_order_desc') : t('tooltip_sort_order_asc')} placement="bottom">
-                            <button
-                              onClick={() => setUwpSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                              className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
-                            >
-                              {uwpSortOrder === 'asc' ? <ArrowDownAZ className="w-3.5 h-3.5 text-cyan-400/90" /> : <ArrowUpZA className="w-3.5 h-3.5 text-cyan-400/90" />}
-                              {uwpSortOrder === 'asc' ? 'A-Z' : 'Z-A'}
-                            </button>
-                          </Tooltip>
-
-                          <button
-                            onClick={handleScanUwpApps}
-                            className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-white/5 hover:border-cyan-500/20 transition-all shrink-0 cursor-pointer"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            {t('uwp_rescan_btn')}
-                          </button>
-                        </div>
-
-                        {/* Grid / Lista de Aplicaciones a TODO el alto disponible */}
-                        <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar space-y-2.5">
-                          {displayedUwpApps.map((app, index) => {
-                            const alreadyAdded = apps.some(existing => existing.path === app.aumid);
-                            
-                            return (
-                              <div
-                                key={index}
-                                data-access-marquee-card="true"
-                                className="flex items-center justify-between p-3 bg-black/20 hover:bg-white/5 border border-white/5 rounded-xl hover:border-cyan-500/20 transition-all group"
-                              >
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <div className="w-9 h-9 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 shrink-0 group-hover:border-cyan-400/30 transition-colors relative">
-                                    {app.icon ? (
-                                      <img src={app.icon} alt={app.name} className="w-full h-full object-contain" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-cyan-500/10 rounded text-cyan-400 font-bold text-[10px]">UWP</div>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <h4 className="text-xs font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors font-sans">
-                                      <OverflowMarquee className="w-full">{app.name}</OverflowMarquee>
-                                    </h4>
-                                    <Tooltip label={app.aumid} placement="top">
-                                      <p className="text-[9px] text-slate-500 truncate font-mono select-all">{app.aumid}</p>
-                                    </Tooltip>
-                                  </div>
-                                </div>
-
-                                <div className="shrink-0 ml-2">
-                                  {alreadyAdded ? (
-                                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20 tracking-wider font-sans">
-                                      {t('uwp_added_label')}
-                                    </span>
-                                  ) : (
-                                      <button
-                                        onClick={() => {
-                                          if (!uwpImportCategory) {
-                                            setUwpImportCategory(resolvedUwpImportCategory);
-                                          }
-                                          setImportingUwpApp(app);
-                                        }}
-                                      className="flex items-center gap-1.5 text-[10px] font-cyber font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg border border-cyan-400/30 transition-all hover:shadow-[0_0_8px_rgba(34,211,238,0.2)] cursor-pointer"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" />
-                                      <span>{t('uwp_import_btn')}</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Selector de Categoría para Importación */}
-                    <AnimatePresence>
-                      {importingUwpApp && (
-                        <UwpImportConfirmModal
-                          app={importingUwpApp}
-                          category={resolvedUwpImportCategory}
-                          onChangeCategory={setUwpImportCategory}
-                          categoryOptions={editableCategoryOptions}
-                          onCancel={() => setImportingUwpApp(null)}
-                          onConfirm={confirmUwpImport}
-                          t={t}
-                        />
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
                 {settingsTab === 'indexer' && (
                   <div className="space-y-6">
                     {/* Header */}
@@ -14922,6 +14613,7 @@ export default function App() {
               setIsAddingCategory(true);
             }}
             onOpenPowerMenu={() => setIsPowerMenuOpen(true)}
+            onOpenStoreImporter={openStoreImporter}
             onOpenSettings={(tab) => {
               setSettingsTab(tab || 'general');
               setIsSettingsOpen(true);
