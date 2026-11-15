@@ -10415,7 +10415,7 @@ export default function App() {
                         {isTaskbarLaunching ? (
                           <LoaderCircle role="status" aria-label={`${t('launch_starting')} ${app.name}`} className="w-4 h-4 animate-spin text-cyan-300" />
                         ) : (
-                          <AppIcon app={app} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
+                          <AppIcon app={app} broken={brokenAppIds.has(app.id)} brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')} className={`w-5 h-5 drop-shadow-md transition-transform duration-100 ${isTaskbarContextActive || isBeingDragged ? 'scale-110 drop-shadow-[0_0_8px_currentColor]' : ''}`} />
                         )}
                       </div>
                       <div
