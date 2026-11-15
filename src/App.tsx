@@ -2116,7 +2116,8 @@ export default function App() {
   const [confirmResetType, setConfirmResetType] = useState<'most-used' | 'recent' | null>(null);
   const [isPowerMenuOpen, setIsPowerMenuOpen] = useState(false);
   const [powerConfirmAction, setPowerConfirmAction] = useState<'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout' | null>(null);
-  const [powerCountdown, setPowerCountdown] = useState<number>(10);
+  const [powerScheduleChoice, setPowerScheduleChoice] = useState<'now' | 5 | 10 | 15 | 30 | 60>('now');
+  const [powerSchedule, setPowerSchedule] = useState<{ action: 'shutdown' | 'restart' | 'sleep' | 'lock' | 'signout'; secondsLeft: number; force: boolean } | null>(null);
   const [powerForceClose, setPowerForceClose] = useState<boolean>(false);
   const [confirmBeforeDeletingApps, setConfirmBeforeDeletingApps] = useState<boolean>(() => localStorage.getItem('confirmBeforeDeletingApps') !== 'false');
   const [appToDelete, setAppToDelete] = useState<LauncherApp | null>(null);
@@ -3089,24 +3090,47 @@ export default function App() {
     }
   }, []);
 
+  // Reiniciar la elección de tiempo cada vez que se abre el modal de una acción.
   useEffect(() => {
-    if (!powerConfirmAction) {
-      setPowerCountdown(10);
-      return;
-    }
-    setPowerCountdown(10);
+    if (powerConfirmAction) setPowerScheduleChoice('now');
+  }, [powerConfirmAction]);
+
+  // Cuenta atrás de la acción de energía programada (junto a setRendererAwake).
+  const hasPowerSchedule = !!powerSchedule;
+  useEffect(() => {
+    if (!hasPowerSchedule) return;
     const timer = setInterval(() => {
-      setPowerCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleExecutePowerAction(powerConfirmAction, powerForceCloseRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setPowerSchedule(prev => (prev ? { ...prev, secondsLeft: Math.max(0, prev.secondsLeft - 1) } : null));
     }, 1000);
     return () => clearInterval(timer);
-  }, [powerConfirmAction, handleExecutePowerAction]);
+  }, [hasPowerSchedule]);
+
+  useEffect(() => {
+    if (powerSchedule && powerSchedule.secondsLeft === 0) {
+      const { action, force } = powerSchedule;
+      setPowerSchedule(null);
+      handleExecutePowerAction(action, force);
+    }
+  }, [powerSchedule, handleExecutePowerAction]);
+
+  // Aplica la elección del modal: de inmediato o programada con retardo.
+  const handleConfirmPowerAction = useCallback(() => {
+    if (!powerConfirmAction) return;
+    const force = powerForceCloseRef.current;
+    if (powerScheduleChoice === 'now') {
+      handleExecutePowerAction(powerConfirmAction, force);
+      return;
+    }
+    setPowerSchedule({ action: powerConfirmAction, secondsLeft: powerScheduleChoice * 60, force });
+    setPowerConfirmAction(null);
+    setNotification({
+      message: t('power_schedule_scheduled', {
+        action: t(`power_action_${powerConfirmAction}` as TranslationKey),
+        time: `${powerScheduleChoice} min`,
+      }),
+      type: 'info',
+    });
+  }, [powerConfirmAction, powerScheduleChoice, handleExecutePowerAction, t]);
 
   useEffect(() => {
     if (!isPowerMenuOpen) return;
@@ -3456,12 +3480,12 @@ export default function App() {
   // Scheduled-task countdowns live in the renderer — keep Chromium awake in the tray while any are pending.
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.setRendererAwake) return;
-    const awake = scheduledTasks.length > 0;
+    const awake = scheduledTasks.length > 0 || hasPowerSchedule;
     window.electronAPI.setRendererAwake(awake);
     return () => {
       window.electronAPI?.setRendererAwake(false);
     };
-  }, [scheduledTasks.length > 0]);
+  }, [scheduledTasks.length > 0, hasPowerSchedule]);
 
   const imminentTask = useMemo(() => {
     const candidates = scheduledTasks.filter(t => t.remainingSeconds > 0 && t.remainingSeconds <= 10);
@@ -7449,7 +7473,7 @@ export default function App() {
       if (e.key === 'Enter') {
         if (powerConfirmAction) {
           e.preventDefault();
-          handleExecutePowerAction(powerConfirmAction, powerForceCloseRef.current);
+          handleConfirmPowerAction();
           return;
         }
         if (backupToRestore) {
@@ -7647,7 +7671,7 @@ export default function App() {
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
-    submitAppForm, openTerminal, closeTerminal
+    submitAppForm, openTerminal, closeTerminal, handleConfirmPowerAction
   ]);
 
   const getBackgroundStyle = () => {
@@ -10365,14 +10389,13 @@ export default function App() {
                   data-no-hide
                   className="absolute right-0 bottom-full mb-3 w-72 min-w-[280px] bg-[#0a0f18]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl z-[120] select-none overflow-hidden"
                 >
-                  <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between mb-1">
+                  <div className="px-3 py-2 border-b border-white/5 flex items-center mb-1">
                     <div className="flex items-center gap-2">
                       <Power className="w-3.5 h-3.5 text-rose-400" />
                       <span className="text-[11px] font-cyber font-bold tracking-wider text-slate-200 uppercase">
                         {t('power_menu_title')}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">Win</span>
                   </div>
 
                   <div className="space-y-1">
@@ -14292,11 +14315,12 @@ export default function App() {
         }}
         onConfirmFactoryReset={handleFactoryReset}
         powerConfirmAction={powerConfirmAction}
-        powerCountdown={powerCountdown}
+        powerScheduleChoice={powerScheduleChoice}
+        onChangePowerScheduleChoice={setPowerScheduleChoice}
         powerForceClose={powerForceClose}
         onChangePowerForceClose={setPowerForceClose}
         onCancelPowerAction={() => setPowerConfirmAction(null)}
-        onExecutePowerAction={handleExecutePowerAction}
+        onExecutePowerAction={handleConfirmPowerAction}
       />
 
       {/* --- IMMINENT TASK CYBERNETIC PRE-LAUNCH WARNING --- */}
@@ -14357,6 +14381,60 @@ export default function App() {
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>{t('notif_action_cancel_launch')}</span>
+                </button>
+              </Tooltip>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- SCHEDULED POWER ACTION COUNTDOWN --- */}
+      <AnimatePresence>
+        {powerSchedule && (
+          <motion.div
+            key="power-schedule"
+            data-no-hide
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 25, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[255] flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#090e18]/95 border border-rose-500/35 backdrop-blur-2xl select-none max-w-lg min-w-[360px]"
+            style={{ boxShadow: '0 0 24px rgba(244,63,94,0.15), 0 12px 32px rgba(0,0,0,0.8)' }}
+          >
+            <div className="flex flex-col items-center justify-center shrink-0 min-w-[74px] h-12 px-2.5 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 shadow-[inset_0_0_10px_rgba(244,63,94,0.15)]">
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-rose-400/70 mb-0.5">T - MINUS</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-xl font-digits font-bold text-rose-300 tabular-nums animate-pulse leading-none">
+                  {`${Math.floor(powerSchedule.secondsLeft / 60)}:${(powerSchedule.secondsLeft % 60).toString().padStart(2, '0')}`}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-rose-400/80">s</span>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0 text-left">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping shrink-0" />
+                <span className="text-[10px] font-cyber font-bold uppercase tracking-widest text-rose-400 truncate">
+                  {t(`power_action_${powerSchedule.action}` as TranslationKey)}
+                </span>
+              </div>
+              <p className="text-xs font-medium text-white cursor-default">
+                {t('power_schedule_active_desc')}
+              </p>
+            </div>
+
+            <div className="flex items-center shrink-0">
+              <Tooltip label={t('power_schedule_cancel')} placement="top">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPowerSchedule(null);
+                    setNotification({ message: t('power_schedule_cancelled'), type: 'info' });
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 hover:border-red-400/70 font-cyber font-bold text-[11px] transition-all shadow-[0_0_10px_rgba(239,68,68,0.2)] flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{t('power_schedule_cancel')}</span>
                 </button>
               </Tooltip>
             </div>

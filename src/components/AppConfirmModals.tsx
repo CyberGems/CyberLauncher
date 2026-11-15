@@ -133,11 +133,9 @@ const POWER_ACTION_STYLES: Record<
   {
     frameClass: string;
     iconBoxClass: string;
-    barClass: string;
     buttonClass: string;
     badgeVariant: 'primary' | 'danger';
     titleKey: TranslationKey;
-    msgKey: TranslationKey;
     confirmKey: TranslationKey;
     icon: React.ReactNode;
   }
@@ -145,55 +143,45 @@ const POWER_ACTION_STYLES: Record<
   shutdown: {
     frameClass: `border-rose-500/35 ${MODAL_SHADOW_ROSE}`,
     iconBoxClass: 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.14)]',
-    barClass: 'bg-rose-500 shadow-[0_0_4px_rgba(244,63,94,0.5)]',
     buttonClass: 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.1)]',
     badgeVariant: 'danger',
     titleKey: 'power_confirm_shutdown_title',
-    msgKey: 'power_confirm_shutdown_msg',
     confirmKey: 'power_confirm_shutdown_now',
     icon: <Power className="w-8 h-8" />,
   },
   restart: {
     frameClass: `border-amber-500/35 ${MODAL_SHADOW_AMBER}`,
     iconBoxClass: 'bg-amber-500/15 border-amber-500/30 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.14)]',
-    barClass: 'bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.5)]',
     buttonClass: 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.1)]',
     badgeVariant: 'primary',
     titleKey: 'power_confirm_restart_title',
-    msgKey: 'power_confirm_restart_msg',
     confirmKey: 'power_confirm_restart_now',
     icon: <RotateCcw className="w-8 h-8" />,
   },
   sleep: {
     frameClass: `border-sky-500/35 ${MODAL_SHADOW_SKY}`,
     iconBoxClass: 'bg-sky-500/15 border-sky-500/30 text-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.14)]',
-    barClass: 'bg-sky-400 shadow-[0_0_4px_rgba(56,189,248,0.5)]',
     buttonClass: 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 shadow-[0_0_8px_rgba(56,189,248,0.1)]',
     badgeVariant: 'primary',
     titleKey: 'power_confirm_sleep_title',
-    msgKey: 'power_confirm_sleep_msg',
     confirmKey: 'power_confirm_sleep_now',
     icon: <Moon className="w-8 h-8" />,
   },
   signout: {
     frameClass: `border-purple-500/35 ${MODAL_SHADOW_PURPLE}`,
     iconBoxClass: 'bg-purple-500/15 border-purple-500/30 text-purple-400 shadow-[0_0_10px_rgba(192,132,252,0.14)]',
-    barClass: 'bg-purple-400 shadow-[0_0_4px_rgba(192,132,252,0.5)]',
     buttonClass: 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 shadow-[0_0_8px_rgba(192,132,252,0.1)]',
     badgeVariant: 'primary',
     titleKey: 'power_confirm_signout_title',
-    msgKey: 'power_confirm_signout_msg',
     confirmKey: 'power_confirm_signout_now',
     icon: <LogOut className="w-8 h-8" />,
   },
   lock: {
     frameClass: `border-cyan-500/35 ${MODAL_SHADOW_CYAN}`,
     iconBoxClass: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.14)]',
-    barClass: 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.5)]',
     buttonClass: 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.1)]',
     badgeVariant: 'primary',
     titleKey: 'power_confirm_lock_title',
-    msgKey: 'power_confirm_lock_msg',
     confirmKey: 'power_confirm_lock_now',
     icon: <Lock className="w-8 h-8" />,
   },
@@ -232,7 +220,8 @@ export interface AppConfirmModalsProps {
   onConfirmFactoryReset: (includeApps: boolean) => void;
 
   powerConfirmAction: PowerConfirmAction | null;
-  powerCountdown: number;
+  powerScheduleChoice: 'now' | 5 | 10 | 15 | 30 | 60;
+  onChangePowerScheduleChoice: (val: 'now' | 5 | 10 | 15 | 30 | 60) => void;
   powerForceClose: boolean;
   onChangePowerForceClose: (val: boolean) => void;
   onCancelPowerAction: () => void;
@@ -269,7 +258,8 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
   onCancelFactoryReset,
   onConfirmFactoryReset,
   powerConfirmAction,
-  powerCountdown,
+  powerScheduleChoice,
+  onChangePowerScheduleChoice,
   powerForceClose,
   onChangePowerForceClose,
   onCancelPowerAction,
@@ -519,22 +509,29 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                 </h3>
 
                 <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                  {t(powerStyle.msgKey, { seconds: powerCountdown.toString() })}
+                  {t('power_confirm_desc')}
                 </p>
               </div>
 
-              <div className="space-y-1.5 px-4">
-                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                  <span className="uppercase tracking-wider">{t('power_confirm_countdown_label')}</span>
-                  <span className="font-bold text-white font-digits text-xs tabular-nums">
-                    {powerCountdown}s
-                  </span>
+              <div className="space-y-2 px-2">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 text-left">
+                  {t('power_schedule_when')}
                 </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ${powerStyle.barClass}`}
-                    style={{ width: `${(powerCountdown / 10) * 100}%` }}
-                  />
+                <div className="grid grid-cols-3 gap-2">
+                  {(['now', 5, 10, 15, 30, 60] as const).map((choice) => (
+                    <button
+                      key={String(choice)}
+                      type="button"
+                      onClick={() => onChangePowerScheduleChoice(choice)}
+                      className={`px-2 py-2 rounded-xl text-xs font-cyber font-bold transition-all cursor-pointer border ${
+                        powerScheduleChoice === choice
+                          ? powerStyle.buttonClass
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+                      }`}
+                    >
+                      {choice === 'now' ? t('power_schedule_now') : `${choice} min`}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -561,7 +558,11 @@ export const AppConfirmModals: React.FC<AppConfirmModalsProps> = ({
                   onClick={() => onExecutePowerAction(powerConfirmAction, powerForceClose)}
                   className={`flex-1 px-4 py-2.5 rounded-xl font-cyber font-bold text-sm transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${powerStyle.buttonClass}`}
                 >
-                  <span>{t(powerStyle.confirmKey)}</span>
+                  <span>
+                    {powerScheduleChoice === 'now'
+                      ? t(powerStyle.confirmKey)
+                      : t('power_schedule_in', { minutes: String(powerScheduleChoice) })}
+                  </span>
                   <EnterKeyBadge variant={powerStyle.badgeVariant} />
                 </button>
               </div>
