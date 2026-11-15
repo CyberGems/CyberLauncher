@@ -243,7 +243,7 @@ function registerUpdateIpc(): void {
   }));
 
   ipcMain.handle('open-external', async (_event, url: string) => {
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+    if (typeof url === 'string' && (/^https?:\/\//i.test(url) || /^ms-windows-store:\/\//i.test(url))) {
       await shell.openExternal(url);
       return { success: true };
     }

@@ -4123,8 +4123,11 @@ function setupIpcHandlers() {
     const isEn = getTrayLanguage() === 'en';
     try {
       const previousDirectory = previousPath ? path.dirname(previousPath) : '';
+      // Windows no permite combinar selección de archivos y carpetas en un mismo
+      // diálogo: se elige el tipo según el destino guardado (con extensión = archivo).
+      const isFileTarget = !!previousPath && path.extname(previousPath) !== '';
       const result = await dialog.showOpenDialog(mainWindow, {
-        properties: ['openFile', 'openDirectory'],
+        properties: isFileTarget ? ['openFile'] : ['openDirectory'],
         title: isEn ? 'Find the app or shortcut in its new location' : 'Busca el acceso en su nueva ubicación',
         ...(previousDirectory && fs.existsSync(previousDirectory) ? { defaultPath: previousDirectory } : {}),
         filters: [
