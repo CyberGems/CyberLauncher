@@ -254,6 +254,7 @@ declare global {
       setAutoLaunch: (enabled: boolean, startMinimized?: boolean) => Promise<{ success: boolean; enabled: boolean; startMinimized?: boolean }>;
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       setUiModalOpen: (open: boolean) => Promise<{ success: boolean; open: boolean }>;
+      setPowerScheduleNotice: (notice: { pending: boolean; message: string }) => Promise<boolean>;
       setShowTaskbarIcon: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       getSystemInfo: () => Promise<{ memory: { total: number; used: number; percent: number }; cpu: { model: string; cores: number }; uptime: number }>;
       getDiskInfo: () => Promise<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>;
@@ -3125,16 +3126,32 @@ export default function App() {
       handleExecutePowerAction(powerConfirmAction, force);
       return;
     }
-    setPowerSchedule({ action: powerConfirmAction, secondsLeft: powerScheduleChoice * 60, force });
+    let minutes: number;
+    if (powerScheduleChoice === 'custom') {
+      minutes = parseInt(powerScheduleCustomMinutes, 10);
+      if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1440) return;
+    } else {
+      minutes = powerScheduleChoice;
+    }
+    setPowerSchedule({ action: powerConfirmAction, secondsLeft: minutes * 60, force });
     setPowerConfirmAction(null);
     setNotification({
       message: t('power_schedule_scheduled', {
         action: t(`power_action_${powerConfirmAction}` as TranslationKey),
-        time: `${powerScheduleChoice} min`,
+        time: `${minutes} min`,
       }),
       type: 'info',
     });
-  }, [powerConfirmAction, powerScheduleChoice, handleExecutePowerAction, t]);
+  }, [powerConfirmAction, powerScheduleChoice, powerScheduleCustomMinutes, handleExecutePowerAction, t]);
+
+  // Avisar al proceso principal cuando hay una programación pendiente para
+  // notificar en Windows al ocultar la ventana en la bandeja.
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.setPowerScheduleNotice) return;
+    window.electronAPI.setPowerScheduleNotice(
+      hasPowerSchedule ? { pending: true, message: t('power_schedule_tray_notice') } : { pending: false, message: '' }
+    );
+  }, [hasPowerSchedule, t]);
 
   useEffect(() => {
     if (!isPowerMenuOpen) return;

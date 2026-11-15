@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('set-auto-launch', enabled, startMinimized),
   setHideOnBlur: (enabled: boolean) => ipcRenderer.invoke('set-hide-on-blur', enabled),
   setUiModalOpen: (open: boolean) => ipcRenderer.invoke('set-ui-modal-open', open),
+  setPowerScheduleNotice: (notice: { pending: boolean; message: string }) =>
+    ipcRenderer.invoke('set-power-schedule-notice', notice),
   setShowTaskbarIcon: (enabled: boolean) => ipcRenderer.invoke('set-show-taskbar-icon', enabled),
 
   // --- Info del sistema (CPU/Memoria real) ---

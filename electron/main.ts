@@ -121,6 +121,9 @@ let isSavingConfig = false;
 let isDialogOpen = false;
 /** React UI modals (e.g. Add/Edit App) that must block hide-on-blur independently of native dialogs. */
 let isUiModalOpen = false;
+/** Live notice from the renderer while a scheduled power action counts down (Windows reminder on hide). */
+let powerScheduleNotice: { pending: boolean; message: string } | null = null;
+let powerScheduleNoticeLastShown = 0;
 // ── STATE MACHINE & GUARDS ──
 type VisibilityState = 'hidden-intentional' | 'shown-intentional' | 'hidden-blur' | 'hidden-os';
 let windowVisibilityState: VisibilityState = 'hidden-intentional';
@@ -342,7 +345,29 @@ function showMainWindow() {
   }
 }
 
-function hideMainWindow() {
+/** Windows reminder that a scheduled power action keeps counting while hidden (5 min cooldown). */
+function notifyPowerSchedulePending(): void {
+  if (!powerScheduleNotice?.pending || !Notification.isSupported()) return;
+  if (Date.now() - powerScheduleNoticeLastShown < 300000) return;
+  try {
+    const iconPath = path.join(__dirname, '../public/icon.png');
+    const notif = new Notification({
+      title: 'CyberLauncher',
+      body: powerScheduleNotice.message,
+      icon: fs.existsSync(iconPath) ? iconPath : undefined,
+      silent: false,
+    });
+    notif.on('click', () => {
+      showMainWindow();
+    });
+    notif.show();
+    powerScheduleNoticeLastShown = Date.now();
+  } catch (err) {
+    console.warn('[POWER] Schedule notice failed:', err);
+  }
+}
+
+function hideMainWindow(fromUserAction = false) {
   // Only block while the native menu HWND exists. A time-based guard here
   // made Show/Hide from the tray stuck (window could not hide for up to 60s).
   if (trayMenuOpen) {
@@ -351,6 +376,7 @@ function hideMainWindow() {
     return;
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
+    if (fromUserAction) notifyPowerSchedulePending();
     console.log('[WM] hideMainWindow');
     mainWindow.hide();
   }
@@ -1079,7 +1105,7 @@ function createWindow() {
       e.preventDefault();
       saveWindowState();
       windowVisibilityState = 'hidden-intentional';
-      hideMainWindow();
+      hideMainWindow(true);
     }
   });
 
@@ -2257,6 +2283,7 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   if (action === 'hide') {
     windowVisibilityState = 'hidden-intentional';
     mainWindow?.hide();
+    notifyPowerSchedulePending();
     updateCustomTrayMenuState();
     applyRendererThrottling();
     return;
@@ -4410,7 +4437,7 @@ foreach (\$app in \$startApps) {
 
   ipcMain.handle('window-minimize', () => {
     windowVisibilityState = 'hidden-intentional';
-    hideMainWindow();
+    hideMainWindow(true);
   });
 
   ipcMain.handle('window-maximize-toggle', () => {
@@ -4423,7 +4450,7 @@ foreach (\$app in \$startApps) {
 
   ipcMain.handle('window-close', () => {
     windowVisibilityState = 'hidden-intentional';
-    hideMainWindow();
+    hideMainWindow(true);
   });
 
   ipcMain.handle('window-hide-to-tray', () => {
@@ -4432,7 +4459,12 @@ foreach (\$app in \$startApps) {
       return;
     }
     windowVisibilityState = 'hidden-intentional';
-    hideMainWindow();
+    hideMainWindow(true);
+  });
+
+  ipcMain.handle('set-power-schedule-notice', (_event, notice: { pending: boolean; message: string }) => {
+    powerScheduleNotice = notice && typeof notice === 'object' ? { pending: !!notice.pending, message: String(notice.message || '') } : null;
+    return true;
   });
 
   // (CyberTray IPCs removed)
