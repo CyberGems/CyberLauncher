@@ -859,6 +859,9 @@ export const translations = {
     cyberbot_reaction_achievement: "Interacción registrada. Seguimos.",
     // CyberBot Command Prompt
     cyberbot_prompt_tag: "CYBERBOT // COMANDOS",
+    cyberbot_desktop_tag: "CyberBot",
+    cyberbot_desktop_search: "Buscar accesos...",
+    cyberbot_desktop_empty: "Todavía no hay accesos guardados.",
     cyberbot_prompt_placeholder: "Escribe un comando o busca un acceso...",
     cyberbot_prompt_quick_actions: "Acciones Rápidas",
     cyberbot_prompt_quick_apps: "Accesos Frecuentes",
@@ -1872,6 +1875,9 @@ export const translations = {
     cyberbot_reaction_achievement: "Interaction registered. Onward.",
     // CyberBot Command Prompt
     cyberbot_prompt_tag: "CYBERBOT // COMMANDS",
+    cyberbot_desktop_tag: "CyberBot",
+    cyberbot_desktop_search: "Search shortcuts...",
+    cyberbot_desktop_empty: "There are no saved shortcuts yet.",
     cyberbot_prompt_placeholder: "Type a command or search a shortcut...",
     cyberbot_prompt_quick_actions: "Quick Actions",
     cyberbot_prompt_quick_apps: "Frequent Shortcuts",

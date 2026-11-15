@@ -465,6 +465,7 @@ export const TextFieldContextMenu: React.FC<TextFieldContextMenuProps> = ({ t })
     <div
       ref={menuRef}
       role="menu"
+      data-text-field-context-menu
       aria-label={t('text_menu_aria')}
       data-no-hide
       style={{ top: coords.top, left: coords.left }}

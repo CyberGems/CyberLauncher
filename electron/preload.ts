@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
+import type { DesktopCyberBotCatalog } from '../shared/desktopCyberBot';
 
 // =====================================
 // Electron API Bridge — Expone funciones seguras al mundo del navegador (React)
@@ -196,11 +197,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-about', handler);
     return () => { ipcRenderer.removeListener('open-about', handler); };
   },
-  onOpenCyberBotPrompt: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('open-cyberbot-prompt', handler);
-    return () => { ipcRenderer.removeListener('open-cyberbot-prompt', handler); };
-  },
+  setDesktopCyberBotCatalog: (catalog: DesktopCyberBotCatalog) => ipcRenderer.send('desktop-cyberbot:set-catalog', catalog),
   setTrayRecents: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) =>
     ipcRenderer.invoke('tray:set-recents', items),
   updateTraySettings: (settings: { showTrayRecents?: boolean; showSuiteRecommendations?: boolean }) =>

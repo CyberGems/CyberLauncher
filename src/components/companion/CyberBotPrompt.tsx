@@ -56,13 +56,14 @@ export interface CyberBotPromptProps {
   favoriteIds?: (string | number)[];
   onLaunchApp: (app: PromptLauncherApp) => void;
   renderAppIcon?: (app: PromptLauncherApp, className?: string) => React.ReactNode;
-  onOpenSystemHUD: () => void;
-  onOpenStorageHUD: () => void;
-  onOpenClockHUD: () => void;
-  onOpenTerminal: () => void;
-  onOpenCommandPalette: () => void;
-  onBackupNow: () => void;
-  onAddNewApp: (prefillName?: string) => void;
+  desktop?: { resultsHeight: number; feedback: string; launching: boolean };
+  onOpenSystemHUD?: () => void;
+  onOpenStorageHUD?: () => void;
+  onOpenClockHUD?: () => void;
+  onOpenTerminal?: () => void;
+  onOpenCommandPalette?: () => void;
+  onBackupNow?: () => void;
+  onAddNewApp?: (prefillName?: string) => void;
   onAddNewCategory?: () => void;
   onOpenPowerMenu?: () => void;
   onOpenSettings?: (tab?: 'general' | 'cyberbot' | 'backup') => void;
@@ -119,6 +120,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   favoriteIds = [],
   onLaunchApp,
   renderAppIcon,
+  desktop,
   onOpenSystemHUD,
   onOpenStorageHUD,
   onOpenClockHUD,
@@ -146,17 +148,20 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isQuietHoursActive = !!quietHours?.enabled;
+  const isDesktop = desktop !== undefined;
+  const isLaunching = desktop?.launching ?? false;
 
   // Sound and feedback execution helper
   const executeItem = useCallback((item: SelectableItem) => {
+    if (isLaunching) return;
     playBeep?.();
-    onClose();
+    if (!isDesktop) onClose();
     item.run();
     onActionExecuted?.(item.label);
-  }, [playBeep, onClose, onActionExecuted]);
+  }, [playBeep, onClose, onActionExecuted, isDesktop, isLaunching]);
 
   // Complete system actions list with extensive multilingual keywords
-  const systemActions = useMemo<PromptActionItem[]>(() => [
+  const systemActions = useMemo<PromptActionItem[]>(() => isDesktop ? [] : [
     // 1. Configuración General (Ajustes / Settings)
     ...(onOpenSettings ? [{
       id: 'action-settings',
@@ -353,7 +358,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       run: onOpenPowerMenu,
     }] : []),
   ], [
-    t, isQuietHoursActive, isPinned, onOpenSettings, onOpenStoreImporter, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal,
+    t, isDesktop, isQuietHoursActive, isPinned, onOpenSettings, onOpenStoreImporter, onOpenSystemHUD, onOpenStorageHUD, onOpenTerminal,
     onOpenClockHUD, onBackupNow, onOpenCommandPalette, onAddNewApp, onAddNewCategory,
     onRefreshIcons, onOpenAbout, onTogglePin, onToggleQuietHours, onOpenPowerMenu,
   ]);
@@ -393,7 +398,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
 
         const matchedApp = apps.find(a =>
           (a.path && item.path && a.path.toLowerCase() === item.path.toLowerCase()) ||
-          a.name.toLowerCase() === item.name.toLowerCase()
+          (!isDesktop && a.name.toLowerCase() === item.name.toLowerCase())
         );
 
         if (matchedApp) {
@@ -405,7 +410,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
             description: matchedApp.category,
             run: () => onLaunchApp(matchedApp),
           });
-        } else if (item.path || item.name) {
+        } else if (!isDesktop && (item.path || item.name)) {
           const adHocApp: PromptLauncherApp = {
             id: Math.abs(item.name.split('').reduce((acc, c) => ((acc << 5) - acc) + c.charCodeAt(0), 0)),
             name: item.name,
@@ -445,7 +450,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     }
 
     return list;
-  }, [recentHistory, apps, frequentApps, onLaunchApp, t]);
+  }, [recentHistory, apps, frequentApps, onLaunchApp, t, isDesktop]);
 
   // Normalized search query
   const normalizedQuery = normalizeSearch(query);
@@ -467,7 +472,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         const haystack = normalizeSearch(`${app.name} ${app.category || ''} ${app.path || ''}`);
         return haystack.includes(normalizedQuery);
       })
-      .slice(0, 5)
+      .slice(0, isDesktop ? undefined : 5)
       .map(app => ({
         id: `search-app-${app.id}`,
         type: 'app' as const,
@@ -476,7 +481,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         description: app.category,
         run: () => onLaunchApp(app),
       }));
-  }, [normalizedQuery, apps, onLaunchApp]);
+  }, [normalizedQuery, apps, onLaunchApp, isDesktop]);
 
   // Initial curated grid actions (6 top actions that fit perfectly)
   const initialGridActions = useMemo<PromptActionItem[]>(() => {
@@ -506,6 +511,10 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     setActiveIndex(0);
   }, [query]);
 
+  useEffect(() => {
+    if (isDesktop) listRef.current?.querySelector('[data-cyberbot-active-item]')?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, isDesktop]);
+
   // Outside click listener
   useEffect(() => {
     if (!isOpen) return;
@@ -515,7 +524,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       if (!target) return;
 
       // Ignore clicks inside this prompt
-      if (containerRef.current?.contains(target)) return;
+      if (containerRef.current?.contains(target) || target.closest('[data-text-field-context-menu]')) return;
 
       // Ignore clicks on CyberBot avatar (handled by its own click toggle)
       const botControl = document.querySelector('[data-cyberbot-control]');
@@ -537,6 +546,8 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       return;
     }
 
+    if (isDesktop && e.target !== inputRef.current) return;
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (selectableItems.length === 0) return;
@@ -555,7 +566,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       e.preventDefault();
       if (selectableItems.length > 0 && activeIndex >= 0 && activeIndex < selectableItems.length) {
         executeItem(selectableItems[activeIndex]);
-      } else if (normalizedQuery) {
+      } else if (normalizedQuery && onAddNewApp) {
         // If no results, pressing enter creates the app
         playBeep?.();
         onClose();
@@ -572,10 +583,10 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       ref={containerRef}
       role="dialog"
       aria-modal="true"
-      aria-label={t('cyberbot_prompt_tag')}
+      aria-label={t(isDesktop ? 'cyberbot_desktop_tag' : 'cyberbot_prompt_tag')}
       data-no-hide
       onKeyDown={handleKeyDown}
-      className={`relative w-[440px] max-w-[calc(100vw-32px)] rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5`}
+      className={`relative w-[440px] max-w-[calc(100vw-32px)] ${isDesktop ? 'min-h-[190px]' : ''} rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${CYBERBOT_BUBBLE_TONES.default.frame} p-3 text-slate-200 select-none z-50 flex flex-col gap-2.5`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
@@ -584,7 +595,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
             <Bot className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
           </div>
           <span className="text-[10px] font-cyber font-bold tracking-widest text-cyan-300 uppercase truncate">
-            {t('cyberbot_prompt_tag')}
+            {t(isDesktop ? 'cyberbot_desktop_tag' : 'cyberbot_prompt_tag')}
           </span>
         </div>
 
@@ -609,7 +620,8 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('cyberbot_prompt_placeholder')}
+          aria-label={t(isDesktop ? 'cyberbot_desktop_search' : 'cyberbot_prompt_placeholder')}
+          placeholder={t(isDesktop ? 'cyberbot_desktop_search' : 'cyberbot_prompt_placeholder')}
           className="w-full rounded-xl border border-cyan-500/35 bg-slate-950/75 pl-8 pr-7 py-2 text-xs text-white placeholder:text-slate-500 select-text outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 font-cyber transition-all"
         />
         {query && (
@@ -627,16 +639,19 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         )}
       </div>
 
+      {desktop?.feedback && <p role="status" className={`px-1.5 text-xs ${isLaunching ? 'text-slate-300' : 'text-amber-300'}`}>{desktop.feedback}</p>}
+
       {/* Main Content Area */}
       <div
         ref={listRef}
+        style={desktop ? { maxHeight: desktop.resultsHeight } : undefined}
         className="overflow-y-auto custom-scrollbar flex-1 px-1.5 space-y-2.5 max-h-[min(480px,68vh)]"
       >
         {/* VIEW A: Empty Query (Quick Chips & Frequent Apps) */}
         {!normalizedQuery && (
           <>
             {/* Quick Actions Grid */}
-            <div>
+            {initialGridActions.length > 0 && <div>
               <div className="text-[10px] font-cyber font-medium tracking-wider text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-slate-400" />
                 <span>{t('cyberbot_prompt_quick_actions')}</span>
@@ -677,7 +692,11 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                   );
                 })}
               </div>
-            </div>
+            </div>}
+
+            {isDesktop && apps.length === 0 && (
+              <p className="px-1.5 py-3 text-xs text-slate-400">{t('cyberbot_desktop_empty')}</p>
+            )}
 
             {/* Apps: 2 Columns (Frequent & Recent) */}
             {(frequentApps.length > 0 || recentApps.length > 0) && (
@@ -695,6 +714,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                       return (
                         <button
                           key={item.id}
+                          data-cyberbot-active-item={isSelected || undefined}
                           type="button"
                           onClick={() => executeItem(item)}
                           onMouseEnter={() => setActiveIndex(itemIndex)}
@@ -749,6 +769,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                       return (
                         <button
                           key={item.id}
+                          data-cyberbot-active-item={isSelected || undefined}
                           type="button"
                           onClick={() => executeItem(item)}
                           onMouseEnter={() => setActiveIndex(itemIndex)}
@@ -854,6 +875,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                     return (
                       <button
                         key={item.id}
+                        data-cyberbot-active-item={isSelected || undefined}
                         type="button"
                         onClick={() => executeItem(item)}
                         onMouseEnter={() => setActiveIndex(itemIndex)}
@@ -898,7 +920,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                 <p className="text-xs text-slate-400 font-cyber">
                   {t('cyberbot_prompt_no_results', { query })}
                 </p>
-                <button
+                {onAddNewApp && <button
                   type="button"
                   onClick={() => {
                     playBeep?.();
@@ -909,7 +931,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{t('cyberbot_prompt_create_app', { name: query.trim() })}</span>
-                </button>
+                </button>}
               </div>
             )}
           </>

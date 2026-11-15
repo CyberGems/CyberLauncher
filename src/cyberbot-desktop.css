@@ -1,0 +1,5 @@
+html[data-desktop-cyberbot],
+html[data-desktop-cyberbot] body,
+html[data-desktop-cyberbot] #root {
+  background: transparent;
+}

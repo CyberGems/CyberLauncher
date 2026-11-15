@@ -31,6 +31,7 @@ import type { UwpImportAppPreview, UwpImportPins } from './components/UwpImportC
 import { StoreImporterCard } from './components/StoreImporterCard';
 import { StoreImporterModal } from './components/StoreImporterModal';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
+import type { DesktopCyberBotCatalog } from '../shared/desktopCyberBot';
 import { AppConfirmModals } from './components/AppConfirmModals';
 import { CyberAnalogClock } from './components/CyberAnalogClock';
 import { MODAL_SHADOW_AMBER, MODAL_SHADOW_CYAN } from './components/modalTheme';
@@ -322,7 +323,7 @@ declare global {
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
       reportDisplayHeartbeat?: (report: { visibility: 'visible' | 'hidden'; rootMounted: boolean; surfaceMounted: boolean; surfaceChildren: number; surfaceOpacity: number | null; devicePixelRatio: number }) => void;
       registerAppShortcuts: (shortcuts: Array<{ id: number; path: string; shortcut: string; isAdmin: boolean; name?: string; icon?: string }>) => Promise<{ success: boolean }>;
-      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; pinned?: boolean; success?: boolean; error?: string; code?: LaunchResult['code'] }) => void) => () => void;
+      onAppLaunchedViaHotkey?: (callback: (data: { id?: number; path: string; name?: string; icon?: string; isAdmin?: boolean; windowHidden?: boolean; pinned?: boolean; success?: boolean; error?: string; code?: LaunchResult['code']; source?: 'desktop-cyberbot' }) => void) => () => void;
       runShellCommand: (command: string, opts?: { shellType?: 'powershell' | 'cmd'; cwd?: string }) => Promise<{ success: boolean; cmdId?: string; cwd?: string; error?: string }>;
       getConsoleCwd?: () => Promise<string>;
       setConsoleCwd?: (targetPath: string) => Promise<{ success: boolean; cwd: string; error?: string }>;
@@ -341,7 +342,7 @@ declare global {
       onOpenAddApp?: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
       onOpenAbout: (callback: (opts?: { checkUpdates?: boolean }) => void) => () => void;
-      onOpenCyberBotPrompt?: (callback: () => void) => () => void;
+      setDesktopCyberBotCatalog?: (catalog: DesktopCyberBotCatalog) => void;
       setTrayRecents?: (items: Array<{ name: string; path: string; isAdmin?: boolean; iconPath?: string }>) => Promise<{ success: boolean }>;
       updateTraySettings?: (settings: { showTrayRecents?: boolean; showSuiteRecommendations?: boolean }) => Promise<{ success: boolean }>;
       getAppVersions: () => Promise<{
@@ -3149,9 +3150,6 @@ export default function App() {
   });
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded, cyberBotShortcut });
-  const cyberBotRef = useRef(cyberBot);
-  cyberBotRef.current = cyberBot;
-  const cyberBotPromptRequestedAtRef = useRef<number>(0);
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
   const [nameEntryRequested, setNameEntryRequested] = useState(false);
   useEffect(() => {
@@ -3853,15 +3851,6 @@ export default function App() {
         setIsAboutOpen(true);
       }));
     }
-    if (window.electronAPI.onOpenCyberBotPrompt) {
-      unsubs.push(window.electronAPI.onOpenCyberBotPrompt(() => {
-        cyberBotPromptRequestedAtRef.current = Date.now();
-        if (!cyberBotRef.current.enabled) {
-          cyberBotRef.current.toggleEnabled();
-        }
-        setIsCyberBotPromptOpen(prev => !prev);
-      }));
-    }
     return () => unsubs.forEach((u) => u());
   }, []);
 
@@ -3899,7 +3888,9 @@ export default function App() {
         record24hLaunch();
         addToHistory(data.name || 'App', data.path, 'app', data.icon || '');
       }
-      announceSuccessfulLaunch(targetApp?.name || data.name || 'App', !!data.isAdmin, !!data.windowHidden, data.pinned ?? isAlwaysOnTop);
+      if (data.source !== 'desktop-cyberbot') {
+        announceSuccessfulLaunch(targetApp?.name || data.name || 'App', !!data.isAdmin, !!data.windowHidden, data.pinned ?? isAlwaysOnTop);
+      }
     });
     return unsub;
   }, [apps, addToHistory, record24hLaunch, announceSuccessfulLaunch, reportLaunchFailure, isAlwaysOnTop]);
@@ -4577,26 +4568,15 @@ export default function App() {
     // Older hosts and browser visibility provide a fallback; native hide remains authoritative.
     if (!window.electronAPI.onLauncherHidden) document.addEventListener('visibilitychange', visibility);
     const cleanup = window.electronAPI.onLauncherShown(() => {
-      const isForCyberBot = Date.now() - cyberBotPromptRequestedAtRef.current < 1500;
-
-      if (!isForCyberBot) {
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-          searchInputRef.current?.select();
-        }, 50);
-
-        setKeyboardNav(null);
-        setIsMoreMenuOpen(false);
-        setIsHelpSubmenuOpen(false);
-        setIsCommandPaletteOpen(false);
-        setIsCyberBotPromptOpen(false);
-      } else {
-        setKeyboardNav(null);
-        setIsMoreMenuOpen(false);
-        setIsHelpSubmenuOpen(false);
-        setIsCommandPaletteOpen(false);
-        setIsCyberBotPromptOpen(true);
-      }
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }, 50);
+      setKeyboardNav(null);
+      setIsMoreMenuOpen(false);
+      setIsHelpSubmenuOpen(false);
+      setIsCommandPaletteOpen(false);
+      setIsCyberBotPromptOpen(false);
 
       if (returnTimer !== null) window.clearTimeout(returnTimer);
       // Let visibility, countdowns and pending notices settle before a decorative welcome.
@@ -6235,6 +6215,21 @@ export default function App() {
   const getAppCategoryLabel = useCallback((rawCategoryName: string) => {
     return resolveAppCategoryDisplayName(rawCategoryName, categories, t);
   }, [categories, t]);
+
+  useEffect(() => {
+    if (!isConfigLoaded || !window.electronAPI?.setDesktopCyberBotCatalog) return;
+    window.electronAPI.setDesktopCyberBotCatalog({
+      language, favoriteIds, enableTooltips,
+      apps: apps.flatMap(shortcut => {
+        if (!shortcut.path?.trim()) return [];
+        return [{
+          id: shortcut.id, name: shortcut.name, path: shortcut.path,
+          category: getAppCategoryLabel(shortcut.category), usage: shortcut.usage,
+          iconPath: shortcut.iconPath, isAdmin: shortcut.isAdmin,
+        }];
+      }),
+    });
+  }, [isConfigLoaded, apps, favoriteIds, language, enableTooltips, getAppCategoryLabel]);
 
   const getUncategorizedStorageName = useCallback(() => {
     return categories.find(c => c.id === UNCATEGORIZED_ID)?.name || getPresetCategoryName(UNCATEGORIZED_ID, language);

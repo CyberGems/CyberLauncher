@@ -8,6 +8,9 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import * as pty from 'node-pty';
 import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
+import { createDesktopCyberBotWindow } from './desktop-cyberbot-window';
+import type { DesktopCyberBotCatalog, DesktopCyberBotContext } from '../shared/desktopCyberBot';
+import { DEFAULT_FAVORITE_APP_IDS, getDefaultWindowsApps } from '../shared/defaultApps';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
 import { createDisplayDiagnostics } from './display-diagnostics';
 import { resolveTargetDisplay } from './display-resolve';
@@ -115,6 +118,8 @@ let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
 let currentCyberBotShortcut = 'Alt+Shift+B';
 let cyberBotShortcutEnabled = true;
+let desktopCyberBot: ReturnType<typeof createDesktopCyberBotWindow> | null = null;
+let desktopCyberBotCatalog: DesktopCyberBotCatalog | null = null;
 let hotspotCorners: string[] = [];
 let hotspotDelay = 300;
 let hotspotsDisableInFullscreen = true;
@@ -2637,6 +2642,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   }
 
   if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
+    desktopCyberBot?.close();
     return;
   }
 
@@ -2645,7 +2651,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   try {
     const success = globalShortcut.register(electronShortcut, () => {
       try {
-        toggleWindowForCyberBot();
+        desktopCyberBot?.toggle();
       } catch (err) {
         console.error('[SHORTCUT] Error in CyberBot shortcut callback:', err);
       }
@@ -2659,34 +2665,38 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   }
 }
 
-function toggleWindowForCyberBot() {
-  if (!cyberBotShortcutEnabled) return;
-
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    console.log('[TOGGLE-BOT] Window destroyed, recreating...');
-    mainWindow = null;
-    createWindow();
-    registerGlobalShortcut(currentShortcut);
-    registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
-    mainWindow?.webContents.once('did-finish-load', () => {
-      mainWindow?.webContents.send('open-cyberbot-prompt');
-    });
-    return;
-  }
-
-  if (mainWindow.isVisible()) {
-    if (trayMenuOpen) {
-      return;
+function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'resultsHeight'> {
+  let catalog = desktopCyberBotCatalog;
+  if (!catalog) {
+    let config: ReturnType<typeof parseValidBackupJson> = null;
+    try {
+      if (fs.existsSync(CONFIG_FILE)) config = parseValidBackupJson(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    } catch (error) {
+      console.error('[CYBERBOT] Could not read the shortcut catalog:', error);
     }
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore();
-    }
-    mainWindow.focus();
-    mainWindow.webContents.send('open-cyberbot-prompt');
-  } else {
-    mainWindow.webContents.send('open-cyberbot-prompt');
-    showMainWindow();
+    const language = config?.language === 'es' || config?.language === 'en' ? config.language : getTrayLanguage();
+    const savedApps = Array.isArray(config?.apps) ? config.apps : getDefaultWindowsApps(language);
+    catalog = {
+      language,
+      apps: savedApps.flatMap(shortcut => {
+        if (!shortcut || !Number.isSafeInteger(shortcut.id) || typeof shortcut.name !== 'string'
+          || typeof shortcut.path !== 'string' || !shortcut.path.trim()) return [];
+        return [{
+          id: shortcut.id, name: shortcut.name, path: shortcut.path, category: shortcut.category || '',
+          usage: shortcut.usage || 0, iconPath: shortcut.iconPath, isAdmin: shortcut.isAdmin === true,
+        }];
+      }),
+      favoriteIds: Array.isArray(config?.favoriteIds) ? config.favoriteIds : DEFAULT_FAVORITE_APP_IDS,
+      enableTooltips: config?.enableTooltips !== false,
+    };
   }
+  const catalogPaths = new Set(catalog.apps.map(shortcut => shortcut.path.toLowerCase()));
+  return {
+    ...catalog,
+    recentHistory: trayRecents
+      .filter(shortcut => catalogPaths.has(shortcut.path.toLowerCase()))
+      .map(({ name, path }) => ({ name, path })),
+  };
 }
 
 // =====================================
@@ -3648,6 +3658,30 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
 }
 
 function setupIpcHandlers() {
+  ipcMain.on('desktop-cyberbot:set-catalog', (event, catalog: DesktopCyberBotCatalog) => {
+    if (event.sender === mainWindow?.webContents) desktopCyberBotCatalog = catalog;
+  });
+  desktopCyberBot = createDesktopCyberBotWindow({
+    devServerUrl: VITE_DEV_SERVER_URL,
+    rendererDirectory: path.join(__dirname, '../dist'),
+    preloadPath: path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/cyberbot-desktop-preload.cjs' : '../dist/cyberbot-desktop-preload.cjs'),
+    getCatalog: getDesktopCyberBotCatalog,
+    launch: async shortcut => {
+      const result = await launchAppInternal(shortcut.path, shortcut.isAdmin, true);
+      if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-launched-via-hotkey', {
+          ...result,
+          id: shortcut.id,
+          name: shortcut.name,
+          path: shortcut.path,
+          icon: shortcut.iconPath,
+          isAdmin: shortcut.isAdmin,
+          source: 'desktop-cyberbot',
+        });
+      }
+      return result;
+    },
+  });
   // --- Obtener configuraciones del indexador global ---
   ipcMain.handle('get-indexer-settings', async () => {
     return loadIndexerSettings();
@@ -5711,6 +5745,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   displayDiagnostics.write('session-quit', displayWindowState());
   isQuitting = true;
+  desktopCyberBot?.close();
 });
 
 app.on('will-quit', () => {

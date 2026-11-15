@@ -14,14 +14,20 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
-    rollupOptions: { input: { launcher: path.resolve(__dirname, 'index.html'), toast: path.resolve(__dirname, 'cyberbot-toast.html') } },
+    rollupOptions: {
+      input: {
+        launcher: path.resolve(__dirname, 'index.html'),
+        toast: path.resolve(__dirname, 'cyberbot-toast.html'),
+        desktopCyberBot: path.resolve(__dirname, 'cyberbot-desktop.html'),
+      },
+    },
   },
   plugins: [
     {
-      name: 'desktop-toast-production-csp',
+      name: 'desktop-windows-production-csp',
       transformIndexHtml(html, context) {
         // React refresh uses an inline preamble in development only.
-        return !context.server && context.filename.endsWith('cyberbot-toast.html')
+        return !context.server && /cyberbot-(toast|desktop)\.html$/.test(context.filename)
           ? html.replace("script-src 'self' 'unsafe-inline';", "script-src 'self';") : html;
       },
     },
