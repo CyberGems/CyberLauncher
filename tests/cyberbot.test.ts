@@ -730,6 +730,21 @@ test('by default the idle cycle keeps CyberBot visible on the main panel without
   cycle.dispose();
 });
 
+test('floating sleep lasts three times as long and can still end on activity', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const changes: string[] = [];
+  const cycle = createCyberBotIdleCycle(state => changes.push(state), () => 0, { restMultiplier: 3 });
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_IDLE_MS);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_REST_MS * 3 - 1);
+  assert.deepEqual(changes, ['sleeping']);
+  context.mock.timers.tick(1);
+  assert.deepEqual(changes, ['sleeping', 'awake']);
+  context.mock.timers.tick(CYBERBOT_SLEEP_MIN_IDLE_MS);
+  cycle.wake();
+  assert.deepEqual(changes, ['sleeping', 'awake', 'sleeping', 'awake']);
+  cycle.dispose();
+});
+
 test('idle cycle favors 15–30 second departures and eventually takes a 45–60 second sleep when vanishing is enabled', context => {
   context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const changes: string[] = [];
@@ -908,6 +923,19 @@ test('idle rounds favor eyes, logo and flight over Terminal and curiosity', () =
   for (let i = 0; i < faces.length; i += 23) {
     assert.deepEqual(new Set(faces.slice(i, i + 23)), new Set(['default', 'launcher', 'flight', 'curious', 'terminal']));
   }
+});
+
+test('the floating expression rotation omits Terminal and keeps its other composed faces', () => {
+  const picker = createCyberBotIdleExpressionPicker(() => 0.5, () => 0, { allowTerminal: false });
+  let previous: NonNullable<CyberBotMessage['emotion']> = 'curious';
+  const seen = new Set<string>();
+  for (let i = 0; i < 60; i++) {
+    const next = picker.next(previous, false);
+    assert.notEqual(next, previous);
+    seen.add(next);
+    previous = next;
+  }
+  assert.deepEqual(seen, new Set(['default', 'launcher', 'flight', 'curious']));
 });
 
 test('rare gestures do not consume unseen composed expressions', () => {

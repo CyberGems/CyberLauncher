@@ -66,7 +66,7 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
   const [sleeping, setSleeping] = useState(false);
   const [held, setHeld] = useState(false);
   const [expression, setExpression] = useState<CyberBotEmotion>('curious');
-  const [expressionPicker] = useState(createCyberBotIdleExpressionPicker);
+  const [expressionPicker] = useState(() => createCyberBotIdleExpressionPicker(Math.random, Date.now, { allowTerminal: false }));
   const idle = useRef<ReturnType<typeof createCyberBotIdleCycle> | null>(null);
   const gestureRef = useRef<{ pointerId: number; x: number; y: number; grip: { x: number; y: number }; dragged: boolean } | null>(null);
   const suppressPointerClick = useRef(false);
@@ -78,7 +78,7 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
 
   useLayoutEffect(() => {
     const unsubscribe = api.onExpanded(setExpanded);
-    const cycle = createCyberBotIdleCycle(state => setSleeping(state === 'sleeping'));
+    const cycle = createCyberBotIdleCycle(state => setSleeping(state === 'sleeping'), Math.random, { restMultiplier: 3 });
     idle.current = cycle;
     const unsubscribeActivity = api.onActivity(() => cycle.wake());
     const frame = requestAnimationFrame(() => api.avatarReady());

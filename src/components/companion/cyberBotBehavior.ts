@@ -16,10 +16,10 @@ export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // Idle rotates slowly through composed faces. Visibly cheerful gestures remain rare.
 export const cyberBotNeutralIdleExpressions = ['default', 'launcher', 'flight', 'curious', 'terminal'] as const;
 const coreIdleExpressions = ['default', 'launcher', 'flight'] as const;
-function idleExpressionRound(round: number): CyberBotEmotion[] {
+function idleExpressionRound(round: number, allowTerminal = true): CyberBotEmotion[] {
   return [
     ...coreIdleExpressions,
-    ...(round % 2 === 0 ? ['terminal' as const] : []),
+    ...(allowTerminal && round % 2 === 0 ? ['terminal' as const] : []),
     ...(round % 3 === 0 ? ['curious' as const] : []),
   ];
 }
@@ -106,7 +106,7 @@ export function nextCyberBotIdleExpression(
 
 // Exhaust each composed-face round; Terminal joins every second, curiosity every third.
 // The occasional status screen keeps its independent guard across interruptions.
-export function createCyberBotIdleExpressionPicker(random = Math.random, now = Date.now) {
+export function createCyberBotIdleExpressionPicker(random = Math.random, now = Date.now, { allowTerminal = true } = {}) {
   let marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
   let round = 0;
   let remaining: CyberBotEmotion[] = [];
@@ -114,7 +114,7 @@ export function createCyberBotIdleExpressionPicker(random = Math.random, now = D
     next(previous: CyberBotEmotion, allowMarquee = true): CyberBotEmotion {
       if (!remaining.some(face => face !== previous)) {
         round += 1;
-        remaining = idleExpressionRound(round);
+        remaining = idleExpressionRound(round, allowTerminal);
       }
       const next = nextCyberBotIdleExpression(previous, random, allowMarquee && now() >= marqueeEligibleAt, remaining);
       const index = remaining.indexOf(next);
@@ -145,6 +145,7 @@ export function shouldCyberBotBlink(emotion: CyberBotEmotion): boolean {
 
 export interface CyberBotIdleCycleOptions {
   allowVanish?: boolean;
+  restMultiplier?: number;
 }
 
 // One idle cycle chooses a gesture instead of running overlapping sleep and
@@ -155,7 +156,7 @@ export function createCyberBotIdleCycle(
   random = Math.random,
   options: CyberBotIdleCycleOptions = {},
 ) {
-  const { allowVanish = false } = options;
+  const { allowVanish = false, restMultiplier = 1 } = options;
   let lastActivity = Date.now();
   let state: CyberBotIdleState = 'awake';
   let paused = false;
@@ -213,7 +214,8 @@ export function createCyberBotIdleCycle(
       state = 'sleeping';
       consecutiveVanish = 0;
       onChange(state, style);
-      timer = setTimeout(finishGesture, randomDelay(CYBERBOT_SLEEP_MIN_REST_MS, CYBERBOT_SLEEP_MAX_REST_MS, random));
+      const rest = randomDelay(CYBERBOT_SLEEP_MIN_REST_MS * restMultiplier, CYBERBOT_SLEEP_MAX_REST_MS * restMultiplier, random);
+      timer = setTimeout(finishGesture, rest);
     }
   }
   chooseNextGesture();
