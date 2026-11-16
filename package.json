@@ -32,6 +32,7 @@
     "icons": "node scripts/generate-icons.mjs",
     "installer-graphics": "node scripts/generate-installer-graphics.mjs",
     "build:store-launcher": "node scripts/build-store-launcher.mjs",
+    "build:cyberbot-dpi": "node scripts/build-cyberbot-dpi.mjs",
     "test:store-launcher": "node --import tsx --test tests/store-app-launch.test.ts",
     "cyberbot:review": "node scripts/cyberbot-review.mjs",
     "cyberbot:review:inspect": "node scripts/cyberbot-review.mjs --inspect"
@@ -64,6 +65,10 @@
       {
         "from": "electron/launch-store-app.exe",
         "to": "launch-store-app.exe"
+      },
+      {
+        "from": "electron/cyberbot-dpi-win32.node",
+        "to": "cyberbot-dpi-win32.node"
       }
     ],
     "win": {

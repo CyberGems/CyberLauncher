@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import {
   DESKTOP_CYBERBOT_LAYOUT,
@@ -26,6 +27,21 @@ interface DesktopCyberBotOptions {
   onLayoutChanged: () => void;
 }
 
+type WindowsDpiMove = (handle: Buffer, x: number, y: number, width: number, height: number, dpi: number) => boolean;
+
+function loadWindowsDpiMove(rendererDirectory: string): WindowsDpiMove | null {
+  if (process.platform !== 'win32' || process.arch !== 'x64') return null;
+  const moduleDirectory = app.isPackaged ? process.resourcesPath : path.resolve(rendererDirectory, '../electron');
+  try {
+    const require = createRequire(path.join(moduleDirectory, 'package.json'));
+    const { move } = require(path.join(moduleDirectory, 'cyberbot-dpi-win32.node')) as { move: WindowsDpiMove };
+    return move;
+  } catch (error) {
+    console.error('[CYBERBOT] Could not load the Windows DPI module:', error);
+    return null;
+  }
+}
+
 export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   interface Drag {
     grip: Electron.Point;
@@ -51,6 +67,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     launching: boolean;
   }
   let active: Session | null = null;
+  const moveAcrossDpi = loadWindowsDpiMove(options.rendererDirectory);
 
   const close = () => {
     const session = active;
@@ -73,7 +90,18 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   const setBounds = (window: BrowserWindow, current: Electron.Rectangle, next: Electron.Rectangle) => {
     // Reading back a native rectangle and feeding it into setPosition repeatedly
     // can accumulate Chromium's DPI/frame adjustments into the window size.
-    if (current.x !== next.x || current.y !== next.y || current.width !== next.width || current.height !== next.height) window.setBounds(next);
+    if (current.x === next.x && current.y === next.y && current.width === next.width && current.height === next.height) return next;
+    if (moveAcrossDpi) {
+      const from = screen.getDisplayMatching(current);
+      const to = screen.getDisplayMatching(next);
+      if (from.scaleFactor !== to.scaleFactor) {
+        const pixels = screen.dipToScreenRect(null, next);
+        if (moveAcrossDpi(window.getNativeWindowHandle(), pixels.x, pixels.y, pixels.width, pixels.height,
+          Math.round(to.scaleFactor * 96))) return next;
+        console.warn('[CYBERBOT] Native DPI move failed. Applying Electron window bounds.');
+      }
+    }
+    window.setBounds(next);
     return next;
   };
 
