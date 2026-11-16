@@ -925,6 +925,7 @@ function createWindow() {
       return;
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
+      desktopCyberBot?.setLauncherVisible(true);
       mainWindow.webContents.send('launcher-shown');
     }
     applyRendererThrottling();
@@ -935,6 +936,7 @@ function createWindow() {
   mainWindow.on('hide', () => {
     displayDiagnostics.write('window-hide', displayWindowState());
     console.log('[WM EVENT] hide');
+    if (!isQuitting) desktopCyberBot?.setLauncherVisible(false);
     mainWindow?.webContents.send('launcher-hidden');
     resetHotspotGesture();
     applyRendererThrottling();
@@ -998,6 +1000,7 @@ function createWindow() {
   mainWindow.on('focus', () => displayDiagnostics.write('window-focus', displayWindowState()));
   mainWindow.on('minimize', () => {
     displayDiagnostics.write('window-minimize', displayWindowState());
+    if (!isQuitting) desktopCyberBot?.setLauncherVisible(false);
     mainWindow?.webContents.send('launcher-hidden');
   });
 
@@ -1008,6 +1011,7 @@ function createWindow() {
     if (ownRestore || windowVisibilityState === 'shown-intentional') {
       inOwnRestoreCall = 0;
       console.log('[WM] Restore confirmed for a visible launcher');
+      desktopCyberBot?.setLauncherVisible(Boolean(mainWindow?.isVisible()));
       mainWindow?.webContents.send('launcher-shown');
     } else {
       console.log('[WM] Window restored by OS (UAC?), re-hiding unconditionally');
@@ -1044,6 +1048,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (!isQuitting) desktopCyberBot?.setLauncherVisible(false);
   });
 }
 

@@ -56,6 +56,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     placement: DesktopCyberBotBubblePlacement;
     expanded: boolean;
     bubbleVisible: boolean;
+    focusSearch: boolean;
     avatar: Electron.Point;
     avatarBounds: Electron.Rectangle;
     bubbleBounds: Electron.Rectangle;
@@ -67,6 +68,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     launching: boolean;
   }
   let active: Session | null = null;
+  let launcherVisible = false;
   const moveAcrossDpi = loadWindowsDpiMove(options.rendererDirectory);
 
   const close = () => {
@@ -138,22 +140,51 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     updatePlacement(session);
   };
 
+  const showInactive = (window: BrowserWindow) => {
+    if (window.isVisible()) return false;
+    window.showInactive();
+    window.setAlwaysOnTop(true, 'pop-up-menu');
+    return true;
+  };
+
   const showWhenReady = (session: Session) => {
-    if (!session.avatarReady || !session.expanded || !session.bubbleReady
-      || session.bubbleVisible) return;
+    if (launcherVisible || !session.avatarReady || !session.bubbleReady) return;
+    const avatarShown = showInactive(session.avatarWindow);
     // A composited transparent window stays mounted. Folding its content avoids
     // running the Windows hide/show sequence when the user reopens the search.
-    if (!session.bubbleWindow.isVisible()) {
-      for (const window of [session.avatarWindow, session.bubbleWindow]) {
-        window.showInactive();
-        window.setAlwaysOnTop(true, 'pop-up-menu');
+    if (session.expanded) {
+      const bubbleShown = showInactive(session.bubbleWindow);
+      const opening = !session.bubbleVisible;
+      if (opening) {
+        session.bubbleVisible = true;
+        session.bubbleWindow.setIgnoreMouseEvents(false);
+        session.bubbleWindow.webContents.send('desktop-cyberbot:expanded', true);
       }
+      if (session.focusSearch) {
+        session.focusSearch = false;
+        session.bubbleWindow.focus();
+      }
+      if (avatarShown || bubbleShown || opening) options.onLayoutChanged();
+    } else if (avatarShown) {
+      options.onLayoutChanged();
     }
-    session.bubbleVisible = true;
-    options.onLayoutChanged();
-    session.bubbleWindow.setIgnoreMouseEvents(false);
-    session.bubbleWindow.webContents.send('desktop-cyberbot:expanded', true);
-    session.bubbleWindow.focus();
+  };
+
+  const setLauncherVisible = (visible: boolean) => {
+    if (launcherVisible === visible) return;
+    launcherVisible = visible;
+    const session = active;
+    if (!session) return;
+    if (visible) {
+      session.focusSearch = false;
+      if (session.drag?.pending) clearImmediate(session.drag.pending);
+      session.drag = null;
+      session.bubbleWindow.hide();
+      session.avatarWindow.hide();
+      options.onLayoutChanged();
+    } else {
+      showWhenReady(session);
+    }
   };
 
   ipcMain.handle('desktop-cyberbot:get-context', (event): DesktopCyberBotSurface | null => {
@@ -184,9 +215,10 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   });
   ipcMain.on('desktop-cyberbot:toggle-bubble', event => {
     const session = getSession(event, 'avatar');
-    if (!session) return;
+    if (!session || launcherVisible) return;
     const expanded = session.expanded = !session.expanded;
     if (expanded) {
+      session.focusSearch = true;
       showWhenReady(session);
     } else {
       session.bubbleVisible = false;
@@ -202,7 +234,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   });
   ipcMain.on('desktop-cyberbot:drag', (event, phase: DesktopCyberBotDragPhase, offset?: Electron.Point) => {
     const session = getSession(event, 'avatar');
-    if (!session) return;
+    if (!session || launcherVisible) return;
     if (phase === 'start') {
       const { avatarSize } = DESKTOP_CYBERBOT_LAYOUT;
       if (!offset || !Number.isFinite(offset.x) || !Number.isFinite(offset.y)
@@ -239,7 +271,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   });
   ipcMain.handle('desktop-cyberbot:launch', async (event, id: number): Promise<LaunchResult> => {
     const session = getSession(event, 'bubble');
-    if (!session?.expanded || session.launching || !Number.isSafeInteger(id)) return { success: false };
+    if (!session?.expanded || launcherVisible || session.launching || !Number.isSafeInteger(id)) return { success: false };
     if (!session.catalog.apps.some(shortcut => shortcut.id === id)) return { success: false, code: 'not-found' };
     const shortcut = options.getCatalog().apps.find(shortcut => shortcut.id === id);
     if (!shortcut) return { success: false, code: 'not-found' };
@@ -297,6 +329,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   };
 
   const toggle = () => {
+    if (launcherVisible) return;
     if (active) {
       close();
       return;
@@ -321,7 +354,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     const session: Session = {
       avatarWindow, bubbleWindow, display, catalog, avatar, avatarBounds, bubbleBounds: bounds,
       bubbleBody: desktopCyberBotBubbleBody(bounds, placement, bodyHeight), bubbleHeight, placement,
-      avatarReady: false, bubbleReady: false, bubbleVisible: false, expanded: true, drag: null, launching: false,
+      avatarReady: false, bubbleReady: false, bubbleVisible: false, expanded: true, focusSearch: true, drag: null, launching: false,
     };
     active = session;
     loadPopup(session, avatarWindow, 'avatar');
@@ -330,10 +363,10 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
 
   screen.on('display-removed', close);
   const getVisibleBounds = () => {
-    if (!active?.avatarWindow.isVisible()) return [];
+    if (launcherVisible || !active?.avatarWindow.isVisible()) return [];
     const bounds = [active.avatarWindow.getBounds()];
     if (active.bubbleVisible) bounds.push(active.bubbleWindow.getBounds());
     return bounds;
   };
-  return { toggle, close, getVisibleBounds };
+  return { toggle, close, getVisibleBounds, setLauncherVisible };
 }
