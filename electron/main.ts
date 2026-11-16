@@ -2675,7 +2675,14 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   try {
     const success = globalShortcut.register(electronShortcut, () => {
       try {
-        desktopCyberBot?.toggle();
+        if (!desktopCyberBot || isQuitting) return;
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+          if (trayMenuOpen) hideCustomTrayMenu();
+          desktopCyberBot.openSearch();
+          hideMainWindow();
+        } else {
+          desktopCyberBot.toggle();
+        }
       } catch (err) {
         console.error('[SHORTCUT] Error in CyberBot shortcut callback:', err);
       }

@@ -69,9 +69,11 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   }
   let active: Session | null = null;
   let launcherVisible = false;
+  let openSearchWhenHidden = false;
   const moveAcrossDpi = loadWindowsDpiMove(options.rendererDirectory);
 
   const close = () => {
+    openSearchWhenHidden = false;
     const session = active;
     active = null;
     if (!session) return;
@@ -173,6 +175,11 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   const setLauncherVisible = (visible: boolean) => {
     if (launcherVisible === visible) return;
     launcherVisible = visible;
+    if (!visible && openSearchWhenHidden) {
+      openSearchWhenHidden = false;
+      openSearch();
+      return;
+    }
     const session = active;
     if (!session) return;
     if (visible) {
@@ -328,10 +335,18 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     });
   };
 
-  const toggle = () => {
-    if (launcherVisible) return;
+  const openSearch = () => {
+    if (launcherVisible) {
+      openSearchWhenHidden = true;
+      return;
+    }
     if (active) {
-      close();
+      if (!active.expanded) {
+        active.expanded = true;
+        active.avatarWindow.webContents.send('desktop-cyberbot:expanded', true);
+      }
+      active.focusSearch = true;
+      showWhenReady(active);
       return;
     }
     const catalog = options.getCatalog();
@@ -361,6 +376,12 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     loadPopup(session, bubbleWindow, 'bubble');
   };
 
+  const toggle = () => {
+    if (launcherVisible) return;
+    if (active) close();
+    else openSearch();
+  };
+
   screen.on('display-removed', close);
   const getVisibleBounds = () => {
     if (launcherVisible || !active?.avatarWindow.isVisible()) return [];
@@ -368,5 +389,5 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     if (active.bubbleVisible) bounds.push(active.bubbleWindow.getBounds());
     return bounds;
   };
-  return { toggle, close, getVisibleBounds, setLauncherVisible };
+  return { toggle, openSearch, close, getVisibleBounds, setLauncherVisible };
 }
