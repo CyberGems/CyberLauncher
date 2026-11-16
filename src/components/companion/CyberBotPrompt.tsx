@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Search,
   X,
+  Minus,
   Bot,
   Cpu,
   HardDrive,
@@ -49,6 +50,7 @@ export interface PromptLauncherApp {
 export interface CyberBotPromptProps {
   isOpen: boolean;
   onClose: () => void;
+  onFold?: () => void;
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'left' | 'right';
   t: (key: TranslationKey, params?: Record<string, string>) => string;
   apps: PromptLauncherApp[];
@@ -113,6 +115,7 @@ function normalizeSearch(str: string): string {
 export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   isOpen,
   onClose,
+  onFold = onClose,
   position = 'bottom-right',
   t,
   apps,
@@ -548,7 +551,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       return;
     }
 
-    if (isDesktop && e.target !== inputRef.current) return;
+    if (e.target !== inputRef.current) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -580,6 +583,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   const isLeft = position === 'bottom-left' || position === 'left';
   const tailPositionClass = isLeft ? 'left-[40px]' : 'right-[40px]';
   const pointsUp = desktop?.side === 'below';
+  const headerButtonClass = `${isDesktop ? 'p-1.5' : 'p-1'} rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-1 focus-visible:ring-cyan-400 cursor-pointer`;
 
   return (
     <div
@@ -605,17 +609,18 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
           </span>
         </div>
 
-        <Tooltip label={t('tooltip_close')} placement="bottom">
-          <button
-            type="button"
-            aria-label={t('cyberbot_prompt_esc_hint')}
-            onClick={onClose}
-            className={`${isDesktop ? 'p-1.5' : 'p-1'} rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber`}
-          >
-            <kbd className="tooltip-shortcut">Esc</kbd>
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </Tooltip>
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip label={t('cyberbot_desktop_collapse')} placement="bottom">
+            <button type="button" aria-label={t('cyberbot_desktop_collapse')} onClick={onFold} className={headerButtonClass}>
+              <Minus className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </Tooltip>
+          <Tooltip label={<span className="inline-flex items-center gap-2">{t('cyberbot_prompt_hide')} <kbd className="tooltip-shortcut">Esc</kbd></span>} placement="bottom">
+            <button type="button" aria-label={t('cyberbot_prompt_hide')} aria-keyshortcuts="Escape" onClick={onClose} className={headerButtonClass}>
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Command & Search Input */}

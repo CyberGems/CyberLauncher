@@ -246,6 +246,7 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       <CyberBotPrompt
         isOpen
         onClose={api.close}
+        onFold={api.toggleBubble}
         t={t}
         apps={catalog.apps}
         favoriteIds={catalog.favoriteIds}

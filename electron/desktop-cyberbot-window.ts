@@ -221,8 +221,9 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     else showWhenReady(session);
   });
   ipcMain.on('desktop-cyberbot:toggle-bubble', event => {
-    const session = getSession(event, 'avatar');
+    const session = getSession(event);
     if (!session || launcherVisible) return;
+    if (!session.expanded && event.sender === session.bubbleWindow.webContents) return;
     const expanded = session.expanded = !session.expanded;
     if (expanded) {
       session.focusSearch = true;
