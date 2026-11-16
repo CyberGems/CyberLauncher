@@ -583,7 +583,11 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   const isLeft = position === 'bottom-left' || position === 'left';
   const tailPositionClass = isLeft ? 'left-[40px]' : 'right-[40px]';
   const pointsUp = desktop?.side === 'below';
-  const headerButtonClass = `${isDesktop ? 'p-1.5' : 'p-1'} rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus-visible:ring-1 focus-visible:ring-cyan-400 cursor-pointer`;
+  // The transparent desktop window can retain Chromium's hover while folded.
+  const headerButtonHover = isDesktop
+    ? 'group-data-[pointer-moved]/desktop-bubble:hover:text-white group-data-[pointer-moved]/desktop-bubble:hover:bg-white/10'
+    : 'hover:text-white hover:bg-white/10';
+  const headerButtonClass = `${isDesktop ? 'p-1.5' : 'p-1'} ${headerButtonHover} rounded-md text-slate-400 transition-colors focus-visible:ring-1 focus-visible:ring-cyan-400 cursor-pointer`;
 
   return (
     <div

@@ -179,6 +179,7 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       bubbleRef.current?.querySelector('input')?.focus({ preventScroll: true });
       api.activity();
     } else {
+      bubbleRef.current?.removeAttribute('data-pointer-moved');
       window.dispatchEvent(new Event('cyber-hide-tooltips'));
     }
   }, [expanded]);
@@ -241,8 +242,9 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
   };
 
   return (
-    <div ref={bubbleRef} className="absolute" data-bubble-side={bubble.side} style={{ left: bubble.left, top: bubble.top, width: bubble.width }}
-      onPointerEnter={api.activity} onPointerDown={api.activity} onKeyDown={api.activity} onWheel={api.activity}>
+    <div ref={bubbleRef} className="absolute group/desktop-bubble" data-bubble-side={bubble.side} style={{ left: bubble.left, top: bubble.top, width: bubble.width }}
+      onPointerEnter={api.activity} onPointerDown={api.activity} onKeyDown={api.activity} onWheel={api.activity}
+      onPointerMove={event => event.currentTarget.toggleAttribute('data-pointer-moved', true)}>
       <CyberBotPrompt
         isOpen
         onClose={api.close}
