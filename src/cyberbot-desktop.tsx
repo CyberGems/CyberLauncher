@@ -25,10 +25,15 @@ declare global {
       resize: (height: number) => void;
       onBubblePlacement: (callback: (placement: DesktopCyberBotBubblePlacement) => void) => () => void;
       onExpanded: (callback: (expanded: boolean) => void) => () => void;
+      onPresent: (callback: (present: boolean) => void) => () => void;
+      onLanguage: (callback: (language: DesktopCyberBotContext['language']) => void) => () => void;
+      onCatalog: (callback: (catalog: DesktopCyberBotContext) => void) => () => void;
+      onResetSearch: (callback: () => void) => () => void;
       onActivity: (callback: () => void) => () => void;
       activity: () => void;
       avatarReady: () => void;
       toggleBubble: () => void;
+      contextMenu: () => void;
       drag: (phase: DesktopCyberBotDragPhase, offset?: { x: number; y: number }) => void;
       close: () => void;
       launch: (id: number) => Promise<LaunchResult>;
@@ -63,6 +68,8 @@ function useCloseOnEscape() {
 
 function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurface, { kind: 'avatar' }> }) {
   const [expanded, setExpanded] = useState(context.expanded);
+  const [present, setPresent] = useState(false);
+  const [language, setLanguage] = useState(context.language);
   const [sleeping, setSleeping] = useState(false);
   const [held, setHeld] = useState(false);
   const [expression, setExpression] = useState<CyberBotEmotion>('curious');
@@ -70,7 +77,7 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
   const idle = useRef<ReturnType<typeof createCyberBotIdleCycle> | null>(null);
   const gestureRef = useRef<{ pointerId: number; x: number; y: number; grip: { x: number; y: number }; dragged: boolean } | null>(null);
   const suppressPointerClick = useRef(false);
-  const t = useDesktopTranslation(context.language);
+  const t = useDesktopTranslation(language);
   const { avatarPadding, avatarSize } = DESKTOP_CYBERBOT_LAYOUT;
   useCloseOnEscape();
 
@@ -80,22 +87,39 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
     const unsubscribe = api.onExpanded(setExpanded);
     const cycle = createCyberBotIdleCycle(state => setSleeping(state === 'sleeping'), Math.random, { restMultiplier: 3 });
     idle.current = cycle;
+    cycle.pause();
     const unsubscribeActivity = api.onActivity(() => cycle.wake());
+    const unsubscribePresent = api.onPresent(visible => {
+      setPresent(visible);
+      if (visible) {
+        cycle.resume();
+        cycle.wake();
+      } else {
+        cycle.pause();
+        gestureRef.current = null;
+        setHeld(false);
+      }
+    });
+    const unsubscribeLanguage = api.onLanguage(setLanguage);
     const frame = requestAnimationFrame(() => api.avatarReady());
     return () => {
       cancelAnimationFrame(frame);
       unsubscribe();
       unsubscribeActivity();
+      unsubscribePresent();
+      unsubscribeLanguage();
       cycle.dispose();
       idle.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (sleeping || held) return;
+    if (!present || sleeping || held) return;
     const timer = window.setTimeout(() => setExpression(expressionPicker.next(expression, false)), getCyberBotIdleExpressionDuration(expression));
     return () => window.clearTimeout(timer);
-  }, [sleeping, held, expression, expressionPicker]);
+  }, [present, sleeping, held, expression, expressionPicker]);
+
+  useLayoutEffect(() => { document.documentElement.lang = language; }, [language]);
 
   const startGesture = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0 || !event.isPrimary) return;
@@ -148,6 +172,7 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
       onPointerUp={event => finishGesture(event)}
       onPointerCancel={event => finishGesture(event, true)}
       onLostPointerCapture={event => finishGesture(event, true)}
+      onContextMenu={event => { event.preventDefault(); api.contextMenu(); }}
       onClick={event => {
         if (event.detail > 0 && suppressPointerClick.current) return;
         wake();
@@ -162,15 +187,21 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
 }
 
 function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurface, { kind: 'bubble' }> }) {
-  const { catalog } = context;
+  const [catalog, setCatalog] = useState(context.catalog);
   const [bubble, setBubble] = useState(context.placement);
   const [expanded, setExpanded] = useState(false);
+  const [searchSession, setSearchSession] = useState(0);
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const launchingRef = useRef(false);
+  const launchRef = useRef<AbortController | null>(null);
   const [feedback, setFeedback] = useState('');
   const [launching, setLaunching] = useState(false);
   const t = useDesktopTranslation(catalog.language);
   useCloseOnEscape();
+
+  useLayoutEffect(() => {
+    document.documentElement.lang = catalog.language;
+    document.body.dataset.tooltipsEnabled = String(catalog.enableTooltips);
+  }, [catalog.language, catalog.enableTooltips]);
 
   useLayoutEffect(() => {
     document.body.dataset.cyberbotBubble = expanded ? 'open' : 'folded';
@@ -182,13 +213,21 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       bubbleRef.current?.removeAttribute('data-pointer-moved');
       window.dispatchEvent(new Event('cyber-hide-tooltips'));
     }
-  }, [expanded]);
+  }, [expanded, searchSession]);
 
   useLayoutEffect(() => {
     const element = bubbleRef.current;
     if (!element) return;
     const unsubscribePlacement = api.onBubblePlacement(setBubble);
     const unsubscribeExpanded = api.onExpanded(setExpanded);
+    const unsubscribeCatalog = api.onCatalog(setCatalog);
+    const unsubscribeReset = api.onResetSearch(() => {
+      launchRef.current?.abort();
+      launchRef.current = null;
+      setLaunching(false);
+      setFeedback('');
+      setSearchSession(session => session + 1);
+    });
     let previousHeight = 0;
     let frame = 0;
     const measure = () => {
@@ -212,17 +251,21 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       observer.disconnect();
       unsubscribePlacement();
       unsubscribeExpanded();
+      unsubscribeCatalog();
+      unsubscribeReset();
       cancelAnimationFrame(frame);
     };
   }, []);
 
   const launch = async (shortcut: PromptLauncherApp) => {
-    if (launchingRef.current) return;
-    launchingRef.current = true;
+    if (launchRef.current) return;
+    const request = new AbortController();
+    launchRef.current = request;
     setLaunching(true);
     setFeedback(t('launch_starting'));
     try {
       const result = await api.launch(shortcut.id);
+      if (request.signal.aborted) return;
       if (result.success) {
         api.close();
         return;
@@ -234,10 +277,12 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       setFeedback(detail ? error + ' ' + detail : error);
     } catch (error) {
       console.error('[CYBERBOT] Could not launch shortcut:', error);
-      setFeedback(t('launch_failed_message', { name: shortcut.name }));
+      if (!request.signal.aborted) setFeedback(t('launch_failed_message', { name: shortcut.name }));
     } finally {
-      launchingRef.current = false;
-      setLaunching(false);
+      if (launchRef.current === request) {
+        launchRef.current = null;
+        setLaunching(false);
+      }
     }
   };
 
@@ -246,6 +291,7 @@ function DesktopBubbleWindow({ context }: { context: Extract<DesktopCyberBotSurf
       onPointerEnter={api.activity} onPointerDown={api.activity} onKeyDown={api.activity} onWheel={api.activity}
       onPointerMove={event => event.currentTarget.toggleAttribute('data-pointer-moved', true)}>
       <CyberBotPrompt
+        key={searchSession}
         isOpen
         onClose={api.close}
         onFold={api.toggleBubble}

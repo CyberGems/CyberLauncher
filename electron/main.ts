@@ -2666,7 +2666,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   }
 
   if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
-    desktopCyberBot?.close();
+    desktopCyberBot?.destroy();
     return;
   }
 
@@ -2694,6 +2694,8 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
 
     if (!success) {
       console.warn(`No se pudo registrar el atajo global de CyberBot: ${electronShortcut}`);
+    } else {
+      desktopCyberBot?.preload();
     }
   } catch (err) {
     console.error('Error registrando atajo global de CyberBot:', err);
@@ -5801,7 +5803,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   displayDiagnostics.write('session-quit', displayWindowState());
   isQuitting = true;
-  desktopCyberBot?.close();
+  desktopCyberBot?.destroy();
 });
 
 app.on('will-quit', () => {
