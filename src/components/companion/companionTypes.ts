@@ -33,6 +33,7 @@ export interface CyberBotSettings {
   enabled: boolean;
   position: CyberBotPosition;
   rememberFloatingPosition: boolean;
+  preloadFloating: boolean;
   dodgeEnabled: boolean;
   hoverAssistEnabled: boolean;
   bannersEnabled: boolean;

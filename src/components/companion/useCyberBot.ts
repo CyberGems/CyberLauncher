@@ -64,6 +64,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     return getCyberBotInitialPosition(localStorage.getItem('cyberbot_position'));
   });
   const [rememberFloatingPosition, setRememberFloatingPosition] = useState(() => localStorage.getItem('cyberbot_remember_floating_position') !== 'false');
+  const [preloadFloating, setPreloadFloating] = useState(() => localStorage.getItem('cyberbot_preload_floating') !== 'false');
 
   const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('cyberbot_dodge');
@@ -151,6 +152,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const updateRememberFloatingPosition = useCallback((remember: boolean) => {
     setRememberFloatingPosition(remember);
     localStorage.setItem('cyberbot_remember_floating_position', String(remember));
+  }, []);
+
+  const updatePreloadFloating = useCallback((preload: boolean) => {
+    setPreloadFloating(preload);
+    localStorage.setItem('cyberbot_preload_floating', String(preload));
   }, []);
 
   const updateDodgeEnabled = useCallback((newDodge: boolean) => {
@@ -241,6 +247,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       updatePosition(settings.position);
     }
     if (typeof settings.rememberFloatingPosition === 'boolean') updateRememberFloatingPosition(settings.rememberFloatingPosition);
+    if (typeof settings.preloadFloating === 'boolean') updatePreloadFloating(settings.preloadFloating);
     if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
     if (typeof settings.hoverAssistEnabled === 'boolean') updateHoverAssistEnabled(settings.hoverAssistEnabled);
     if (typeof settings.bannersEnabled === 'boolean') updateBannersEnabled(settings.bannersEnabled);
@@ -266,7 +273,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
       });
     }
-  }, [updatePosition, updateRememberFloatingPosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
+  }, [updatePosition, updateRememberFloatingPosition, updatePreloadFloating, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
 
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
@@ -281,6 +288,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     setEnabled(true);
     setPosition('bottom-right');
     setRememberFloatingPosition(true);
+    setPreloadFloating(true);
     setDodgeEnabled(false);
     setHoverAssistEnabled(true);
     setBannersEnabled(true);
@@ -295,6 +303,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       'cyberbot_enabled',
       'cyberbot_position',
       'cyberbot_remember_floating_position',
+      'cyberbot_preload_floating',
       'cyberbot_dodge',
       'cyberbot_hover_assist',
       'cyberbot_banners_enabled',
@@ -452,8 +461,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
-    { enabled, position, rememberFloatingPosition, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
-  ), [enabled, position, rememberFloatingPosition, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
+    { enabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
+  ), [enabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
 
   return {
     enabled,
@@ -463,6 +472,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     updatePosition,
     rememberFloatingPosition,
     updateRememberFloatingPosition,
+    preloadFloating,
+    updatePreloadFloating,
     dodgeEnabled,
     updateDodgeEnabled,
     hoverAssistEnabled,

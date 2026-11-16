@@ -69,15 +69,18 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     launching: boolean;
   }
   let active: Session | null = null;
+  let preloadEnabled = false;
   let preloadTimer: NodeJS.Timeout | undefined;
   let launcherVisible = false;
   let openSearchWhenHidden = false;
   const moveAcrossDpi = loadWindowsDpiMove(options.rendererDirectory);
 
-  const destroy = () => {
+  const cancelPreload = () => {
     clearTimeout(preloadTimer);
     preloadTimer = undefined;
-    openSearchWhenHidden = false;
+  };
+
+  const releaseSession = () => {
     const session = active;
     active = null;
     if (!session) return;
@@ -85,6 +88,12 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     if (!session.avatarWindow.isDestroyed()) session.avatarWindow.destroy();
     if (!session.bubbleWindow.isDestroyed()) session.bubbleWindow.destroy();
     options.onLayoutChanged();
+  };
+
+  const destroy = () => {
+    cancelPreload();
+    openSearchWhenHidden = false;
+    releaseSession();
   };
 
   const suspend = (session: Session) => {
@@ -101,6 +110,10 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   const hide = () => {
     openSearchWhenHidden = false;
     if (!active?.requested) return;
+    if (!preloadEnabled) {
+      releaseSession();
+      return;
+    }
     active.requested = false;
     active.expanded = false;
     active.bubbleVisible = false;
@@ -418,11 +431,21 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   };
 
   const preload = () => {
-    if (active || preloadTimer) return;
+    if (!preloadEnabled || active || preloadTimer) return;
     preloadTimer = setTimeout(() => {
       preloadTimer = undefined;
       prepare();
     }, 2500);
+  };
+
+  const setPreloadEnabled = (enabled: boolean) => {
+    preloadEnabled = enabled;
+    if (enabled) {
+      preload();
+    } else {
+      cancelPreload();
+      if (!active?.requested) releaseSession();
+    }
   };
 
   const openSearch = () => {
@@ -430,8 +453,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
       openSearchWhenHidden = true;
       return;
     }
-    clearTimeout(preloadTimer);
-    preloadTimer = undefined;
+    cancelPreload();
     const session = prepare();
     if (!session.requested) {
       session.catalog = options.getCatalog();
@@ -466,5 +488,5 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     if (active.bubbleVisible) bounds.push(active.bubbleWindow.getBounds());
     return bounds;
   };
-  return { toggle, openSearch, preload, destroy, getVisibleBounds, setLauncherVisible };
+  return { toggle, openSearch, setPreloadEnabled, destroy, getVisibleBounds, setLauncherVisible };
 }

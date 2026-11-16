@@ -269,6 +269,7 @@ declare global {
       setMonitor: (monitorId: string) => Promise<void>;
       registerShortcut: (shortcut: string) => Promise<{ success: boolean; shortcut: string }>;
       registerCyberBotShortcut?: (shortcut: string, enabled: boolean) => Promise<{ success: boolean; shortcut: string }>;
+      setDesktopCyberBotPreload?: (enabled: boolean) => void;
       windowMinimize: () => Promise<void>;
       windowMaximizeToggle: () => Promise<void>;
       windowClose: () => Promise<void>;
@@ -3216,6 +3217,9 @@ export default function App() {
     if (!isConfigLoaded) return;
     return window.electronAPI?.onCyberBotToggleEnabled?.(handleCyberBotToggle);
   }, [isConfigLoaded, handleCyberBotToggle]);
+  useEffect(() => {
+    if (isConfigLoaded) window.electronAPI?.setDesktopCyberBotPreload?.(cyberBot.preloadFloating);
+  }, [isConfigLoaded, cyberBot.preloadFloating]);
   useEffect(() => {
     if (isConfigLoaded) void window.electronAPI?.registerCyberBotShortcut?.(cyberBotShortcut, cyberBot.enabled);
   }, [isConfigLoaded, cyberBotShortcut, cyberBot.enabled]);
@@ -12531,6 +12535,17 @@ export default function App() {
                         </Tooltip>
                       </div>
                     </div>
+
+                    {isElectron && (
+                      <div className="flex items-center justify-between gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('cyberbot_desktop_preload')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_preload_desc')}</p>
+                        </div>
+                        <ToggleSwitch checked={cyberBot.preloadFloating} onChange={() => cyberBot.updatePreloadFloating(!cyberBot.preloadFloating)}
+                          ariaLabel={t('cyberbot_desktop_preload')} />
+                      </div>
+                    )}
 
                     {isElectron && (
                       <div className="flex items-center justify-between gap-4 p-4 bg-black/20 rounded-xl border border-white/5">

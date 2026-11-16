@@ -119,6 +119,7 @@ let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
 let currentCyberBotShortcut = 'Alt+Shift+B';
 let cyberBotShortcutEnabled = true;
+let cyberBotPreloadEnabled = true;
 const CYBERBOT_TOGGLE_SHORTCUT = 'Ctrl+Alt+Shift+B';
 let cyberBotToggleShortcutRegistered = false;
 let registeredMainShortcut: string | undefined;
@@ -2683,6 +2684,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
 
   if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
     desktopCyberBot?.destroy();
+    desktopCyberBot?.setPreloadEnabled(false);
     return;
   }
 
@@ -2712,11 +2714,11 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
       console.warn(`No se pudo registrar el atajo global de CyberBot: ${electronShortcut}`);
     } else {
       registeredCyberBotShortcut = electronShortcut;
-      desktopCyberBot?.preload();
     }
   } catch (err) {
     console.error('Error registrando atajo global de CyberBot:', err);
   }
+  desktopCyberBot?.setPreloadEnabled(Boolean(registeredCyberBotShortcut) && cyberBotPreloadEnabled);
 }
 
 function getDesktopCyberBotCatalog(): DesktopCyberBotContext {
@@ -3736,6 +3738,11 @@ function setupIpcHandlers() {
   });
   ipcMain.on('desktop-cyberbot:set-catalog', (event, catalog: DesktopCyberBotCatalog) => {
     if (event.sender === mainWindow?.webContents) desktopCyberBotCatalog = catalog;
+  });
+  ipcMain.on('desktop-cyberbot:set-preload', (event, enabled: boolean) => {
+    if (event.sender !== mainWindow?.webContents || typeof enabled !== 'boolean') return;
+    cyberBotPreloadEnabled = enabled;
+    desktopCyberBot?.setPreloadEnabled(Boolean(registeredCyberBotShortcut) && enabled);
   });
   desktopCyberBot = createDesktopCyberBotWindow({
     devServerUrl: VITE_DEV_SERVER_URL,
@@ -5596,6 +5603,7 @@ app.whenReady().then(() => {
       if (config.cyberBotSettings && typeof config.cyberBotSettings.enabled === 'boolean') {
         cyberBotShortcutEnabled = config.cyberBotSettings.enabled;
       }
+      cyberBotPreloadEnabled = config.cyberBotSettings?.preloadFloating !== false;
       if (config.hotspotCorners && Array.isArray(config.hotspotCorners)) {
         hotspotCorners = config.hotspotCorners;
         console.log('Hotspots cargados desde configuración central:', hotspotCorners);

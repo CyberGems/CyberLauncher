@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   registerShortcut: (shortcut: string) => ipcRenderer.invoke('register-shortcut', shortcut),
   registerCyberBotShortcut: (shortcut: string, enabled: boolean) =>
     ipcRenderer.invoke('register-cyberbot-shortcut', shortcut, enabled),
+  setDesktopCyberBotPreload: (enabled: boolean) => ipcRenderer.send('desktop-cyberbot:set-preload', enabled),
 
   // --- Controles de ventana ---
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
