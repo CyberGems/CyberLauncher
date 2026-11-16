@@ -115,7 +115,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Ocultamiento inteligente**: se oculta al lanzar un acceso, con opción en Configuración para ocultar también al perder el foco (desactivada por defecto)
 
 ### 🤖 Asistente CyberBot
-- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Alt+Shift+B` para abrir una paleta rápida de comandos anclada directamente sobre el compañero con búsqueda inteligente, orden de acciones e insignias de atajos.
+- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Alt+Shift+B` con CyberLauncher al frente para abrir la burbuja de comandos. Si estás en otra ventana o CyberLauncher está en la bandeja, `Alt+Shift+B` abre el buscador flotante de accesos de CyberBot.
 - **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
 - **Mensajes progresivos**: Los comentarios al abrir accesos, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
 - **Personaliza la experiencia**: Introduce tu nombre desde el asistente inicial o el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.

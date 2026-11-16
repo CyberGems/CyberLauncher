@@ -129,6 +129,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener('launcher-hidden', handler); };
   },
 
+  onCyberBotOpenPrompt: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('cyberbot-open-prompt', handler);
+    return () => { ipcRenderer.removeListener('cyberbot-open-prompt', handler); };
+  },
+
   // --- Window Pinning (Always-on-top) ---
   setAlwaysOnTop: (enabled: boolean) => ipcRenderer.invoke('set-always-on-top', enabled),
   setRendererAwake: (awake: boolean) => ipcRenderer.invoke('set-renderer-awake', awake),

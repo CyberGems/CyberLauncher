@@ -115,7 +115,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Smart Auto-Hide**: Hides on shortcut launch, with optional hide-on-blur in Settings (disabled by default)
 
 ### 🤖 CyberBot Assistant
-- **Interactive Quick Command Prompt**: Click CyberBot or press `Alt+Shift+B` to summon a sleek command prompt anchored right above the companion with smart search, action ranking, and hotkey badges.
+- **Interactive Quick Command Prompt**: Click CyberBot or press `Alt+Shift+B` while CyberLauncher is in focus to open the command bubble. With another window in focus or CyberLauncher in the tray, `Alt+Shift+B` opens CyberBot's floating shortcut search.
 - **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
 - **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
 - **Personalize the experience**: Enter your name directly in onboarding or its bubble, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.

@@ -318,6 +318,7 @@ declare global {
       onReloadConfig: (callback: () => void) => () => void;
       onLauncherShown: (callback: () => void) => () => void;
       onLauncherHidden?: (callback: () => void) => () => void;
+      onCyberBotOpenPrompt?: (callback: () => void) => () => void;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
@@ -3150,6 +3151,18 @@ export default function App() {
   });
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded, cyberBotShortcut });
+  const openCyberBotPrompt = useCallback(() => {
+    cyberBot.dismissMessage();
+    playCyberBeep();
+    setIsCyberBotPromptOpen(true);
+  }, [cyberBot.dismissMessage]);
+
+  useEffect(() => {
+    if (!cyberBot.enabled) return;
+    return window.electronAPI?.onCyberBotOpenPrompt?.(() => {
+      if (!isCyberBotPromptOpen) openCyberBotPrompt();
+    });
+  }, [cyberBot.enabled, isCyberBotPromptOpen, openCyberBotPrompt]);
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
   const [nameEntryRequested, setNameEntryRequested] = useState(false);
   useEffect(() => {
@@ -14600,9 +14613,7 @@ export default function App() {
           if (isCyberBotPromptOpen) {
             setIsCyberBotPromptOpen(false);
           } else {
-            cyberBot.dismissMessage();
-            playCyberBeep();
-            setIsCyberBotPromptOpen(true);
+            openCyberBotPrompt();
           }
         }}
         isPromptOpen={isCyberBotPromptOpen}

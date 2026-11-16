@@ -2677,6 +2677,10 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
       try {
         if (!desktopCyberBot || isQuitting) return;
         if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+          if (mainWindow.isFocused()) {
+            mainWindow.webContents.send('cyberbot-open-prompt');
+            return;
+          }
           if (trayMenuOpen) hideCustomTrayMenu();
           desktopCyberBot.openSearch();
           hideMainWindow();
