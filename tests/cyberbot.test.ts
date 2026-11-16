@@ -53,7 +53,10 @@ import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWit
 import { CYBERBOT_SETUP_REMIND_MS, isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from '../src/components/companion/cyberBotSetup';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
-import { desktopCyberBotAvatarBounds, desktopCyberBotBubbleLayout, desktopToastBounds } from '../electron/desktop-cyberbot-layout';
+import {
+  desktopCyberBotAvatarBounds, desktopCyberBotBubbleBody, desktopCyberBotBubbleCrossingBounds,
+  desktopCyberBotBubbleLayout, desktopToastBounds,
+} from '../electron/desktop-cyberbot-layout';
 import {
   chooseLaunchSpeechChannel,
   PIN_BLUR_REMINDER_COOLDOWN_MS,
@@ -440,19 +443,54 @@ test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar
   assert.match(css, /\.cyberbot-bubble\s*\{[^}]*flex:\s*0 1 auto;[^}]*width:\s*max-content;[^}]*max-width:\s*382px;/s);
 });
 
-test('the avatar window is clear of the interactive bubble in both orientations', () => {
+test('the prompt and avatar can sit close with only their transparent margins overlapping', () => {
   const workArea = { x: -1280, y: 0, width: 1280, height: 720 };
   const nearTop = { x: -110, y: 40 };
   const below = desktopCyberBotBubbleLayout(nearTop, workArea, 240);
   const topAvatar = desktopCyberBotAvatarBounds(nearTop);
   assert.equal(below.placement.side, 'below');
-  assert.ok(below.bounds.y > topAvatar.y + topAvatar.height);
+  assert.ok(below.bounds.y + below.placement.top >= topAvatar.y + topAvatar.height + 4);
 
   const nearBottom = { x: -110, y: 600 };
   const above = desktopCyberBotBubbleLayout(nearBottom, workArea, 240);
   const bottomAvatar = desktopCyberBotAvatarBounds(nearBottom);
   assert.equal(above.placement.side, 'above');
-  assert.ok(above.bounds.y + above.bounds.height < bottomAvatar.y);
+  assert.ok(above.bounds.y + above.placement.top + 240 <= bottomAvatar.y - 4);
+});
+
+test('the prompt keeps its side when the measured content fits and flips when it runs out of room', () => {
+  const workArea = { x: 0, y: 0, width: 1440, height: 900 };
+  const center = { x: 1000, y: 430 };
+  const below = desktopCyberBotBubbleLayout(center, workArea, 260, 'below');
+  const above = desktopCyberBotBubbleLayout({ ...center, y: 730 }, workArea, 260, 'below');
+  assert.equal(below.placement.side, 'below');
+  assert.equal(desktopCyberBotBubbleLayout(center, workArea, 260, 'above').placement.side, 'above');
+  assert.equal(above.placement.side, 'above');
+  assert.equal(below.placement.top, above.placement.top);
+  assert.ok(above.bounds.y > workArea.y);
+  assert.ok(below.bounds.y + below.bounds.height <= workArea.y + workArea.height);
+});
+
+test('a side change can clear both avatar positions before the avatar moves', () => {
+  const workArea = { x: 0, y: 0, width: 1440, height: 850 };
+  const upper = { x: 1000, y: 460 };
+  const lower = { x: 1000, y: 560 };
+  const upperBounds = desktopCyberBotAvatarBounds(upper);
+  const lowerBounds = desktopCyberBotAvatarBounds(lower);
+  const above = desktopCyberBotBubbleLayout(lower, workArea, 190, 'below');
+  const below = desktopCyberBotBubbleLayout(upper, workArea, 190, 'below');
+  assert.equal(above.placement.side, 'above');
+  assert.equal(below.placement.side, 'below');
+
+  const stageAbove = desktopCyberBotBubbleCrossingBounds(above.bounds, above.placement, above.bodyHeight, upperBounds, lowerBounds, workArea);
+  assert.ok(stageAbove && stageAbove.y >= workArea.y);
+  const aboveBody = desktopCyberBotBubbleBody(stageAbove, above.placement, above.bodyHeight);
+  assert.ok(aboveBody.y + aboveBody.height < upperBounds.y);
+
+  const stageBelow = desktopCyberBotBubbleCrossingBounds(below.bounds, below.placement, below.bodyHeight, lowerBounds, upperBounds, workArea);
+  assert.ok(stageBelow && stageBelow.y + stageBelow.height <= workArea.y + workArea.height);
+  const belowBody = desktopCyberBotBubbleBody(stageBelow, below.placement, below.bodyHeight);
+  assert.ok(belowBody.y > lowerBounds.y + lowerBounds.height || belowBody.x + belowBody.width < lowerBounds.x);
 });
 
 test('desktop banners use a free corner and stay there while the corner is clear', () => {

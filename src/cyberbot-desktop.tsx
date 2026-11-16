@@ -11,7 +11,9 @@ import type { LaunchResult } from './launchFlow';
 import { translations, type TranslationKey } from './locales';
 import { CyberBotPrompt, type PromptLauncherApp } from './components/companion/CyberBotPrompt';
 import { DesktopCyberBotAvatar } from './components/companion/desktop/DesktopCyberBotAvatar';
-import { createCyberBotIdleCycle } from './components/companion/cyberBotBehavior';
+import { createCyberBotIdleCycle, createCyberBotIdleExpressionPicker, getCyberBotIdleExpressionDuration } from './components/companion/cyberBotBehavior';
+import { approvedCyberBotFace } from './components/companion/approved/approvedCyberBotBehavior';
+import type { CyberBotEmotion } from './components/companion/companionTypes';
 import { TextFieldContextMenu } from './components/TextFieldContextMenu';
 import './index.css';
 import './cyberbot-desktop.css';
@@ -62,8 +64,11 @@ function useCloseOnEscape() {
 function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurface, { kind: 'avatar' }> }) {
   const [expanded, setExpanded] = useState(context.expanded);
   const [sleeping, setSleeping] = useState(false);
+  const [held, setHeld] = useState(false);
+  const [expression, setExpression] = useState<CyberBotEmotion>('curious');
+  const [expressionPicker] = useState(createCyberBotIdleExpressionPicker);
   const idle = useRef<ReturnType<typeof createCyberBotIdleCycle> | null>(null);
-  const gestureRef = useRef<{ pointerId: number; x: number; y: number; dragged: boolean } | null>(null);
+  const gestureRef = useRef<{ pointerId: number; x: number; y: number; grip: { x: number; y: number }; dragged: boolean } | null>(null);
   const suppressPointerClick = useRef(false);
   const t = useDesktopTranslation(context.language);
   const { avatarPadding, avatarSize } = DESKTOP_CYBERBOT_LAYOUT;
@@ -86,22 +91,36 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
     };
   }, []);
 
+  useEffect(() => {
+    if (sleeping || held) return;
+    const timer = window.setTimeout(() => setExpression(expressionPicker.next(expression, false)), getCyberBotIdleExpressionDuration(expression));
+    return () => window.clearTimeout(timer);
+  }, [sleeping, held, expression, expressionPicker]);
+
   const startGesture = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0 || !event.isPrimary) return;
+    setHeld(true);
     idle.current?.pause();
-    gestureRef.current = { pointerId: event.pointerId, x: event.screenX, y: event.screenY, dragged: false };
-    suppressPointerClick.current = false;
     const bounds = event.currentTarget.getBoundingClientRect();
+    gestureRef.current = {
+      pointerId: event.pointerId,
+      x: event.screenX, y: event.screenY,
+      grip: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+      dragged: false,
+    };
+    suppressPointerClick.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
-    api.drag('start', { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
   };
 
   const moveGesture = (event: PointerEvent<HTMLButtonElement>) => {
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
-    if (!gesture.dragged && Math.hypot(event.screenX - gesture.x, event.screenY - gesture.y) < 5) return;
-    gesture.dragged = true;
-    suppressPointerClick.current = true;
+    if (!gesture.dragged) {
+      if (Math.hypot(event.screenX - gesture.x, event.screenY - gesture.y) < 5) return;
+      gesture.dragged = true;
+      suppressPointerClick.current = true;
+      api.drag('start', gesture.grip);
+    }
     api.drag('move');
   };
 
@@ -109,8 +128,9 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     gestureRef.current = null;
+    setHeld(false);
     idle.current?.resume();
-    api.drag(!cancelled && gesture.dragged ? 'end' : 'cancel');
+    if (gesture.dragged) api.drag(cancelled ? 'cancel' : 'end');
   };
 
   return (
@@ -135,7 +155,7 @@ function DesktopAvatarWindow({ context }: { context: Extract<DesktopCyberBotSurf
       }}
     >
       <span className="pointer-events-none block" aria-hidden="true">
-        <DesktopCyberBotAvatar face={sleeping ? 'sleeping' : 'curious'} levitationRange={5.5} />
+        <DesktopCyberBotAvatar face={approvedCyberBotFace(sleeping ? 'sleeping' : expression)} levitationRange={5.5} />
       </span>
     </button>
   );

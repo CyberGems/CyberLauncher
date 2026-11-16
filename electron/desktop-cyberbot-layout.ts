@@ -1,6 +1,6 @@
 import { DESKTOP_CYBERBOT_LAYOUT, type DesktopCyberBotBubblePlacement } from '../shared/desktopCyberBot';
 
-const { avatarSize, avatarPadding, bubbleWidth, bubbleHeight, gap, sidePadding, topPadding } = DESKTOP_CYBERBOT_LAYOUT;
+const { avatarSize, avatarPadding, bubbleWidth, bubbleHeight, gap, sidePadding } = DESKTOP_CYBERBOT_LAYOUT;
 const shadowBottom = 40;
 const paddingBesideAvatar = 12;
 
@@ -22,6 +22,26 @@ export function desktopCyberBotAvatarBounds(avatar: Electron.Point): Electron.Re
     width: avatarSize + avatarPadding * 2,
     height: avatarSize + avatarPadding * 2,
   };
+}
+
+export function desktopCyberBotBubbleBody(bounds: Electron.Rectangle, placement: DesktopCyberBotBubblePlacement, height: number): Electron.Rectangle {
+  return { x: bounds.x + placement.left, y: bounds.y + placement.top, width: placement.width, height };
+}
+
+export function desktopCyberBotBubbleCrossingBounds(
+  bounds: Electron.Rectangle, placement: DesktopCyberBotBubblePlacement, height: number,
+  currentAvatar: Electron.Rectangle, nextAvatar: Electron.Rectangle, area: Electron.Rectangle,
+): Electron.Rectangle | null {
+  const clearance = gap - avatarPadding;
+  const y = placement.side === 'above'
+    ? Math.min(currentAvatar.y, nextAvatar.y) - clearance - placement.top - height
+    : Math.max(currentAvatar.y + currentAvatar.height, nextAvatar.y + nextAvatar.height) + clearance - placement.top;
+  if (y >= area.y && y + bounds.height <= area.y + area.height) return { ...bounds, y };
+
+  const left = Math.min(currentAvatar.x, nextAvatar.x) - clearance - placement.left - placement.width;
+  if (left >= area.x) return { ...bounds, x: left };
+  const right = Math.max(currentAvatar.x + currentAvatar.width, nextAvatar.x + nextAvatar.width) + clearance - placement.left;
+  return right + bounds.width <= area.x + area.width ? { ...bounds, x: right } : null;
 }
 
 export function desktopToastBounds(area: Electron.Rectangle, avoid: Electron.Rectangle[], current?: Electron.Rectangle): Electron.Rectangle {
@@ -50,23 +70,30 @@ export function desktopToastBounds(area: Electron.Rectangle, avoid: Electron.Rec
 
 export function desktopCyberBotBubbleLayout(
   avatar: Electron.Point, area: Electron.Rectangle, measuredBubbleHeight: number,
-): { bounds: Electron.Rectangle; placement: DesktopCyberBotBubblePlacement } {
-  const spaceAbove = avatar.y - area.y - gap - topPadding;
+  preferredSide?: DesktopCyberBotBubblePlacement['side'],
+): { bounds: Electron.Rectangle; bodyHeight: number; placement: DesktopCyberBotBubblePlacement } {
+  const spaceAbove = avatar.y - area.y - gap - paddingBesideAvatar;
   const spaceBelow = area.y + area.height - (avatar.y + avatarSize) - gap - shadowBottom;
-  const above = spaceAbove >= bubbleHeight || spaceAbove >= spaceBelow;
+  const wantedHeight = Math.min(measuredBubbleHeight, bubbleHeight);
+  const preferredSpace = preferredSide === 'below' ? spaceBelow : spaceAbove;
+  const above = preferredSide && preferredSpace >= wantedHeight
+    ? preferredSide === 'above'
+    : spaceAbove >= wantedHeight || spaceAbove >= spaceBelow;
   const maxHeight = Math.max(1, Math.min(bubbleHeight, above ? spaceAbove : spaceBelow));
   const height = Math.min(measuredBubbleHeight, maxHeight);
   const width = Math.min(bubbleWidth + sidePadding * 2, area.width);
   const center = avatar.x + avatarSize / 2;
   // Keep the bubble's right edge near the avatar when there's room to its left.
   const x = clamp(center - width + sidePadding + avatarSize / 2 + 5, area.x, area.x + area.width - width);
-  const paddingTop = above ? topPadding : paddingBesideAvatar;
+  // Keep the content's inset fixed when the native window moves to the other side.
+  const paddingTop = paddingBesideAvatar;
   const paddingBottom = above ? paddingBesideAvatar : shadowBottom;
   const y = above ? avatar.y - gap - height - paddingTop : avatar.y + avatarSize + gap - paddingTop;
   const contentWidth = width - sidePadding * 2;
   const areaBottom = area.y + area.height;
 
   return {
+    bodyHeight: height,
     bounds: {
       x, y, width,
       height: Math.min(height + paddingTop + paddingBottom, areaBottom - y),

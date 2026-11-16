@@ -9,7 +9,10 @@ import {
   type DesktopCyberBotShortcut,
   type DesktopCyberBotSurface,
 } from '../shared/desktopCyberBot';
-import { constrainDesktopAvatar, desktopCyberBotAvatarBounds, desktopCyberBotBubbleLayout } from './desktop-cyberbot-layout';
+import {
+  constrainDesktopAvatar, desktopCyberBotAvatarBounds, desktopCyberBotBubbleBody,
+  desktopCyberBotBubbleCrossingBounds, desktopCyberBotBubbleLayout,
+} from './desktop-cyberbot-layout';
 import type { LaunchResult } from '../src/launchFlow';
 
 interface DesktopCyberBotOptions {
@@ -24,6 +27,11 @@ interface DesktopCyberBotOptions {
 }
 
 export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
+  interface Drag {
+    grip: Electron.Point;
+    pending: NodeJS.Immediate | null;
+  }
+
   interface Session {
     avatarWindow: BrowserWindow;
     bubbleWindow: BrowserWindow;
@@ -33,10 +41,13 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     expanded: boolean;
     bubbleVisible: boolean;
     avatar: Electron.Point;
+    avatarBounds: Electron.Rectangle;
+    bubbleBounds: Electron.Rectangle;
+    bubbleBody: Electron.Rectangle;
     bubbleHeight: number;
     avatarReady: boolean;
     bubbleReady: boolean;
-    dragOffset: Electron.Point | null;
+    drag: Drag | null;
     launching: boolean;
   }
   let active: Session | null = null;
@@ -45,6 +56,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     const session = active;
     active = null;
     if (!session) return;
+    if (session.drag?.pending) clearImmediate(session.drag.pending);
     if (!session.avatarWindow.isDestroyed()) session.avatarWindow.destroy();
     if (!session.bubbleWindow.isDestroyed()) session.bubbleWindow.destroy();
     options.onLayoutChanged();
@@ -58,16 +70,44 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     return (fromAvatar && kind !== 'bubble') || (fromBubble && kind !== 'avatar') ? session : null;
   };
 
-  const updateBubblePlacement = (session: Session) => {
-    const { bounds, placement } = desktopCyberBotBubbleLayout(session.avatar, session.display.workArea, session.bubbleHeight);
-    const current = session.bubbleWindow.getBounds();
-    if (bounds.x !== current.x || bounds.y !== current.y || bounds.width !== current.width || bounds.height !== current.height) {
-      session.bubbleWindow.setBounds(bounds);
+  const setBounds = (window: BrowserWindow, current: Electron.Rectangle, next: Electron.Rectangle) => {
+    // Reading back a native rectangle and feeding it into setPosition repeatedly
+    // can accumulate Chromium's DPI/frame adjustments into the window size.
+    if (current.x !== next.x || current.y !== next.y || current.width !== next.width || current.height !== next.height) window.setBounds(next);
+    return next;
+  };
+
+  const overlaps = (a: Electron.Rectangle, b: Electron.Rectangle) =>
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+  const updatePlacement = (session: Session) => {
+    const { workArea } = session.display;
+    const { bounds, bodyHeight, placement } = desktopCyberBotBubbleLayout(session.avatar, workArea, session.bubbleHeight, session.placement.side);
+    const nextAvatar = desktopCyberBotAvatarBounds(session.avatar);
+    const currentAvatar = session.avatarBounds;
+    const body = desktopCyberBotBubbleBody(bounds, placement, bodyHeight);
+    const bodyCrossesCurrentAvatar = overlaps(body, currentAvatar);
+    if (session.bubbleVisible && bodyCrossesCurrentAvatar && overlaps(session.bubbleBody, nextAvatar)) {
+      const clearBounds = desktopCyberBotBubbleCrossingBounds(bounds, placement, bodyHeight, currentAvatar, nextAvatar, workArea);
+      if (clearBounds) session.bubbleBounds = setBounds(session.bubbleWindow, session.bubbleBounds, clearBounds);
     }
+    // Move the leading surface first so the next native rectangle does not
+    // run into the surface that Windows is still displaying at its old position.
+    if (bodyCrossesCurrentAvatar) session.avatarBounds = setBounds(session.avatarWindow, currentAvatar, nextAvatar);
+    session.bubbleBounds = setBounds(session.bubbleWindow, session.bubbleBounds, bounds);
+    session.bubbleBody = body;
+    if (!bodyCrossesCurrentAvatar) session.avatarBounds = setBounds(session.avatarWindow, currentAvatar, nextAvatar);
     if (JSON.stringify(session.placement) !== JSON.stringify(placement)) {
       session.placement = placement;
       session.bubbleWindow.webContents.send('desktop-cyberbot:bubble-placement', placement);
     }
+  };
+
+  const moveWithPointer = (session: Session, drag: Drag) => {
+    const cursor = screen.getCursorScreenPoint();
+    session.display = screen.getDisplayNearestPoint(cursor);
+    session.avatar = constrainDesktopAvatar({ x: cursor.x - drag.grip.x, y: cursor.y - drag.grip.y }, session.display.workArea);
+    updatePlacement(session);
   };
 
   const showWhenReady = (session: Session) => {
@@ -109,7 +149,7 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     const session = getSession(event, 'bubble');
     if (!session || !Number.isFinite(measuredHeight) || measuredHeight < 1) return;
     session.bubbleHeight = Math.ceil(measuredHeight);
-    updateBubblePlacement(session);
+    updatePlacement(session);
     session.bubbleReady = true;
     if (session.bubbleVisible) options.onLayoutChanged();
     else showWhenReady(session);
@@ -135,33 +175,39 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
   ipcMain.on('desktop-cyberbot:drag', (event, phase: DesktopCyberBotDragPhase, offset?: Electron.Point) => {
     const session = getSession(event, 'avatar');
     if (!session) return;
-    if (phase === 'cancel') {
-      session.dragOffset = null;
-      return;
-    }
     if (phase === 'start') {
       const { avatarSize } = DESKTOP_CYBERBOT_LAYOUT;
       if (!offset || !Number.isFinite(offset.x) || !Number.isFinite(offset.y)
         || offset.x < 0 || offset.x > avatarSize || offset.y < 0 || offset.y > avatarSize) return;
-      session.dragOffset = { x: Math.round(offset.x), y: Math.round(offset.y) };
-    } else if (session.dragOffset && (phase === 'move' || phase === 'end')) {
-      const cursor = screen.getCursorScreenPoint();
-      session.display = screen.getDisplayNearestPoint(cursor);
-      const { workArea } = session.display;
-      session.avatar = constrainDesktopAvatar({
-        x: cursor.x - session.dragOffset.x,
-        y: cursor.y - session.dragOffset.y,
-      }, workArea);
-      if (phase === 'end') session.dragOffset = null;
-      const { x, y } = desktopCyberBotAvatarBounds(session.avatar);
-      const [currentX, currentY] = session.avatarWindow.getPosition();
-      if (x !== currentX || y !== currentY) session.avatarWindow.setPosition(x, y);
-      updateBubblePlacement(session);
-      if (phase === 'end' && options.getCatalog().rememberPosition) {
-        options.savePosition({ displayId: session.display.id, x: session.avatar.x - workArea.x, y: session.avatar.y - workArea.y });
-      }
-      options.onLayoutChanged();
+      if (session.drag?.pending) clearImmediate(session.drag.pending);
+      session.drag = {
+        grip: { x: Math.round(offset.x), y: Math.round(offset.y) },
+        pending: null,
+      };
+      return;
     }
+    const drag = session.drag;
+    if (!drag) return;
+    if (phase === 'move') {
+      if (!drag.pending) drag.pending = setImmediate(() => {
+        drag.pending = null;
+        moveWithPointer(session, drag);
+        options.onLayoutChanged();
+      });
+      return;
+    }
+    if (phase !== 'end' && phase !== 'cancel') return;
+    if (drag.pending) clearImmediate(drag.pending);
+    session.drag = null;
+    if (phase === 'end') moveWithPointer(session, drag);
+    if (phase === 'end' && options.getCatalog().rememberPosition) {
+      const { workArea } = session.display;
+      options.savePosition({ displayId: session.display.id, x: session.avatar.x - workArea.x, y: session.avatar.y - workArea.y });
+    }
+    // Let the avatar hold native mouse capture during the drag, then give the
+    // visible prompt its focus back once the pointer has been released.
+    if (session.bubbleVisible && session.avatarWindow.isFocused()) session.bubbleWindow.focus();
+    options.onLayoutChanged();
   });
   ipcMain.handle('desktop-cyberbot:launch', async (event, id: number): Promise<LaunchResult> => {
     const session = getSession(event, 'bubble');
@@ -238,13 +284,16 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
       y: workArea.y + workArea.height - 12 - bottomPadding - avatarSize,
     }, workArea);
     const bubbleHeight = 260;
-    const { bounds, placement } = desktopCyberBotBubbleLayout(avatar, workArea, bubbleHeight);
+    const { bounds, bodyHeight, placement } = desktopCyberBotBubbleLayout(avatar, workArea, bubbleHeight);
     const bubbleWindow = createPopup(bounds);
     bubbleWindow.setIgnoreMouseEvents(true);
-    const avatarWindow = createPopup(desktopCyberBotAvatarBounds(avatar));
+    const avatarBounds = desktopCyberBotAvatarBounds(avatar);
+    const avatarWindow = createPopup(avatarBounds);
+    avatarWindow.setBounds(avatarBounds);
     const session: Session = {
-      avatarWindow, bubbleWindow, display, catalog, avatar, bubbleHeight, placement,
-      avatarReady: false, bubbleReady: false, bubbleVisible: false, expanded: true, dragOffset: null, launching: false,
+      avatarWindow, bubbleWindow, display, catalog, avatar, avatarBounds, bubbleBounds: bounds,
+      bubbleBody: desktopCyberBotBubbleBody(bounds, placement, bodyHeight), bubbleHeight, placement,
+      avatarReady: false, bubbleReady: false, bubbleVisible: false, expanded: true, drag: null, launching: false,
     };
     active = session;
     loadPopup(session, avatarWindow, 'avatar');

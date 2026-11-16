@@ -4,11 +4,10 @@ export const DESKTOP_CYBERBOT_LAYOUT = {
   bubbleWidth: 440,
   bubbleHeight: 410,
   sidePadding: 36,
-  topPadding: 32,
   bottomPadding: 20,
   avatarSize: 84,
   avatarPadding: 14,
-  gap: 32,
+  gap: 18,
 } as const;
 
 export interface DesktopCyberBotBubblePlacement {

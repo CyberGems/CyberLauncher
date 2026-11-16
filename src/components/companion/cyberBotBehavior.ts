@@ -111,12 +111,12 @@ export function createCyberBotIdleExpressionPicker(random = Math.random, now = D
   let round = 0;
   let remaining: CyberBotEmotion[] = [];
   return {
-    next(previous: CyberBotEmotion): CyberBotEmotion {
+    next(previous: CyberBotEmotion, allowMarquee = true): CyberBotEmotion {
       if (!remaining.some(face => face !== previous)) {
         round += 1;
         remaining = idleExpressionRound(round);
       }
-      const next = nextCyberBotIdleExpression(previous, random, now() >= marqueeEligibleAt, remaining);
+      const next = nextCyberBotIdleExpression(previous, random, allowMarquee && now() >= marqueeEligibleAt, remaining);
       const index = remaining.indexOf(next);
       if (index !== -1) remaining.splice(index, 1);
       if (next === 'marquee') marqueeEligibleAt = now() + CYBERBOT_IDLE_MARQUEE_MIN_INTERVAL_MS;
