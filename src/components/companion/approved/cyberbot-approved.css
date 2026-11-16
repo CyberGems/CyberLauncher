@@ -708,6 +708,30 @@
       50% { opacity: 0.85; filter: drop-shadow(0 0 3px var(--eq-glow-color, #00f0ff)); }
     }
 
+    @property --cyberbot-charge-level {
+      syntax: "<number>";
+      inherits: true;
+      initial-value: 1;
+    }
+
+    .cyberbot-approved-avatar[data-cyberbot-face="sleeping"] [data-part="eq-style-ladder"] {
+      animation: approved-sleepCharge 3s steps(5, end) infinite;
+    }
+    .cyberbot-approved-avatar[data-cyberbot-face="sleeping"] [data-part="eq-style-ladder"] rect {
+      animation: none;
+      opacity: clamp(0.16, calc(var(--cyberbot-charge-level) + 1 - var(--charge-rung)), 1);
+    }
+    .cyberbot-approved-avatar .vu-rung-1 { --charge-rung: 1; }
+    .cyberbot-approved-avatar .vu-rung-2 { --charge-rung: 2; }
+    .cyberbot-approved-avatar .vu-rung-3 { --charge-rung: 3; }
+    .cyberbot-approved-avatar .vu-rung-4 { --charge-rung: 4; }
+    .cyberbot-approved-avatar .vu-rung-5 { --charge-rung: 5; }
+
+    @keyframes approved-sleepCharge {
+      from { --cyberbot-charge-level: 0; }
+      80%, to { --cyberbot-charge-level: 5; }
+    }
+
     /* STYLE B: COLUMNAS DE ESPECTRO VERTICAL (Crecen hacia arriba desde y=86.5) */
     .cyberbot-approved-avatar .eq-col-bar {
       transform-origin: 50px 86.5px;
@@ -829,6 +853,14 @@
     .cyberbot-approved-avatar .lateral-pod.reactor-pulse-on .pod-shell {
       animation: approved-reactorShellPulse var(--reactor-duration) ease-in-out infinite;
       will-change: stroke, filter;
+    }
+
+    .cyberbot-approved-avatar[data-cyberbot-face="sleeping"] .lateral-pod.reactor-pulse-on :is(.pod-rod, .pod-rod-tip, .pod-cell, .pod-chamber, .pod-shell) {
+      animation: none;
+    }
+    .cyberbot-approved-avatar[data-cyberbot-face="sleeping"] .lateral-pod :is(.pod-rod, .pod-rod-tip, .pod-cell) {
+      opacity: 0.12;
+      filter: none;
     }
 
     @keyframes approved-reactorCorePulse {
