@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: CyberGems.CyberLauncher
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: CyberGems
+PackageName: CyberLauncher
+PackageUrl: https://cybergems.org/apps/cyberlauncher/
+License: GPL-3.0-or-later
+LicenseUrl: https://github.com/CyberGems/CyberLauncher/blob/main/LICENSE
+Copyright: Copyright (C) 2026 CyberGems
+ShortDescription: Launcher, terminal and system stats on one hotkey panel
+Description: CyberLauncher opens full-screen on a hotkey and searches apps, Microsoft Store apps, shortcuts and files across every drive as you type. Type > and the same panel becomes a real PowerShell or CMD session; schedule launches and commands with countdown alerts; keep RAM, CPU and disk in the top bar and check every drive's free space in the Storage HUD. CyberBot narrates what is happening from the corner, while portable mode, per-app shortcuts and automatic configuration backups round it out. Built with Electron.
+Tags:
+- launcher
+- search
+- terminal
+- shortcuts
+- productivity
+Moniker: cyberlauncher
+ReleaseNotesUrl: https://github.com/CyberGems/CyberLauncher/releases/tag/{{TAG}}
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
