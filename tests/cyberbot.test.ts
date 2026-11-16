@@ -53,6 +53,7 @@ import { CYBERBOT_NAME_MAX_LENGTH, CYBERBOT_NAME_REMIND_MS, cyberBotPhraseKeyWit
 import { CYBERBOT_SETUP_REMIND_MS, isCyberBotDefaultSetup, isCyberBotSetupInviteDue } from '../src/components/companion/cyberBotSetup';
 import { translations } from '../src/locales';
 import { chooseNotificationChannel, type NotificationDeliverySettings } from '../src/notificationRouting';
+import { desktopCyberBotAvatarBounds, desktopCyberBotBubbleLayout, desktopToastBounds } from '../electron/desktop-cyberbot-layout';
 import {
   chooseLaunchSpeechChannel,
   PIN_BLUR_REMINDER_COOLDOWN_MS,
@@ -437,6 +438,32 @@ test('floating CyberBot keeps a compact, responsive bubble beside an 84px avatar
   assert.match(css, /\.cyberbot-card\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*100%;/s);
   assert.match(css, /\.cyberbot-avatar\s*\{[^}]*flex:\s*0 0 84px;[^}]*width:\s*84px;/s);
   assert.match(css, /\.cyberbot-bubble\s*\{[^}]*flex:\s*0 1 auto;[^}]*width:\s*max-content;[^}]*max-width:\s*382px;/s);
+});
+
+test('the avatar window is clear of the interactive bubble in both orientations', () => {
+  const workArea = { x: -1280, y: 0, width: 1280, height: 720 };
+  const nearTop = { x: -110, y: 40 };
+  const below = desktopCyberBotBubbleLayout(nearTop, workArea, 240);
+  const topAvatar = desktopCyberBotAvatarBounds(nearTop);
+  assert.equal(below.placement.side, 'below');
+  assert.ok(below.bounds.y > topAvatar.y + topAvatar.height);
+
+  const nearBottom = { x: -110, y: 600 };
+  const above = desktopCyberBotBubbleLayout(nearBottom, workArea, 240);
+  const bottomAvatar = desktopCyberBotAvatarBounds(nearBottom);
+  assert.equal(above.placement.side, 'above');
+  assert.ok(above.bounds.y + above.bounds.height < bottomAvatar.y);
+});
+
+test('desktop banners use a free corner and stay there while the corner is clear', () => {
+  const area = { x: -1440, y: 0, width: 1440, height: 870 };
+  const normal = desktopToastBounds(area, []);
+  assert.deepEqual(normal, { x: -542, y: 678, width: 530, height: 180 });
+  const avatar = { x: -132, y: 726, width: 112, height: 112 };
+  const belowSearch = { x: -600, y: 452, width: 512, height: 240 };
+  const alternate = desktopToastBounds(area, [avatar, belowSearch]);
+  assert.deepEqual(alternate, { ...normal, x: -1428 });
+  assert.deepEqual(desktopToastBounds(area, [avatar], alternate), alternate);
 });
 
 test('floating notifications reuse the approved shell and preserve alert, disk and success expressions', () => {

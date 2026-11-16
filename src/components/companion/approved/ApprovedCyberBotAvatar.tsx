@@ -24,6 +24,7 @@ interface Props extends CyberBotReviewState {
   returnGesture?: CyberBotReturnGesture;
   className?: string;
   size?: number;
+  levitationRange?: number;
 }
 const faces: readonly ApprovedCyberBotFace[] = [
   'default', 'launcher', 'launcher-top', 'marquee', 'terminal', 'curious', 'flight', 'sleeping', 'alert',
@@ -34,7 +35,7 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev
 export default function ApprovedCyberBotAvatar({
   face, marqueeMode, speaking, motion: motionEnabled, isHovered = false,
   isDragging = false, isTraveling = false, dragTilt = 0, away = false, marqueeMessage, marqueeRun = 0,
-  onMarqueeDuration, returnGesture, marqueeStatusMessages, className = '', size = 80,
+  onMarqueeDuration, returnGesture, marqueeStatusMessages, className = '', size = 80, levitationRange,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const prefix = `approved-${useId().replace(/[^\w-]/g, '')}-`;
@@ -49,7 +50,7 @@ export default function ApprovedCyberBotAvatar({
   durationCallback.current = onMarqueeDuration;
   // Only trusted repository artwork is inserted as HTML. This object's identity
   // remains stable: React must not reset SVG mutations after ordinary rerenders.
-  const markup = useMemo(() => createApprovedMarkup(artwork, prefix, initial.face, initial.speaking, initial.message), [prefix, initial]);
+  const markup = useMemo(() => createApprovedMarkup(artwork, prefix, initial.face, initial.speaking, initial.message, levitationRange), [prefix, initial, levitationRange]);
   const innerHTML = useMemo(() => ({ __html: markup }), [markup]);
   const returnReaction = useCyberBotReturnGesture(root, returnGesture,
     !away && portalPhase === 'awake' && face !== 'marquee' && face !== 'sleeping',

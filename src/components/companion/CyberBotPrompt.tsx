@@ -501,10 +501,12 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     if (isOpen) {
       setQuery('');
       setActiveIndex(0);
-      const timer = window.setTimeout(() => inputRef.current?.focus(), 40);
-      return () => window.clearTimeout(timer);
+      if (!isDesktop) {
+        const timer = window.setTimeout(() => inputRef.current?.focus(), 40);
+        return () => window.clearTimeout(timer);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isDesktop]);
 
   // Reset active index when query changes
   useEffect(() => {
@@ -608,7 +610,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
             type="button"
             aria-label={t('cyberbot_prompt_esc_hint')}
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber"
+            className={`${isDesktop ? 'p-1.5' : 'p-1'} rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 text-[10px] font-cyber`}
           >
             <kbd className="tooltip-shortcut">Esc</kbd>
             <X className="w-3.5 h-3.5" />

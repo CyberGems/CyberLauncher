@@ -6220,6 +6220,7 @@ export default function App() {
     if (!isConfigLoaded || !window.electronAPI?.setDesktopCyberBotCatalog) return;
     window.electronAPI.setDesktopCyberBotCatalog({
       language, favoriteIds, enableTooltips,
+      rememberPosition: cyberBot.rememberFloatingPosition,
       apps: apps.flatMap(shortcut => {
         if (!shortcut.path?.trim()) return [];
         return [{
@@ -6229,7 +6230,7 @@ export default function App() {
         }];
       }),
     });
-  }, [isConfigLoaded, apps, favoriteIds, language, enableTooltips, getAppCategoryLabel]);
+  }, [isConfigLoaded, apps, favoriteIds, language, enableTooltips, getAppCategoryLabel, cyberBot.rememberFloatingPosition]);
 
   const getUncategorizedStorageName = useCallback(() => {
     return categories.find(c => c.id === UNCATEGORIZED_ID)?.name || getPresetCategoryName(UNCATEGORIZED_ID, language);
@@ -12504,6 +12505,17 @@ export default function App() {
                         </Tooltip>
                       </div>
                     </div>
+
+                    {isElectron && (
+                      <div className="flex items-center justify-between gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('cyberbot_desktop_remember_position')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_remember_position_desc')}</p>
+                        </div>
+                        <ToggleSwitch checked={cyberBot.rememberFloatingPosition} onChange={cyberBot.updateRememberFloatingPosition}
+                          ariaLabel={t('cyberbot_desktop_remember_position')} />
+                      </div>
+                    )}
 
                     <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3">

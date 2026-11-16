@@ -63,6 +63,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const [position, setPosition] = useState<CyberBotPosition>(() => {
     return getCyberBotInitialPosition(localStorage.getItem('cyberbot_position'));
   });
+  const [rememberFloatingPosition, setRememberFloatingPosition] = useState(() => localStorage.getItem('cyberbot_remember_floating_position') !== 'false');
 
   const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('cyberbot_dodge');
@@ -145,6 +146,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const updatePosition = useCallback((newPos: CyberBotPosition) => {
     setPosition(newPos);
     localStorage.setItem('cyberbot_position', newPos);
+  }, []);
+
+  const updateRememberFloatingPosition = useCallback((remember: boolean) => {
+    setRememberFloatingPosition(remember);
+    localStorage.setItem('cyberbot_remember_floating_position', String(remember));
   }, []);
 
   const updateDodgeEnabled = useCallback((newDodge: boolean) => {
@@ -234,6 +240,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     if (settings.position === 'bottom-left' || settings.position === 'bottom-right' || settings.position === 'top-right') {
       updatePosition(settings.position);
     }
+    if (typeof settings.rememberFloatingPosition === 'boolean') updateRememberFloatingPosition(settings.rememberFloatingPosition);
     if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
     if (typeof settings.hoverAssistEnabled === 'boolean') updateHoverAssistEnabled(settings.hoverAssistEnabled);
     if (typeof settings.bannersEnabled === 'boolean') updateBannersEnabled(settings.bannersEnabled);
@@ -259,7 +266,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
       });
     }
-  }, [updatePosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
+  }, [updatePosition, updateRememberFloatingPosition, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
 
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
@@ -273,6 +280,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const resetSettings = useCallback(() => {
     setEnabled(true);
     setPosition('bottom-right');
+    setRememberFloatingPosition(true);
     setDodgeEnabled(false);
     setHoverAssistEnabled(true);
     setBannersEnabled(true);
@@ -286,6 +294,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     [
       'cyberbot_enabled',
       'cyberbot_position',
+      'cyberbot_remember_floating_position',
       'cyberbot_dodge',
       'cyberbot_hover_assist',
       'cyberbot_banners_enabled',
@@ -443,8 +452,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
-    { enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
-  ), [enabled, position, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
+    { enabled, position, rememberFloatingPosition, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
+  ), [enabled, position, rememberFloatingPosition, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
 
   return {
     enabled,
@@ -452,6 +461,8 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     toggleEnabled,
     position,
     updatePosition,
+    rememberFloatingPosition,
+    updateRememberFloatingPosition,
     dodgeEnabled,
     updateDodgeEnabled,
     hoverAssistEnabled,

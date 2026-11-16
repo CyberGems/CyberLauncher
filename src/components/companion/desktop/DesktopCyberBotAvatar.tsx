@@ -9,8 +9,8 @@ export interface DesktopCyberBotState {
   title: string;
   detail: string;
 }
-export function DesktopCyberBotAvatar({ face, speaking = false }: { face: ApprovedCyberBotFace; speaking?: boolean }) {
+export function DesktopCyberBotAvatar({ face, speaking = false, levitationRange }: { face: ApprovedCyberBotFace; speaking?: boolean; levitationRange?: number }) {
   const reducedMotion = useCyberBotReducedMotion();
   return <ApprovedCyberBotAvatar face={face} marqueeMode="screen"
-    speaking={speaking && !reducedMotion} motion={!reducedMotion} size={84} />;
+    speaking={speaking && !reducedMotion} motion={!reducedMotion} size={84} levitationRange={levitationRange} />;
 }

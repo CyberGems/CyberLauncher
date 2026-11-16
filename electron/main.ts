@@ -9,7 +9,8 @@ import crypto from 'node:crypto';
 import * as pty from 'node-pty';
 import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
 import { createDesktopCyberBotWindow } from './desktop-cyberbot-window';
-import type { DesktopCyberBotCatalog, DesktopCyberBotContext } from '../shared/desktopCyberBot';
+import { desktopToastBounds } from './desktop-cyberbot-layout';
+import type { DesktopCyberBotCatalog, DesktopCyberBotContext, DesktopCyberBotPosition } from '../shared/desktopCyberBot';
 import { DEFAULT_FAVORITE_APP_IDS, getDefaultWindowsApps } from '../shared/defaultApps';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
 import { createDisplayDiagnostics } from './display-diagnostics';
@@ -365,6 +366,7 @@ function isCursorNearTrayIcon(): boolean {
 
 const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'cyber-launcher-config.json');
+const DESKTOP_CYBERBOT_POSITION_FILE = path.join(app.getPath('userData'), 'cyberbot-desktop-position.json');
 
 function getDefaultBackupsDir(): string {
   return path.join(app.getPath('userData'), 'backups');
@@ -1978,6 +1980,7 @@ let desktopToastAutoDismissTimer: NodeJS.Timeout | null = null;
 let latestToastPayload: any = null;
 let desktopToastVisibilityVersion = 0;
 let desktopToastReady = false;
+let desktopToastWorkArea: Electron.Rectangle | null = null;
 let toastDeliverySettings: NotificationDeliverySettings = {
   botEnabled: true,
   bannersEnabled: true,
@@ -2058,6 +2061,7 @@ function ensureDesktopToastWin(): BrowserWindow {
   desktopToastWin.on('closed', () => {
     desktopToastWin = null;
     desktopToastReady = false;
+    desktopToastWorkArea = null;
   });
 
   return desktopToastWin;
@@ -2066,10 +2070,11 @@ function ensureDesktopToastWin(): BrowserWindow {
 function showDesktopToastInternal(payload: any) {
   const launcherVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
   if (payload.source === 'system-alert' && launcherVisible) return false;
+  const floatingBounds = desktopCyberBot?.getVisibleBounds() ?? [];
   const channel = chooseNotificationChannel(toastDeliverySettings, {
     critical: payload.level === 'critical',
     essential: payload.type === 'imminent' || payload.essential === true,
-    botAvailable: !launcherVisible || !payload.botUnavailable,
+    botAvailable: !floatingBounds.length && (!launcherVisible || !payload.botUnavailable),
   });
   // Launch commentary is optional CyberBot chatter, never a banner fallback.
   // It must not replace a more important notification already on screen.
@@ -2085,7 +2090,7 @@ function showDesktopToastInternal(payload: any) {
   latestToastPayload = { ...payload, presentation: channel };
   const win = ensureDesktopToastWin();
 
-  let targetDisplay: any;
+  let targetDisplay: Electron.Display;
   try {
     const point = screen.getCursorScreenPoint();
     targetDisplay = screen.getDisplayNearestPoint(point);
@@ -2093,14 +2098,8 @@ function showDesktopToastInternal(payload: any) {
     targetDisplay = screen.getPrimaryDisplay();
   }
 
-  const work = targetDisplay.workArea || { x: 0, y: 0, width: 1920, height: 1080 };
-  const winWidth = 530;
-  const winHeight = 180;
-  const pad = 12;
-  const x = Math.round(work.x + work.width - winWidth - pad);
-  const y = Math.round(work.y + work.height - winHeight - pad);
-
-  win.setBounds({ x, y, width: winWidth, height: winHeight });
+  desktopToastWorkArea = targetDisplay.workArea;
+  win.setBounds(desktopToastBounds(desktopToastWorkArea, floatingBounds));
 
   if (desktopToastAutoDismissTimer) {
     clearTimeout(desktopToastAutoDismissTimer);
@@ -2109,6 +2108,26 @@ function showDesktopToastInternal(payload: any) {
 
   if (desktopToastReady) presentDesktopToast(win);
   return true;
+}
+
+function refreshDesktopToastForFloatingBot() {
+  const floatingBounds = desktopCyberBot?.getVisibleBounds() ?? [];
+  const win = desktopToastWin;
+  if (!floatingBounds.length || !latestToastPayload || !win || win.isDestroyed() || !desktopToastWorkArea) return;
+  if (latestToastPayload.presentation === 'bot') {
+    if (!toastDeliverySettings.bannersEnabled || latestToastPayload.source === 'launch') {
+      hideDesktopToastInternal();
+      if (!win.isDestroyed()) win.hide();
+      return;
+    }
+    latestToastPayload = { ...latestToastPayload, presentation: 'banner' };
+    if (desktopToastReady) win.webContents.send('desktop-toast-data', latestToastPayload);
+  }
+  const current = win.getBounds();
+  const bounds = desktopToastBounds(desktopToastWorkArea, floatingBounds, current);
+  if (bounds.x !== current.x || bounds.y !== current.y || bounds.width !== current.width || bounds.height !== current.height) {
+    win.setBounds(bounds);
+  }
 }
 
 function presentDesktopToast(win: BrowserWindow) {
@@ -2665,7 +2684,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   }
 }
 
-function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'placement'> {
+function getDesktopCyberBotCatalog(): DesktopCyberBotContext {
   let catalog = desktopCyberBotCatalog;
   if (!catalog) {
     let config: ReturnType<typeof parseValidBackupJson> = null;
@@ -2688,6 +2707,7 @@ function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'placement'> 
       }),
       favoriteIds: Array.isArray(config?.favoriteIds) ? config.favoriteIds : DEFAULT_FAVORITE_APP_IDS,
       enableTooltips: config?.enableTooltips !== false,
+      rememberPosition: config?.cyberBotSettings?.rememberFloatingPosition !== false,
     };
   }
   const catalogPaths = new Set(catalog.apps.map(shortcut => shortcut.path.toLowerCase()));
@@ -2697,6 +2717,17 @@ function getDesktopCyberBotCatalog(): Omit<DesktopCyberBotContext, 'placement'> 
       .filter(shortcut => catalogPaths.has(shortcut.path.toLowerCase()))
       .map(({ name, path }) => ({ name, path })),
   };
+}
+
+function loadDesktopCyberBotPosition(): DesktopCyberBotPosition | null {
+  try {
+    if (!fs.existsSync(DESKTOP_CYBERBOT_POSITION_FILE)) return null;
+    const position = JSON.parse(fs.readFileSync(DESKTOP_CYBERBOT_POSITION_FILE, 'utf-8'));
+    if ([position?.displayId, position?.x, position?.y].every(Number.isSafeInteger)) return position;
+  } catch (error) {
+    console.error('[CYBERBOT] Could not read the desktop position:', error);
+  }
+  return null;
 }
 
 // =====================================
@@ -3666,6 +3697,15 @@ function setupIpcHandlers() {
     rendererDirectory: path.join(__dirname, '../dist'),
     preloadPath: path.join(__dirname, VITE_DEV_SERVER_URL ? '../public/cyberbot-desktop-preload.cjs' : '../dist/cyberbot-desktop-preload.cjs'),
     getCatalog: getDesktopCyberBotCatalog,
+    loadPosition: loadDesktopCyberBotPosition,
+    savePosition: position => {
+      try {
+        writeFileAtomicSync(DESKTOP_CYBERBOT_POSITION_FILE, JSON.stringify(position));
+      } catch (error) {
+        console.error('[CYBERBOT] Could not save the desktop position:', error);
+      }
+    },
+    onLayoutChanged: refreshDesktopToastForFloatingBot,
     launch: async shortcut => {
       const result = await launchAppInternal(shortcut.path, shortcut.isAdmin, true);
       if (result.success && mainWindow && !mainWindow.isDestroyed()) {

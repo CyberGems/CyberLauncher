@@ -77,12 +77,12 @@ const materialTorsoMarkup = `<g class="material-light material-torso-light" poin
   <path d="M29.8 61 C26.5 67 27 75 31 81 M70.2 61 C73.5 67 73 75 69 81 M34 78 L40 81 M66 78 L60 81" fill="none" stroke="url(#materialTorsoLight)" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
 </g>`;
 
-export function createApprovedMarkup(artwork: string, prefix: string, face: ApprovedCyberBotFace, speaking: boolean, message = '') {
+export function createApprovedMarkup(artwork: string, prefix: string, face: ApprovedCyberBotFace, speaking: boolean, message = '', levitationRange = 6.8) {
   const target = `face-${face === 'default' ? 'eyes-default' : face}`;
   const safeMessage = message.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character]!);
   const timing = approvedMarqueeTiming(message);
   return artwork
-    .replace("<g id=\"botAssembly\" class=\"levitating\">", "<g id=\"botAssembly\" class=\"levitating\"><animateTransform id=\"vectorLevitation\" attributeName=\"transform\" type=\"translate\" values=\"0 0;0 -6.8;0 0\" dur=\"3.2s\" repeatCount=\"indefinite\" calcMode=\"spline\" keyTimes=\"0;0.5;1\" keySplines=\"0.42 0 0.58 1;0.42 0 0.58 1\" begin=\"indefinite\"/>")
+    .replace('<g id="botAssembly" class="levitating">', `<g id="botAssembly" class="levitating"><animateTransform id="vectorLevitation" attributeName="transform" type="translate" values="0 0;0 ${-levitationRange};0 0" dur="3.2s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1" begin="indefinite"/>`)
     .replace('<!-- CREST & FOREHEAD VARIANTS -->', materialLightDefs + '<!-- CREST & FOREHEAD VARIANTS -->')
     .replace('<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->', materialHelmetMarkup + '<!-- FRONT FACE (Lado A: Visor Frontal Activo) -->')
     .replace('<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->', materialTorsoMarkup + '<!-- CHEST EQUALIZER PANEL (Core Feature 1) -->')
