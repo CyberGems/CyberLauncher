@@ -71,14 +71,16 @@ test('Checkbox renders custom cyan and amber states around accessible input', ()
   assert.ok(checkedAmber.includes('bg-amber-500'));
 });
 
-test('App.tsx, AppConfirmModals, and cyberbot-review replace all native select and checkbox controls', () => {
+test('Launcher dialogs and CyberBot review use shared select and checkbox controls', () => {
   const appSource = readFileSync('src/App.tsx', 'utf8');
   const confirmSource = readFileSync('src/components/AppConfirmModals.tsx', 'utf8');
+  const storeImportSource = readFileSync('src/components/StoreImporterModal.tsx', 'utf8');
   const reviewSource = readFileSync('src/cyberbot-review.tsx', 'utf8');
 
   for (const [name, source] of [
     ['src/App.tsx', appSource],
     ['src/components/AppConfirmModals.tsx', confirmSource],
+    ['src/components/StoreImporterModal.tsx', storeImportSource],
     ['src/cyberbot-review.tsx', reviewSource],
   ] as const) {
     assert.equal(/<select[\s>]/.test(source), false, `${name} must not render native <select> elements`);
@@ -86,7 +88,8 @@ test('App.tsx, AppConfirmModals, and cyberbot-review replace all native select a
   }
 
   assert.ok(appSource.includes('<CustomSelect'));
-  assert.ok(appSource.includes('<UwpImportConfirmModal'));
+  assert.ok(appSource.includes('<StoreImporterModal'));
+  assert.ok(storeImportSource.includes('<UwpImportConfirmModal'));
   assert.ok(appSource.includes('<AppConfirmModals'));
   assert.ok(confirmSource.includes('<Checkbox'));
   assert.ok(reviewSource.includes('<CustomSelect'));
