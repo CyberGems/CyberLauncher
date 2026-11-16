@@ -23,6 +23,7 @@ interface CyberBotProps {
   activeMessage: CyberBotMessage | null;
   onDismissMessage: () => void;
   onClickBot?: () => void;
+  onAvatarContextMenu?: React.MouseEventHandler<HTMLButtonElement>;
   position?: CyberBotPosition;
   dodgeEnabled?: boolean;
   hoverAssistEnabled?: boolean;
@@ -51,6 +52,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   activeMessage,
   onDismissMessage,
   onClickBot,
+  onAvatarContextMenu,
   position = 'bottom-right',
   dodgeEnabled = false,
   hoverAssistEnabled = true,
@@ -428,6 +430,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
           }}
           onPointerDown={handlePointerDown}
           onClick={handleClick}
+          onContextMenu={onAvatarContextMenu}
           className="pointer-events-auto w-[94px] h-[94px] flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
         >
           <CyberBotAvatar

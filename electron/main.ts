@@ -119,6 +119,10 @@ let isQuitting = false;
 let currentShortcut = 'Alt+Shift+L';
 let currentCyberBotShortcut = 'Alt+Shift+B';
 let cyberBotShortcutEnabled = true;
+const CYBERBOT_TOGGLE_SHORTCUT = 'Ctrl+Alt+Shift+B';
+let cyberBotToggleShortcutRegistered = false;
+let registeredMainShortcut: string | undefined;
+let registeredCyberBotShortcut: string | undefined;
 let desktopCyberBot: ReturnType<typeof createDesktopCyberBotWindow> | null = null;
 let desktopCyberBotCatalog: DesktopCyberBotCatalog | null = null;
 let hotspotCorners: string[] = [];
@@ -171,27 +175,21 @@ interface AppShortcutItem {
   icon?: string;
 }
 
-let appShortcuts: Array<AppShortcutItem> = [];
+const registeredAppShortcuts = new Set<string>();
 
 function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
   // First, unregister all existing custom app shortcuts
-  for (const item of appShortcuts) {
-    if (item.shortcut) {
-      try {
-        const electronShortcut = item.shortcut
-          .replace(/Meta/g, 'Super')
-          .replace(/Ctrl/g, 'CommandOrControl');
-        globalShortcut.unregister(electronShortcut);
-      } catch (err) {
-        console.error('Error unregistering app shortcut:', err);
-      }
+  for (const accelerator of registeredAppShortcuts) {
+    try {
+      globalShortcut.unregister(accelerator);
+    } catch (err) {
+      console.error('Error unregistering app shortcut:', err);
     }
   }
-
-  appShortcuts = shortcutsList;
+  registeredAppShortcuts.clear();
 
   // Now, register the new list
-  for (const item of appShortcuts) {
+  for (const item of shortcutsList) {
     if (!item.shortcut) continue;
     try {
       const electronShortcut = item.shortcut
@@ -234,6 +232,8 @@ function registerAppShortcutsList(shortcutsList: Array<AppShortcutItem>) {
       });
       if (!success) {
         console.warn(`[GLOBAL HOTKEY] Failed to register custom shortcut: ${electronShortcut}`);
+      } else {
+        registeredAppShortcuts.add(electronShortcut);
       }
     } catch (err) {
       console.error('[GLOBAL HOTKEY] Error registering custom shortcut:', err);
@@ -1543,6 +1543,8 @@ function buildTrayMenuState(resetView = false) {
     lang,
     isVisible,
     shortcut: currentShortcut || 'Alt+Shift+L',
+    cyberBotEnabled: cyberBotShortcutEnabled,
+    cyberBotToggleShortcut: cyberBotToggleShortcutRegistered ? CYBERBOT_TOGGLE_SHORTCUT : undefined,
     showTrayRecents: showTrayRecentsConfig,
     showSuiteRecommendations: showSuiteRecommendationsConfig,
     recents: trayRecents,
@@ -2249,6 +2251,11 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
     return;
   }
 
+  if (action === 'toggle-cyberbot') {
+    if (_event.sender === trayMenuWin?.webContents) requestCyberBotToggle();
+    return;
+  }
+
   if (action === 'hide') {
     windowVisibilityState = 'hidden-intentional';
     mainWindow?.hide();
@@ -2615,9 +2622,10 @@ function toElectronAccelerator(shortcut: string): string {
 }
 
 function unregisterMainShortcut() {
-  if (currentShortcut) {
+  if (registeredMainShortcut) {
     try {
-      globalShortcut.unregister(toElectronAccelerator(currentShortcut));
+      globalShortcut.unregister(registeredMainShortcut);
+      registeredMainShortcut = undefined;
     } catch (err) {
       console.error('[SHORTCUT] Error unregistering main shortcut:', err);
     }
@@ -2625,9 +2633,10 @@ function unregisterMainShortcut() {
 }
 
 function unregisterCyberBotShortcut() {
-  if (currentCyberBotShortcut) {
+  if (registeredCyberBotShortcut) {
     try {
-      globalShortcut.unregister(toElectronAccelerator(currentCyberBotShortcut));
+      globalShortcut.unregister(registeredCyberBotShortcut);
+      registeredCyberBotShortcut = undefined;
     } catch (err) {
       console.error('[SHORTCUT] Error unregistering CyberBot shortcut:', err);
     }
@@ -2650,6 +2659,8 @@ function registerGlobalShortcut(shortcut: string) {
 
     if (!success) {
       console.warn(`No se pudo registrar el atajo global: ${electronShortcut}`);
+    } else {
+      registeredMainShortcut = electronShortcut;
     }
 
     currentShortcut = shortcut;
@@ -2658,9 +2669,14 @@ function registerGlobalShortcut(shortcut: string) {
   }
 }
 
+function requestCyberBotToggle() {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cyberbot-toggle-enabled');
+}
+
 function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   unregisterCyberBotShortcut();
   cyberBotShortcutEnabled = enabled;
+  updateCustomTrayMenuState();
   if (shortcut && shortcut.trim()) {
     currentCyberBotShortcut = shortcut;
   }
@@ -2695,6 +2711,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
     if (!success) {
       console.warn(`No se pudo registrar el atajo global de CyberBot: ${electronShortcut}`);
     } else {
+      registeredCyberBotShortcut = electronShortcut;
       desktopCyberBot?.preload();
     }
   } catch (err) {
@@ -3707,6 +3724,16 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
 }
 
 function setupIpcHandlers() {
+  ipcMain.handle('cyberbot-avatar-context-menu', event => {
+    const window = mainWindow;
+    if (!window || window.isDestroyed() || !window.isVisible() || event.sender !== window.webContents) return false;
+    return new Promise<boolean>(resolve => {
+      Menu.buildFromTemplate([{
+        label: getTrayLanguage() === 'es' ? 'Ocultar CyberBot' : 'Hide CyberBot',
+        click: () => resolve(true),
+      }]).popup({ window, callback: () => resolve(false) });
+    });
+  });
   ipcMain.on('desktop-cyberbot:set-catalog', (event, catalog: DesktopCyberBotCatalog) => {
     if (event.sender === mainWindow?.webContents) desktopCyberBotCatalog = catalog;
   });
@@ -5788,6 +5815,8 @@ app.whenReady().then(() => {
   // Registrar atajo global
   registerGlobalShortcut(currentShortcut);
   registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
+  cyberBotToggleShortcutRegistered = globalShortcut.register(toElectronAccelerator(CYBERBOT_TOGGLE_SHORTCUT), requestCyberBotToggle);
+  if (!cyberBotToggleShortcutRegistered) console.warn('[SHORTCUT] Could not register CyberBot toggle:', CYBERBOT_TOGGLE_SHORTCUT);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

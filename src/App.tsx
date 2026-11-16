@@ -319,6 +319,8 @@ declare global {
       onLauncherShown: (callback: () => void) => () => void;
       onLauncherHidden?: (callback: () => void) => () => void;
       onCyberBotOpenPrompt?: (callback: () => void) => () => void;
+      onCyberBotToggleEnabled?: (callback: () => void) => () => void;
+      showCyberBotAvatarContextMenu?: () => Promise<boolean>;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
       setRendererAwake: (awake: boolean) => Promise<{ success: boolean; awake: boolean }>;
@@ -2155,6 +2157,7 @@ export default function App() {
   const lastContextMenuDismissedRef = useRef(0);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isCyberBotPromptOpen, setIsCyberBotPromptOpen] = useState(false);
+  const [isCyberBotAvatarHidden, setIsCyberBotAvatarHidden] = useState(false);
 
   // Launcher Activity State
   const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
@@ -3152,6 +3155,7 @@ export default function App() {
 
   const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded, cyberBotShortcut });
   const openCyberBotPrompt = useCallback(() => {
+    setIsCyberBotAvatarHidden(false);
     cyberBot.dismissMessage();
     playCyberBeep();
     setIsCyberBotPromptOpen(true);
@@ -3191,7 +3195,7 @@ export default function App() {
   }, []);
   const isWindowVisible = useLauncherVisibility();
   const cyberBotFarewell = useCyberBotFarewell(cyberBot.enabled);
-  const handleCyberBotToggle = () => {
+  const handleCyberBotToggle = useCallback(() => {
     if (cyberBot.enabled) {
       const control = document.querySelector<HTMLElement>('[data-cyberbot-control]');
       const avatar = control?.querySelector<HTMLElement>('[data-cyberbot-presence]');
@@ -3204,8 +3208,17 @@ export default function App() {
         && Number(getComputedStyle(assembly).opacity) > 0.9;
       cyberBotFarewell.start(t('cyberbot_farewell'), visible);
     } else cyberBotFarewell.cancel();
+    setIsCyberBotAvatarHidden(false);
+    setIsCyberBotPromptOpen(false);
     cyberBot.toggleEnabled();
-  };
+  }, [cyberBot.enabled, cyberBot.toggleEnabled, cyberBotFarewell.start, cyberBotFarewell.cancel, isWindowVisible, t]);
+  useEffect(() => {
+    if (!isConfigLoaded) return;
+    return window.electronAPI?.onCyberBotToggleEnabled?.(handleCyberBotToggle);
+  }, [isConfigLoaded, handleCyberBotToggle]);
+  useEffect(() => {
+    if (isConfigLoaded) void window.electronAPI?.registerCyberBotShortcut?.(cyberBotShortcut, cyberBot.enabled);
+  }, [isConfigLoaded, cyberBotShortcut, cyberBot.enabled]);
   useEffect(() => { if (!isWindowVisible) cyberBotFarewell.cancel(); }, [isWindowVisible, cyberBotFarewell.cancel]);
 
   const lastPinnedLaunchAtRef = useRef(0);
@@ -6662,7 +6675,7 @@ export default function App() {
         icon: <Bot className="w-4 h-4 text-cyan-400" />,
         onSelect: () => {
           if (!cyberBot.enabled) cyberBot.toggleEnabled();
-          setIsCyberBotPromptOpen(true);
+          openCyberBotPrompt();
         },
       },
       {
@@ -14602,13 +14615,24 @@ export default function App() {
 
       {/* --- CYBERBOT COMPANION --- */}
       <CyberBot
-        enabled={cyberBot.enabled}
+        enabled={cyberBot.enabled && !isCyberBotAvatarHidden}
         farewell={cyberBotFarewell.state}
         onDismissFarewell={cyberBotFarewell.depart}
         onFarewellUnavailable={cyberBotFarewell.confirm}
         activeMessage={cyberBot.activeMessage}
         returnGesture={cyberBotReturnGesture}
         onDismissMessage={cyberBot.dismissMessage}
+        onAvatarContextMenu={event => {
+          if (!window.electronAPI?.showCyberBotAvatarContextMenu) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void window.electronAPI.showCyberBotAvatarContextMenu().then(hide => {
+            if (!hide) return;
+            setIsCyberBotAvatarHidden(true);
+            setIsCyberBotPromptOpen(false);
+            cyberBot.dismissMessage();
+          });
+        }}
         onClickBot={() => {
           if (isCyberBotPromptOpen) {
             setIsCyberBotPromptOpen(false);

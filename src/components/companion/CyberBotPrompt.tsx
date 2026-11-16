@@ -115,7 +115,7 @@ function normalizeSearch(str: string): string {
 export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
   isOpen,
   onClose,
-  onFold = onClose,
+  onFold,
   position = 'bottom-right',
   t,
   apps,
@@ -588,6 +588,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
     ? 'group-data-[pointer-moved]/desktop-bubble:hover:text-white group-data-[pointer-moved]/desktop-bubble:hover:bg-white/10'
     : 'hover:text-white hover:bg-white/10';
   const headerButtonClass = `${isDesktop ? 'p-1.5' : 'p-1'} ${headerButtonHover} rounded-md text-slate-400 transition-colors focus-visible:ring-1 focus-visible:ring-cyan-400 cursor-pointer`;
+  const closeName = t(isDesktop ? 'cyberbot_desktop_hide' : 'cyberbot_prompt_hide');
 
   return (
     <div
@@ -614,13 +615,13 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <Tooltip label={t('cyberbot_desktop_collapse')} placement="bottom">
+          {onFold && <Tooltip label={t('cyberbot_desktop_collapse')} placement="bottom">
             <button type="button" aria-label={t('cyberbot_desktop_collapse')} onClick={onFold} className={headerButtonClass}>
               <Minus className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
-          </Tooltip>
-          <Tooltip label={<span className="inline-flex items-center gap-2">{t('cyberbot_prompt_hide')} <kbd className="tooltip-shortcut">Esc</kbd></span>} placement="bottom">
-            <button type="button" aria-label={t('cyberbot_prompt_hide')} aria-keyshortcuts="Escape" onClick={onClose} className={headerButtonClass}>
+          </Tooltip>}
+          <Tooltip label={<span className="inline-flex items-center gap-2">{closeName} <kbd className="tooltip-shortcut">Esc</kbd></span>} placement="bottom">
+            <button type="button" aria-label={closeName} aria-keyshortcuts="Escape" onClick={onClose} className={headerButtonClass}>
               <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </Tooltip>
