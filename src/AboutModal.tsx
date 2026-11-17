@@ -387,7 +387,7 @@ export default function AboutModal({
             />
           </div>
 
-          <h1 className="text-[26px] font-cyber font-bold tracking-wide text-white mb-1">
+          <h1 className="text-[26px] font-brand font-bold tracking-wide text-white mb-1">
             Cyber<span className="text-cyan-400">Launcher</span>
           </h1>
           <div className="text-xs font-cyber font-semibold text-slate-300 uppercase tracking-wider mb-3 inline-flex items-center justify-center gap-2">

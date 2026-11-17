@@ -8082,7 +8082,7 @@ export default function App() {
                     <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
                   )}
                 </span>
-                <span className="font-cyber font-bold text-[14px] tracking-wide text-white truncate leading-none">
+                <span className="font-brand font-bold text-[14px] tracking-wide text-white truncate leading-none">
                   Cyber<span className="text-cyan-400">Launcher</span>
                 </span>
               </button>

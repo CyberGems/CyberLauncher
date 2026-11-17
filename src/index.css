@@ -20,6 +20,8 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   /* UI chrome / labels — more readable than Orbitron */
   --font-cyber: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  /* Brand typography — matches the tray menu's font stack */
+  --font-brand: "Outfit", "Space Grotesk", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   /* Digits only: clock, timers, counters */
   --font-digits: "Orbitron", sans-serif;
 }
