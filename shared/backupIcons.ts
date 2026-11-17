@@ -56,8 +56,16 @@ export function localResourceUrlToFilePath(resourceUrl: string): string {
     } catch {
       // Keep raw string if URI decoding fails
     }
-    while (raw.startsWith('/')) {
-      raw = raw.slice(1);
+    if (raw.startsWith('/')) {
+      // `filePathToLocalResourceUrl` emits `local-resource:///`, so absolute POSIX paths
+      // (and UNC shares) arrive with extra leading slashes that must be preserved; only
+      // the scheme slash in front of a Windows drive letter should be dropped.
+      const body = raw.replace(/^\/+/, '');
+      if (/^[A-Za-z]:[\\/]/.test(body)) {
+        raw = body;
+      } else {
+        raw = `/${body}`;
+      }
     }
     return path.normalize(raw);
   }

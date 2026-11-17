@@ -287,6 +287,27 @@ test('custom local wallpapers embed into backups, skip presets/oversized files, 
   }
 });
 
+test('localResourceUrlToFilePath round-trips absolute paths on any platform', () => {
+  // Round-trip of a real absolute path on the running platform
+  const absPath = path.join(os.tmpdir(), 'cl-roundtrip', 'icon-cache', 'abc.png');
+  assert.equal(
+    localResourceUrlToFilePath(filePathToLocalResourceUrl(absPath)),
+    path.normalize(absPath)
+  );
+
+  // Encoded POSIX absolute path (extra leading slashes) keeps exactly one leading slash
+  assert.equal(
+    localResourceUrlToFilePath('local-resource:////tmp/cl-icon-cache/abc.png'),
+    path.normalize('/tmp/cl-icon-cache/abc.png')
+  );
+
+  // Windows drive path: only the scheme slash in front of the drive is dropped
+  assert.equal(
+    localResourceUrlToFilePath('local-resource:///C:/Users/Me/AppData/Roaming/CyberLauncher/icon-cache/abc.png'),
+    path.normalize('C:/Users/Me/AppData/Roaming/CyberLauncher/icon-cache/abc.png')
+  );
+});
+
 test('pruneOrphanWallpapers deletes unused imported wallpapers while keeping active references and user files', () => {
   const tmpDir = makeTempDir('cl-prune-wp-');
   try {
