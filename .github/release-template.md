@@ -50,7 +50,7 @@ Llega el CyberBot flotante: un compañero plegable y arrastrable que busca acces
 
 - 🛠️ **Bajo el capó**: Los iconos del Shell se extraen en un solo pase de PowerShell con transparencia conservada y cachés que se autocuran, la ocultación al perder el foco se pausa con diálogos abiertos, y las tareas programadas y los ajustes del indexador se incrustan en exportaciones y copias.
 
-### ⚠️ Antes de instalar
+### ℹ️ Antes de instalar
 
 - **Windows:** esta versión aún no está firmada digitalmente. SmartScreen puede avisar antes de ejecutarla: **Más información › Ejecutar de todas formas**. Cuando Smart App Control está activado, Windows rechaza programas sin firmar; consulta la [política de firma de código](https://github.com/CyberGems/.github/blob/main/CODE_SIGNING.md). Verifica la descarga con los checksums SHA256 que aparecen más abajo.
 
@@ -58,7 +58,7 @@ Llega el CyberBot flotante: un compañero plegable y arrastrable que busca acces
 
 ---
 
-### ⚠️ Before you install
+### ℹ️ Before you install
 
 - **Windows:** this release is not code-signed yet. SmartScreen may ask before it runs: **More info › Run anyway**. Where Smart App Control is on, Windows refuses unsigned programs; see the [code signing policy](https://github.com/CyberGems/.github/blob/main/CODE_SIGNING.md). Verify the download with the SHA256 checksums below.
 
