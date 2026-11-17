@@ -11302,7 +11302,7 @@ export default function App() {
               <div className="px-6 py-4 border-b border-cyan-500/20 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <Settings className="w-5 h-5 text-cyan-400" />
-                  <h2 className="text-sm font-cyber font-bold text-white tracking-widest text-left">{t('settings_title')}</h2>
+                  <h2 className="text-sm font-brand font-bold text-white tracking-widest text-left">{t('settings_title')}</h2>
                 </div>
                 <Tooltip label={t('tooltip_close')} placement="bottom">
                   <button 
