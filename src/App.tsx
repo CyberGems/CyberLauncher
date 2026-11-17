@@ -9492,7 +9492,7 @@ export default function App() {
                           ) : (
                             <AppIcon app={app}
                               broken={brokenAppIds.has(app.id)}
-                              brokenLabel={t('missing_uwp_title')}
+                              brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')}
                               className={app.color}
                               style={{ width: `${36 * (cardScale / 100)}px`, height: `${36 * (cardScale / 100)}px` }}
                               strokeWidth={1.5}
@@ -9524,7 +9524,7 @@ export default function App() {
                           ) : (
                             <AppIcon app={app}
                               broken={brokenAppIds.has(app.id)}
-                              brokenLabel={t('missing_uwp_title')}
+                              brokenLabel={brokenAppIds.get(app.id) === 'uwp' ? t('missing_uwp_title') : t('missing_shortcut_title')}
                               className={`flex-shrink-0 ${app.color}`}
                               style={{ width: `${28 * (cardScale / 100)}px`, height: `${28 * (cardScale / 100)}px` }}
                               strokeWidth={1.5}

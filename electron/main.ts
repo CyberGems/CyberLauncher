@@ -8,6 +8,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import * as pty from 'node-pty';
 import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
+import { isUriAppTarget, normalizeAppTarget, resolveAppFileTarget } from './app-target';
 import { createDesktopCyberBotWindow } from './desktop-cyberbot-window';
 import { desktopToastBounds } from './desktop-cyberbot-layout';
 import type { DesktopCyberBotCatalog, DesktopCyberBotContext, DesktopCyberBotPosition } from '../shared/desktopCyberBot';
@@ -3616,11 +3617,8 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
   if (!appPath) return { success: false, error: 'No path provided', code: 'not-found' };
 
   try {
-    const trimmedPath = appPath.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
-
-    const isUriProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedPath) &&
-      !path.isAbsolute(trimmedPath) &&
-      !trimmedPath.match(/^[a-zA-Z]:[\\/]/);
+    const trimmedPath = normalizeAppTarget(appPath);
+    const isUriProtocol = isUriAppTarget(trimmedPath);
     if (isUriProtocol) {
       console.log(`[LAUNCH] Abriendo esquema URI externo: ${trimmedPath}`);
       await shell.openExternal(trimmedPath);
@@ -3644,22 +3642,9 @@ async function launchAppInternal(appPath: string, isAdmin?: boolean, keepWindowO
       }
     }
 
-    let targetPath = path.normalize(trimmedPath);
-
-    if (!fs.existsSync(targetPath)) {
-      const sysRoot = process.env.SystemRoot || 'C:\\Windows';
-      const sys32Candidate = path.join(sysRoot, 'System32', targetPath);
-      const winCandidate = path.join(sysRoot, targetPath);
-      const psCandidate = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', targetPath);
-      if (fs.existsSync(sys32Candidate)) {
-        targetPath = sys32Candidate;
-      } else if (fs.existsSync(winCandidate)) {
-        targetPath = winCandidate;
-      } else if (fs.existsSync(psCandidate)) {
-        targetPath = psCandidate;
-      } else {
-        return { success: false, error: `Ruta no encontrada: ${targetPath}`, code: 'not-found' };
-      }
+    const targetPath = resolveAppFileTarget(trimmedPath);
+    if (!targetPath) {
+      return { success: false, error: `Ruta no encontrada: ${trimmedPath}`, code: 'not-found' };
     }
 
     // A .lnk can exist while its destination has been moved or removed.
@@ -4440,33 +4425,31 @@ ConvertTo-Json -InputObject \$uwpApps
     return true;
   });
 
-  // --- Verificación por lotes de paquetes UWP: devuelve los accesos cuyo paquete ya no está instalado ---
   // --- Verificación por lotes de destinos de accesos: devuelve los que ya no existen.
-  // Paquetes UWP vía Get-AppxPackage en un solo proceso; rutas de archivo con existsSync. ---
+  // Los comandos usan la misma búsqueda que el lanzamiento; los URI no se verifican como archivos. ---
   ipcMain.handle('verify-broken-apps', async (_event, apps: Array<{ path: string; name: string }>) => {
     if (process.platform !== 'win32' || !Array.isArray(apps) || apps.length === 0) return [];
     const familyOf = (aumid: string) => aumid.trim().split('!')[0];
     const isAumid = (p: string) => p.includes('!') && p.includes('_');
     const wantedFamilies = [...new Set(apps
-      .map(app => (typeof app?.path === 'string' ? app.path.trim() : ''))
-      .filter(p => isAumid(p))
+      .map(app => (typeof app?.path === 'string' ? normalizeAppTarget(app.path) : ''))
+      .filter(p => !isUriAppTarget(p) && isAumid(p))
       .map(familyOf))];
 
     const missingPaths = new Set<string>();
     for (const app of apps) {
-      const rawPath = typeof app?.path === 'string' ? app.path.trim() : '';
+      const rawPath = typeof app?.path === 'string' ? normalizeAppTarget(app.path) : '';
       if (!rawPath) continue;
-      const unquoted = rawPath.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1').trim();
-      if (isAumid(unquoted)) continue; // Se verifican por lotes con PowerShell más abajo.
-      if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(unquoted)) continue; // Los esquemas URI no se pueden verificar localmente.
-      if (!fs.existsSync(unquoted)) missingPaths.add(rawPath);
+      if (isUriAppTarget(rawPath)) continue; // Los esquemas URI no se pueden verificar localmente.
+      if (isAumid(rawPath)) continue; // Se verifican por lotes con PowerShell más abajo.
+      if (!resolveAppFileTarget(rawPath)) missingPaths.add(rawPath);
     }
 
     if (wantedFamilies.length > 0) {
       const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const listFile = path.join(os.tmpdir(), `cl-uwp-verify-${stamp}.txt`);
       const psScript = `
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 $installed = Get-AppxPackage | ForEach-Object { $_.PackageFamilyName }
 $wanted = Get-Content -LiteralPath '${listFile}'
 foreach ($f in $wanted) {
@@ -4484,7 +4467,7 @@ foreach ($f in $wanted) {
         });
         const missingFamilies = new Set(out.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
         for (const app of apps) {
-          const rawPath = typeof app?.path === 'string' ? app.path.trim() : '';
+          const rawPath = typeof app?.path === 'string' ? normalizeAppTarget(app.path) : '';
           if (isAumid(rawPath) && missingFamilies.has(familyOf(rawPath))) missingPaths.add(rawPath);
         }
       } catch (err: any) {
@@ -4495,7 +4478,7 @@ foreach ($f in $wanted) {
       }
     }
 
-    return apps.filter(app => typeof app?.path === 'string' && missingPaths.has(app.path.trim()))
+    return apps.filter(app => typeof app?.path === 'string' && missingPaths.has(normalizeAppTarget(app.path)))
       .map(app => ({ path: String(app.path), name: String(app?.name || '') }));
   });
 
