@@ -11463,73 +11463,6 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
-                {/* Scale Selection */}
-                <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4 text-slate-500" />
-                    {t('general_scale')}
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <input 
-                      type="range" 
-                      min="50" max="150" 
-                      value={cardScale}
-                      onChange={(e) => setCardScale(Number(e.target.value))}
-                      className="flex-1 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                    <span className="text-sm text-blue-400 font-mono w-[30px] text-right">{cardScale}%</span>
-                  </div>
-                  <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
-                </div>
-
-                {/* Monitor Selection */}
-                <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <Monitor className="w-4 h-4 text-slate-500" />
-                    {t('general_monitor')}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedMonitor('follow-cursor');
-                        localStorage.setItem('selectedMonitor', 'follow-cursor');
-                        if (isElectron) {
-                          window.electronAPI!.setMonitor('follow-cursor');
-                        }
-                      }}
-                      className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        selectedMonitor === 'follow-cursor'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                          : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                      }`}
-                    >
-                      {t('general_monitor_follow')}
-                    </button>
-                    {monitors.map(mon => (
-                      <button
-                        key={mon.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedMonitor(mon.id);
-                          localStorage.setItem('selectedMonitor', mon.id);
-                          if (isElectron) {
-                            window.electronAPI!.setMonitor(mon.id);
-                          }
-                        }}
-                        className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                          selectedMonitor === mon.id 
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm' 
-                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                        }`}
-                      >
-                        {mon.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
-                </div>
-
                 {/* Help Tooltips Section */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -11559,10 +11492,178 @@ export default function App() {
                     />
                   </div>
                 </div>
-                
+
                 </>)}
 
                 {settingsTab === 'appearance' && (<>
+                <div className="space-y-4">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 text-slate-500" />
+                    {t('appearance_layout_title')}
+                  </label>
+                  {/* Scale Selection */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-slate-500" />
+                      {t('general_scale')}
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        min="50" max="150"
+                        value={cardScale}
+                        onChange={(e) => setCardScale(Number(e.target.value))}
+                        className="flex-1 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-sm text-blue-400 font-mono w-[30px] text-right">{cardScale}%</span>
+                    </div>
+                    <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
+                  </div>
+
+                  {/* Monitor Selection */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                      <Monitor className="w-4 h-4 text-slate-500" />
+                      {t('general_monitor')}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMonitor('follow-cursor');
+                          localStorage.setItem('selectedMonitor', 'follow-cursor');
+                          if (isElectron) {
+                            window.electronAPI!.setMonitor('follow-cursor');
+                          }
+                        }}
+                        className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          selectedMonitor === 'follow-cursor'
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                        }`}
+                      >
+                        {t('general_monitor_follow')}
+                      </button>
+                      {monitors.map(mon => (
+                        <button
+                          key={mon.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedMonitor(mon.id);
+                            localStorage.setItem('selectedMonitor', mon.id);
+                            if (isElectron) {
+                              window.electronAPI!.setMonitor(mon.id);
+                            }
+                          }}
+                          className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            selectedMonitor === mon.id
+                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm'
+                              : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                          }`}
+                        >
+                          {mon.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
+                  </div>
+                  <div className="space-y-3 pt-6 border-t border-white/5">
+                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-cyan-500" />
+                      {t('appearance_visible_items_title')}
+                    </label>
+                    <div className="space-y-2">
+                      {/* Header Clock Toggle */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                            <Clock className="w-4 h-4 text-cyan-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_header_clock')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_header_clock_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch
+                          checked={showHeaderClock}
+                          onChange={() => {
+                            const newVal = !showHeaderClock;
+                            setShowHeaderClock(newVal);
+                            localStorage.setItem('showHeaderClock', newVal.toString());
+                          }}
+                          ariaLabel={t('sys_show_header_clock')}
+                        />
+                      </div>
+
+                      {/* Footer System Uptime Toggle */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                            <Power className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_uptime')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_uptime_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch
+                          checked={showFooterUptime}
+                          onChange={() => {
+                            const newVal = !showFooterUptime;
+                            setShowFooterUptime(newVal);
+                            localStorage.setItem('showFooterUptime', newVal.toString());
+                          }}
+                          ariaLabel={t('sys_show_footer_uptime')}
+                        />
+                      </div>
+
+                      {/* Footer Launch Counter Toggle */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                            <ChevronRight className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_launches')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_launches_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch
+                          checked={showFooterLaunches}
+                          onChange={() => {
+                            const newVal = !showFooterLaunches;
+                            setShowFooterLaunches(newVal);
+                            localStorage.setItem('showFooterLaunches', newVal.toString());
+                          }}
+                          ariaLabel={t('sys_show_footer_launches')}
+                        />
+                      </div>
+
+                      {/* Footer Date & Time Toggle */}
+                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
+                            <Calendar className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_datetime')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_datetime_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch
+                          checked={showFooterDateTime}
+                          onChange={() => {
+                            const newVal = !showFooterDateTime;
+                            setShowFooterDateTime(newVal);
+                            localStorage.setItem('showFooterDateTime', newVal.toString());
+                          }}
+                          ariaLabel={t('sys_show_footer_datetime')}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Background Type Selector */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_bg_type')}</label>
@@ -12174,94 +12275,6 @@ export default function App() {
                         checked={resetOnLaunch}
                         onChange={() => setResetOnLaunch(!resetOnLaunch)}
                         ariaLabel={t('general_reset_on_launch')}
-                      />
-                    </div>
-
-                    {/* Header Clock Toggle */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <Clock className="w-4 h-4 text-cyan-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_header_clock')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_header_clock_desc')}</p>
-                        </div>
-                      </div>
-                      <ToggleSwitch
-                        checked={showHeaderClock}
-                        onChange={() => {
-                          const newVal = !showHeaderClock;
-                          setShowHeaderClock(newVal);
-                          localStorage.setItem('showHeaderClock', newVal.toString());
-                        }}
-                        ariaLabel={t('sys_show_header_clock')}
-                      />
-                    </div>
-
-                    {/* Footer System Uptime Toggle */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                          <Power className="w-4 h-4 text-emerald-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_uptime')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_uptime_desc')}</p>
-                        </div>
-                      </div>
-                      <ToggleSwitch
-                        checked={showFooterUptime}
-                        onChange={() => {
-                          const newVal = !showFooterUptime;
-                          setShowFooterUptime(newVal);
-                          localStorage.setItem('showFooterUptime', newVal.toString());
-                        }}
-                        ariaLabel={t('sys_show_footer_uptime')}
-                      />
-                    </div>
-
-                    {/* Footer Launch Counter Toggle */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                          <ChevronRight className="w-4 h-4 text-emerald-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_launches')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_launches_desc')}</p>
-                        </div>
-                      </div>
-                      <ToggleSwitch
-                        checked={showFooterLaunches}
-                        onChange={() => {
-                          const newVal = !showFooterLaunches;
-                          setShowFooterLaunches(newVal);
-                          localStorage.setItem('showFooterLaunches', newVal.toString());
-                        }}
-                        ariaLabel={t('sys_show_footer_launches')}
-                      />
-                    </div>
-
-                    {/* Footer Date & Time Toggle */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                          <Calendar className="w-4 h-4 text-emerald-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_datetime')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('sys_show_footer_datetime_desc')}</p>
-                        </div>
-                      </div>
-                      <ToggleSwitch
-                        checked={showFooterDateTime}
-                        onChange={() => {
-                          const newVal = !showFooterDateTime;
-                          setShowFooterDateTime(newVal);
-                          localStorage.setItem('showFooterDateTime', newVal.toString());
-                        }}
-                        ariaLabel={t('sys_show_footer_datetime')}
                       />
                     </div>
 

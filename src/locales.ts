@@ -231,6 +231,8 @@ export const translations = {
     general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/filtro/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
 
     // Appearance Settings Tab
+    appearance_layout_title: "DISEÑO DEL LANZADOR",
+    appearance_visible_items_title: "ELEMENTOS VISIBLES",
     app_bg_type: "TIPO DE FONDO",
     app_bg_image: "Imagen",
     app_bg_gradient: "Gradiente",
@@ -378,9 +380,9 @@ export const translations = {
     settings_factory_reset_btn: "Restablecer ajustes",
     factory_reset_modal_title: "¿Restablecer configuración de fábrica?",
     factory_reset_modal_intro: "Se restablecerán los siguientes ajustes a sus valores originales:",
-    factory_reset_item_general: "General y diseño: atajos (Alt+Shift+L y Alt+Shift+B), monitor primario, idioma del sistema, escala al 100%, cuadrícula alfabética, tooltips, esquinas activas y tamaño/estado de paneles.",
-    factory_reset_item_appearance: "Apariencia: fondo de imagen predeterminado, intensidad de vidrio al 70%, opacidad al 70%, y limpieza de URL o imagen personalizada.",
-    factory_reset_item_system: "Sistema y alertas: inicio con Windows desactivado, ocultar al perder foco, reloj/pie de página, alertas de disco y RAM (80%) y verificación de iconos.",
+    factory_reset_item_general: "General: atajos (Alt+Shift+L y Alt+Shift+B), idioma del sistema, cuadrícula alfabética, tooltips, esquinas activas y tamaño/estado de paneles.",
+    factory_reset_item_appearance: "Apariencia y diseño: monitor principal, escala de tarjetas al 100%, reloj de cabecera y métricas del pie, fondo predeterminado, intensidad de vidrio y opacidad al 70%, y limpieza de URL o imagen personalizada.",
+    factory_reset_item_system: "Sistema y alertas: inicio con Windows desactivado, ocultar al perder foco, alertas de disco y RAM (80%) y verificación de iconos.",
     factory_reset_item_cyberbot: "CyberBot y respaldos: compañero activo abajo a la derecha, conversación normal, horas silenciosas desactivadas, nombre borrado y preferencias de respaldo automático.",
     factory_reset_preserve_note: "Tus archivos .json de copias de seguridad en disco y el índice de búsqueda se conservan intactos.",
     factory_reset_include_apps_label: "También restablecer accesos directos, categorías, favoritos e historial",
@@ -1254,6 +1256,8 @@ export const translations = {
     general_reset_on_launch_desc: "When opening the launcher, clears search/filter/scroll and sets category to 'ALL' (once per open).",
 
     // Appearance Settings Tab
+    appearance_layout_title: "LAUNCHER LAYOUT",
+    appearance_visible_items_title: "VISIBLE ITEMS",
     app_bg_type: "BACKGROUND TYPE",
     app_bg_image: "Image",
     app_bg_gradient: "Gradient",
@@ -1401,9 +1405,9 @@ export const translations = {
     settings_factory_reset_btn: "Reset settings",
     factory_reset_modal_title: "Reset to factory settings?",
     factory_reset_modal_intro: "The following settings will be restored to their original defaults:",
-    factory_reset_item_general: "General & layout: shortcuts (Alt+Shift+L and Alt+Shift+B), primary monitor, system language, 100% card scale, alphabetical grid view, tooltips, hotspots, and sidebar sizes.",
-    factory_reset_item_appearance: "Appearance: default image background, 70% glass intensity, 70% opacity, and clearing any custom URL or image.",
-    factory_reset_item_system: "System & alerts: Windows startup disabled, hide on blur, clock/footer visibility, disk and RAM (80%) alerts, and startup icon check.",
+    factory_reset_item_general: "General: shortcuts (Alt+Shift+L and Alt+Shift+B), system language, alphabetical grid view, tooltips, hotspots, and sidebar sizes.",
+    factory_reset_item_appearance: "Appearance & layout: primary monitor, 100% card scale, header clock and footer metrics, default background, 70% glass intensity and opacity, and clearing any custom URL or image.",
+    factory_reset_item_system: "System & alerts: Windows startup disabled, hide on blur, disk and RAM (80%) alerts, and startup icon check.",
     factory_reset_item_cyberbot: "CyberBot & backups: companion enabled at bottom-right, normal chatter, quiet hours disabled, cleared name, and automatic backup preferences.",
     factory_reset_preserve_note: "Your .json backup files saved on disk and the search index remain untouched.",
     factory_reset_include_apps_label: "Also reset shortcuts, categories, favorites, and launch history",

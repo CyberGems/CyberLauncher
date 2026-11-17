@@ -108,7 +108,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     {t('onboarding_badge')}
                   </span>
                 </div>
-                <h2 id="onboarding-title" className="text-lg font-cyber font-bold text-white tracking-wide">
+                <h2 id="onboarding-title" className="text-lg font-brand font-bold text-white tracking-wide">
                   {t('onboarding_title')}
                 </h2>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
