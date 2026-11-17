@@ -11355,7 +11355,7 @@ export default function App() {
                 </div>
 
                 {/* Right Scrollable Panel Content */}
-                <div className="p-6 custom-scrollbar flex-1 text-slate-300 overflow-y-auto space-y-8">
+                <div key={settingsTab} className="p-6 custom-scrollbar flex-1 min-h-0 text-slate-300 overflow-y-auto space-y-8">
 
                 {settingsTab === 'general' && (<>
                 {/* Language Selection Config */}
@@ -11463,6 +11463,54 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
 
+                {/* Monitor Selection */}
+                <div className="space-y-3">
+                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-slate-500" />
+                    {t('general_monitor')}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonitor('follow-cursor');
+                        localStorage.setItem('selectedMonitor', 'follow-cursor');
+                        if (isElectron) {
+                          window.electronAPI!.setMonitor('follow-cursor');
+                        }
+                      }}
+                      className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        selectedMonitor === 'follow-cursor'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                          : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                      }`}
+                    >
+                      {t('general_monitor_follow')}
+                    </button>
+                    {monitors.map(mon => (
+                      <button
+                        key={mon.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMonitor(mon.id);
+                          localStorage.setItem('selectedMonitor', mon.id);
+                          if (isElectron) {
+                            window.electronAPI!.setMonitor(mon.id);
+                          }
+                        }}
+                        className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          selectedMonitor === mon.id
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm'
+                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
+                        }`}
+                      >
+                        {mon.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
+                </div>
+
                 {/* Help Tooltips Section */}
                 <div className="space-y-3">
                   <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -11520,53 +11568,6 @@ export default function App() {
                     <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
                   </div>
 
-                  {/* Monitor Selection */}
-                  <div className="space-y-3">
-                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                      <Monitor className="w-4 h-4 text-slate-500" />
-                      {t('general_monitor')}
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedMonitor('follow-cursor');
-                          localStorage.setItem('selectedMonitor', 'follow-cursor');
-                          if (isElectron) {
-                            window.electronAPI!.setMonitor('follow-cursor');
-                          }
-                        }}
-                        className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                          selectedMonitor === 'follow-cursor'
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                        }`}
-                      >
-                        {t('general_monitor_follow')}
-                      </button>
-                      {monitors.map(mon => (
-                        <button
-                          key={mon.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedMonitor(mon.id);
-                            localStorage.setItem('selectedMonitor', mon.id);
-                            if (isElectron) {
-                              window.electronAPI!.setMonitor(mon.id);
-                            }
-                          }}
-                          className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                            selectedMonitor === mon.id
-                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm'
-                              : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                          }`}
-                        >
-                          {mon.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-500">{t('general_monitor_desc')}</p>
-                  </div>
                   <div className="space-y-3 pt-6 border-t border-white/5">
                     <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
                       <Eye className="w-4 h-4 text-cyan-500" />
@@ -14211,7 +14212,7 @@ export default function App() {
             <button
               onClick={() => {
                 setFooterContextMenu(null);
-                setSettingsTab('system');
+                setSettingsTab('appearance');
                 setIsSettingsOpen(true);
               }}
               className="w-full text-left px-3.5 py-1.5 hover:bg-white/10 transition-colors flex items-center justify-between text-slate-400 hover:text-slate-200 cursor-pointer"
