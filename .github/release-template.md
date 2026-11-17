@@ -8,7 +8,7 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
-Bilingual onboarding with starter categories, portable cross-PC backups with embedded icons and wallpapers, original preset art, full editable text context menus, standardized suite controls, missing-target recovery, collapsible favorites, and scheduler search refine the launcher experience.
+The floating CyberBot arrives: a collapsible, draggable companion that searches shortcuts from its own window and sleeps when idle. Power actions can be scheduled with a countdown chip, Store imports move to a dedicated dialog, and Outfit typography unifies the launcher and tray.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps, files, shortcuts, and console commands from a unified panel.
@@ -17,32 +17,22 @@ Bilingual onboarding with starter categories, portable cross-PC backups with emb
 
 ### ✨ Key Features & Highlights
 
-- 🧭 **Bilingual Onboarding & Optional CyberBot Assistant**:
-  - First-run wizard sets interface language cleanly and initializes 5 starter categories, 5 favorites, and 5 taskbar pins ready to customize.
-  - Opt in to the CyberBot Assistant during setup (or toggle anytime in Settings), backed by factory reset with double confirmation.
-  - Fixed-to-screen maximized bounds keep the launcher taskbar flush with the screen edge across monitors.
+- 🤖 **Floating CyberBot**: A collapsible, draggable companion bubble opens shortcut search in its own floating window from the global shortcut, sleeps with idle expressions and a chest meter, keeps its bounds stable across monitor DPI changes, and suspends while the launcher is visible. Fold it, drag it, or hide it from Settings.
 
-- 💾 **Portable Backups & Original Visuals**:
-  - Automatic backups (default 3 retained copies) and manual JSON exports embed custom local icons and wallpapers so restores match across PCs.
-  - Original 16:9 CyberLauncher preset backgrounds paired with crisp thumbnail selection and a dark suite-aligned NSIS installer sidebar.
-  - Hide-on-blur is disabled by default on fresh installs so accidental focus changes stay friendly for new users.
+- ⏱️ **Power scheduling with a countdown**: Schedule sleep, restart, or shutdown with a countdown chip, custom minutes confirmed with Enter, and an apply-now button. It persists across restarts, reminds you when the window hides to the tray, and its toast evades the CyberBot popup.
 
-- 🎨 **Suite-Standard UI & Organization Upgrades**:
-  - Shared styled bilingual context menu (`Undo`, `Redo`, `Cut`, `Copy`, `Paste`, `Select All`, `Delete`) on every editable text field.
-  - Standardized custom `ToggleSwitch`, `CustomSelect`, and `Checkbox` controls (including the tray pin popup), unified CyberBot bubbles, and calmed modal glows.
-  - Renamed `All` to `All Items` (`Todo` in Spanish) with matching section icons, plus a clickable collapsible `FAVORITES` header with hover chevron and count badge.
+- 🏪 **A dedicated Store import dialog**: Microsoft Store imports move to a standalone, branded dialog with discovery progress, duplicate merging, pin options, and a friendly recovery modal that searches the Store when an imported app goes missing.
 
-- ⏱️ **Scheduler, UWP & Missing-Target Improvements**:
-  - Redesigned dark-glass analog clock with etched app watermark and enlarged digital readout alongside inline shortcut filtering inside the Scheduler selector.
-  - UWP import dialog highlights app icon and name while remembering the last picked category per session.
-  - Missing shortcut modal offers one-click target browsing or direct deletion when paths move.
+- 🔤 **Outfit typography and appearance reorganization**: The app and tray adopt the Outfit typeface, launcher layout controls move to the top of Appearance, and display settings join that tab.
+
+- 🛠️ **Under the hood**: Shell icons extract in one batched PowerShell pass with transparency preserved and self-healing caches, hide-on-blur pauses while dialogs are open, and scheduled tasks plus indexer settings embed in exports and backups.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-La configuración inicial bilingüe con accesos curados, copias portables con iconos y fondos incrustados, fondos originales, menú contextual en todo campo de texto, controles unificados de la suite, recuperación de rutas, favoritos plegables y búsqueda en el Programador refinan el lanzador.
+Llega el CyberBot flotante: un compañero plegable y arrastrable que busca accesos desde su propia ventana y duerme cuando está inactivo. Las acciones de energía se programan con cuenta atrás, las importaciones de la Store pasan a un diálogo dedicado y la tipografía Outfit unifica el lanzador y la bandeja.
 
 > **¿Nuevo en CyberLauncher?** Un lanzador para Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps, archivos, accesos directos y comandos desde un panel unificado.
 
@@ -50,25 +40,15 @@ La configuración inicial bilingüe con accesos curados, copias portables con ic
 
 ### ✨ Novedades destacadas
 
-- 🧭 **Configuración inicial bilingüe y Asistente CyberBot opcional**:
-  - El asistente inicial ajusta el idioma y prepara 5 categorías básicas, 5 favoritos y 5 anclajes en barra listos para personalizar.
-  - Permite activar o dejar desactivado el Asistente CyberBot desde el primer inicio, junto a un restablecimiento de fábrica con confirmación.
-  - Límites exactos al maximizar para mantener la barra inferior alineada hasta el borde en cualquier monitor.
+- 🤖 **CyberBot flotante**: Una burbuja compañera plegable y arrastrable abre la búsqueda de accesos en su propia ventana flotante desde el atajo global, duerme con expresiones de inactividad y un medidor en el pecho, mantiene sus límites estables entre cambios de DPI del monitor y se suspende mientras el lanzador está visible. Plégalo, arrástralo u ocúltalo desde Ajustes.
 
-- 💾 **Copias portables entre equipos y arte original**:
-  - Los respaldos automáticos (3 copias por defecto) y exportaciones JSON incrustan iconos personalizados y fondos locales para restaurar todo intacto incluso en otro PC.
-  - Fondos 16:9 originales de CyberLauncher con selector de miniaturas nítido y barra lateral oscura para el instalador NSIS acorde a la suite.
-  - Ocultar al perder el foco desactivado por defecto en instalaciones nuevas para ofrecer una primera experiencia más cómoda.
+- ⏱️ **Programación de energía con cuenta atrás**: Programa suspensión, reinicio o apagado con un chip de cuenta atrás, minutos personalizados confirmados con Enter y un botón de aplicar ahora. Persiste entre reinicios, te avisa al ocultar la ventana en la bandeja y su toast evade la ventana de CyberBot.
 
-- 🎨 **Controles de la suite y mejoras de organización**:
-  - Menú contextual bilingüe compartido (`Deshacer`, `Rehacer`, `Cortar`, `Copiar`, `Pegar`, `Seleccionar todo`, `Eliminar`) en todos los campos de texto editables.
-  - Controles `ToggleSwitch`, `CustomSelect` y `Checkbox` unificados (incluido el aviso de bandeja), globos consistentes en CyberBot y brillos moderados en modales.
-  - Sección renombrada a `Todo` (`All Items` en inglés) con icono en barra y cabecera, y título `FAVORITOS` clicable para contraer o expandir con tooltip y contador.
+- 🏪 **Diálogo dedicado para importar de la Store**: Las importaciones de Microsoft Store pasan a un diálogo independiente con la marca, progreso de descubrimiento, fusión de duplicados, opciones de anclaje y un modal de recuperación que busca en la Store cuando una app importada desaparece.
 
-- ⏱️ **Programador, UWP y recuperación de accesos**:
-  - Reloj analógico rediseñado en cristal oscuro con marca de agua del cohete, lectura digital ampliada y buscador inline dentro del selector del Programador.
-  - El diálogo de importación UWP prioriza el icono y el nombre de la app y recuerda la última categoría elegida en la sesión.
-  - El aviso de destino no encontrado permite reubicar la ruta o eliminar el acceso directamente desde el modal.
+- 🔤 **Tipografía Outfit y Apariencia reorganizada**: La app y la bandeja adoptan la tipografía Outfit, los controles del diseño del lanzador pasan al inicio de Apariencia, y los ajustes de pantalla se unen a esa pestaña.
+
+- 🛠️ **Bajo el capó**: Los iconos del Shell se extraen en un solo pase de PowerShell con transparencia conservada y cachés que se autocuran, la ocultación al perder el foco se pausa con diálogos abiertos, y las tareas programadas y los ajustes del indexador se incrustan en exportaciones y copias.
 
 ### ⚠️ Antes de instalar
 

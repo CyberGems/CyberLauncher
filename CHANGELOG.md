@@ -2,6 +2,30 @@
 
 All notable changes to CyberLauncher are documented here.
 
+## [1.16.0] - 2026-11-17
+
+### 🇺🇸 English
+
+- Add the floating CyberBot: a collapsible, draggable bubble that opens shortcut search in its own window from the global shortcut, sleeps with idle expressions and a chest meter, keeps its bounds stable across monitor DPI changes, and suspends while the launcher is visible.
+- Add power action scheduling with a countdown chip, custom minutes confirmed with Enter, an apply-now button, persistence across restarts, and a reminder when the window hides to the tray.
+- Move Microsoft Store imports to a standalone branded dialog with discovery progress, duplicate merging, pin options, and a recovery modal that searches the Store for missing apps.
+- Adopt the Outfit typeface for the app and tray branding, move launcher layout controls to the top of Appearance, and group display settings into that tab.
+- Batch shell icon extraction into one PowerShell process, preserve icon transparency, and self-heal black-boxed cached icons.
+- Pause hide-on-blur while any modal or blocking overlay is open, and fix power schedule toast collisions with the CyberBot popup.
+- Persist scheduled tasks and embed indexer settings in exports and backups.
+- Ship winget manifests with every release and automate Windows Package Manager submissions.
+
+### 🇪🇸 Español
+
+- Añade el CyberBot flotante: una burbuja plegable y arrastrable que abre la búsqueda de accesos en su propia ventana desde el atajo global, duerme con expresiones de inactividad y un medidor en el pecho, mantiene sus límites estables entre cambios de DPI del monitor y se suspende mientras el lanzador está visible.
+- Añade la programación de acciones de energía con chip de cuenta atrás, minutos personalizados confirmados con Enter, botón de aplicar ahora, persistencia entre reinicios y aviso al ocultar la ventana en la bandeja.
+- Pasa las importaciones de Microsoft Store a un diálogo independiente con la marca, progreso de descubrimiento, fusión de duplicados, opciones de anclaje y un modal de recuperación que busca en la Store las apps desaparecidas.
+- Adopta la tipografía Outfit para la marca de la app y la bandeja, mueve los controles del diseño del lanzador al inicio de Apariencia y agrupa los ajustes de pantalla en esa pestaña.
+- Agrupa la extracción de iconos del Shell en un solo proceso de PowerShell, conserva la transparencia y autocura las cachés en negro.
+- Pausa la ocultación al perder el foco mientras haya diálogos o superposiciones bloqueantes, y corrige las colisiones del toast de programación con la ventana de CyberBot.
+- Persiste las tareas programadas e incrusta los ajustes del indexador en exportaciones y copias.
+- Publica manifiestos winget con cada release y automatiza los envíos al Windows Package Manager.
+
 ## [1.15.0] - 2026-11-14
 
 ### 🇺🇸 English
