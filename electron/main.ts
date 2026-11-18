@@ -2384,7 +2384,7 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   }
 
   if (action === 'help-donate') {
-    void shell.openExternal('https://ko-fi.com/cybergems');
+    void shell.openExternal('https://github.com/CyberGems/CyberLauncher#%EF%B8%8F-donate');
     return;
   }
 
