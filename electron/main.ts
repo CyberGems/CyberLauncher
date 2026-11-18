@@ -1508,10 +1508,16 @@ let trayMenuShowFallback: ReturnType<typeof setTimeout> | null = null;
 let trayMenuRevealTimer: ReturnType<typeof setTimeout> | null = null;
 let trayMenuLastShown = 0;
 const TRAY_MENU_CARD_WIDTH = 292;
+const TRAY_MENU_FLYOUT_WIDTH = 292;
+const TRAY_MENU_FLYOUT_GAP = 8;
+const TRAY_MENU_FLYOUT_SPAN = TRAY_MENU_FLYOUT_GAP + TRAY_MENU_FLYOUT_WIDTH;
 const TRAY_MENU_SHADOW_PAD = 24;
+const TRAY_MENU_WINDOW_WIDTH = TRAY_MENU_CARD_WIDTH + TRAY_MENU_FLYOUT_SPAN + 2 * TRAY_MENU_SHADOW_PAD;
 const TRAY_MENU_EST_HEIGHT = 550;
 let lastTrayMenuHeight = 550;
 let mainViewHeight = 550;
+let trayMenuFlyoutSide: 'left' | 'right' = 'left';
+let trayMenuVerticalAlign: 'bottom' | 'top' = 'bottom';
 
 let showTrayRecentsConfig = true;
 let showSuiteRecommendationsConfig = true;
@@ -1554,11 +1560,13 @@ function buildTrayMenuState(resetView = false) {
     showSuiteRecommendations: showSuiteRecommendationsConfig,
     recents: trayRecents,
     suiteApps,
+    flyoutSide: trayMenuFlyoutSide,
+    verticalAlign: trayMenuVerticalAlign,
     resetView,
   };
 }
 
-function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
+function trayMenuGeometry(iconBounds: any, _windowW: number, windowH: number) {
   let b = (iconBounds && typeof iconBounds.x === 'number' && (iconBounds.width || iconBounds.height))
     ? { x: iconBounds.x, y: iconBounds.y, width: iconBounds.width || 0, height: iconBounds.height || 0 }
     : null;
@@ -1572,14 +1580,16 @@ function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
   let display: any;
   try { display = screen.getDisplayNearestPoint({ x: cx, y: cy }); }
   catch (_) { display = screen.getPrimaryDisplay(); }
-  const work = (display && display.workArea) || { x: 0, y: 0, width: windowW, height: windowH };
+  const work = (display && display.workArea) || { x: 0, y: 0, width: TRAY_MENU_WINDOW_WIDTH, height: windowH };
 
   const gap = 4;
   const pad = TRAY_MENU_SHADOW_PAD;
-  const cardW = windowW - 2 * pad;
+  const cardW = TRAY_MENU_CARD_WIDTH;
+  const mainWindowW = cardW + 2 * pad;
   const cardH = windowH - 2 * pad;
 
   let cardX: number, cardY: number;
+  let verticalAlign: 'bottom' | 'top' = 'bottom';
   const dLeft = cx - work.x;
   const dRight = (work.x + work.width) - cx;
   const dTop = cy - work.y;
@@ -1588,30 +1598,46 @@ function trayMenuGeometry(iconBounds: any, windowW: number, windowH: number) {
   if (dBottom <= dLeft && dBottom <= dRight && dBottom <= dTop) {
     cardX = cx - cardW / 2;
     cardY = b.y - gap - cardH;
+    verticalAlign = 'bottom';
   } else if (dTop <= dLeft && dTop <= dRight) {
     cardX = cx - cardW / 2;
     cardY = b.y + b.height + gap;
+    verticalAlign = 'top';
   } else if (dLeft <= dRight) {
     cardX = b.x + b.width + gap;
     cardY = cy - cardH / 2;
+    verticalAlign = 'bottom';
   } else {
     cardX = b.x - gap - cardW;
     cardY = cy - cardH / 2;
+    verticalAlign = 'bottom';
   }
 
-  // Position outer window centered on card
-  let windowX = cardX - pad;
-  let windowY = cardY - pad;
+  // Anchor main card window inside display workArea, then expand the canvas
+  // on the side with available space so the main card never shifts when a flyout opens.
+  const mainWindowX = Math.min(Math.max(cardX - pad, work.x + 2), work.x + work.width - mainWindowW - 2);
+  const spaceLeft = mainWindowX - (work.x + 2);
+  const spaceRight = (work.x + work.width - 2) - (mainWindowX + mainWindowW);
+  const preferLeft = cx >= work.x + work.width / 2;
+  const flyoutSide: 'left' | 'right' = preferLeft
+    ? ((spaceLeft >= TRAY_MENU_FLYOUT_SPAN || spaceLeft >= spaceRight) ? 'left' : 'right')
+    : ((spaceRight >= TRAY_MENU_FLYOUT_SPAN || spaceRight >= spaceLeft) ? 'right' : 'left');
 
-  // Clamp outer window strictly inside display workArea / screen boundaries.
-  // This guarantees that the window padding (where the shadow fades out) never
-  // crosses the monitor boundary, eliminating sharp shadow clipping by DWM.
-  windowX = Math.min(Math.max(windowX, work.x + 2), work.x + work.width - windowW - 2);
+  const rawWindowX = flyoutSide === 'left' ? mainWindowX - TRAY_MENU_FLYOUT_SPAN : mainWindowX;
+  const windowX = Math.min(Math.max(rawWindowX, work.x + 2), work.x + work.width - TRAY_MENU_WINDOW_WIDTH - 2);
 
   const screenBottom = (display.bounds ? display.bounds.y + display.bounds.height : work.y + work.height) - 2;
-  windowY = Math.min(Math.max(windowY, work.y + 2), screenBottom - windowH);
+  const windowY = Math.min(Math.max(cardY - pad, work.y + 2), screenBottom - windowH);
 
-  return { x: Math.round(windowX), y: Math.round(windowY), width: Math.round(windowW), height: Math.round(windowH) };
+  trayMenuFlyoutSide = flyoutSide;
+  trayMenuVerticalAlign = verticalAlign;
+
+  return {
+    x: Math.round(windowX),
+    y: Math.round(windowY),
+    width: Math.round(TRAY_MENU_WINDOW_WIDTH),
+    height: Math.round(windowH),
+  };
 }
 
 function getTrayPreloadPath(): string {
@@ -1683,7 +1709,7 @@ function ensureTrayMenuWin(): BrowserWindow {
 
   console.log('[TRAY] Initializing tray menu window:', { trayHtml, preloadPath });
 
-  const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
+  const windowW = TRAY_MENU_WINDOW_WIDTH;
   trayMenuWin = new BrowserWindow({
     width: windowW,
     height: TRAY_MENU_EST_HEIGHT,
@@ -1799,7 +1825,7 @@ function showCustomTrayMenu(eventBounds?: any) {
   trayMenuOpen = true;
   armTrayMenuGuard(3000);
 
-  const windowW = TRAY_MENU_CARD_WIDTH + 2 * TRAY_MENU_SHADOW_PAD;
+  const windowW = TRAY_MENU_WINDOW_WIDTH;
   const initialH = mainViewHeight || lastTrayMenuHeight || TRAY_MENU_EST_HEIGHT;
   const geo = trayMenuGeometry(trayMenuAnchor, windowW, initialH);
   const current = w.getBounds();
@@ -2427,8 +2453,7 @@ ipcMain.on('tray-menu-hide', (event) => {
 ipcMain.on('tray-menu-ready', (event, rect) => {
   if (!trayMenuWin || trayMenuWin.isDestroyed() || event.sender !== trayMenuWin.webContents) return;
   if (trayMenuAnchor && rect?.height) {
-    const pad = TRAY_MENU_SHADOW_PAD;
-    const windowW = TRAY_MENU_CARD_WIDTH + 2 * pad;
+    const windowW = TRAY_MENU_WINDOW_WIDTH;
     const isMain = rect.view === 'main' || !rect.view;
 
     if (isMain) {
@@ -2442,8 +2467,6 @@ ipcMain.on('tray-menu-ready', (event, rect) => {
         trayMenuWin.setBounds(geo);
       }
     } else {
-      // In a submenu: maintain at least mainViewHeight so the window never shrinks awkwardly
-      // and forces scrolling. If the submenu needs more space, expand smoothly up to 750px.
       const desiredH = Math.min(Math.max(rect.height, mainViewHeight), 750);
       const currentBounds = trayMenuWin.getBounds();
       if (Math.abs(currentBounds.height - desiredH) > 4 || Math.abs(currentBounds.width - windowW) > 4) {
