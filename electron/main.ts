@@ -1033,11 +1033,14 @@ function createWindow() {
     }
   }, 3000);
 
-  if (VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  }
+  lockNavigation(mainWindow);
+  const load = VITE_DEV_SERVER_URL
+    ? mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    : mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  load.catch((error) => {
+    // Sin renderer la ventana queda invisible: el fallo se cuenta.
+    console.error('[WM] the main window failed to load:', error);
+  });
 
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
@@ -1647,6 +1650,31 @@ function getTrayHtmlPath(): string {
   return path.join(__dirname, '../public/tray/tray-menu.html');
 }
 
+/**
+ * Las ventanas de la app nunca navegan y nunca abren ventanas: un enlace web
+ * sale por el navegador del usuario y cualquier otra cosa se descarta. Sin
+ * esto, un renderer comprometido podría montar una página remota con el
+ * preload puesto. Mismo guard que usa desktop-cyberbot-window.
+ */
+function lockNavigation(win: BrowserWindow): void {
+  const openWebLink = (url: string): void => {
+    try {
+      const target = new URL(url);
+      if (target.protocol === 'https:' || target.protocol === 'http:') {
+        void shell.openExternal(target.toString());
+      }
+    } catch { /* ignore anything that is not a URL */ }
+  };
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openWebLink(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault();
+    openWebLink(url);
+  });
+}
+
 function ensureTrayMenuWin(): BrowserWindow {
   if (trayMenuWin && !trayMenuWin.isDestroyed()) return trayMenuWin;
 
@@ -1675,10 +1703,13 @@ function ensureTrayMenuWin(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
       backgroundThrottling: false,
     },
   });
+
+  // El preload del menú solo puentea IPC, así que corre sandboxed, y su
+  // navegación queda bloqueada como en el resto de ventanas.
+  lockNavigation(trayMenuWin);
 
   trayMenuWin.webContents.on('console-message', (_e, level, msg, line, src) => {
     console.log(`[TRAY-CONSOLE] [lvl=${level}] ${msg} (${src}:${line})`);
@@ -1693,7 +1724,17 @@ function ensureTrayMenuWin(): BrowserWindow {
   });
 
   trayMenuWin.setAlwaysOnTop(true, 'pop-up-menu');
-  void trayMenuWin.loadFile(trayHtml);
+  trayMenuWin.loadFile(trayHtml).catch((error) => {
+    console.error('[TRAY] the tray menu failed to load:', error);
+  });
+
+  // Un renderer que muere no deja menú muerto: la ventana se suelta y la
+  // siguiente apertura la reconstruye.
+  trayMenuWin.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason === 'clean-exit') return;
+    console.error('[TRAY] tray menu renderer gone:', details.reason);
+    if (trayMenuWin && !trayMenuWin.isDestroyed()) trayMenuWin.destroy();
+  });
 
   trayMenuWin.on('blur', () => {
     if (trayMenuHideTimer) return;
@@ -1878,12 +1919,14 @@ function ensureTrayPinTipWin(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
     },
   });
 
   trayPinTipWin.setAlwaysOnTop(true, 'pop-up-menu');
-  void trayPinTipWin.loadFile(htmlPath);
+  lockNavigation(trayPinTipWin);
+  trayPinTipWin.loadFile(htmlPath).catch((error) => {
+    console.error('[PIN-TIP] the tray pin tip failed to load:', error);
+  });
 
   trayPinTipWin.on('closed', () => {
     trayPinTipWin = null;
@@ -2047,11 +2090,11 @@ function ensureDesktopToastWin(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
     },
   });
 
   desktopToastWin.setAlwaysOnTop(true, 'screen-saver');
+  lockNavigation(desktopToastWin);
   const window = desktopToastWin;
   const loaded = VITE_DEV_SERVER_URL
     ? window.loadURL(new URL('/cyberbot-toast.html', VITE_DEV_SERVER_URL).href)
@@ -2320,7 +2363,14 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
   }
 
   if (action === 'suite-app' && payload?.site) {
-    void shell.openExternal(payload.site);
+    // El payload cruza el sandbox, así que no es de confianza: solo URLs web
+    // llegan al navegador del sistema.
+    try {
+      const site = new URL(String(payload.site));
+      if (site.protocol === 'https:' || site.protocol === 'http:') {
+        void shell.openExternal(site.toString());
+      }
+    } catch { /* lo que no sea una URL se descarta */ }
     return;
   }
 
@@ -5814,6 +5864,13 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch((error) => {
+  // Un arranque que falla era un unhandled rejection: sin ventana y sin
+  // mensaje. La causa se muestra al usuario.
+  const text = error instanceof Error ? error.stack || error.message : String(error);
+  console.error('[MAIN] startup failed:', text);
+  dialog.showErrorBox('CyberLauncher', `CyberLauncher no pudo iniciarse / CyberLauncher could not start:\n\n${text.slice(0, 600)}`);
+  app.exit(1);
 });
 
 app.on('window-all-closed', () => {
