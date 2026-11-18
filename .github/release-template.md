@@ -8,7 +8,7 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
-The floating CyberBot arrives: a collapsible, draggable companion that searches shortcuts from its own window and sleeps when idle. Power actions can be scheduled with a countdown chip, Store imports move to a dedicated dialog, and Outfit typography unifies the launcher and tray.
+System tray submenus now open as side-by-side flyout panels with hover dwell and keyboard navigation, and the tray Donate button links straight to the repository section. Popup windows run sandboxed with locked navigation, validated external URLs, and clear startup failure dialogs.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps, files, shortcuts, and console commands from a unified panel.
@@ -17,22 +17,15 @@ The floating CyberBot arrives: a collapsible, draggable companion that searches 
 
 ### ✨ Key Features & Highlights
 
-- 🤖 **Floating CyberBot**: A collapsible, draggable companion bubble opens shortcut search in its own floating window from the global shortcut, sleeps with idle expressions and a chest meter, keeps its bounds stable across monitor DPI changes, and suspends while the launcher is visible. Fold it, drag it, or hide it from Settings.
-
-- ⏱️ **Power scheduling with a countdown**: Schedule sleep, restart, or shutdown with a countdown chip, custom minutes confirmed with Enter, and an apply-now button. It persists across restarts, reminds you when the window hides to the tray, and its toast evades the CyberBot popup.
-
-- 🏪 **A dedicated Store import dialog**: Microsoft Store imports move to a standalone, branded dialog with discovery progress, duplicate merging, pin options, and a friendly recovery modal that searches the Store when an imported app goes missing.
-
-- 🔤 **Outfit typography and appearance reorganization**: The app and tray adopt the Outfit typeface, launcher layout controls move to the top of Appearance, and display settings join that tab.
-
-- 🛠️ **Under the hood**: Shell icons extract in one batched PowerShell pass with transparency preserved and self-healing caches, hide-on-blur pauses while dialogs are open, and scheduled tasks plus indexer settings embed in exports and backups.
+- 🪟 **Side-by-side tray flyout panels**: `Help` and `More from CyberGems` open beside the main tray menu on hover or click, support Left/Right arrow navigation and `Escape`, flip cleanly to match any monitor edge, and point Donate directly to CyberLauncher's GitHub README section.
+- 🛡️ **Sandboxed popups and safer startup**: The tray, pin tip, and toast windows run sandboxed with shared navigation locking, URL validation for renderer and tray actions, recovery if the tray renderer exits, and visible error dialogs on startup failures.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-Llega el CyberBot flotante: un compañero plegable y arrastrable que busca accesos desde su propia ventana y duerme cuando está inactivo. Las acciones de energía se programan con cuenta atrás, las importaciones de la Store pasan a un diálogo dedicado y la tipografía Outfit unifica el lanzador y la bandeja.
+Los submenús de la bandeja del sistema ahora se abren como paneles flyout laterales con retardo hover y navegación por teclado, y el botón Donar de la bandeja enlaza directo con el repositorio. Las ventanas emergentes pasan a sandbox con bloqueo de navegación, validación de URLs y avisos visibles de error al iniciar.
 
 > **¿Nuevo en CyberLauncher?** Un lanzador para Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps, archivos, accesos directos y comandos desde un panel unificado.
 
@@ -40,15 +33,8 @@ Llega el CyberBot flotante: un compañero plegable y arrastrable que busca acces
 
 ### ✨ Novedades destacadas
 
-- 🤖 **CyberBot flotante**: Una burbuja compañera plegable y arrastrable abre la búsqueda de accesos en su propia ventana flotante desde el atajo global, duerme con expresiones de inactividad y un medidor en el pecho, mantiene sus límites estables entre cambios de DPI del monitor y se suspende mientras el lanzador está visible. Plégalo, arrástralo u ocúltalo desde Ajustes.
-
-- ⏱️ **Programación de energía con cuenta atrás**: Programa suspensión, reinicio o apagado con un chip de cuenta atrás, minutos personalizados confirmados con Enter y un botón de aplicar ahora. Persiste entre reinicios, te avisa al ocultar la ventana en la bandeja y su toast evade la ventana de CyberBot.
-
-- 🏪 **Diálogo dedicado para importar de la Store**: Las importaciones de Microsoft Store pasan a un diálogo independiente con la marca, progreso de descubrimiento, fusión de duplicados, opciones de anclaje y un modal de recuperación que busca en la Store cuando una app importada desaparece.
-
-- 🔤 **Tipografía Outfit y Apariencia reorganizada**: La app y la bandeja adoptan la tipografía Outfit, los controles del diseño del lanzador pasan al inicio de Apariencia, y los ajustes de pantalla se unen a esa pestaña.
-
-- 🛠️ **Bajo el capó**: Los iconos del Shell se extraen en un solo pase de PowerShell con transparencia conservada y cachés que se autocuran, la ocultación al perder el foco se pausa con diálogos abiertos, y las tareas programadas y los ajustes del indexador se incrustan en exportaciones y copias.
+- 🪟 **Paneles flyout laterales en la bandeja**: `Ayuda` y `Más de CyberGems` se abren junto al menú principal al pasar el cursor o pulsar, admiten flechas izquierda/derecha y `Escape`, se ajustan a cualquier borde del monitor y enlazan Donar directamente al README del repositorio.
+- 🛡️ **Ventanas emergentes aisladas y arranque más seguro**: Bandeja, aviso para fijar y toasts corren en sandbox con bloqueo de navegación compartido, validación de URLs externas, recuperación si falla el renderizador de la bandeja y diálogos visibles ante errores de arranque.
 
 ### ℹ️ Antes de instalar
 

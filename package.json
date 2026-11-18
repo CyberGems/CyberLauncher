@@ -1,7 +1,7 @@
 {
   "name": "cyber-launcher",
   "private": true,
-  "version": "1.16.0",
+  "version": "1.16.1",
   "description": "Apps, files, commands and a terminal one hotkey away, with system stats.",
   "type": "module",
   "author": "CyberGems <info@cybergems.org>",

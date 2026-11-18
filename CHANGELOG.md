@@ -2,6 +2,18 @@
 
 All notable changes to CyberLauncher are documented here.
 
+## [1.16.1] - 2026-11-18
+
+### 🇺🇸 English
+
+- Convert the tray submenus (`Help` and `More from CyberGems`) into side-by-side flyout panels with dwell hover, click toggling, automatic monitor-edge placement, and keyboard arrow navigation, and point the tray Donate link directly to the repository section.
+- Sandbox popup windows (`tray`, `pin tip`, and `desktop toast`), share a navigation lock across windows, validate renderer and tray URLs before passing them to the shell, rebuild dead tray renderers on reopen, and show startup failures in a dialog.
+
+### 🇪🇸 Español
+
+- Convierte los submenús de la bandeja (`Ayuda` y `Más de CyberGems`) en paneles flyout laterales con retardo hover, alternancia por clic, colocación automática según el monitor y navegación con flechas del teclado, y apunta el enlace Donar de la bandeja a la sección del repositorio.
+- Aísla las ventanas emergentes en sandbox (`bandeja`, `aviso de fijar` y `toast de escritorio`), comparte bloqueo de navegación entre ventanas, valida enlaces antes de abrirlos en el sistema, reconstruye renderizadores de bandeja caídos y muestra errores de inicio en un diálogo.
+
 ## [1.16.0] - 2026-11-17
 
 ### 🇺🇸 English
