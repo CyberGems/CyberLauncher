@@ -637,7 +637,7 @@ function renderRecentsFlyout() {
   );
 }
 
-function renderView() {
+function renderView(prepared = false) {
   if (stageEl) {
     stageEl.dataset.flyoutSide = currentState?.flyoutSide === 'right' ? 'right' : 'left';
     stageEl.dataset.verticalAlign = currentState?.verticalAlign === 'top' ? 'top' : 'bottom';
@@ -660,7 +660,7 @@ function renderView() {
   }
   setActiveFlyout(activeFlyout);
 
-  reportSize();
+  reportSize(prepared);
 }
 
 function measureCardHeight(el) {
@@ -668,27 +668,36 @@ function measureCardHeight(el) {
   return Math.max(el.scrollHeight, Math.ceil(el.getBoundingClientRect().height));
 }
 
-function reportSize() {
+let revealRaf = null;
+
+function cancelPendingReveal() {
+  if (revealRaf !== null) { cancelAnimationFrame(revealRaf); revealRaf = null; }
+}
+
+function sendMeasuredSize(prepared) {
   if (!cardEl) return;
-  requestAnimationFrame(() => {
-    const pad = 24;
-    const showRecents = currentState ? currentState.showTrayRecents !== false : true;
-    const showSuite = currentState ? currentState.showSuiteRecommendations !== false : true;
-    const recents = (currentState && Array.isArray(currentState.recents)) ? currentState.recents : [];
+  if (stageEl) void stageEl.offsetWidth;
+  const pad = 24;
+  const showRecents = currentState ? currentState.showTrayRecents !== false : true;
+  const showSuite = currentState ? currentState.showSuiteRecommendations !== false : true;
+  const recents = (currentState && Array.isArray(currentState.recents)) ? currentState.recents : [];
 
-    const mainH = measureCardHeight(cardEl);
-    const helpH = measureCardHeight(flyoutHelpEl);
-    const suiteH = showSuite ? measureCardHeight(flyoutSuiteEl) : 0;
-    const recentsH = (showRecents && recents.length > 4) ? measureCardHeight(flyoutRecentsEl) : 0;
+  const mainH = measureCardHeight(cardEl);
+  const helpH = measureCardHeight(flyoutHelpEl);
+  const suiteH = showSuite ? measureCardHeight(flyoutSuiteEl) : 0;
+  const recentsH = (showRecents && recents.length > 4) ? measureCardHeight(flyoutRecentsEl) : 0;
 
-    const cardH = Math.max(mainH, helpH, suiteH, recentsH);
-    const h = Math.ceil(cardH + 2 * pad);
-    const w = Math.ceil(cardEl.offsetWidth + 2 * pad);
-    const api = getApi();
-    if (api && api.ready && w > 0 && h > 0) {
-      api.ready({ width: w, height: h, view: 'main' });
-    }
-  });
+  const cardH = Math.max(mainH, helpH, suiteH, recentsH);
+  const h = Math.ceil(cardH + 2 * pad);
+  const w = Math.ceil(cardEl.offsetWidth + 2 * pad);
+  const api = getApi();
+  if (api && api.ready && w > 0 && h > 0) {
+    api.ready({ width: w, height: h, view: 'main', prepared: Boolean(prepared) });
+  }
+}
+
+function reportSize(prepared) {
+  sendMeasuredSize(prepared);
 }
 
 function hideMenu() {
@@ -806,13 +815,10 @@ window.addEventListener('blur', () => {
   }, 100);
 });
 
-// Initial immediate render so card is never empty
-renderView();
-
-function resetToMain() {
+function resetHiddenState() {
+  cancelPendingReveal();
   cancelFlyoutTimers();
   setActiveFlyout(null);
-  renderView();
 }
 
 // Subscribe to IPC
@@ -833,21 +839,22 @@ function initIpc() {
           activeFlyout = null;
         }
       }
-      renderView();
+      renderView(Boolean(state && state.prepareReveal));
     });
   }
 
   if (api.onShow) {
-    api.onShow(() => resetToMain());
+    api.onShow(() => {
+      cancelPendingReveal();
+      revealRaf = requestAnimationFrame(() => {
+        revealRaf = null;
+        if (stageEl) stageEl.classList.remove('is-offscreen');
+      });
+    });
   }
 
   if (api.onReset) {
-    api.onReset(() => resetToMain());
-  }
-
-  if (api.requestState) {
-    console.log('[TRAY-REQ-STATE] requesting state from main');
-    api.requestState();
+    api.onReset(() => resetHiddenState());
   }
 
   ipcInitialized = true;
