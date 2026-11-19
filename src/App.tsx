@@ -274,6 +274,7 @@ declare global {
       windowMaximizeToggle: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowHideToTray: () => Promise<void>;
+      quitApp: () => void;
       isLauncherVisible?: () => Promise<boolean>;
       setAutoLaunch: (enabled: boolean, startMinimized?: boolean) => Promise<{ success: boolean; enabled: boolean; startMinimized?: boolean }>;
       setHideOnBlur: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
@@ -9867,6 +9868,23 @@ export default function App() {
                         <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
                       </button>
                     </div>
+
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
+                        if (isElectron) window.electronAPI?.quitApp?.();
+                      }}
+                      className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
+                    >
+                      <Power className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>{t('more_menu_exit')}</span>
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
