@@ -2,6 +2,18 @@
 
 All notable changes to CyberLauncher are documented here.
 
+## [1.16.2] - 2026-11-19
+
+### 🇺🇸 English
+
+- Fix system tray menu flicker on repeated opens and position jumps when switching between mixed-DPI monitors by destroying and prewarming the tray window with a two-step transparent reveal, and align the flyout gap to `4px`.
+- Add an `Exit CyberLauncher` action to the titlebar More menu.
+
+### 🇪🇸 Español
+
+- Corrige el parpadeo del menú de bandeja en aperturas repetidas y los saltos de posición al cambiar entre monitores con DPI mixto destruyendo y precalentando la ventana con revelado transparente en dos pasos, y ajusta el espacio de los flyouts a `4px`.
+- Añade la opción `Salir de CyberLauncher` al menú Más de la barra de título.
+
 ## [1.16.1] - 2026-11-18
 
 ### 🇺🇸 English

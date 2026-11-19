@@ -8,7 +8,7 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
-System tray submenus now open as side-by-side flyout panels with hover dwell and keyboard navigation, and the tray Donate button links straight to the repository section. Popup windows run sandboxed with locked navigation, validated external URLs, and clear startup failure dialogs.
+Eliminates system tray menu flicker on repeated opens and position jumps across mixed-DPI monitors using a fresh prewarmed tray window with two-step reveal, aligns the flyout gap to 4px, and adds Exit to the titlebar More menu.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps, files, shortcuts, and console commands from a unified panel.
@@ -17,15 +17,15 @@ System tray submenus now open as side-by-side flyout panels with hover dwell and
 
 ### ✨ Key Features & Highlights
 
-- 🪟 **Side-by-side tray flyout panels**: `Help` and `More from CyberGems` open beside the main tray menu on hover or click, support Left/Right arrow navigation and `Escape`, flip cleanly to match any monitor edge, and point Donate directly to CyberLauncher's GitHub README section.
-- 🛡️ **Sandboxed popups and safer startup**: The tray, pin tip, and toast windows run sandboxed with shared navigation locking, URL validation for renderer and tray actions, recovery if the tray renderer exits, and visible error dialogs on startup failures.
+- 🪟 **Flicker-free multi-monitor tray menu**: Replaced window hide/reuse with a fresh prewarmed tray window and two-step transparent reveal so repeated clicks and mixed-DPI monitor switches open cleanly with a `4px` flyout gap.
+- 🚪 **Exit from the titlebar menu**: Added an `Exit CyberLauncher` item to the titlebar More menu for quick full shutdown without using the system tray.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-Los submenús de la bandeja del sistema ahora se abren como paneles flyout laterales con retardo hover y navegación por teclado, y el botón Donar de la bandeja enlaza directo con el repositorio. Las ventanas emergentes pasan a sandbox con bloqueo de navegación, validación de URLs y avisos visibles de error al iniciar.
+Elimina el parpadeo del menú de bandeja en aperturas repetidas y los saltos de posición entre monitores con DPI mixto mediante una ventana precalentada con revelado en dos pasos, ajusta el espacio de flyouts a 4px y añade Salir al menú Más.
 
 > **¿Nuevo en CyberLauncher?** Un lanzador para Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps, archivos, accesos directos y comandos desde un panel unificado.
 
@@ -33,8 +33,8 @@ Los submenús de la bandeja del sistema ahora se abren como paneles flyout later
 
 ### ✨ Novedades destacadas
 
-- 🪟 **Paneles flyout laterales en la bandeja**: `Ayuda` y `Más de CyberGems` se abren junto al menú principal al pasar el cursor o pulsar, admiten flechas izquierda/derecha y `Escape`, se ajustan a cualquier borde del monitor y enlazan Donar directamente al README del repositorio.
-- 🛡️ **Ventanas emergentes aisladas y arranque más seguro**: Bandeja, aviso para fijar y toasts corren en sandbox con bloqueo de navegación compartido, validación de URLs externas, recuperación si falla el renderizador de la bandeja y diálogos visibles ante errores de arranque.
+- 🪟 **Menú de bandeja sin parpadeos en multimonitor**: Se reemplazó la reutilización tras ocultar por una ventana precalentada con revelado transparente en dos pasos para abrir sin parpadeos ni saltos entre monitores con DPI mixto y con un espacio de `4px` entre flyouts.
+- 🚪 **Opción Salir en la barra de título**: Se agregó `Salir de CyberLauncher` al menú Más de la barra de título para cerrar la aplicación por completo sin pasar por la bandeja del sistema.
 
 ### ℹ️ Antes de instalar
 
