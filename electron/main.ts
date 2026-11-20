@@ -2300,7 +2300,8 @@ function hideDesktopToastInternal() {
 
 function formatTrayTooltip(shortcut?: string): string {
   const clean = String(shortcut || '').trim();
-  return clean ? `CyberLauncher · ${clean}` : 'CyberLauncher';
+  const text = clean ? `CyberLauncher · ${clean}` : 'CyberLauncher';
+  return text.length > 63 ? `${text.slice(0, 62)}…` : text;
 }
 
 function rebuildTrayMenu(): void {
