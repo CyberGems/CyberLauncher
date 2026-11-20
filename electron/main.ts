@@ -11,6 +11,7 @@ import { activateStoreApp, resolveStoreAppLauncher } from './store-app-launch';
 import { isUriAppTarget, normalizeAppTarget, resolveAppFileTarget } from './app-target';
 import { createDesktopCyberBotWindow } from './desktop-cyberbot-window';
 import { desktopToastBounds } from './desktop-cyberbot-layout';
+import { formatTrayTooltip } from './tray-tooltip';
 import type { DesktopCyberBotCatalog, DesktopCyberBotContext, DesktopCyberBotPosition } from '../shared/desktopCyberBot';
 import { DEFAULT_FAVORITE_APP_IDS, getDefaultWindowsApps } from '../shared/defaultApps';
 import type { StoreAppDiscoveryProgress } from '../shared/storeApps';
@@ -2295,13 +2296,6 @@ function hideDesktopToastInternal() {
   setTimeout(() => {
     if (desktopToastVisibilityVersion === version && !window.isDestroyed()) window.destroy();
   }, 220);
-}
-
-
-function formatTrayTooltip(shortcut?: string): string {
-  const clean = String(shortcut || '').trim();
-  const text = clean ? `CyberLauncher · ${clean}` : 'CyberLauncher';
-  return text.length > 63 ? `${text.slice(0, 62)}…` : text;
 }
 
 function rebuildTrayMenu(): void {
