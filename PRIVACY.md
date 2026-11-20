@@ -2,7 +2,7 @@
 
 CyberLauncher runs on your PC and keeps your data on your PC. It has **no account, no telemetry, no analytics SDK and no ads**. It never sends your layout, shortcuts or backups to its author or to anyone else.
 
-Everything it knows (layout, shortcuts or backups) stays in `%APPDATA%\CyberLauncher\` (configuration, window state, wallpapers, icon cache, backups and logs). Portable builds use a `data` folder next to the executable. No app-data removal option was found in the installer script; the data folder is kept.
+Everything it knows (layout, shortcuts or backups) stays in `%APPDATA%\CyberLauncher\` (configuration, window state, wallpapers, icon cache, backups and logs). Portable builds use a `data` folder next to the executable. The installer does not remove app data; the data folder is kept.
 
 ## When CyberLauncher goes online
 
@@ -12,7 +12,7 @@ These are all the connections CyberLauncher makes by itself. None of them sends 
 |---|---|---|---|
 | 8 seconds after launch | GitHub Releases, with release notes from `api.github.com` | Check for a newer version | `autoUpdate`; portable builds disable the updater |
 
-Links you open yourself are not part of this list.
+A link you click inside the app, or a web page you open in your browser, is your own action and is not a connection the app makes by itself.
 
 ## What CyberLauncher reads on your PC
 

@@ -2,7 +2,7 @@
 
 CyberLauncher funciona en tu PC y guarda tus datos en tu PC. **No tiene cuenta, telemetría, SDK de analítica ni anuncios.** Nunca envía tu diseño, accesos directos o copias de seguridad a su autor ni a nadie más.
 
-Todo lo que sabe (diseño, accesos directos o copias de seguridad) se queda en `%APPDATA%\CyberLauncher\` (configuración, estado de ventanas, fondos, caché de iconos, copias y logs). Las versiones portables usan una carpeta `data` junto al ejecutable. No se encontró opción de borrado de datos en el script del instalador; la carpeta se conserva.
+Todo lo que sabe (diseño, accesos directos o copias de seguridad) se queda en `%APPDATA%\CyberLauncher\` (configuración, estado de ventanas, fondos, caché de iconos, copias y logs). Las versiones portables usan una carpeta `data` junto al ejecutable. El instalador no elimina los datos de la app; la carpeta se conserva.
 
 ## Cuándo CyberLauncher se conecta a internet
 
@@ -12,7 +12,7 @@ Estas son todas las conexiones que CyberLauncher hace por su cuenta. Ninguna env
 |---|---|---|---|
 | 8 segundos después de iniciar | GitHub Releases, con notas desde `api.github.com` | Consultar una versión nueva | `autoUpdate`; las versiones portables desactivan el actualizador |
 
-Los enlaces que abres tú no están en esta lista.
+Un enlace que pulsas dentro de la app o una página web que abres en tu navegador es una acción tuya, no una conexión que la app haga por su cuenta.
 
 ## Qué lee CyberLauncher de tu PC
 
