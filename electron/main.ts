@@ -5966,3 +5966,36 @@ app.on('will-quit', () => {
   stopSystemAlerts();
   stopAutoBackupWatcher();
 });
+
+// Win+Up / Win+Down are Windows gestures: the shell performs them and the key
+// never reaches the app. A frameless window can be left out of them, so the
+// same action runs here when the key does arrive, instead of doing nothing.
+function applyWindowsSnapFallback(window: BrowserWindow, input: Electron.Input): boolean {
+  if (input.type !== 'keyDown' || !input.meta) return false;
+  if (input.alt || input.control || input.shift) return false;
+  if (input.key !== 'Up' && input.key !== 'Down') return false;
+  if (window.isDestroyed() || window.isFullScreen()) return false;
+  if (!window.isMaximizable() && !window.isMinimizable()) return false;
+
+  if (input.key === 'Up') {
+    if (window.isMaximizable() && !window.isMaximized()) window.maximize();
+  } else if (window.isMaximized()) {
+    window.unmaximize();
+  } else if (window.isMinimizable()) {
+    window.minimize();
+  }
+  return true;
+}
+
+// Alt+F4 is the close shortcut even when the X hides the launcher in the tray.
+app.on('browser-window-created', (_event, win) => {
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.alt && input.key === 'F4') {
+      event.preventDefault();
+      isQuitting = true;
+      app.quit();
+      return;
+    }
+    if (applyWindowsSnapFallback(win, input)) event.preventDefault();
+  });
+});

@@ -7440,6 +7440,21 @@ export default function App() {
         }
       }
 
+      // Title-bar menu and pin use a single Alt modifier, the suite convention.
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const altKey = e.key.toLowerCase();
+        if (altKey === 'm') {
+          e.preventDefault();
+          setIsMoreMenuOpen(prev => !prev);
+          return;
+        }
+        if (altKey === 'p') {
+          e.preventDefault();
+          setIsAlwaysOnTop(prev => !prev);
+          return;
+        }
+      }
+
       // Top bar keyboard shortcuts (single modifier: Ctrl)
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
         const key = e.key.toLowerCase();
@@ -7448,33 +7463,6 @@ export default function App() {
         if (e.key === ',' || key === ',') {
           e.preventDefault();
           setIsSettingsOpen(prev => !prev);
-          return;
-        }
-
-        // Ctrl+. -> More options menu
-        if (e.key === '.' || key === '.') {
-          e.preventDefault();
-          setIsMoreMenuOpen(prev => !prev);
-          return;
-        }
-
-        // Ctrl+M -> Minimize / Hide to tray
-        if (key === 'm') {
-          e.preventDefault();
-          if (isAlwaysOnTop) {
-            triggerPinFlash();
-          } else if (isElectron) {
-            window.electronAPI!.windowHideToTray();
-          } else {
-            setIsAppActive(false);
-          }
-          return;
-        }
-
-        // Ctrl+P -> Pin / Always on top
-        if (key === 'p') {
-          e.preventDefault();
-          setIsAlwaysOnTop(prev => !prev);
           return;
         }
 
@@ -7526,13 +7514,6 @@ export default function App() {
       if (e.key === 'F1' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         setIsAboutOpen(prev => !prev);
-        return;
-      }
-
-      // F10 also toggles More menu
-      if (e.key === 'F10' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        e.preventDefault();
-        setIsMoreMenuOpen(prev => !prev);
         return;
       }
 
@@ -9701,7 +9682,7 @@ export default function App() {
 
             {/* More options menu dropdown (CyberFeeds style) */}
             <div className="relative" ref={moreMenuRef}>
-              <Tooltip label={withShortcut(t('tooltip_more'), 'Ctrl+.')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+              <Tooltip label={withShortcut(t('tooltip_more'), 'Alt+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
                 <button
                   type="button"
                   ref={moreMenuButtonRef}
@@ -10012,7 +9993,7 @@ export default function App() {
             {/* Titlebar Divider before Window Controls */}
             <div className={rightSidebarCollapsed ? 'w-5 h-px bg-white/10 my-0.5' : 'w-[1px] h-3.5 bg-white/10 mx-0.5'} />
 
-            <Tooltip label={withShortcut(isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on'), 'Ctrl+P')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(isAlwaysOnTop ? t('tooltip_pin_off') : t('tooltip_pin_on'), 'Alt+P')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => setIsAlwaysOnTop(!isAlwaysOnTop)}
                 className={`flex items-center justify-center w-7 h-7 rounded-md transition-all group focus:outline-none cursor-pointer ${
@@ -10033,7 +10014,7 @@ export default function App() {
               </button>
             </Tooltip>
 
-            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Ctrl+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Win+Down')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
                   setIsMoreMenuOpen(false);
