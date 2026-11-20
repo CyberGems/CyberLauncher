@@ -118,6 +118,10 @@ function requestVisibleRepaint(trigger: 'show' | 'periodic') {
 }
 let tray: Tray | null = null;
 let isQuitting = false;
+// True while the Alt key is down. Windows turns Alt+F4 into a native close
+// before the F4 keydown reaches the webContents listener, so the close handler
+// needs it to tell an explicit quit from the X.
+let altHeld = false;
 let currentShortcut = 'Alt+Shift+L';
 let currentCyberBotShortcut = 'Alt+Shift+B';
 let cyberBotShortcutEnabled = true;
@@ -1045,6 +1049,17 @@ function createWindow() {
 
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
+      // Alt+F4 arrives as a native close before its keydown: while Alt is held
+      // the close is an explicit quit, so it must close the app instead of
+      // hiding the window in the tray. The renderer's beforeunload still saves
+      // the configuration on the way out.
+      if (altHeld) {
+        isQuitting = true;
+        saveWindowState();
+        // The tray keeps the process alive after the window is gone.
+        setImmediate(() => app.quit());
+        return;
+      }
       e.preventDefault();
       saveWindowState();
       windowVisibilityState = 'hidden-intentional';
@@ -5989,7 +6004,13 @@ function applyWindowsSnapFallback(window: BrowserWindow, input: Electron.Input):
 
 // Alt+F4 is the close shortcut even when the X hides the launcher in the tray.
 app.on('browser-window-created', (_event, win) => {
+  // Alt+Tab (or any other focus loss) swallows the Alt keyup, so a stale flag
+  // would turn a later X click into an explicit quit.
+  win.on('blur', () => {
+    altHeld = false;
+  });
   win.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'Alt') altHeld = input.type !== 'keyUp';
     if (input.type === 'keyDown' && input.alt && input.key === 'F4') {
       event.preventDefault();
       isQuitting = true;
