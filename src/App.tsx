@@ -8463,8 +8463,8 @@ export default function App() {
             <div
               className={`relative flex flex-wrap items-center w-full bg-black/20 backdrop-blur-md rounded-xl shadow-inner border transition-all ${
                 searchScope === 'system'
-                  ? 'border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/50 focus-within:border-emerald-500/50 focus-within:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                  : 'border-white/10 focus-within:ring-1 focus-within:ring-cyan-500/50 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
+                  ? 'border-emerald-500/30 focus-within:border-emerald-500/50 focus-within:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                  : 'border-white/10 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
               }`}
             >
               <div className="launcher-search-icon pl-4 pr-2.5 flex items-center pointer-events-none shrink-0">
