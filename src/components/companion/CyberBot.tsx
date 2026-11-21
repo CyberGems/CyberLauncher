@@ -369,11 +369,10 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         data-no-hide
         aria-hidden={!placement.bubbleVisible || idleAway || undefined}
         style={{
-          width: isPromptOpen || wideSpeech ? placement.bubbleWidth : undefined,
-          maxWidth: placement.bubbleWidth,
+          width: placement.bubbleWidth,
           visibility: placement.bubbleVisible && !placement.hidden && !idleAway ? 'visible' : 'hidden',
         }}
-        className={`absolute bottom-full mb-3 pointer-events-auto flex flex-col ${
+        className={`absolute bottom-full mb-3 pointer-events-none flex flex-col ${
           placement.align === 'left' ? 'left-0 items-start' : 'right-0 items-end'
         }`}
       >

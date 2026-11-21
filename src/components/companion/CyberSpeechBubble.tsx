@@ -72,7 +72,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       aria-atomic="true"
       data-no-hide
       onPointerDown={(event) => event.stopPropagation()}
-      className={`relative ${wide ? 'w-full' : 'w-fit min-w-[min(200px,100%)]'} max-w-full rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${borderColor} p-3 text-slate-200 select-none z-50`}
+      className={`relative pointer-events-auto ${wide ? 'w-full' : 'w-max min-w-[min(200px,100%)]'} max-w-full rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
       <Tooltip label={closeLabel} placement="top">
         <button

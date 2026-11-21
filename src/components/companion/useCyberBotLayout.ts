@@ -55,11 +55,27 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, wideSp
         }
       }
       const hasBubble = !!messageId || isPromptOpen;
+      const bubble = bubbleRef.current;
+      const heights = new Map<number, number>();
+      const measureBubbleHeight = (bubbleWidth: number) => {
+        const fallback = isPromptOpen ? 260 : 140;
+        if (!bubble) return fallback;
+        const cached = heights.get(bubbleWidth);
+        if (cached !== undefined) return cached;
+
+        // A narrow region can wrap more lines than the region the bubble currently occupies.
+        const previousWidth = bubble.style.width;
+        bubble.style.width = `${bubbleWidth}px`;
+        const height = bubble.offsetHeight || fallback;
+        bubble.style.width = previousWidth;
+        heights.set(bubbleWidth, height);
+        return height;
+      };
       const positioned = getCyberBotLayout({
         width, height,
         preferred: anchor,
         align: position === 'bottom-left' ? 'left' : 'right',
-        bubbleHeight: hasBubble ? (bubbleRef.current?.offsetHeight || (isPromptOpen ? 260 : 140)) : 0,
+        bubbleHeight: hasBubble ? measureBubbleHeight : 0,
         obstacles,
         maxBubbleWidth: isPromptOpen ? 440 : wideSpeech ? 456 : undefined,
       });

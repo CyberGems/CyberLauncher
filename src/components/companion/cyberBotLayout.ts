@@ -54,7 +54,7 @@ export function getCyberBotLayout({
   height: number;
   preferred: { left: number; top: number };
   align: 'left' | 'right';
-  bubbleHeight: number;
+  bubbleHeight: number | ((bubbleWidth: number) => number);
   obstacles: CyberBotRect[];
   maxBubbleWidth?: number;
 }): CyberBotLayout {
@@ -62,14 +62,16 @@ export function getCyberBotLayout({
   for (const obstacle of obstacles) regions = regions.flatMap(region => subtractObstacle(region, obstacle));
 
   // Try the complete companion first. When only the avatar fits, preserve room for panel controls.
-  for (const withBubble of bubbleHeight > 0 ? [true, false] : [false]) {
+  const hasBubble = typeof bubbleHeight === 'function' || bubbleHeight > 0;
+  for (const withBubble of hasBubble ? [true, false] : [false]) {
     let best: { score: number; layout: CyberBotLayout } | undefined;
     for (const region of regions) {
       const availableWidth = region.right - region.left;
       if (availableWidth < (withBubble ? 180 : CYBERBOT_SIZE)) continue;
       const bubbleWidth = Math.min(maxBubbleWidth, availableWidth);
       const footprintWidth = withBubble ? bubbleWidth : CYBERBOT_SIZE;
-      const footprintHeight = CYBERBOT_SIZE + (withBubble ? bubbleHeight + BUBBLE_GAP : 0);
+      const measuredHeight = withBubble ? (typeof bubbleHeight === 'function' ? bubbleHeight(bubbleWidth) : bubbleHeight) : 0;
+      const footprintHeight = CYBERBOT_SIZE + (withBubble ? measuredHeight + BUBBLE_GAP : 0);
       if (region.bottom - region.top < footprintHeight) continue;
 
       for (const candidateAlign of [align, align === 'left' ? 'right' : 'left'] as const) {

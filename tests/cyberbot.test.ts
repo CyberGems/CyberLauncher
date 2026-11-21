@@ -691,6 +691,22 @@ test('speech fits the narrow free strip shown beside a large panel', () => {
   assert.ok(layout.left + 94 <= 192);
 });
 
+test('bubble placement measures each candidate width before selecting a region', () => {
+  const widths: number[] = [];
+  const layout = getCyberBotLayout({
+    width: 720, height: 530, preferred: { left: 582, top: 382 }, align: 'right',
+    obstacles: [{ left: 240, top: 120, right: 500, bottom: 314 }],
+    bubbleHeight: width => {
+      widths.push(width);
+      return width < 300 ? 420 : 80;
+    },
+  });
+  assert.ok(widths.some(width => width < 300));
+  assert.equal(layout.bubbleVisible, true);
+  assert.equal(layout.bubbleWidth, 390);
+  assert.ok(layout.top >= 314 + 12 + 80 + 12);
+});
+
 test('a full-width panel hides the companion; a smaller gap can keep just the avatar', () => {
   const base = { width: 800, height: 600, preferred: { left: 674, top: 450 }, align: 'right' as const, bubbleHeight: 120 };
   assert.equal(getCyberBotLayout({ ...base, obstacles: [{ left: 0, top: 0, right: 800, bottom: 600 }] }).hidden, true);
