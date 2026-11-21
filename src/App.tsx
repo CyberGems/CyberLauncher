@@ -2671,7 +2671,7 @@ export default function App() {
   const [isHelpSubmenuOpen, setIsHelpSubmenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const [moreMenuKeyboardIndex, setMoreMenuKeyboardIndex] = useState(0);
+  const focusMoreMenuOnOpen = useRef(false);
   const helpItemRef = useRef<HTMLDivElement>(null);
   const helpSubmenuRef = useRef<HTMLDivElement>(null);
   const helpLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2682,11 +2682,15 @@ export default function App() {
     return Array.from(moreMenuRef.current.querySelectorAll<HTMLButtonElement>('.more-menu-item:not([disabled])'));
   }, []);
 
+  const toggleMoreMenu = useCallback((fromKeyboard: boolean) => {
+    focusMoreMenuOnOpen.current = fromKeyboard;
+    setIsMoreMenuOpen(open => !open);
+  }, []);
+
   const focusMoreMenuItem = useCallback((index: number) => {
     const items = getMoreMenuItems();
     if (items.length === 0) return false;
     const nextIndex = (index + items.length) % items.length;
-    setMoreMenuKeyboardIndex(nextIndex);
     items[nextIndex]?.focus();
     return true;
   }, [getMoreMenuItems]);
@@ -2713,16 +2717,8 @@ export default function App() {
     }
   }, [isElectron]);
 
-  // Focus first item when More menu opens
   useEffect(() => {
-    if (!isMoreMenuOpen) {
-      setIsHelpSubmenuOpen(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      focusMoreMenuItem(0);
-    }, 40);
-    return () => clearTimeout(timer);
+    if (isMoreMenuOpen && focusMoreMenuOnOpen.current) focusMoreMenuItem(0);
   }, [isMoreMenuOpen, focusMoreMenuItem]);
 
   useEffect(() => {
@@ -2782,17 +2778,16 @@ export default function App() {
         const items = getMoreMenuItems();
         if (items.length > 0) {
           const currentIdx = items.indexOf(document.activeElement as HTMLButtonElement);
-          const baseIdx = currentIdx >= 0 ? currentIdx : moreMenuKeyboardIndex;
           if (e.key === 'ArrowDown') {
             e.preventDefault();
             e.stopPropagation();
-            focusMoreMenuItem(baseIdx + 1);
+            focusMoreMenuItem(currentIdx + 1);
             return;
           }
           if (e.key === 'ArrowUp') {
             e.preventDefault();
             e.stopPropagation();
-            focusMoreMenuItem(baseIdx - 1);
+            focusMoreMenuItem(currentIdx < 0 ? items.length - 1 : currentIdx - 1);
             return;
           }
           if (e.key === 'Home') {
@@ -2828,7 +2823,7 @@ export default function App() {
         if (active && (moreMenuRef.current?.contains(active) || helpSubmenuRef.current?.contains(active))) {
           e.preventDefault();
           e.stopPropagation();
-          active.click();
+          if (!e.repeat) active.click();
           return;
         }
       }
@@ -2847,7 +2842,7 @@ export default function App() {
       window.removeEventListener('blur', handleBlurOrHide);
       document.removeEventListener('visibilitychange', handleBlurOrHide);
     };
-  }, [isMoreMenuOpen, isHelpSubmenuOpen, getMoreMenuItems, getHelpSubmenuItems, focusMoreMenuItem, moreMenuKeyboardIndex]);
+  }, [isMoreMenuOpen, isHelpSubmenuOpen, getMoreMenuItems, getHelpSubmenuItems, focusMoreMenuItem]);
 
   useEffect(() => {
     if (!isMoreMenuOpen) setIsHelpSubmenuOpen(false);
@@ -7441,7 +7436,7 @@ export default function App() {
         const altKey = e.key.toLowerCase();
         if (altKey === 'm') {
           e.preventDefault();
-          setIsMoreMenuOpen(prev => !prev);
+          toggleMoreMenu(true);
           return;
         }
         if (altKey === 'p') {
@@ -7731,7 +7726,7 @@ export default function App() {
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
-    submitAppForm, openTerminal, closeTerminal, handleConfirmPowerAction
+    submitAppForm, openTerminal, closeTerminal, handleConfirmPowerAction, toggleMoreMenu
   ]);
 
   const getBackgroundStyle = () => {
@@ -9640,7 +9635,13 @@ export default function App() {
                 <button
                   type="button"
                   ref={moreMenuButtonRef}
-                  onClick={() => setIsMoreMenuOpen(prev => !prev)}
+                  onClick={event => toggleMoreMenu(event.detail === 0)}
+                  onKeyDown={event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!event.repeat) toggleMoreMenu(true);
+                  }}
                   aria-label={t('tooltip_more')}
                   aria-keyshortcuts="Alt+M"
                   aria-haspopup="true"
