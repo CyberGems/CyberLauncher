@@ -12147,6 +12147,23 @@ export default function App() {
                       />
                     </div>
 
+                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
+                          <RefreshCw className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('about_auto_updates')}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{t('about_auto_updates_desc')}</p>
+                        </div>
+                      </div>
+                      <ToggleSwitch
+                        checked={autoUpdate}
+                        onChange={() => handleAutoUpdateChange(!autoUpdate)}
+                        ariaLabel={t('about_auto_updates')}
+                      />
+                    </div>
+
                     {/* Accesos Recientes en Menú del Tray */}
                     <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
