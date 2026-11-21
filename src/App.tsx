@@ -12154,7 +12154,7 @@ export default function App() {
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('about_auto_updates')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('about_auto_updates_desc')}</p>
+                          <p className="text-xs text-slate-400 leading-relaxed">{t('about_auto_updates_desc')}</p>
                         </div>
                       </div>
                       <ToggleSwitch
