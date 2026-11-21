@@ -9968,7 +9968,7 @@ export default function App() {
               </button>
             </Tooltip>
 
-            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Win+Down')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Win+↓')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
                   setIsMoreMenuOpen(false);
