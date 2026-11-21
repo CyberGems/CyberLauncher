@@ -69,13 +69,16 @@ body {
   min-inline-size: min(9rem, max(0px, 100% - 3rem));
 }
 
+.launcher-header[data-compact-resources] .launcher-header-resource-value {
+  position: absolute;
+  inset-inline-start: 0;
+  inline-size: max-content;
+  visibility: hidden;
+}
+
 @container launcher-main (width < 40rem) {
   .launcher-header-search {
     max-inline-size: none;
-  }
-
-  .launcher-header-resource-value {
-    display: none;
   }
 }
 

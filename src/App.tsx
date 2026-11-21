@@ -2153,6 +2153,7 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const launcherHeaderRef = useRef<HTMLElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [newlyAddedAppId, setNewlyAddedAppId] = useState<number | null>(null);
@@ -2164,17 +2165,32 @@ export default function App() {
   useLayoutEffect(() => {
     const content = scrollContainerRef.current;
     const main = content?.parentElement;
-    if (!content || !main) return;
+    const header = launcherHeaderRef.current;
+    const search = header?.querySelector<HTMLElement>('.launcher-header-search');
+    const resources = header?.querySelector<HTMLElement>('.launcher-header-tools');
+    if (!content || !main || !header || !search || !resources) return;
 
-    const alignHeader = () => {
+    let frame = 0;
+    const updateHeaderLayout = () => {
+      frame = 0;
       main.style.setProperty('--launcher-scrollbar-width', `${content.offsetWidth - content.clientWidth}px`);
+      // Let the flex layout test the full badges before choosing the compact row.
+      header.removeAttribute('data-compact-resources');
+      const resourcesWrap = resources.offsetTop >= search.offsetTop + search.offsetHeight;
+      header.toggleAttribute('data-compact-resources', resourcesWrap);
     };
-    const observer = new ResizeObserver(alignHeader);
-    observer.observe(content);
-    alignHeader();
+    const observer = new ResizeObserver(() => {
+      if (!frame) frame = requestAnimationFrame(updateHeaderLayout);
+    });
+    for (const element of [content, header, resources, ...resources.querySelectorAll('.launcher-header-resource-value')]) {
+      observer.observe(element);
+    }
+    updateHeaderLayout();
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       main.style.removeProperty('--launcher-scrollbar-width');
+      header.removeAttribute('data-compact-resources');
     };
   }, []);
 
@@ -8420,7 +8436,7 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="launcher-header min-h-16 flex flex-wrap content-center items-center py-2 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
+        <header ref={launcherHeaderRef} className="launcher-header min-h-16 flex flex-wrap content-center items-center py-2 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
           <div 
             className="launcher-header-search relative group"
             onMouseEnter={() => {
