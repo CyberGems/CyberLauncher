@@ -2161,6 +2161,23 @@ export default function App() {
   const altNumpadBlockedRef = useRef(false);
   const altNumpadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  useLayoutEffect(() => {
+    const content = scrollContainerRef.current;
+    const main = content?.parentElement;
+    if (!content || !main) return;
+
+    const alignHeader = () => {
+      main.style.setProperty('--launcher-scrollbar-width', `${content.offsetWidth - content.clientWidth}px`);
+    };
+    const observer = new ResizeObserver(alignHeader);
+    observer.observe(content);
+    alignHeader();
+    return () => {
+      observer.disconnect();
+      main.style.removeProperty('--launcher-scrollbar-width');
+    };
+  }, []);
+
   type KeyboardNavTarget = { section: 'favorites' | 'apps'; index: number };
   const [keyboardNav, setKeyboardNav] = useState<KeyboardNavTarget | null>(null);
 
@@ -8407,7 +8424,7 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="launcher-header min-h-16 flex flex-wrap content-center items-center px-3 py-2 sm:px-4 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
+        <header className="launcher-header min-h-16 flex flex-wrap content-center items-center py-2 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
           <div 
             className="launcher-header-search relative group"
             onMouseEnter={() => {
@@ -8743,7 +8760,7 @@ export default function App() {
         <div 
           ref={scrollContainerRef} 
           data-cyberbot-obstacle={isTerminalOpen ? 'bounds' : undefined}
-          className={`flex-1 ${isTerminalOpen ? 'px-4 pb-4' : 'px-8 pb-8'} custom-scrollbar relative z-10 flex flex-col min-h-0 ${
+          className={`flex-1 ${isTerminalOpen ? 'px-4 pb-4' : 'launcher-content pb-8'} custom-scrollbar relative z-10 flex flex-col min-h-0 ${
             (searchScope === 'system' && searchQuery.trim() !== '') || isTerminalOpen
               ? 'overflow-hidden' 
               : 'overflow-y-auto'

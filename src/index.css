@@ -50,6 +50,16 @@ body {
   container: launcher-main / inline-size;
 }
 
+.launcher-header,
+.launcher-content {
+  --launcher-content-inset: 1rem;
+  padding-inline: var(--launcher-content-inset);
+}
+
+.launcher-header {
+  padding-inline-end: calc(var(--launcher-content-inset) + var(--launcher-scrollbar-width, 0px));
+}
+
 .launcher-header-search {
   flex: 1 0 min(100%, 18rem);
   max-inline-size: 30rem;
@@ -70,8 +80,9 @@ body {
 }
 
 @container launcher-main (width >= 48rem) {
-  .launcher-header {
-    padding-inline: 2rem;
+  .launcher-header,
+  .launcher-content {
+    --launcher-content-inset: 2rem;
   }
 }
 
