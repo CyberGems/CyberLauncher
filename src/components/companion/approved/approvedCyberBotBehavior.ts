@@ -35,6 +35,7 @@ const expressions: Record<string, string> = {
   storage: '<rect x="34.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" stroke="none"/><circle cx="36" cy="41" r="1.6" fill="#f59e0b" stroke="none"/><rect x="62.5" y="29.5" width="3" height="8" rx="1.5" fill="#f59e0b" stroke="none"/><circle cx="64" cy="41" r="1.6" fill="#f59e0b" stroke="none"/><path d="M45 46 H55" stroke-width="2"/>',
   success: '<path d="M29 35 L34 40 L43 30 M57 35 L62 40 L71 30"/><path d="M44 44 Q50 48 56 43" stroke-width="1.6"/>',
   speaking: '<circle cx="36" cy="36.5" r="4.2" fill="#00f0ff" stroke="none"/><circle cx="64" cy="36.5" r="4.2" fill="#00f0ff" stroke="none"/>',
+  focused: '<path d="M29 33 H43 V36 L41 38 H29 Z M57 33 H71 V38 H59 L57 36 Z" fill="#00f0ff" stroke="none"/><path d="M46 44 H54" stroke="#38bdf8" stroke-width="1.4" opacity="0.7"/>',
 };
 
 export function approvedExpressionMarkup() {
@@ -90,7 +91,7 @@ export function createApprovedMarkup(artwork: string, prefix: string, face: Appr
     .replace('</g> <!-- end headFrontFace -->', hoverVisorMarkup + '</g> <!-- end headFrontFace -->')
     .replace(/(<g id="face-marquee-content">)[\s\S]*?<\/g>/,
       (_, open: string) => `${open}<text class="marquee-text-node" data-cyberbot-marquee="${safeMessage}" data-cyberbot-marquee-run="0" x="78" y="43" fill="#00f0ff" font-family="'JetBrains Mono', 'Segoe UI Emoji', monospace" font-size="17" font-weight="800" letter-spacing="0.04em" filter="url(#neonGlow)">${safeMessage}<animate attributeName="x" from="78" to="${timing.end}" dur="${timing.seconds}s" calcMode="linear" repeatCount="indefinite"/></text></g>`)
-    .replace(/<g id="(face-(?:eyes-default|launcher-top|launcher|marquee|terminal|curious|flight|sleeping|alert|happy|delighted|affectionate|sparkle|wink|scared|storage|success|speaking))"(?: style="display: none;")?/g,
+    .replace(/<g id="(face-(?:eyes-default|launcher-top|launcher|marquee|terminal|curious|flight|sleeping|alert|happy|delighted|affectionate|sparkle|wink|scared|storage|success|speaking|focused))"(?: style="display: none;")?/g,
       (_, name: string) => `<g id="${name}" style="display: ${name === target ? 'inline' : 'none'};"`)
     .replace(/id="equalizerBars" class="[^"]*"/, `id="equalizerBars" class="${speaking ? 'speaking-eq' : 'standby-eq'}"`)
     .replace(/id="([\w-]+)"/g, (_, part: string) => `id="${prefix}${part}" data-part="${part}"`)

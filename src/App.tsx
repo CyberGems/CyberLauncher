@@ -3661,7 +3661,7 @@ export default function App() {
             id: `update_available_${updateVersion}`,
             text: notification.message,
             detail: notification.detail,
-            emotion: 'happy',
+            emotion: 'focused',
             tag: brandTag,
             action: {
               label: t('about_download_btn'),

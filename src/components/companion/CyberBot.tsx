@@ -110,7 +110,9 @@ export const CyberBot: React.FC<CyberBotProps> = ({
   const farewellActive = !enabled && !!(farewell?.message || farewell?.departing);
   const visualEnabled = enabled || farewellActive;
   const displayedMessage = farewellActive ? farewell?.message || null : activeMessage || hoverMessage;
-  const placement = useCyberBotLayout({ enabled: visualEnabled, position: currentPos, offset: manualOffset, messageId: displayedMessage?.id, isPromptOpen, bubbleRef });
+  const wideSpeech = !!(displayedMessage?.detail || (displayedMessage?.action && displayedMessage.tertiaryAction));
+  const placement = useCyberBotLayout({ enabled: visualEnabled, position: currentPos, offset: manualOffset,
+    messageId: displayedMessage?.id, wideSpeech, isPromptOpen, bubbleRef });
   const contextChatterAllowed = chatterLevel === 'full' && (!quietHours?.enabled || !isInQuietHours(quietHours.from, quietHours.to));
   const contextAttention = (systemAttention && contextChatterAllowed) || isDragging || isPromptOpen || (!!displayedMessage && displayedMessage.priority !== 'low');
   const contextAway = useCyberBotContextPresence(enabled && !reviewingDesign, contextOpen, !!displayedMessage || isDragging || isPromptOpen, contextAttention);
@@ -367,7 +369,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
         data-no-hide
         aria-hidden={!placement.bubbleVisible || idleAway || undefined}
         style={{
-          width: isPromptOpen ? Math.min(440, placement.bubbleWidth) : undefined,
+          width: isPromptOpen || wideSpeech ? placement.bubbleWidth : undefined,
           maxWidth: placement.bubbleWidth,
           visibility: placement.bubbleVisible && !placement.hidden && !idleAway ? 'visible' : 'hidden',
         }}
@@ -391,6 +393,7 @@ export const CyberBot: React.FC<CyberBotProps> = ({
             <CyberSpeechBubble
               key={displayedMessage.id}
               message={displayedMessage}
+              wide={wideSpeech}
               onClose={farewellActive ? onDismissFarewell || (() => {}) : activeMessage ? onDismissMessage : () => hoverAssistRef.current?.cancel()}
               position={placement.align === 'left' ? 'bottom-left' : 'bottom-right'}
               closeLabel={closeLabel}

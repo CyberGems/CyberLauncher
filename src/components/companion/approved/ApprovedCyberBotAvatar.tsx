@@ -28,7 +28,7 @@ interface Props extends CyberBotReviewState {
 }
 const faces: readonly ApprovedCyberBotFace[] = [
   'default', 'launcher', 'launcher-top', 'marquee', 'terminal', 'curious', 'flight', 'sleeping', 'alert',
-  'happy', 'delighted', 'affectionate', 'sparkle', 'wink', 'scared', 'storage', 'success', 'speaking',
+  'happy', 'delighted', 'affectionate', 'sparkle', 'wink', 'scared', 'storage', 'success', 'speaking', 'focused',
 ];
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
 
@@ -190,7 +190,7 @@ export default function ApprovedCyberBotAvatar({
   }, [face, away, marqueeMode, reducedMotion, message, prefix, marqueeRun]);
 
   useEffect(() => {
-    if (reducedMotion || away || !['default', 'launcher', 'launcher-top', 'curious', 'flight', 'happy', 'delighted', 'affectionate', 'sparkle', 'speaking'].includes(face)) return;
+    if (reducedMotion || away || !['default', 'launcher', 'launcher-top', 'curious', 'flight', 'happy', 'delighted', 'affectionate', 'sparkle', 'speaking', 'focused'].includes(face)) return;
     let timer: number;
     let reset: number;
     const visor = root.current?.querySelector('[data-part="visorFaceContent"]');

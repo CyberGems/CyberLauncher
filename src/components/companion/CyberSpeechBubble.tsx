@@ -15,6 +15,7 @@ import {
 
 interface CyberSpeechBubbleProps {
   message: CyberBotMessage;
+  wide?: boolean;
   onClose: () => void;
   position?: 'bottom-right' | 'bottom-left' | 'top-right';
   closeLabel: string;
@@ -23,6 +24,7 @@ interface CyberSpeechBubbleProps {
 
 export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   message,
+  wide = false,
   onClose,
   position = 'bottom-right',
   closeLabel,
@@ -70,7 +72,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
       aria-atomic="true"
       data-no-hide
       onPointerDown={(event) => event.stopPropagation()}
-      className={`relative w-fit max-w-full min-w-[200px] rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${borderColor} p-3 text-slate-200 select-none z-50`}
+      className={`relative ${wide ? 'w-full' : 'w-fit min-w-[min(200px,100%)]'} max-w-full rounded-2xl ${CYBERBOT_BUBBLE_SURFACE} border ${borderColor} p-3 text-slate-200 select-none z-50`}
     >
       <Tooltip label={closeLabel} placement="top">
         <button
@@ -87,24 +89,22 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
         </button>
       </Tooltip>
 
-      <div className="flex items-start gap-2.5 pr-6">
-        <Bot aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 shrink-0 text-cyan-400" />
-        <div className="min-w-0 flex-1">
-          {message.tag && (
-            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 mb-1 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${tagBg}`}>
-              {statusIcon}
-              <span>{message.tag}</span>
-            </div>
-          )}
-          <div className="text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words">
-            <CyberBotTypingText text={message.text} visible={typing.text} caret={typing.part === 'text'} typing={typing.isTyping} />
+      <div className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2.5 ${wide ? '' : 'pr-6'}`}>
+        <Bot aria-hidden="true" className="w-[18px] h-[18px] mt-0.5 text-cyan-400" />
+        {message.tag && (
+          <div className={`col-start-2 inline-flex items-center justify-self-start gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-cyber font-bold tracking-widest uppercase ${wide ? 'mb-1.5 mr-7' : 'mb-1'} ${tagBg}`}>
+            {statusIcon}
+            <span>{message.tag}</span>
           </div>
-          {message.detail && (
-            <p className="mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
-              <CyberBotTypingText text={message.detail} visible={typing.detail} caret={typing.part === 'detail'} typing={typing.isTyping} />
-            </p>
-          )}
+        )}
+        <div className={`${wide && message.tag ? 'col-span-2' : 'col-start-2'} ${wide && !message.tag ? 'pr-7' : ''} text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words`}>
+          <CyberBotTypingText text={message.text} visible={typing.text} caret={typing.part === 'text'} typing={typing.isTyping} />
         </div>
+        {message.detail && (
+          <p className="col-span-2 mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
+            <CyberBotTypingText text={message.detail} visible={typing.detail} caret={typing.part === 'detail'} typing={typing.isTyping} />
+          </p>
+        )}
       </div>
 
       {message.nameEntry && (
@@ -182,7 +182,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-[11px] font-cyber font-bold tracking-wider transition-all duration-200 cursor-pointer active:scale-95"
           >
             <span>{message.action.label}</span>
-            <ArrowRight className="w-3 h-3" />
+            <ArrowRight aria-hidden="true" className="w-3 h-3 shrink-0" />
           </button>}
         </div>
       )}

@@ -5,11 +5,12 @@ import type { CyberBotPosition } from './companionTypes';
 const OBSTACLE = '[data-cyberbot-obstacle]';
 const FLOOR = '[data-cyberbot-floor]';
 
-export function useCyberBotLayout({ enabled, position, offset, messageId, isPromptOpen = false, bubbleRef }: {
+export function useCyberBotLayout({ enabled, position, offset, messageId, wideSpeech, isPromptOpen = false, bubbleRef }: {
   enabled: boolean;
   position: CyberBotPosition;
   offset: { x: number; y: number };
   messageId?: string;
+  wideSpeech: boolean;
   isPromptOpen?: boolean;
   bubbleRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -60,7 +61,7 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, isProm
         align: position === 'bottom-left' ? 'left' : 'right',
         bubbleHeight: hasBubble ? (bubbleRef.current?.offsetHeight || (isPromptOpen ? 260 : 140)) : 0,
         obstacles,
-        maxBubbleWidth: isPromptOpen ? 440 : 390,
+        maxBubbleWidth: isPromptOpen ? 440 : wideSpeech ? 456 : undefined,
       });
       const next = {
         ...positioned,
@@ -88,7 +89,7 @@ export function useCyberBotLayout({ enabled, position, offset, messageId, isProm
       observer.disconnect();
       window.removeEventListener('resize', schedule);
     };
-  }, [enabled, position, offset.x, offset.y, messageId, isPromptOpen, bubbleRef]);
+  }, [enabled, position, offset.x, offset.y, messageId, wideSpeech, isPromptOpen, bubbleRef]);
 
   return layout;
 }
