@@ -44,6 +44,37 @@ body {
   -webkit-user-select: none;
 }
 
+.launcher-main {
+  /* Preserve space for search before shrinking the open side panels. */
+  flex: 1 0 clamp(0px, 100% - 7rem, 22rem);
+  container: launcher-main / inline-size;
+}
+
+.launcher-header-search {
+  flex: 1 0 min(100%, 20rem);
+  max-inline-size: 30rem;
+}
+
+.launcher-search-field {
+  min-inline-size: min(9rem, max(0px, 100% - 3rem));
+}
+
+@container launcher-main (width < 40rem) {
+  .launcher-header-search {
+    max-inline-size: none;
+  }
+
+  .launcher-header-resource-value {
+    display: none;
+  }
+}
+
+@container launcher-main (width >= 48rem) {
+  .launcher-header {
+    padding-inline: 2rem;
+  }
+}
+
 .access-name-marquee {
   display: block;
   min-width: 0;

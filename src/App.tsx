@@ -57,7 +57,7 @@ import {
   RefreshCw, Calculator, Activity, FileText, PackagePlus,
   MoreHorizontal, Heart, User, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
-  Bot, BotOff
+  Bot, BotOff, type LucideIcon
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { CyberBotPrompt } from './components/companion/CyberBotPrompt';
@@ -441,10 +441,45 @@ const playCyberBeep = () => {
 const RESOURCE_ALERT_THRESHOLD = 85;
 const RESOURCE_CRITICAL_THRESHOLD = 95;
 
-const SystemMonitor = React.memo(() => {
-  const [memPercent, setMemPercent] = useState<number>(0);
-  const [memUsed, setMemUsed] = useState<number>(0);
-  const [uptime, setUptime] = useState<number>(0);
+const resourceBadgeTone = {
+  critical: 'bg-rose-500/90 hover:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.35)] hover:shadow-[0_0_18px_rgba(244,63,94,0.7)] hover:border-rose-200/50',
+  warning: 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50',
+  normal: 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50',
+};
+
+function ResourceBadge({ icon: Icon, label, usage, value, tone, shortcut, onClick }: {
+  icon: LucideIcon;
+  label: string;
+  usage: string;
+  value: string;
+  tone: keyof typeof resourceBadgeTone;
+  shortcut: string;
+  onClick: () => void;
+}) {
+  const usageId = React.useId();
+  return (
+    <>
+      <Tooltip label={<><span>{label}</span><span className="text-slate-300">{usage}</span><kbd className="tooltip-shortcut">{shortcut}</kbd></>}
+        placement="bottom" showOnFocus>
+        <button type="button" aria-label={label} aria-describedby={usageId} aria-keyshortcuts={shortcut.replace('Ctrl', 'Control')}
+          onClick={onClick}
+          className={`group flex items-center gap-1 shrink-0 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-[background-color,box-shadow,border-color,transform] duration-300 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 ${resourceBadgeTone[tone]}`}>
+          <Icon aria-hidden="true" className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+          <span aria-hidden="true" className="launcher-header-resource-value text-xs font-digits font-bold tracking-wider tabular-nums">{value}</span>
+        </button>
+      </Tooltip>
+      <span id={usageId} className="sr-only">{usage}</span>
+    </>
+  );
+}
+
+interface ResourceMonitorProps {
+  t: (key: TranslationKey, variables?: Record<string, string>) => string;
+  onClick: () => void;
+}
+
+const SystemMonitor = React.memo(({ t, onClick }: ResourceMonitorProps) => {
+  const [memPercent, setMemPercent] = useState<number | null>(null);
   const visible = useDocumentVisible();
 
   useEffect(() => {
@@ -454,17 +489,13 @@ const SystemMonitor = React.memo(() => {
         if (isElectron) {
           const info = await window.electronAPI!.getSystemInfo();
           setMemPercent(info.memory.percent);
-          setMemUsed(info.memory.used);
-          setUptime(info.uptime);
         } else {
           console.warn('Electron API not found, using fallback monitor');
           if ((performance as any).memory) {
             const used = (performance as any).memory.usedJSHeapSize / (1024 * 1024);
-            setMemUsed(Math.round(used) / 1000);
             setMemPercent(Math.round(used / 100));
           } else {
-            setMemPercent(prev => prev === 0 ? 42 : Math.max(20, Math.min(90, prev + (Math.random() * 6 - 3))));
-            setMemUsed(prev => prev === 0 ? 8.2 : prev);
+            setMemPercent(prev => !prev ? 42 : Math.max(20, Math.min(90, prev + (Math.random() * 6 - 3))));
           }
         }
       } catch (err) {
@@ -476,28 +507,18 @@ const SystemMonitor = React.memo(() => {
     return () => clearInterval(interval);
   }, [visible]);
 
-  const isCritical = memPercent >= RESOURCE_CRITICAL_THRESHOLD;
-  const isAlert = memPercent >= RESOURCE_ALERT_THRESHOLD;
+  const percent = memPercent === null ? null : Math.round(memPercent);
+  const usage = percent === null ? t('header_resource_unavailable') : t('header_memory_usage', { percent: String(percent) });
+  const tone = (memPercent ?? 0) >= RESOURCE_CRITICAL_THRESHOLD ? 'critical'
+    : (memPercent ?? 0) >= RESOURCE_ALERT_THRESHOLD ? 'warning' : 'normal';
 
   return (
-    <div 
-      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group ${
-        isCritical
-          ? 'bg-rose-500/90 hover:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.35)] hover:shadow-[0_0_18px_rgba(244,63,94,0.7)] hover:border-rose-200/50'
-          : isAlert
-            ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
-            : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
-      }`}
-    >
-      <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider tabular-nums">
-        {Math.round(memPercent)}%
-      </span>
-    </div>
+    <ResourceBadge icon={Cpu} label={t('hud_system')} usage={usage} value={percent === null ? '--' : `${percent}%`}
+      tone={tone} shortcut="Ctrl+H" onClick={onClick} />
   );
 });
 
-const DiskMonitor = React.memo(() => {
+const DiskMonitor = React.memo(({ t, onClick }: ResourceMonitorProps) => {
   const [disks, setDisks] = useState<Array<{ drive: string; total: number; free: number; used: number; percent: number }>>([]);
   const visible = useDocumentVisible();
 
@@ -521,22 +542,11 @@ const DiskMonitor = React.memo(() => {
   }, [visible]);
 
   const mainDisk = disks[0];
-  const diskPercent = mainDisk?.percent ?? 0;
-  const isAlert = diskPercent >= RESOURCE_ALERT_THRESHOLD;
+  const usage = mainDisk ? t('header_disk_usage', { drive: mainDisk.drive, percent: String(mainDisk.percent) }) : t('header_resource_unavailable');
 
   return (
-    <div 
-      className={`flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-slate-900 rounded-lg border border-transparent cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 group ${
-        isAlert
-          ? 'bg-amber-400/90 hover:bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.35)] hover:shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-200/50'
-          : 'bg-cyan-400/85 hover:bg-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.3)] hover:shadow-[0_0_18px_rgba(34,211,238,0.7)] hover:border-cyan-200/50'
-      }`}
-    >
-      <HardDrive className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-900 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-      <span className="text-xs font-digits text-slate-900 font-bold tracking-wider tabular-nums">
-        {mainDisk ? `${mainDisk.percent}%` : '--'}
-      </span>
-    </div>
+    <ResourceBadge icon={HardDrive} label={t('hud_storage')} usage={usage} value={mainDisk ? `${mainDisk.percent}%` : '--'}
+      tone={(mainDisk?.percent ?? 0) >= RESOURCE_ALERT_THRESHOLD ? 'warning' : 'normal'} shortcut="Ctrl+D" onClick={onClick} />
   );
 });
 
@@ -666,7 +676,7 @@ const RotatingSearchPlaceholder = React.memo(({
       : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_tab'));
 
   return (
-    <div className="absolute inset-0 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
+    <div aria-hidden="true" className="absolute inset-0 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.span
           key={`${mode}-${placeholderIndex}`}
@@ -3132,6 +3142,8 @@ export default function App() {
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(() => localStorage.getItem('isAlwaysOnTop') === 'true');
   const [isSystemHUDOpen, setIsSystemHUDOpen] = useState(false);
   const [isStorageHUDOpen, setIsStorageHUDOpen] = useState(false);
+  const toggleSystemHUD = useCallback(() => setIsSystemHUDOpen(open => !open), []);
+  const toggleStorageHUD = useCallback(() => setIsStorageHUDOpen(open => !open), []);
   const [isClockHUDOpen, setIsClockHUDOpen] = useState(false);
   const [schedulerPreselectedAppId, setSchedulerPreselectedAppId] = useState<string>('');
   const normalizeHistoryKey = (str?: string) => (str || '').trim().toLowerCase().replace(/\\/g, '/');
@@ -8047,7 +8059,7 @@ export default function App() {
             {/* --- LEFT SIDEBAR (Categories) --- */}
             <aside 
               ref={leftAsideRef}
-              className={`flex-shrink-0 flex flex-col border-r border-white/5 z-10 ${!isDraggingLeft && 'transition-[width,background-color] duration-200'}`}
+              className={`flex flex-col min-w-0 border-r border-white/5 z-10 ${leftSidebarCollapsed ? 'shrink-0' : 'shrink'} ${!isDraggingLeft && 'transition-[width,background-color] duration-200'}`}
               style={{ ...getGlassStyle(0.8), width: leftSidebarCollapsed ? LEFT_SIDEBAR_RAIL_WIDTH : leftSidebarWidth }}
             >
         {!leftSidebarCollapsed ? (
@@ -8420,7 +8432,7 @@ export default function App() {
 
       {/* --- CENTER MAIN CONTENT --- */}
       <main 
-        className="flex-1 flex flex-col min-w-0 relative z-10"
+        className="launcher-main flex flex-col min-w-0 relative z-10"
         style={getGlassStyle(0.4)}
       >
         {/* Decorative background element (only visible if not using image) */}
@@ -8429,9 +8441,9 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="h-20 flex items-center px-3 sm:px-4 xl:px-8 justify-between shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
+        <header className="launcher-header min-h-20 flex flex-wrap content-center items-center px-3 py-2 sm:px-4 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
           <div 
-            className="relative flex-1 min-w-[100px] max-w-[480px] group shrink"
+            className="launcher-header-search relative group"
             onMouseEnter={() => {
               if (isHoveringRightActionsRef.current) return;
               if (searchHoverTimeoutRef.current) clearTimeout(searchHoverTimeoutRef.current);
@@ -8470,7 +8482,7 @@ export default function App() {
             </div>
 
             <div
-              className={`relative flex items-center w-full bg-black/20 backdrop-blur-md rounded-xl shadow-inner border transition-all ${
+              className={`relative flex flex-wrap items-center w-full bg-black/20 backdrop-blur-md rounded-xl shadow-inner border transition-all ${
                 searchScope === 'system'
                   ? 'border-emerald-500/30 focus-within:ring-1 focus-within:ring-emerald-500/50 focus-within:border-emerald-500/50 focus-within:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                   : 'border-white/10 focus-within:ring-1 focus-within:ring-cyan-500/50 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
@@ -8484,11 +8496,11 @@ export default function App() {
                 )}
               </div>
 
-              <div className="relative flex-1 min-w-0">
+              <div className="launcher-search-field relative flex-1">
                 <input 
                   ref={searchInputRef}
                   type="text" 
-                  placeholder=""
+                  aria-label={t(searchScope === 'system' ? 'search_guide_system' : 'search_guide_launcher')}
                   value={searchQuery}
               onFocus={() => {
                 setKeyboardNav(null);
@@ -8710,7 +8722,7 @@ export default function App() {
 
               {/* Unified Inline Right Actions Container */}
               <div 
-                className="pl-2 pr-3 flex items-center gap-2 z-20 select-none shrink-0"
+                className="ml-auto pl-2 pr-3 flex items-center gap-2 z-20 select-none shrink-0"
                 onMouseEnter={() => {
                   isHoveringRightActionsRef.current = true;
                   setShowSearchGuide(false);
@@ -8761,25 +8773,11 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            <Tooltip label={withShortcut(t('hud_system'), 'Ctrl+H')} placement="bottom">
-              <button 
-                onClick={() => setIsSystemHUDOpen(prev => !prev)}
-                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
-              >
-                <SystemMonitor />
-              </button>
-            </Tooltip>
-            <Tooltip label={withShortcut(t('hud_storage'), 'Ctrl+D')} placement="bottom">
-              <button 
-                onClick={() => setIsStorageHUDOpen(prev => !prev)}
-                className="focus:outline-none hover:opacity-80 active:scale-95 transition-all cursor-pointer"
-              >
-                <DiskMonitor />
-              </button>
-            </Tooltip>
+          <div className="launcher-header-tools flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 ml-auto max-w-full shrink-0">
+            <SystemMonitor t={t} onClick={toggleSystemHUD} />
+            <DiskMonitor t={t} onClick={toggleStorageHUD} />
 
-            <div className="flex items-center gap-1.5 sm:gap-2 border-l border-white/10 pl-2">
+            <div className="flex flex-wrap justify-end items-center gap-1.5 sm:gap-2 border-l border-white/10 pl-2 max-w-full">
               <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement="bottom">
                 <button
                   type="button"
@@ -9596,11 +9594,11 @@ export default function App() {
       {/* --- RIGHT SIDEBAR (Recent + Most Used) --- */}
       <aside 
         ref={rightAsideRef}
-        className={`flex-shrink-0 flex flex-col border-l border-white/5 shadow-2xl relative z-30 ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
+        className={`flex flex-col min-w-0 border-l border-white/5 shadow-2xl relative z-30 ${rightSidebarCollapsed ? 'shrink-0' : 'shrink'} ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarCollapsed ? RIGHT_SIDEBAR_RAIL_WIDTH : rightSidebarWidth }}
       >
         <div className={`pt-3 pb-1 flex ${rightSidebarCollapsed ? 'px-1 flex-col items-center' : 'px-3 items-center justify-end'}`}>
-          <div className={`flex gap-1 ${rightSidebarCollapsed ? 'flex-col items-center' : 'items-center'}`}>
+          <div className={`flex gap-1 ${rightSidebarCollapsed ? 'flex-col items-center' : 'flex-wrap justify-end items-center'}`}>
             <Tooltip
               label={withShortcut(rightSidebarCollapsed ? t('tooltip_right_sidebar_expand') : t('tooltip_right_sidebar_collapse'), 'Ctrl+B')}
               placement={rightSidebarCollapsed ? 'left' : 'bottom'}

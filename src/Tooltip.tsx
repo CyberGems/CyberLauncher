@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, cloneElement, isValidElement } from 'react';
-import type { FC, ReactElement, ReactNode, MouseEvent as ReactMouseEvent, CSSProperties } from 'react';
+import type { FC, ReactElement, ReactNode, FocusEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 
 type Placement = 'top' | 'bottom' | 'left' | 'right';
@@ -9,6 +9,7 @@ interface TooltipProps {
   placement?: Placement;
   children: ReactElement;
   delay?: number;
+  showOnFocus?: boolean;
 }
 
 const DEFAULT_DELAY = 400;
@@ -25,7 +26,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 /** CyberGems-style tooltip (ported from CyberNotes). Clones the child without wrapping layout. */
-const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAULT_DELAY, children }) => {
+const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAULT_DELAY, showOnFocus = false, children }) => {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,20 +104,11 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
   if (!isValidElement(children)) return children;
   const child = children as ReactElement<any>;
 
-  const show = (e: ReactMouseEvent<HTMLElement>) => {
-    child.props.onMouseEnter?.(e);
-    clearTimer();
-    if (e.buttons !== 0) {
-      setAnchor(null);
-      return;
-    }
-    if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
-      return;
-    }
-    if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
+  const canShow = () => !!label && document.body.getAttribute('data-tooltips-enabled') !== 'false'
+    && document.body.getAttribute('data-context-menu-active') !== 'true';
+
+  const schedule = (target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
     if (delay <= 0) {
       setAnchor(rect);
     } else {
@@ -127,6 +119,16 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
     }
   };
 
+  const show = (e: ReactMouseEvent<HTMLElement>) => {
+    child.props.onMouseEnter?.(e);
+    clearTimer();
+    if (e.buttons !== 0) {
+      setAnchor(null);
+      return;
+    }
+    if (canShow()) schedule(e.currentTarget);
+  };
+
   const mouseMoveShow = (e: ReactMouseEvent<HTMLElement>) => {
     child.props.onMouseMove?.(e);
     if (e.buttons !== 0) {
@@ -134,23 +136,7 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
       setAnchor(null);
       return;
     }
-    if (document.body.getAttribute('data-tooltips-enabled') === 'false') {
-      return;
-    }
-    if (document.body.getAttribute('data-context-menu-active') === 'true' || !label) {
-      return;
-    }
-    if (!anchor && !timerRef.current) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      if (delay <= 0) {
-        setAnchor(rect);
-      } else {
-        timerRef.current = setTimeout(() => {
-          timerRef.current = null;
-          setAnchor(rect);
-        }, delay);
-      }
-    }
+    if (!anchor && !timerRef.current && canShow()) schedule(e.currentTarget);
   };
 
   const hide = (e: ReactMouseEvent<HTMLElement>) => {
@@ -183,6 +169,29 @@ const Tooltip: FC<TooltipProps> = ({ label, placement = 'bottom', delay = DEFAUL
     onPointerDown: downHide,
     onClick: clickHide,
     onContextMenu: contextMenuHide,
+    ...(showOnFocus && {
+      onFocus: (event: FocusEvent<HTMLElement>) => {
+        child.props.onFocus?.(event);
+        if (event.currentTarget.matches(':focus-visible') && canShow()) {
+          clearTimer();
+          schedule(event.currentTarget);
+        }
+      },
+      onBlur: (event: FocusEvent<HTMLElement>) => {
+        child.props.onBlur?.(event);
+        clearTimer();
+        setAnchor(null);
+      },
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        child.props.onKeyDown?.(event);
+        if (event.key === 'Escape' && (anchor || timerRef.current)) {
+          event.preventDefault();
+          event.stopPropagation();
+          clearTimer();
+          setAnchor(null);
+        }
+      },
+    }),
   });
 
   return (
