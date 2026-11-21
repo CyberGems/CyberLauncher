@@ -577,7 +577,14 @@ const UptimeMonitor = React.memo(() => {
   );
 });
 
-const HeaderClock = React.memo(({ onClick, title, ariaLabel, activeTasksCount = 0 }: { onClick: () => void; title: ReactNode; ariaLabel: string; activeTasksCount?: number }) => {
+const TITLEBAR_TOOL_CLASS = 'relative flex items-center justify-center w-7 h-7 shrink-0 rounded-md cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400';
+
+const HeaderClock = React.memo(({ onClick, ariaLabel, placement, activeTasksCount = 0 }: {
+  onClick: () => void;
+  ariaLabel: string;
+  placement: 'bottom' | 'left';
+  activeTasksCount?: number;
+}) => {
   const [time, setTime] = useState(() => new Date());
   const visible = useDocumentVisible();
 
@@ -588,21 +595,21 @@ const HeaderClock = React.memo(({ onClick, title, ariaLabel, activeTasksCount = 
     return () => clearInterval(timer);
   }, [visible]);
 
+  const timeLabel = time.toLocaleTimeString('en-US', { hour12: false });
   return (
-    <Tooltip label={title} placement="bottom">
+    <Tooltip label={<><span>{ariaLabel}</span><span>{timeLabel}</span><kbd className="tooltip-shortcut">Ctrl+T</kbd></>} placement={placement} showOnFocus>
       <button
         onClick={onClick}
         type="button"
         aria-label={ariaLabel}
         aria-keyshortcuts="Control+T"
-        className="focus:outline-none flex items-center gap-1.5 text-cyan-400 font-digits font-bold text-[13px] sm:text-[14px] xl:text-[16px] tracking-wider drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-0.5 pr-1 group"
+        className="launcher-titlebar-clock relative flex items-center justify-center gap-1 h-7 px-1 shrink-0 rounded-md text-cyan-400 hover:bg-white/10 font-digits font-bold text-xs tabular-nums cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400"
       >
-        <Clock className="w-3.5 h-3.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
-        <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
+        <Clock aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+        <span className="launcher-titlebar-clock-time">{timeLabel}</span>
         {activeTasksCount > 0 && (
-          <span className="flex items-center gap-1 text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse ml-0.5">
-            <Timer className="w-3 h-3 text-cyan-400" />
-            <span>{activeTasksCount}</span>
+          <span className="launcher-titlebar-clock-count text-[9px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-1 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse">
+            {activeTasksCount}
           </span>
         )}
       </button>
@@ -648,48 +655,6 @@ const FooterDateTime = React.memo(({ title, onClick, activeTasksCount = 0 }: { t
         </span>
       </button>
     </Tooltip>
-  );
-});
-
-/** Rotating search hint — own interval so App does not re-render every 3s. */
-const RotatingSearchPlaceholder = React.memo(({
-  mode,
-  t,
-}: {
-  mode: 'system' | 'normal';
-  t: (key: TranslationKey, variables?: Record<string, string>) => string;
-}) => {
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const visible = useDocumentVisible();
-
-  useEffect(() => {
-    if (!visible) return;
-    const interval = setInterval(() => {
-      setPlaceholderIndex(prev => (prev === 0 ? 1 : 0));
-    }, 4500);
-    return () => clearInterval(interval);
-  }, [visible]);
-
-  const text =
-    mode === 'system'
-      ? (placeholderIndex === 0 ? t('search_placeholder_system') : t('hint_system_tab'))
-      : (placeholderIndex === 0 ? t('search_placeholder_normal') : t('hint_normal_tab'));
-
-  return (
-    <div aria-hidden="true" className="absolute inset-0 flex items-center pointer-events-none text-slate-500/90 text-sm font-sans select-none overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={`${mode}-${placeholderIndex}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className="truncate"
-        >
-          {text}
-        </motion.span>
-      </AnimatePresence>
-    </div>
   );
 });
 
@@ -4097,6 +4062,7 @@ export default function App() {
   });
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(() => localStorage.getItem('leftSidebarCollapsed') === 'true');
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(() => localStorage.getItem('rightSidebarCollapsed') === 'true');
+  const titlebarTooltipPlacement = rightSidebarCollapsed ? 'left' : 'bottom';
   const LEFT_SIDEBAR_RAIL_WIDTH = 52;
   const RIGHT_SIDEBAR_RAIL_WIDTH = 52;
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
@@ -8441,7 +8407,7 @@ export default function App() {
         )}
 
         {/* Top Bar */}
-        <header className="launcher-header min-h-20 flex flex-wrap content-center items-center px-3 py-2 sm:px-4 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
+        <header className="launcher-header min-h-16 flex flex-wrap content-center items-center px-3 py-2 sm:px-4 shrink-0 relative z-30 border-b border-transparent gap-2 sm:gap-2.5 min-w-0">
           <div 
             className="launcher-header-search relative group"
             onMouseEnter={() => {
@@ -8500,6 +8466,7 @@ export default function App() {
                 <input 
                   ref={searchInputRef}
                   type="text" 
+                  placeholder={t('search_placeholder')}
                   aria-label={t(searchScope === 'system' ? 'search_guide_system' : 'search_guide_launcher')}
                   value={searchQuery}
               onFocus={() => {
@@ -8712,12 +8679,6 @@ export default function App() {
                     searchScope === 'system' ? 'caret-emerald-400/80' : 'caret-cyan-400/80'
                   } placeholder:text-slate-500`}
                 />
-                {searchQuery === '' && (
-                  <RotatingSearchPlaceholder
-                    mode={searchScope === 'system' ? 'system' : 'normal'}
-                    t={t}
-                  />
-                )}
               </div>
 
               {/* Unified Inline Right Actions Container */}
@@ -8776,65 +8737,6 @@ export default function App() {
           <div className="launcher-header-tools flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 ml-auto max-w-full shrink-0">
             <SystemMonitor t={t} onClick={toggleSystemHUD} />
             <DiskMonitor t={t} onClick={toggleStorageHUD} />
-
-            <div className="flex flex-wrap justify-end items-center gap-1.5 sm:gap-2 border-l border-white/10 pl-2 max-w-full">
-              <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement="bottom">
-                <button
-                  type="button"
-                  onClick={() => setIsCommandPaletteOpen(prev => !prev)}
-                  className="p-2 rounded-xl border border-white/10 bg-black/40 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-                  aria-label={t('cmd_palette_title')}
-                  aria-keyshortcuts="Control+K"
-                >
-                  <Command className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              <Tooltip label={withShortcut(t('cmd_palette_action_terminal'), 'Ctrl+J')} placement="bottom">
-                <button
-                  type="button"
-                  onClick={() => isTerminalOpen ? closeTerminal() : openTerminal()}
-                  className={`p-2 rounded-xl border active:scale-95 transition-all cursor-pointer flex items-center justify-center ${
-                    isTerminalOpen
-                      ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.16)]'
-                      : 'border-white/10 bg-black/40 text-slate-400 hover:text-emerald-300 hover:border-emerald-500/30 hover:bg-emerald-500/10'
-                  }`}
-                  aria-label={t('cmd_palette_action_terminal')}
-                  aria-pressed={isTerminalOpen}
-                  aria-keyshortcuts="Control+J"
-                >
-                  <TerminalSquare className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              {showHeaderClock ? (
-                <HeaderClock
-                  onClick={() => setIsClockHUDOpen(prev => !prev)}
-                  title={withShortcut(t('hud_clock'), 'Ctrl+T')}
-                  ariaLabel={t('hud_clock')}
-                  activeTasksCount={scheduledTasks.length}
-                />
-              ) : (
-                <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement="bottom">
-                  <button
-                    type="button"
-                    onClick={() => setIsClockHUDOpen(prev => !prev)}
-                    className={`relative p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                      scheduledTasks.length > 0
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]'
-                        : 'bg-black/40 border-white/10 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/10'
-                    }`}
-                    aria-label={t('hud_clock')}
-                    aria-keyshortcuts="Control+T"
-                  >
-                    <Timer className={`w-4 h-4 ${scheduledTasks.length > 0 ? 'text-cyan-300 animate-pulse' : ''}`} />
-                    {scheduledTasks.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
-                        {scheduledTasks.length}
-                      </span>
-                    )}
-                  </button>
-                </Tooltip>
-              )}
-            </div>
           </div>
         </header>
 
@@ -9594,11 +9496,11 @@ export default function App() {
       {/* --- RIGHT SIDEBAR (Recent + Most Used) --- */}
       <aside 
         ref={rightAsideRef}
-        className={`flex flex-col min-w-0 border-l border-white/5 shadow-2xl relative z-30 ${rightSidebarCollapsed ? 'shrink-0' : 'shrink'} ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
+        className={`launcher-right-sidebar flex flex-col min-w-0 border-l border-white/5 shadow-2xl relative z-30 ${rightSidebarCollapsed ? 'shrink-0' : 'shrink'} ${!isDraggingRight && 'transition-[width,background-color] duration-200'}`}
         style={{ ...getGlassStyle(0.85), width: rightSidebarCollapsed ? RIGHT_SIDEBAR_RAIL_WIDTH : rightSidebarWidth }}
       >
-        <div className={`pt-3 pb-1 flex ${rightSidebarCollapsed ? 'px-1 flex-col items-center' : 'px-3 items-center justify-end'}`}>
-          <div className={`flex gap-1 ${rightSidebarCollapsed ? 'flex-col items-center' : 'flex-wrap justify-end items-center'}`}>
+        <div className={`launcher-titlebar pt-3 pb-1 flex ${rightSidebarCollapsed ? 'px-1 flex-col items-center' : 'px-1.5 items-center justify-end'}`}>
+          <div className={`flex min-w-0 gap-y-1 ${rightSidebarCollapsed ? 'flex-col items-center' : 'flex-wrap justify-end items-center gap-x-0.5'}`}>
             <Tooltip
               label={withShortcut(rightSidebarCollapsed ? t('tooltip_right_sidebar_expand') : t('tooltip_right_sidebar_collapse'), 'Ctrl+B')}
               placement={rightSidebarCollapsed ? 'left' : 'bottom'}
@@ -9639,35 +9541,69 @@ export default function App() {
               </Tooltip>
             )}
 
-            {/* CyberBot Companion Quick Toggle */}
-            <div className="relative">
-              <Tooltip
-                label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
-                placement={rightSidebarCollapsed ? 'left' : 'bottom'}
-              >
-                <button
-                  type="button"
-                  onClick={handleCyberBotToggle}
-                  aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
-                  aria-pressed={cyberBot.enabled}
-                  className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
-                    cyberBot.enabled
-                      ? 'text-cyan-400 bg-cyan-500/15 hover:bg-cyan-500/25'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
-                  }`}
-                >
-                  {cyberBot.enabled ? (
-                    <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                  ) : (
-                    <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 group-hover:scale-110 transition-transform" />
-                  )}
+            <div className={`flex min-w-0 max-w-full items-center gap-y-1 ${rightSidebarCollapsed ? 'flex-col' : 'flex-wrap justify-end gap-x-0.5'}`}>
+              <Tooltip label={withShortcut(t('cmd_palette_title'), 'Ctrl+K')} placement={titlebarTooltipPlacement}>
+                <button type="button" onClick={() => setIsCommandPaletteOpen(prev => !prev)}
+                  className={`${TITLEBAR_TOOL_CLASS} text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10`}
+                  aria-label={t('cmd_palette_title')} aria-keyshortcuts="Control+K">
+                  <Command aria-hidden="true" className="w-3.5 h-3.5" />
                 </button>
               </Tooltip>
-              {cyberBotFarewell.state.confirmation && !isSettingsOpen && (
-                <span role="status" className="absolute top-full right-0 mt-2 whitespace-nowrap rounded-lg border border-cyan-500/30 bg-slate-950 px-3 py-2 text-xs text-slate-300 pointer-events-none">
-                  {t('cyberbot_disabled_confirmation')}
-                </span>
+              <Tooltip label={withShortcut(t('cmd_palette_action_terminal'), 'Ctrl+J')} placement={titlebarTooltipPlacement}>
+                <button type="button" onClick={() => isTerminalOpen ? closeTerminal() : openTerminal()}
+                  className={`${TITLEBAR_TOOL_CLASS} ${isTerminalOpen ? 'bg-emerald-500/15 text-emerald-300' : 'text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                  aria-label={t('cmd_palette_action_terminal')} aria-pressed={isTerminalOpen} aria-keyshortcuts="Control+J">
+                  <TerminalSquare aria-hidden="true" className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+              {showHeaderClock ? (
+                <HeaderClock onClick={() => setIsClockHUDOpen(prev => !prev)} ariaLabel={t('hud_clock')}
+                  placement={titlebarTooltipPlacement} activeTasksCount={scheduledTasks.length} />
+              ) : (
+                <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement={titlebarTooltipPlacement}>
+                  <button type="button" onClick={() => setIsClockHUDOpen(prev => !prev)}
+                    className={`${TITLEBAR_TOOL_CLASS} ${scheduledTasks.length > 0 ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10'}`}
+                    aria-label={t('hud_clock')} aria-keyshortcuts="Control+T">
+                    <Timer aria-hidden="true" className="w-3.5 h-3.5" />
+                    {scheduledTasks.length > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
+                        {scheduledTasks.length}
+                      </span>
+                    )}
+                  </button>
+                </Tooltip>
               )}
+
+              {/* CyberBot Companion Quick Toggle */}
+              <div className="relative">
+                <Tooltip
+                  label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                  placement={titlebarTooltipPlacement}
+                >
+                  <button
+                    type="button"
+                    onClick={handleCyberBotToggle}
+                    aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
+                    aria-pressed={cyberBot.enabled}
+                    className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
+                      cyberBot.enabled
+                        ? 'text-cyan-400 bg-cyan-500/15 hover:bg-cyan-500/25'
+                        : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {cyberBot.enabled ? (
+                      <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+                </Tooltip>
+                {cyberBotFarewell.state.confirmation && !isSettingsOpen && (
+                  <span role="status" className="absolute top-full right-0 mt-2 whitespace-nowrap rounded-lg border border-cyan-500/30 bg-slate-950 px-3 py-2 text-xs text-slate-300 pointer-events-none">
+                    {t('cyberbot_disabled_confirmation')}
+                  </span>
+                )}
+              </div>
             </div>
 
             <Tooltip label={withShortcut(t('tooltip_settings'), 'Ctrl+,')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>

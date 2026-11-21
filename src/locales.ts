@@ -2,8 +2,7 @@ export const translations = {
   es: {
     // Top Bar & General Placeholders
     top_time: "Reloj",
-    search_placeholder_normal: "Buscar en CyberLauncher...",
-    search_placeholder_system: "Buscar en todo el sistema...",
+    search_placeholder: "Buscar...",
     clear_search: "Limpiar búsqueda",
     tooltip_search_scope_toggle: "Alternar alcance de búsqueda (Cyber / Sistema)",
     scope_system: "SISTEMA",
@@ -395,10 +394,6 @@ export const translations = {
     factory_reset_btn_confirm: "Restablecer ahora",
     notif_factory_reset_done: "Configuración restablecida a los valores de fábrica",
     notif_factory_reset_full_done: "Configuración y accesos restablecidos a los valores de fábrica",
-
-    // Placeholder Info Text below input
-    hint_system_tab: "[Tab] Volver a Launcher",
-    hint_normal_tab: "[Tab] Buscar en el sistema",
 
     // Notifications & Toasts
     notif_drive_linked: "Indexando unidad entera {drive}...",
@@ -1031,8 +1026,7 @@ export const translations = {
   en: {
     // Top Bar & General Placeholders
     top_time: "Clock",
-    search_placeholder_normal: "Search in CyberLauncher...",
-    search_placeholder_system: "Search system-wide...",
+    search_placeholder: "Search...",
     clear_search: "Clear search",
     tooltip_search_scope_toggle: "Toggle search scope (Cyber / System)",
     scope_system: "SYSTEM",
@@ -1424,10 +1418,6 @@ export const translations = {
     factory_reset_btn_confirm: "Reset now",
     notif_factory_reset_done: "Settings restored to factory defaults",
     notif_factory_reset_full_done: "Settings and shortcuts restored to factory defaults",
-
-    // Placeholder Info Text below input
-    hint_system_tab: "[Tab] Return to Launcher",
-    hint_normal_tab: "[Tab] Search system",
 
     // Notifications & Toasts
     notif_drive_linked: "Indexing full drive {drive}...",

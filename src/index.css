@@ -51,7 +51,7 @@ body {
 }
 
 .launcher-header-search {
-  flex: 1 0 min(100%, 20rem);
+  flex: 1 0 min(100%, 18rem);
   max-inline-size: 30rem;
 }
 
@@ -72,6 +72,26 @@ body {
 @container launcher-main (width >= 48rem) {
   .launcher-header {
     padding-inline: 2rem;
+  }
+}
+
+.launcher-right-sidebar {
+  container: launcher-right-sidebar / inline-size;
+}
+
+@container launcher-right-sidebar (width < 10rem) {
+  .launcher-titlebar-clock {
+    width: 1.75rem;
+  }
+
+  .launcher-titlebar-clock-time {
+    display: none;
+  }
+
+  .launcher-titlebar-clock-count {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
   }
 }
 
