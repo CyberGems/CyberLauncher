@@ -79,6 +79,30 @@ body {
   }
 }
 
+@container launcher-main (width < 30rem) {
+  .launcher-header-search {
+    flex-basis: min(100%, 13.75rem);
+  }
+
+  .launcher-search-field {
+    min-inline-size: min(6rem, max(0px, 100% - 2rem));
+  }
+
+  .launcher-search-icon {
+    padding-inline: 0.625rem 0.375rem;
+  }
+
+  .launcher-search-actions {
+    gap: 0.25rem;
+    padding-inline: 0.25rem 0.375rem;
+  }
+
+  .launcher-search-scope,
+  .launcher-header-tools button {
+    padding-inline: 0.375rem;
+  }
+}
+
 @container launcher-main (width >= 48rem) {
   .launcher-header,
   .launcher-content {

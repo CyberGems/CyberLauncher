@@ -8471,7 +8471,7 @@ export default function App() {
                   : 'border-white/10 focus-within:ring-1 focus-within:ring-cyan-500/50 focus-within:border-cyan-500/50 focus-within:shadow-[0_0_15px_rgba(34,211,238,0.15)]'
               }`}
             >
-              <div className="pl-4 pr-2.5 flex items-center pointer-events-none shrink-0">
+              <div className="launcher-search-icon pl-4 pr-2.5 flex items-center pointer-events-none shrink-0">
                 {searchScope === 'system' ? (
                   <Search className="w-4 h-4 text-emerald-400/85 animate-caret-breathe transition-colors shrink-0" />
                 ) : (
@@ -8700,7 +8700,7 @@ export default function App() {
 
               {/* Unified Inline Right Actions Container */}
               <div 
-                className="ml-auto pl-2 pr-3 flex items-center gap-2 z-20 select-none shrink-0"
+                className="launcher-search-actions ml-auto pl-2 pr-3 flex items-center gap-2 z-20 select-none shrink-0"
                 onMouseEnter={() => {
                   isHoveringRightActionsRef.current = true;
                   setShowSearchGuide(false);
@@ -8738,7 +8738,7 @@ export default function App() {
                     }}
                     className="flex items-center focus:outline-none cursor-pointer"
                   >
-                    <span className={`text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
+                    <span className={`launcher-search-scope text-[9px] font-cyber font-bold px-2 py-0.5 rounded border transition-all duration-300 ${
                       searchScope === 'system'
                         ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse'
                         : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/20'
