@@ -9617,11 +9617,13 @@ export default function App() {
 
             {/* More options menu dropdown (CyberFeeds style) */}
             <div className="relative" ref={moreMenuRef}>
-              <Tooltip label={withShortcut(t('tooltip_more'), 'Alt+M')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+              <Tooltip label={isMoreMenuOpen ? null : withShortcut(t('tooltip_more'), 'Alt+M')} placement={titlebarTooltipPlacement}>
                 <button
                   type="button"
                   ref={moreMenuButtonRef}
                   onClick={() => setIsMoreMenuOpen(prev => !prev)}
+                  aria-label={t('tooltip_more')}
+                  aria-keyshortcuts="Alt+M"
                   aria-haspopup="true"
                   aria-expanded={isMoreMenuOpen}
                   className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-colors group cursor-pointer focus:outline-none ${
