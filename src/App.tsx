@@ -9821,7 +9821,8 @@ export default function App() {
                       className="more-menu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
                     >
                       <Power className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                      <span>{t('more_menu_exit')}</span>
+                      <span className="flex-1">{t('more_menu_exit')}</span>
+                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-semibold bg-white/10 text-cyan-300 rounded border border-white/15 shadow-sm">Alt+F4</kbd>
                     </button>
                   </motion.div>
                 )}
