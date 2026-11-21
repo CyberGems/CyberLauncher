@@ -116,7 +116,8 @@ if (window.desktopToast) {
         : `${data.type}:${data.source || ''}:${data.action || ''}:${data.title || ''}:${data.detail || ''}`;
       const face = data.action === 'open-hud-storage' ? 'storage'
         : ['warning', 'error', 'imminent'].includes(data.type) ? 'alert'
-        : data.type === 'success' ? 'success' : 'launcher';
+        : data.type === 'success' ? 'success'
+        : data.type === 'info' && data.source !== 'launch' ? 'focused' : 'launcher';
       window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: { face, speechKey, title: (data.title || '').replace(/^CyberLauncher:\s*/i, ''), detail: data.detail || '' } }));
       imminentCard.classList.add('hidden');
       standardCard.classList.add('hidden');

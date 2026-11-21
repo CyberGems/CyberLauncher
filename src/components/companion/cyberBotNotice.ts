@@ -6,5 +6,5 @@ export function cyberBotNotificationEmotion(notification: {
 }): CyberBotEmotion {
   if (notification.action === 'open-hud-storage') return 'storage';
   if (notification.type === 'error' || notification.type === 'warning') return 'alert';
-  return notification.type === 'success' ? 'success' : 'speaking';
+  return notification.type === 'success' ? 'success' : 'focused';
 }

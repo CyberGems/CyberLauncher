@@ -242,7 +242,7 @@ test('speech keeps one unchanged face while using the separate chest equalizer',
     assert.ok(match, `Missing visible ${emotion} face`);
     return match[1];
   };
-  for (const emotion of ['curious', 'delighted', 'sparkle', 'affectionate', 'happy', 'wink', 'alert', 'storage', 'scared', 'success', 'speaking', 'terminal'] as const) {
+  for (const emotion of ['curious', 'delighted', 'sparkle', 'affectionate', 'happy', 'wink', 'alert', 'storage', 'scared', 'success', 'speaking', 'terminal', 'focused'] as const) {
     const silent = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion }));
     const talking = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion, isSpeaking: true }));
     assert.equal(selectedFace(silent, emotion), selectedFace(talking, emotion));
@@ -254,13 +254,13 @@ test('speech keeps one unchanged face while using the separate chest equalizer',
   assert.match(sleeping, /data-part="equalizerBars" class="standby-eq"/);
 });
 
-test('RAM alerts keep the alert face while storage notices get a dedicated face', () => {
+test('informational notices use the focused face alongside dedicated alert, storage and success faces', () => {
   assert.equal(cyberBotNotificationEmotion({ type: 'warning', action: 'open-hud-system' }), 'alert');
   assert.equal(cyberBotNotificationEmotion({ type: 'error', action: 'open-hud-system' }), 'alert');
   assert.equal(cyberBotNotificationEmotion({ type: 'warning', action: 'open-hud-storage' }), 'storage');
   assert.equal(cyberBotNotificationEmotion({ type: 'error', action: 'open-hud-storage' }), 'storage');
   assert.equal(cyberBotNotificationEmotion({ type: 'success' }), 'success');
-  assert.equal(cyberBotNotificationEmotion({ type: 'info' }), 'speaking');
+  assert.equal(cyberBotNotificationEmotion({ type: 'info' }), 'focused');
 
   const ram = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'alert' }));
   const storage = renderToStaticMarkup(React.createElement(CyberBotAvatar, { emotion: 'storage' }));
@@ -411,6 +411,7 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
 
   receive({ presentation: 'bot', type: 'info', title: 'Update available', action: 'open-about', actionLabel: 'About', releaseUrl: 'https://example.com/release', releaseLabel: 'Release notes' });
   assert.equal(speechRestarts, 2);
+  assert.equal(avatarStates.at(-1)?.face, 'focused');
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task', 'open-hud', 'open-release']);
@@ -419,6 +420,7 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(speechRestarts, 3);
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
   assert.equal(avatarStates.at(-1)?.title, 'Opening Editor');
+  assert.equal(avatarStates.at(-1)?.face, 'launcher');
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
   receive({ type: 'hide' });
   assert.equal(avatarStates.at(-1), null, 'hidden notifications must unmount the avatar');
@@ -432,6 +434,7 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.equal(speechRestarts, 5);
   assert.equal(avatarStates.at(-1)?.face, 'storage');
   receive({ presentation: 'bot', type: 'info', title: 'Routine notice' });
+  assert.equal(avatarStates.at(-1)?.face, 'focused');
   assert.equal(element('cyberbotCard').classList.contains('alert'), false);
   assert.equal(element('cyberbotCard').classList.contains('storage'), false);
 });
@@ -904,24 +907,26 @@ test('idle expressions favor neutral faces and never repeat consecutively', () =
   assert.notEqual(nextCyberBotIdleExpression('curious', () => 0.03, false), 'marquee');
 });
 
-test('idle rounds favor eyes, logo and flight over Terminal and curiosity', () => {
+test('idle rounds favor the core faces, including focused, over Terminal and curiosity', () => {
   const picker = createCyberBotIdleExpressionPicker(() => 0.5, () => 0);
   let previous: NonNullable<CyberBotMessage['emotion']> = 'launcher';
   const faces: string[] = [];
-  for (let i = 0; i < 230; i++) {
+  const coreFaces = ['default', 'launcher', 'flight', 'focused'];
+  const sixRoundLength = 6 * coreFaces.length + 3 + 2;
+  for (let i = 0; i < sixRoundLength * 10; i++) {
     const face = picker.next(previous);
     assert.notEqual(face, previous);
     faces.push(face);
     previous = face;
   }
-  assert.deepEqual(new Set(faces.slice(0, 3)), new Set(['default', 'launcher', 'flight']));
-  for (const face of ['default', 'launcher', 'flight']) {
+  assert.deepEqual(new Set(faces.slice(0, coreFaces.length)), new Set(coreFaces));
+  for (const face of coreFaces) {
     assert.equal(faces.filter(value => value === face).length, 60);
   }
   assert.equal(faces.filter(face => face === 'terminal').length, 30);
   assert.equal(faces.filter(face => face === 'curious').length, 20);
-  for (let i = 0; i < faces.length; i += 23) {
-    assert.deepEqual(new Set(faces.slice(i, i + 23)), new Set(['default', 'launcher', 'flight', 'curious', 'terminal']));
+  for (let i = 0; i < faces.length; i += sixRoundLength) {
+    assert.deepEqual(new Set(faces.slice(i, i + sixRoundLength)), new Set([...coreFaces, 'curious', 'terminal']));
   }
 });
 
@@ -935,7 +940,7 @@ test('the floating expression rotation omits Terminal and keeps its other compos
     seen.add(next);
     previous = next;
   }
-  assert.deepEqual(seen, new Set(['default', 'launcher', 'flight', 'curious']));
+  assert.deepEqual(seen, new Set(['default', 'launcher', 'flight', 'focused', 'curious']));
 });
 
 test('rare gestures do not consume unseen composed expressions', () => {
@@ -1017,6 +1022,7 @@ test('idle marquee reports real library, usage, shortcut and pending tasks in bo
 
 test('idle timing holds every random face for several seconds', () => {
   assert.equal(getCyberBotIdleExpressionDuration('launcher', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
+  assert.equal(getCyberBotIdleExpressionDuration('focused', () => 0), CYBERBOT_IDLE_NEUTRAL_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('terminal', () => 0.999999), CYBERBOT_IDLE_NEUTRAL_MAX_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0), CYBERBOT_IDLE_EXPRESSIVE_MIN_MS);
   assert.equal(getCyberBotIdleExpressionDuration('happy', () => 0.999999), CYBERBOT_IDLE_EXPRESSIVE_MAX_MS);

@@ -3656,12 +3656,13 @@ export default function App() {
         }
         : undefined;
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
+        const emotion = cyberBotNotificationEmotion(notification);
         if (isUpdateAvailable) {
           accepted = cyberBot.say({
             id: `update_available_${updateVersion}`,
             text: notification.message,
             detail: notification.detail,
-            emotion: 'focused',
+            emotion,
             tag: brandTag,
             action: {
               label: t('about_download_btn'),
@@ -3691,7 +3692,7 @@ export default function App() {
             id: noticeLedgerRef.current.id(notification),
             text: notification.message,
             detail: notification.detail,
-            emotion: cyberBotNotificationEmotion(notification),
+            emotion,
             tag: brandTag,
             action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
               ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }

@@ -14,8 +14,8 @@ export type CyberBotIdleState = 'awake' | 'sleeping' | 'hidden';
 export const CYBERBOT_HOVER_DWELL_MS = 2_000;
 export const CYBERBOT_HOVER_MOVE_COOLDOWN_MS = 30_000;
 // Idle rotates slowly through composed faces. Visibly cheerful gestures remain rare.
-export const cyberBotNeutralIdleExpressions = ['default', 'launcher', 'flight', 'curious', 'terminal'] as const;
-const coreIdleExpressions = ['default', 'launcher', 'flight'] as const;
+const coreIdleExpressions = ['default', 'launcher', 'flight', 'focused'] as const;
+export const cyberBotNeutralIdleExpressions = [...coreIdleExpressions, 'curious', 'terminal'] as const;
 function idleExpressionRound(round: number, allowTerminal = true): CyberBotEmotion[] {
   return [
     ...coreIdleExpressions,
