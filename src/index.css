@@ -130,6 +130,48 @@ body {
   }
 }
 
+.launcher-column-divider {
+  position: relative;
+  flex: none;
+  inline-size: 2px;
+  cursor: col-resize;
+  background-color: color-mix(in srgb, var(--color-white) 5%, transparent);
+}
+
+.launcher-column-divider::before,
+.launcher-column-divider::after {
+  content: '';
+  position: absolute;
+}
+
+.launcher-column-divider::before {
+  inset: 0 -4px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--color-cyan-400) 22%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.launcher-column-divider::after {
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--color-cyan-400) 46%, var(--color-cyan-400) 54%, transparent);
+  clip-path: polygon(50% 0%, 100% 46%, 100% 54%, 50% 100%, 0 54%, 0 46%);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.launcher-column-divider:is(:hover, [data-dragging='true'])::before,
+.launcher-column-divider:is(:hover, [data-dragging='true'])::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launcher-column-divider::before,
+  .launcher-column-divider::after {
+    transition: none;
+  }
+}
+
 .access-name-marquee {
   display: block;
   min-width: 0;

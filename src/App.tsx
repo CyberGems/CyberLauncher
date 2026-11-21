@@ -8407,7 +8407,8 @@ export default function App() {
       {!leftSidebarCollapsed && (
         <div 
           data-no-hide
-          className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-30 transition-colors shrink-0 bg-white/5"
+          className="launcher-column-divider z-30"
+          data-dragging={isDraggingLeft}
           style={getGlassStyle(0.6)}
           onMouseDown={startResizingLeft}
         />
@@ -9504,7 +9505,8 @@ export default function App() {
       {!rightSidebarCollapsed && (
         <div 
           data-no-hide
-          className="w-[2px] cursor-col-resize hover:bg-cyan-500/60 active:bg-cyan-400 z-20 transition-colors shrink-0 bg-white/5"
+          className="launcher-column-divider z-20"
+          data-dragging={isDraggingRight}
           style={getGlassStyle(0.6)}
           onMouseDown={startResizingRight}
         />
