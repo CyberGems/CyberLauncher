@@ -540,3 +540,74 @@ button[disabled] .btn-kbd {
     font-weight: 600;
   }
 }
+
+/* Settings panel brand footer (suite standard, mirrors CyberNotes/CyberGo) */
+.config-brand-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 58px;
+  flex: 0 0 58px;
+  padding: 7px 28px;
+  box-sizing: border-box;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.2);
+  color: #64748b;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.15;
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.config-brand-footer:hover {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.config-brand-footer:focus-visible {
+  outline: 1px solid rgba(34, 211, 238, 0.6);
+  outline-offset: -3px;
+  background: rgba(34, 211, 238, 0.07);
+}
+
+.config-brand-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+}
+
+.config-brand-footer:hover .config-brand-line {
+  color: #cbd5e1;
+}
+
+.config-brand-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.82;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.config-brand-footer:hover .config-brand-icon,
+.config-brand-footer:focus-visible .config-brand-icon {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.config-brand-version {
+  color: #64748b;
+  font-weight: 500;
+  /* The version must not break in the middle of the number. */
+  white-space: nowrap;
+}
+
+.config-brand-copyright {
+  color: #64748b;
+  font-size: 10.5px;
+}

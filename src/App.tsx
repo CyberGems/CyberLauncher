@@ -2218,6 +2218,7 @@ export default function App() {
   }, [language]);
 
   const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'indexer'>('general');
+  const [settingsAppVersion, setSettingsAppVersion] = useState('');
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
@@ -2390,6 +2391,13 @@ export default function App() {
     };
     fetchIndexerData();
   }, []);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    window.electronAPI?.getAppVersions?.().then((v) => {
+      if (v?.app) setSettingsAppVersion(v.app);
+    }).catch(() => {});
+  }, [isSettingsOpen]);
 
   useEffect(() => {
     if (!isSettingsOpen) return;
@@ -13525,6 +13533,20 @@ export default function App() {
                 {/* (CyberTray Section removed) */}
                 </div>
               </div>
+              <Tooltip label={t('tooltip_about')} placement="top">
+                <button
+                  type="button"
+                  className="config-brand-footer"
+                  onClick={() => { setIsSettingsOpen(false); setIsAboutOpen(true); }}
+                  aria-label={t('tooltip_about')}
+                >
+                  <span className="config-brand-line">
+                    <img className="config-brand-icon" src="icon.png" alt="" aria-hidden="true" draggable={false} />
+                    <span>CyberLauncher <span className="config-brand-version">v{settingsAppVersion || '…'}</span></span>
+                  </span>
+                  <span className="config-brand-copyright">© 2026 CyberGems</span>
+                </button>
+              </Tooltip>
             </motion.div>
           </>
         )}
