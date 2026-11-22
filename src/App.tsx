@@ -4700,6 +4700,7 @@ export default function App() {
         return;
       }
       setUpdateStatus(status);
+      if (status.state === 'available' && configRef.current.autoUpdate === false) return;
       if (status.state === 'available' || status.state === 'downloaded') {
         const key = `${status.state}:${status.version}`;
         const seen = updateNotifSeenRef.current || localStorage.getItem('update_notif_seen') || '';
@@ -4736,6 +4737,7 @@ export default function App() {
 
   const handleAutoUpdateChange = useCallback((enabled: boolean) => {
     setAutoUpdate(enabled);
+    if (!enabled) setNotification(current => current?.action === 'open-about' ? null : current);
     if (isElectron) {
       window.electronAPI?.setAutoUpdate?.(enabled);
     }
