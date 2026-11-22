@@ -10015,7 +10015,8 @@ export default function App() {
               </button>
             </Tooltip>
 
-            <Tooltip label={withShortcut(t('tooltip_minimize'), 'Win+↓')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
+            {/* Win+↓ minimizes to the taskbar; this control hides to the tray, so it carries no shortcut chip. */}
+            <Tooltip label={t('tooltip_minimize')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
               <button 
                 onClick={() => {
                   setIsMoreMenuOpen(false);
