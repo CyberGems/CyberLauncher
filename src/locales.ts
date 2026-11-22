@@ -193,6 +193,7 @@ export const translations = {
 
     // Settings Title
     settings_title: "CONFIGURACIÓN DE CYBERLAUNCHER",
+    settings_saved: "Guardado",
 
     // General Settings Tab
     general_language: "IDIOMA DE LA INTERFAZ (LANGUAGE)",
@@ -1217,6 +1218,7 @@ export const translations = {
 
     // Settings Title
     settings_title: "CYBERLAUNCHER CONFIGURATION",
+    settings_saved: "Saved",
 
     // General Settings Tab
     general_language: "INTERFACE LANGUAGE",

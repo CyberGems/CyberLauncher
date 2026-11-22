@@ -2219,6 +2219,15 @@ export default function App() {
 
   const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'indexer'>('general');
   const [settingsAppVersion, setSettingsAppVersion] = useState('');
+  // "Guardado" feedback: bumped on every successful settings write so the pill
+  // and its separator pulse replay their animation on each save action.
+  const [settingsSavePulse, setSettingsSavePulse] = useState(0);
+  const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifySettingsSaved = useCallback(() => {
+    setSettingsSavePulse(p => p + 1);
+    if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current);
+    settingsSaveTimerRef.current = setTimeout(() => setSettingsSavePulse(0), 2200);
+  }, []);
 
   const [systemContextMenu, setSystemContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [systemContextMenuIndex, setSystemContextMenuIndex] = useState(0);
@@ -2425,6 +2434,7 @@ export default function App() {
           };
           setIndexerSettings(updated);
           await window.electronAPI!.saveIndexerSettings(updated);
+          notifySettingsSaved();
           setNotification({ message: t('notif_folder_added'), type: 'success' });
         }
       }
@@ -2442,6 +2452,7 @@ export default function App() {
       setIndexerSettings(updated);
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
+        notifySettingsSaved();
       }
       setNotification({ message: t('notif_folder_removed'), type: 'info' });
     } catch (err) {
@@ -2455,6 +2466,7 @@ export default function App() {
       setIndexerSettings(updated);
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
+        notifySettingsSaved();
       }
       setNotification({ 
         message: enabled ? t('notif_indexer_enabled') : t('notif_indexer_disabled'), 
@@ -2471,6 +2483,7 @@ export default function App() {
       setIndexerSettings(updated);
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
+        notifySettingsSaved();
       }
     } catch (err) {
       console.error('Error changing indexer depth:', err);
@@ -2483,6 +2496,7 @@ export default function App() {
       setIndexerSettings(updated);
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
+        notifySettingsSaved();
       }
       setNotification({ message: includeHiddenFolders ? t('notif_hidden_folders_included') : t('notif_hidden_folders_excluded'), type: 'success' });
     } catch (err) {
@@ -2496,6 +2510,7 @@ export default function App() {
       setIndexerSettings(updated);
       if (isElectron) {
         await window.electronAPI!.saveIndexerSettings(updated);
+        notifySettingsSaved();
       }
       setNotification({ message: indexHiddenContent ? t('notif_hidden_content_included') : t('notif_hidden_content_excluded'), type: 'success' });
     } catch (err) {
@@ -2980,6 +2995,7 @@ export default function App() {
   const setAppDeleteConfirmationPreference = (enabled: boolean) => {
     setConfirmBeforeDeletingApps(enabled);
     localStorage.setItem('confirmBeforeDeletingApps', String(enabled));
+    notifySettingsSaved();
   };
 
   const handleCreateCategory = (e?: React.FormEvent) => {
@@ -4504,6 +4520,7 @@ export default function App() {
       console.log('[SAVE] Guardando', cleanConfig.apps?.length, 'apps al archivo...');
       try {
         const ok = await window.electronAPI!.saveConfig(cleanConfig);
+        if (ok) notifySettingsSaved();
         console.log('[SAVE] Resultado:', ok ? 'OK' : 'FALLÓ', '- apps:', cleanConfig.apps?.length);
       } catch (e) {
         console.error('[SAVE] Error guardando config:', e);
@@ -4524,7 +4541,7 @@ export default function App() {
     selectedMonitor, autoUpdate, language,
     autoBackupEnabled, autoBackupHours, autoBackupKeep, autoBackupLast, autoBackupFolder,
     showTrayRecents, showSuiteRecommendations, cyberBot.settings, onboardingCompleted,
-    isConfigLoaded
+    isConfigLoaded, notifySettingsSaved
   ]);
 
   // Sincronizar hideOnBlur con el proceso principal de Electron
@@ -11325,7 +11342,18 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div className="mt-auto pt-3 px-3 shrink-0 border-t border-white/5">
+                  <div className="mt-auto pt-3 px-3 shrink-0 border-t border-white/5 relative">
+                    {settingsSavePulse > 0 && (
+                      <span key={`sep-${settingsSavePulse}`} className="settings-save-separator-pulse" aria-hidden="true" />
+                    )}
+                    <div className="min-h-[20px] flex flex-col justify-center" aria-live="polite">
+                      {settingsSavePulse > 0 && (
+                        <div key={settingsSavePulse} className="settings-saved-pill">
+                          <span className="settings-saved-pill-dot" aria-hidden="true" />
+                          <span>{t('settings_saved')}</span>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsSettingsOpen(false)}
@@ -13459,6 +13487,7 @@ export default function App() {
                                   setIndexerSettings(updated);
                                   if (isElectron) {
                                     await window.electronAPI!.saveIndexerSettings(updated);
+                                    notifySettingsSaved();
                                   }
                                 } catch (e) {
                                   console.error('Error toggling drive:', e);
