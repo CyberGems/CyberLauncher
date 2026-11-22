@@ -612,13 +612,31 @@ button[disabled] .btn-kbd {
   font-size: 10.5px;
 }
 
-/* Settings sidebar "saved" feedback: pill fades in and the separator line above
-   the close button pulses green on every save action (suite standard). */
+/* Settings sidebar "saved" feedback: on every save action the slot expands to
+   reveal the pill centered between the separator line and the close button,
+   the line pulses green, and when the pill hides the slot collapses back so
+   the separator returns to its original position (suite standard). */
+.settings-saved-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.settings-saved-slot.open {
+  grid-template-rows: 1fr;
+}
+
+.settings-saved-slot-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .settings-saved-pill {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  margin-bottom: 12px;
   color: #64748b;
   font-size: 10px;
   font-weight: 700;

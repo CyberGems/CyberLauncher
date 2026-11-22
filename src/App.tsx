@@ -11346,13 +11346,15 @@ export default function App() {
                     {settingsSavePulse > 0 && (
                       <span key={`sep-${settingsSavePulse}`} className="settings-save-separator-pulse" aria-hidden="true" />
                     )}
-                    <div className="min-h-[20px] flex flex-col justify-center" aria-live="polite">
-                      {settingsSavePulse > 0 && (
-                        <div key={settingsSavePulse} className="settings-saved-pill">
-                          <span className="settings-saved-pill-dot" aria-hidden="true" />
-                          <span>{t('settings_saved')}</span>
-                        </div>
-                      )}
+                    <div className={`settings-saved-slot${settingsSavePulse > 0 ? ' open' : ''}`} aria-live="polite">
+                      <div className="settings-saved-slot-inner">
+                        {settingsSavePulse > 0 && (
+                          <div key={settingsSavePulse} className="settings-saved-pill">
+                            <span className="settings-saved-pill-dot" aria-hidden="true" />
+                            <span>{t('settings_saved')}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
