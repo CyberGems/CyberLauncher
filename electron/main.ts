@@ -2220,6 +2220,9 @@ function ensureDesktopToastWin(): BrowserWindow {
 
 function showDesktopToastInternal(payload: any) {
   const launcherVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  if (payload.action === 'open-update' && (
+    launcherVisible || latestToastPayload?.type === 'imminent' || latestToastPayload?.source === 'system-alert'
+  )) return false;
   if (payload.source === 'system-alert' && launcherVisible) return false;
   const floatingBounds = desktopCyberBot?.getVisibleBounds() ?? [];
   const channel = chooseNotificationChannel(toastDeliverySettings, {
@@ -4299,6 +4302,7 @@ function setupIpcHandlers() {
       }
       hideDesktopToastInternal();
     } else if (action === 'open-hud') {
+      if (payload?.target === 'open-update' && latestToastPayload?.action !== 'open-update') return;
       showMainWindow();
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('open-hud-action', payload?.target);
@@ -4309,18 +4313,12 @@ function setupIpcHandlers() {
         const url = new URL(payload.url);
         if (url.protocol === 'https:') void shell.openExternal(url.toString());
       } catch { /* Ignore malformed release URLs. */ }
-      if (latestToastPayload?.persistent && latestToastPayload?.action === 'open-about' && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update:notice-dismissed');
-      }
       hideDesktopToastInternal();
     }
   });
 
   ipcMain.on('desktop-toast-hide', (event) => {
     if (!desktopToastWin || desktopToastWin.isDestroyed() || event.sender !== desktopToastWin.webContents) return;
-    if (latestToastPayload?.persistent && latestToastPayload?.action === 'open-about' && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update:notice-dismissed');
-    }
     hideDesktopToastInternal();
   });
 

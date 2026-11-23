@@ -1,107 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
-  X, Github, RefreshCw, Download, CheckCircle2, SkipForward,
-  Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Heart, ExternalLink
+  X, Github, RefreshCw,
+  Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Heart
 } from 'lucide-react';
 import Tooltip from './Tooltip';
-import { ToggleSwitch } from './components/ToggleSwitch';
 import { EscKeyBadge } from './KeyBadge';
 import { TranslationKey } from './locales';
+export { cleanMarkdownChangelog, parseReleaseBlocks } from './releaseNotes';
 
 const REPO_URL = 'https://github.com/CyberGems/CyberLauncher';
-export const SKIPPED_UPDATE_KEY = 'cyberlauncher_skipped_update_version';
-
-export function isSkippedUpdateVersion(
-  version: string | null | undefined,
-  skippedVersion: string | null | undefined
-): boolean {
-  if (!version || !skippedVersion) return false;
-  const normalize = (v: string) => v.trim().toLowerCase().replace(/^v+/, '');
-  return normalize(version) === normalize(skippedVersion);
-}
-
-export function githubReleaseUrl(version: string): string {
-  const tag = version.startsWith('v') ? version : `v${version}`;
-  return `${REPO_URL}/releases/tag/${tag}`;
-}
-
-/**
- * Extracts language-specific release notes section from GitHub Markdown.
- * Mirrors CyberClock update parsing standard:
- * - When language is 'es', looks for explicit comments or <details>...Español...</summary>...
- * - When language is 'en', strips Spanish <details> block so English stays clean.
- */
-export function extractLanguageSection(markdown: string, language: 'es' | 'en' = 'en'): string {
-  if (!markdown) return '';
-
-  // 1. Check for explicit comment tags: <!-- lang:es --> ... <!-- /lang:es -->
-  const commentRegex = new RegExp(`<!--\\s*lang:${language}\\s*-->([\\s\\S]*?)<!--\\s*/lang:${language}\\s*-->`, 'i');
-  const commentMatch = markdown.match(commentRegex);
-  if (commentMatch && commentMatch[1]?.trim()) {
-    return commentMatch[1].trim();
-  }
-
-  // 2. Check for details summary block or header in Spanish: <summary>...Español...</summary>
-  if (language === 'es') {
-    const esBlockRegex = /(?:<details>[\s\S]*?<summary>[\s\S]*?(?:español|spanish)[\s\S]*?<\/summary>([\s\S]*?)<\/details>)|(?:#{2,4}\s*(?:.*?(?:español|novedades|cambios).*?)\r?\n([\s\S]*?)(?=(?:#{2,4}\s)|<\/details>|$))/i;
-    const esMatch = markdown.match(esBlockRegex);
-    const content = esMatch ? (esMatch[1] || esMatch[2]) : null;
-    if (content && content.trim()) {
-      return content.trim();
-    }
-  }
-
-  // 3. Fallback: if user is on English, or no Spanish block exists, exclude any Spanish details blocks so English remains clean
-  return markdown.replace(/<details>[\s\S]*?<summary>[\s\S]*?(?:español|spanish)[\s\S]*?<\/summary>[\s\S]*?<\/details>/gi, '');
-}
-
-/** Plain-text teaser of GitHub release notes for toasts, localized to the user language. */
-export function peekReleaseNotes(body: string, language: 'es' | 'en' = 'en', maxChars = 240): string {
-  if (!body) return '';
-  const section = extractLanguageSection(body, language);
-
-  if (language !== 'es') {
-    const summaryMatch = section.match(/<!--\s*changelog-summary:start\s*-->([\s\S]*?)<!--\s*changelog-summary:end\s*-->/i);
-    if (summaryMatch && summaryMatch[1]?.trim()) {
-      const summary = summaryMatch[1].replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim();
-      return summary.length <= maxChars ? summary : `${summary.slice(0, maxChars).trimEnd()}…`;
-    }
-  }
-
-  const lines = section
-    .replace(/^\uFEFF/, '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => {
-      if (/^<!--[\s\S]*?-->$/.test(line)) return false;
-      if (/^<[^>]+>$/.test(line)) return false;
-      if (/^---+$/.test(line)) return false;
-      if (/^#{1,6}\s+/.test(line)) return false;
-      if (/^>\s+/.test(line)) return false;
-      if (/^\|/.test(line)) return false;
-      if (/^Release Notes/i.test(line)) return false;
-      if (/^Full Changelog/i.test(line)) return false;
-      return true;
-    })
-    .map((line) =>
-      line
-        .replace(/^[-*+]\s+/, '• ')
-        .replace(/`([^`]+)`/g, '$1')
-        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-        .replace(/[*_~]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-    )
-    .filter(Boolean);
-
-  const text = lines.slice(0, 3).join('\n');
-  if (text.length <= maxChars) return text;
-  return `${text.slice(0, maxChars).trimEnd()}…`;
-}
-
 export type AppVersions = {
   app: string;
   electron: string;
@@ -114,26 +22,16 @@ export type AppVersions = {
   isPortable?: boolean;
 };
 
-export type UpdateStatus =
-  | { state: 'idle' }
-  | { state: 'checking' }
-  | { state: 'available'; version: string; releaseNotes?: string; releaseUrl?: string }
-  | { state: 'not-available'; version: string }
-  | { state: 'downloading'; percent: number }
-  | { state: 'downloaded'; version: string; releaseNotes?: string; releaseUrl?: string }
-  | { state: 'skipped'; version: string; releaseNotes?: string; releaseUrl?: string }
-  | { state: 'error'; message: string };
+type CheckStatus = 'idle' | 'checking' | 'available' | 'latest' | 'error';
 
 type Props = {
   language: 'es' | 'en';
   t: (key: TranslationKey, variables?: Record<string, string>) => string;
-  autoUpdate: boolean;
-  onAutoUpdateChange: (enabled: boolean) => void;
+  onUpdateAvailable: (version: string) => void;
   onClose: () => void;
   isElectron: boolean;
   autoCheckSeq?: number;
   showSuiteRecommendations?: boolean;
-  onSkipUpdateVersion?: (version: string) => void;
 };
 
 function platformLabel(platform: string): string {
@@ -179,16 +77,14 @@ function edgeMaskStyle(fades: { top: boolean; bottom: boolean }): React.CSSPrope
 export default function AboutModal({
   language,
   t,
-  autoUpdate,
-  onAutoUpdateChange,
+  onUpdateAvailable,
   onClose,
   isElectron,
   autoCheckSeq,
   showSuiteRecommendations = true,
-  onSkipUpdateVersion,
 }: Props) {
   const [versions, setVersions] = useState<AppVersions | null>(null);
-  const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
+  const [status, setStatus] = useState<CheckStatus>('idle');
   const [diagCopied, setDiagCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHandledSeqRef = useRef(0);
@@ -221,33 +117,14 @@ export default function AboutModal({
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
     window.electronAPI.getAppVersions?.().then((v) => setVersions(v as AppVersions)).catch(() => {});
-    window.electronAPI.getUpdateStatus?.().then((s) => {
-      if (s) {
-        const skipped = localStorage.getItem(SKIPPED_UPDATE_KEY);
-        if (s.state === 'available' && isSkippedUpdateVersion(s.version, skipped)) {
-          setStatus({ state: 'skipped', version: s.version, releaseNotes: s.releaseNotes, releaseUrl: s.releaseUrl });
-        } else {
-          setStatus(s as UpdateStatus);
-        }
-      }
-    }).catch(() => {});
-    const off = window.electronAPI.onUpdateStatus?.((s) => {
-      const skipped = localStorage.getItem(SKIPPED_UPDATE_KEY);
-      if (s.state === 'available' && isSkippedUpdateVersion(s.version, skipped)) {
-        setStatus({ state: 'skipped', version: s.version, releaseNotes: s.releaseNotes, releaseUrl: s.releaseUrl });
-      } else {
-        setStatus(s as UpdateStatus);
-      }
-    });
     return () => {
-      off?.();
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
     };
   }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
         e.preventDefault();
         e.stopPropagation();
         onClose();
@@ -260,34 +137,26 @@ export default function AboutModal({
   const appVersion = versions?.app || '';
 
   const handleCheck = useCallback(async () => {
-    if (!window.electronAPI?.checkForUpdates) {
-      setStatus({ state: 'error', message: 'Updater unavailable in this environment' });
+    if (!window.electronAPI) {
+      setStatus('error');
       return;
     }
-    setStatus({ state: 'checking' });
+    setStatus('checking');
     try {
-      const res = await window.electronAPI.checkForUpdates();
-      if (!res?.ok) {
-        setStatus({ state: 'error', message: res?.error || 'Update check failed' });
-        return;
+      const result = await window.electronAPI.checkForUpdates();
+      if (!result.ok) {
+        setStatus('error');
+      } else if (result.available) {
+        setStatus('available');
+        onUpdateAvailable(result.version);
+      } else {
+        setStatus('latest');
       }
-      setStatus((prev) =>
-        prev.state === 'checking'
-          ? { state: 'not-available', version: res.version || appVersion }
-          : prev
-      );
-    } catch (e) {
-      setStatus({ state: 'error', message: String((e as Error)?.message || e) });
+    } catch (error) {
+      console.warn('[Updater] Could not check for updates:', error);
+      setStatus('error');
     }
-  }, [appVersion]);
-
-  const handleSkip = useCallback(() => {
-    if (status.state === 'available') {
-      localStorage.setItem(SKIPPED_UPDATE_KEY, status.version);
-      setStatus({ state: 'skipped', version: status.version, releaseNotes: status.releaseNotes, releaseUrl: status.releaseUrl });
-      onSkipUpdateVersion?.(status.version);
-    }
-  }, [status, onSkipUpdateVersion]);
+  }, [onUpdateAvailable]);
 
   useEffect(() => {
     if (autoCheckSeq && autoCheckSeq > lastHandledSeqRef.current) {
@@ -295,14 +164,6 @@ export default function AboutModal({
       void handleCheck();
     }
   }, [autoCheckSeq, handleCheck]);
-
-  const handleDownload = async () => {
-    await window.electronAPI?.downloadUpdate?.();
-  };
-
-  const handleInstall = () => {
-    window.electronAPI?.installUpdate?.();
-  };
 
   const handleCopyDiagnostics = useCallback(async () => {
     if (!versions) return;
@@ -410,120 +271,23 @@ export default function AboutModal({
               <div className="h-px flex-1 bg-cyan-500/20" />
             </div>
 
-            <UpdateStatusLine status={status} t={t} />
-
-            {(status.state === 'available' || status.state === 'downloaded' || (status.state === 'skipped' && Boolean(status.releaseNotes))) && (
-              <ReleaseNotesPanel
-                status={status as any}
-                currentVersion={appVersion}
-                language={language}
-                t={t}
-              />
-            )}
-
-            <div className="space-y-2">
-              {status.state === 'available' ? (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 shrink-0" />
-                    <span>{t('about_download_btn')}</span>
-                  </button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      <span>{t('about_view_release')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSkip}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 hover:border-slate-500/40 transition-colors cursor-pointer"
-                    >
-                      <SkipForward className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                      <span>{t('about_skip_btn')}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : status.state === 'skipped' ? (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition-colors cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 shrink-0" />
-                    <span>{t('about_download_btn')}</span>
-                  </button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      <span>{t('about_view_release')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCheck}
-                      disabled={status.state === 'checking'}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${status.state === 'checking' ? 'animate-spin' : ''}`} />
-                      <span>{t('about_check_updates')}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : status.state === 'downloaded' ? (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleInstall}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 px-2 rounded-xl text-xs font-cyber font-bold tracking-wider bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>{t('about_install_btn')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openUrl(status.releaseUrl || githubReleaseUrl(status.version))}
-                    className="flex items-center justify-center gap-1.5 w-full py-2 px-2 rounded-xl text-[11px] font-cyber font-bold tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    <span>{t('about_view_release')}</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCheck}
-                  disabled={status.state === 'checking' || status.state === 'downloading'}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${status.state === 'checking' ? 'animate-spin' : ''}`} />
-                  {t('about_check_updates')}
-                </button>
-              )}
-
-              <div className="flex items-center justify-between px-1 py-1.5 pt-1">
-                <div className="flex flex-col text-left pr-3">
-                  <span className="text-xs text-slate-200 font-medium leading-tight">{t('about_auto_updates')}</span>
-                  <span className="text-[11px] text-slate-400 leading-snug mt-0.5">{t('about_auto_updates_desc')}</span>
-                </div>
-                <ToggleSwitch
-                  checked={autoUpdate}
-                  onChange={() => onAutoUpdateChange(!autoUpdate)}
-                  ariaLabel={t('about_auto_updates')}
-                />
+            {status !== 'idle' && (
+              <div className={`mb-3 text-center text-xs ${status === 'available' ? 'text-cyan-300' : status === 'latest' ? 'text-emerald-400' : 'text-slate-400'}`} role="status">
+                {t(status === 'checking' ? 'about_status_checking'
+                  : status === 'available' ? 'about_status_available'
+                  : status === 'latest' ? 'about_status_latest'
+                  : 'about_status_error')}
               </div>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={handleCheck}
+              disabled={status === 'checking'}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-cyber font-bold tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${status === 'checking' ? 'animate-spin' : ''}`} aria-hidden="true" />
+              {t('about_check_updates')}
+            </button>
           </div>
 
           {showSuiteRecommendations && (
@@ -653,282 +417,5 @@ export default function AboutModal({
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-function UpdateStatusLine({
-  status,
-  t,
-}: {
-  status: UpdateStatus;
-  t: (key: TranslationKey, variables?: Record<string, string>) => string;
-}) {
-  if (status.state === 'idle') return null;
-
-  if (status.state === 'downloading') {
-    return (
-      <div className="text-center text-xs text-slate-400 mb-2.5 font-medium">
-        {t('about_status_downloading', { percent: String(status.percent) })}
-      </div>
-    );
-  }
-
-  const color =
-    status.state === 'error' ? 'text-red-400'
-      : status.state === 'available' ? 'text-cyan-400'
-      : status.state === 'downloaded' || status.state === 'not-available' ? 'text-emerald-400'
-      : status.state === 'skipped' ? 'text-slate-400'
-      : 'text-slate-400';
-
-  const text =
-    status.state === 'checking' ? t('about_status_checking')
-      : status.state === 'not-available' ? t('about_status_latest')
-      : status.state === 'available' ? t('about_status_available', { version: status.version })
-      : status.state === 'downloaded' ? t('about_status_downloaded', { version: status.version })
-      : status.state === 'skipped' ? t('about_status_skipped', { version: status.version })
-      : status.state === 'error' ? t('about_status_error')
-      : '';
-
-  return (
-    <div className={`text-center text-xs mb-2.5 font-medium ${color}`}>
-      {text}
-      {status.state === 'error' && status.message && (
-        <div className="mt-1 text-[10px] text-slate-600 break-words font-normal">
-          {status.message}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReleaseNotesPanel({
-  status,
-  currentVersion,
-  language,
-  t,
-}: {
-  status: Extract<UpdateStatus, { state: 'available' } | { state: 'downloaded' } | { state: 'skipped' }>;
-  currentVersion: string;
-  language: 'es' | 'en';
-  t: (key: TranslationKey, variables?: Record<string, string>) => string;
-}) {
-  return (
-    <div className="mb-3 space-y-2.5 text-left">
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
-        <div>
-          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-slate-500 mb-1">
-            {t('about_current_version')}
-          </div>
-          <span className="inline-block text-[11px] font-bold text-slate-300 bg-white/5 px-2 py-0.5 rounded">
-            v{currentVersion || '…'}
-          </span>
-        </div>
-        <div>
-          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-cyan-400/80 mb-1">
-            {t('about_latest_version')}
-          </div>
-          <span className="inline-block text-[11px] font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
-            v{status.version}
-          </span>
-        </div>
-      </div>
-
-      {status.releaseNotes && (
-        <div>
-          <div className="text-[10px] font-cyber font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            {t('about_release_notes')}
-          </div>
-          <NotesScroller body={status.releaseNotes} language={language} />
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-/** Bordered notes box whose inner scroll area fades at the top/bottom edges while scrolling. */
-function NotesScroller({ body, language }: { body: string; language: 'es' | 'en' }) {
-  const notesFade = useEdgeFades<HTMLDivElement>();
-  return (
-    <div className="min-h-[6.5rem] rounded-xl border border-white/10 bg-black/25 overflow-hidden">
-      <div
-        ref={notesFade.ref}
-        onScroll={notesFade.onScroll}
-        className="max-h-[200px] overflow-y-auto custom-scrollbar px-3.5 py-3 text-left text-[12.5px] leading-relaxed text-slate-300"
-        style={edgeMaskStyle(notesFade.fades)}
-      >
-        <ReleaseNotes body={body} language={language} />
-      </div>
-    </div>
-  );
-}
-
-export function cleanMarkdownChangelog(raw: string, language: 'es' | 'en' = 'en'): string {
-  const section = extractLanguageSection(raw, language);
-  const lines = section.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
-  const filtered: string[] = [];
-  let inTableOrDownloads = false;
-  let inInstallBlock = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      filtered.push('');
-      continue;
-    }
-    // Filter out HTML noise & comments
-    if (/^<!--[\s\S]*?-->$/.test(trimmed)) continue;
-    if (/^<\/?(?:details|summary|p|img|div|span|b|strong)[^>]*>$/i.test(trimmed)) continue;
-    // Filter out the Before you install block (release-page furniture: the
-    // updater is automatic, so the About panel skips SmartScreen guidance)
-    if (/^#{1,4}\s*⚠️\s*(?:Before you install|Antes de instalar)/i.test(trimmed)) {
-      inInstallBlock = true;
-      continue;
-    }
-    if (inInstallBlock) {
-      if (/^#{1,3}\s+/i.test(trimmed)) {
-        inInstallBlock = false;
-      } else {
-        continue;
-      }
-    }
-    // Filter out downloads and checksum sections
-    if (/^#{1,4}\s*(?:📦|🔐)?\s*(?:Downloads|Paquetes|Checksums|Assets|Hashes)/i.test(trimmed)) {
-      inTableOrDownloads = true;
-      continue;
-    }
-    if (inTableOrDownloads) {
-      if (/^#{1,3}\s+(?!.*(?:Downloads|Paquetes|Checksums|Assets|Hashes))/i.test(trimmed)) {
-        inTableOrDownloads = false;
-      } else {
-        continue;
-      }
-    }
-    if (/^\|/.test(trimmed)) continue; // Table lines
-    if (/^\*Crafted with precision/i.test(trimmed)) continue;
-    filtered.push(line);
-  }
-  return filtered.join('\n').trim();
-}
-
-function renderInline(text: string): ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]*\))/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-slate-100">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={i} className="rounded bg-white/10 px-1 py-px font-mono text-[11px] text-cyan-100/90">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]*)\)$/);
-    if (linkMatch) {
-      return (
-        <span key={i} className="text-cyan-300 font-medium">
-          {linkMatch[1]}
-        </span>
-      );
-    }
-    return part;
-  });
-}
-
-export type ReleaseListItem = { text: string; children: string[] };
-export type ReleaseBlock =
-  | { type: 'heading'; text: string }
-  | { type: 'paragraph'; text: string }
-  | { type: 'list'; items: ReleaseListItem[] };
-
-/**
- * Parses cleaned changelog markdown into render blocks with one nesting level.
- * Indented sub-bullets attach to the previous top-level item, markdown soft-wrapped
- * continuation lines extend the last item, and blockquote markers are stripped.
- */
-export function parseReleaseBlocks(cleaned: string): ReleaseBlock[] {
-  const lines = cleaned.split('\n');
-  const blocks: ReleaseBlock[] = [];
-  let items: ReleaseListItem[] = [];
-
-  const flushList = () => {
-    if (!items.length) return;
-    blocks.push({ type: 'list', items });
-    items = [];
-  };
-
-  for (const line of lines) {
-    const heading = line.match(/^#{1,3}\s+(.*)$/);
-    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
-    if (heading) {
-      flushList();
-      blocks.push({ type: 'heading', text: heading[1] });
-    } else if (bullet) {
-      const text = bullet[1];
-      if (/^\s/.test(line) && items.length > 0) {
-        items[items.length - 1].children.push(text);
-      } else {
-        items.push({ text, children: [] });
-      }
-    } else if (!line.trim() || /^---+/.test(line.trim())) {
-      flushList();
-    } else if (items.length > 0) {
-      // Soft-wrapped continuation of the current item (markdown lazy continuation)
-      const last = items[items.length - 1];
-      if (last.children.length > 0) {
-        last.children[last.children.length - 1] += ` ${line.trim()}`;
-      } else {
-        last.text += ` ${line.trim()}`;
-      }
-    } else {
-      blocks.push({ type: 'paragraph', text: line.replace(/^>\s?/, '') });
-    }
-  }
-  flushList();
-  return blocks;
-}
-
-function ReleaseNotes({ body, language }: { body: string; language: 'es' | 'en' }) {
-  const blocks = parseReleaseBlocks(cleanMarkdownChangelog(body, language));
-  return (
-    <div className="space-y-0.5">
-      {blocks.map((block, i) => {
-        if (block.type === 'heading') {
-          return (
-            <h4 key={i} className="mb-1 mt-2.5 first:mt-0 text-[13px] font-semibold text-slate-100">
-              {renderInline(block.text)}
-            </h4>
-          );
-        }
-        if (block.type === 'paragraph') {
-          return (
-            <p key={i} className="text-[12.5px] leading-relaxed">
-              {renderInline(block.text)}
-            </p>
-          );
-        }
-        return (
-          <ul key={i} className="my-1.5 list-disc space-y-1 pl-4 marker:text-cyan-400/70">
-            {block.items.map((item, j) => (
-              <li key={j}>
-                {renderInline(item.text)}
-                {item.children.length > 0 && (
-                  <ul className="mt-1 list-[circle] space-y-1 pl-4 marker:text-slate-500">
-                    {item.children.map((child, k) => (
-                      <li key={k}>{renderInline(child)}</li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
-        );
-      })}
-    </div>
   );
 }

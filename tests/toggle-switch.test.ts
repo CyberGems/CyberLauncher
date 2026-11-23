@@ -37,14 +37,13 @@ test('ToggleSwitch renders CyberGems suite-standard geometry and states', () => 
   assert.ok(onMarkup.includes('M3.2 8.35 6.45 11.45 12.8 4.7'));
 });
 
-test('Settings and UI toggles across App, AboutModal, and OnboardingModal use ToggleSwitch', () => {
+test('Settings and onboarding share ToggleSwitch, and update notifications are configured in Settings', () => {
   const appSource = readFileSync('src/App.tsx', 'utf8');
   const aboutSource = readFileSync('src/AboutModal.tsx', 'utf8');
   const onboardingSource = readFileSync('src/components/OnboardingModal.tsx', 'utf8');
 
   for (const [name, source] of [
     ['src/App.tsx', appSource],
-    ['src/AboutModal.tsx', aboutSource],
     ['src/components/OnboardingModal.tsx', onboardingSource],
   ] as const) {
     assert.ok(source.includes('<ToggleSwitch'), `${name} should use ToggleSwitch`);
@@ -54,6 +53,8 @@ test('Settings and UI toggles across App, AboutModal, and OnboardingModal use To
       `${name} must not define ad-hoc toggle button markup`
     );
   }
+  assert.match(appSource, /<ToggleSwitch\s+checked=\{autoUpdate\}/);
+  assert.doesNotMatch(aboutSource, /<ToggleSwitch|role=["']switch["']|onAutoUpdateChange/);
 });
 
 test('CyberBot Assistant wording is consistent in English and Spanish settings copy', () => {

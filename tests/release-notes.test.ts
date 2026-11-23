@@ -4,7 +4,8 @@ import {
   extractLanguageSection,
   cleanMarkdownChangelog,
   parseReleaseBlocks,
-} from '../src/AboutModal';
+  peekReleaseNotes,
+} from '../src/releaseNotes';
 
 // Fixture shaped like the real published release body: summary, blockquote,
 // ES <details> block with nested bullets, install furniture, and downloads table.
@@ -142,4 +143,13 @@ test('real-shaped release body produces no dash-prefixed paragraphs', () => {
     const parentsWithChildren = lists.flatMap((l) => l.items.filter((i) => i.children.length > 0));
     assert.ok(parentsWithChildren.length > 0, 'nested sub-bullets were not attached to a parent');
   }
+});
+
+test('updater preview keeps localized HTML highlights and drops installer sections', () => {
+  const notes = '<h3>Highlights</h3><ul><li>Improved search</li></ul>' +
+    '<details><summary>Español</summary><h3>Novedades</h3><ul><li>Búsqueda mejorada</li></ul>' +
+    '<h3>ℹ️ Antes de instalar</h3><ul><li>Detalles de instalación</li></ul></details>' +
+    '<h3>🔐 VirusTotal and SHA256</h3><ul><li>Checksums</li></ul>';
+  assert.deepEqual(peekReleaseNotes(notes, 'en'), [{ text: 'Improved search', children: [] }]);
+  assert.deepEqual(peekReleaseNotes(notes, 'es'), [{ text: 'Búsqueda mejorada', children: [] }]);
 });

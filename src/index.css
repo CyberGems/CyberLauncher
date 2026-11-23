@@ -692,3 +692,30 @@ button[disabled] .btn-kbd {
     opacity: 0;
   }
 }
+.update-notice:focus-visible {
+  outline: 2px solid var(--color-cyan-400);
+  outline-offset: 2px;
+}
+
+.update-notice-version { color: var(--color-cyan-200); }
+
+.update-notice-primary {
+  background: var(--color-cyan-400);
+  color: var(--color-slate-950);
+}
+
+.update-notice-primary:hover { background: var(--color-cyan-300); }
+
+.update-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-slate-800);
+}
+
+.update-progress::-webkit-progress-bar { background: var(--color-slate-800); }
+.update-progress::-webkit-progress-value { background: var(--color-cyan-400); }

@@ -221,23 +221,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSeenTrayPinTip: () => ipcRenderer.invoke('get-seen-tray-pin-tip'),
   isTrayPinTipVisible: () => ipcRenderer.invoke('is-tray-pin-tip-visible'),
 
-  // --- App versions / updates (CyberFeeds model) ---
+  // --- App versions / updates ---
   getAppVersions: () => ipcRenderer.invoke('app:get-versions'),
   getUpdateStatus: () => ipcRenderer.invoke('update:get-status'),
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
-  downloadUpdate: () => ipcRenderer.invoke('update:download'),
-  installUpdate: () => ipcRenderer.invoke('update:install'),
+  downloadUpdate: (version: string) => ipcRenderer.invoke('update:download', version),
+  cancelUpdateDownload: (version: string) => ipcRenderer.invoke('update:cancel-download', version),
+  installUpdate: (version: string) => ipcRenderer.invoke('update:install', version),
   setAutoUpdate: (enabled: boolean) => ipcRenderer.invoke('set-auto-update', enabled),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onUpdateStatus: (callback: (status: any) => void) => {
     const handler = (_event: any, status: any) => callback(status);
     ipcRenderer.on('update:status', handler);
     return () => { ipcRenderer.removeListener('update:status', handler); };
-  },
-  onUpdateNoticeDismissed: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('update:notice-dismissed', handler);
-    return () => { ipcRenderer.removeListener('update:notice-dismissed', handler); };
   },
 
   // --- System Health Alerts ---

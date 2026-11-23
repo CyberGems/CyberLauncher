@@ -41,7 +41,10 @@ const QUIET_HOUR_OPTIONS: CustomSelectOption[] = Array.from({ length: 24 }, (_, 
   return { value: formatted, label: formatted };
 });
 import CyberTerminal from './CyberTerminal';
-import AboutModal, { UpdateStatus, peekReleaseNotes, isSkippedUpdateVersion, SKIPPED_UPDATE_KEY } from './AboutModal';
+import AboutModal from './AboutModal';
+import UpdateNotice from './UpdateNotice';
+import { useUpdateNotice } from './useUpdateNotice';
+import type { PendingUpdate, UpdateCheckResult } from './updateState';
 import { EnterKeyBadge, EscKeyBadge } from './KeyBadge';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import CommandPalette, { type CommandPaletteItem } from './CommandPalette';
@@ -51,7 +54,7 @@ import {
   Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
   Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
-  HardDrive, Minimize2, Shrink, Download, SkipForward, Power, FileJson, Package, Hexagon,
+  HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
   Folder, File, Shield, ExternalLink, ArrowDownAZ, ArrowUpZA, RotateCcw,
   RefreshCw, Calculator, Activity, FileText, PackagePlus,
@@ -355,13 +358,14 @@ declare global {
         platform: string; arch: string; osRelease: string; osType: string;
         isPortable?: boolean;
       }>;
-      getUpdateStatus: () => Promise<UpdateStatus>;
-      checkForUpdates: () => Promise<{ ok: boolean; version?: string; error?: string }>;
-      downloadUpdate: () => Promise<{ ok: boolean; error?: string }>;
-      installUpdate: () => void;
+      getUpdateStatus: () => Promise<PendingUpdate | null>;
+      checkForUpdates: () => Promise<UpdateCheckResult>;
+      downloadUpdate: (version: string) => Promise<void>;
+      cancelUpdateDownload: (version: string) => Promise<void>;
+      installUpdate: (version: string) => Promise<void>;
       setAutoUpdate: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
-      onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
+      onUpdateStatus: (callback: (status: PendingUpdate | null) => void) => () => void;
       onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical'; delivered?: boolean }) => void) => () => void;
       onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
       showDesktopToast?: (payload: {
@@ -391,7 +395,6 @@ declare global {
         quietHours: { enabled: boolean; from: string; to: string };
       }) => Promise<boolean>;
       hideDesktopToast?: () => Promise<boolean>;
-      onUpdateNoticeDismissed?: (callback: () => void) => () => void;
       onCancelScheduledTask?: (callback: (taskId: string) => void) => () => void;
       onLaunchScheduledNow?: (callback: (taskId: string) => void) => () => void;
       onOpenHudAction?: (callback: (target: string) => void) => () => void;
@@ -2254,10 +2257,8 @@ export default function App() {
     level?: 'warning' | 'critical';
     essential?: boolean;
     brandTag?: string;
-    /** Optional click action (e.g. update toast → About, or system alert -> HUD). */
-    action?: 'open-about' | 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock' | 'search-store';
+    action?: 'open-hud-storage' | 'open-hud-system' | 'open-hud-clock' | 'search-store';
     detail?: string;
-    releaseUrl?: string;
     source?: 'system-alert';
     persistent?: boolean;
     /** Skip the desktop toast: the in-window UI already shows this feedback. */
@@ -2269,7 +2270,6 @@ export default function App() {
   const [isRelinkingShortcut, setIsRelinkingShortcut] = useState(false);
   const launchingAppsRef = useRef(new Set<number>());
   const [launchingAppIds, setLaunchingAppIds] = useState<Set<number>>(() => new Set());
-  const [toastPaused, setToastPaused] = useState(false);
 
   const [autoCheckIconsOnStartup, setAutoCheckIconsOnStartup] = useState<boolean>(() => {
     return localStorage.getItem('cyber_auto_check_icons') !== 'false';
@@ -2349,15 +2349,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!notification) {
-      setToastPaused(false);
-      return;
-    }
+    if (!notification) return;
     if (notification.persistent) return;
-    if (toastPaused) return;
     if (!isElectron && typeof document !== 'undefined' && document.hidden) return;
 
-    const isLongToast = notification.action === 'open-about' || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock';
+    const isLongToast = notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock';
     const ms = isLongToast ? 8000 : 4500;
     const timer = setTimeout(() => {
       setNotification(null);
@@ -2374,7 +2370,7 @@ export default function App() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [notification, toastPaused]);
+  }, [notification]);
 
   useEffect(() => {
     const fetchIndexerData = async () => {
@@ -2521,8 +2517,9 @@ export default function App() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [aboutAutoCheckSeq, setAboutAutoCheckSeq] = useState(0);
   const [autoUpdate, setAutoUpdate] = useState(true);
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
-  const updateNotifSeenRef = useRef<string>('');
+  const updateNotice = useUpdateNotice(isConfigLoaded && autoUpdate);
+  const openUpdateNotice = updateNotice.open;
+  const desktopUpdateSeen = useRef<string | null>(null);
   const [editingApp, setEditingApp] = useState<LauncherApp | null>(null);
   const [isAddingApp, setIsAddingApp] = useState(false);
   const [openedViaDrop, setOpenedViaDrop] = useState(false);
@@ -3567,22 +3564,6 @@ export default function App() {
     }
   }, [scheduledTasks, handleLaunchImminentNow]);
 
-  const handleSkipUpdateVersion = useCallback((version: string) => {
-    localStorage.setItem(SKIPPED_UPDATE_KEY, version);
-    setUpdateStatus((prev) => {
-      if (prev.state === 'available') {
-        return {
-          state: 'skipped',
-          version,
-          releaseNotes: prev.releaseNotes,
-          releaseUrl: prev.releaseUrl,
-        };
-      }
-      return prev;
-    });
-    setNotification(null);
-  }, []);
-
   useEffect(() => {
     if (!isElectron || !isConfigLoaded) return;
     void window.electronAPI?.setToastPreferences?.({
@@ -3592,6 +3573,14 @@ export default function App() {
       quietHours: cyberBot.quietHours,
     });
   }, [isConfigLoaded, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours]);
+
+  const updateIsReadyToAnnounce = updateNotice.visible &&
+    (updateNotice.pending?.state === 'available' || updateNotice.pending?.state === 'downloaded');
+  const desktopUpdateStage = updateIsReadyToAnnounce ? updateNotice.stage : null;
+  const desktopUpdateTitle = updateIsReadyToAnnounce && updateNotice.pending
+    ? t(updateNotice.pending.state === 'available' ? 'about_notif_available' : 'about_notif_downloaded',
+        { version: updateNotice.pending.release.version })
+    : null;
 
   // A single delivery path chooses speech in the launcher or a floating presentation outside it.
   useEffect(() => {
@@ -3642,10 +3631,8 @@ export default function App() {
     }
 
     if (notification) {
-      const ongoing = notification.persistent || notification.level === 'critical'
-        || (notification.action === 'open-about' && updateStatus.state === 'available');
+      const ongoing = notification.persistent || notification.level === 'critical';
       if (!ongoing && noticeLedgerRef.current.has(notification)) return;
-      let accepted = false;
       let actionLabel = '';
       let brandTag = notification.brandTag;
       if (notification.action === 'open-hud-clock') {
@@ -3657,27 +3644,17 @@ export default function App() {
       } else if (notification.action === 'open-hud-system') {
         actionLabel = t('toast_action_view_system');
         if (!brandTag) brandTag = t('toast_brand_memory');
-      } else if (notification.action === 'open-about') {
-        actionLabel = t('about_title');
-        if (!brandTag) brandTag = t('toast_brand_system');
       } else if (notification.action === 'search-store') {
         actionLabel = t('missing_uwp_store_search');
         if (!brandTag) brandTag = t('toast_brand_system');
       }
 
-      const isUpdateAvailable = notification.action === 'open-about' && updateStatus.state === 'available';
-      const updateVersion = isUpdateAvailable && updateStatus.state === 'available' ? updateStatus.version : '';
-      const updateReleaseUrl = isUpdateAvailable && updateStatus.state === 'available'
-        ? updateStatus.releaseUrl || `https://github.com/CyberGems/CyberLauncher/releases/tag/v${updateStatus.version.replace(/^v/i, '')}`
-        : undefined;
       const actionHandler = notification.action === 'open-hud-system'
         ? () => setIsSystemHUDOpen(true)
         : notification.action === 'open-hud-storage'
         ? () => setIsStorageHUDOpen(true)
         : notification.action === 'open-hud-clock'
         ? () => setIsClockHUDOpen(true)
-        : notification.action === 'open-about'
-        ? () => setIsAboutOpen(true)
         : notification.action === 'search-store'
         ? () => {
           setNotification(null);
@@ -3685,59 +3662,21 @@ export default function App() {
         }
         : undefined;
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
-        const emotion = cyberBotNotificationEmotion(notification);
-        if (isUpdateAvailable) {
-          accepted = cyberBot.say({
-            id: `update_available_${updateVersion}`,
-            text: notification.message,
-            detail: notification.detail,
-            emotion,
-            tag: brandTag,
-            action: {
-              label: t('about_download_btn'),
-              onClick: () => {
-                setNotification(null);
-                void window.electronAPI?.downloadUpdate?.();
-              },
-            },
-            secondaryAction: {
-              label: t('about_view_release'),
-              onClick: () => {
-                setNotification(null);
-                if (updateReleaseUrl) openExternalUrl(updateReleaseUrl);
-              },
-            },
-            tertiaryAction: {
-              label: t('about_skip_btn'),
-              onClick: () => handleSkipUpdateVersion(updateVersion),
-            },
-            onDismiss: () => setNotification(null),
-            durationMs: 0,
-            priority: 'high',
-            essential: true,
-          });
-        } else {
-          accepted = cyberBot.say({
-            id: noticeLedgerRef.current.id(notification),
-            text: notification.message,
-            detail: notification.detail,
-            emotion,
-            tag: brandTag,
-            action: actionHandler ? { label: actionLabel, onClick: actionHandler } : notification.releaseUrl
-              ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
-              : undefined,
-            secondaryAction: actionHandler && notification.releaseUrl
-              ? { label: t('about_view_release'), onClick: () => openExternalUrl(notification.releaseUrl!) }
-              : undefined,
-            onDismiss: () => setNotification(null),
-            durationMs: notification.persistent ? 0 : notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
-            priority: notification.level === 'critical' ? 'high' : 'normal',
-            essential: notification.essential,
-          });
-        }
+        const accepted = cyberBot.say({
+          id: noticeLedgerRef.current.id(notification),
+          text: notification.message,
+          detail: notification.detail,
+          emotion: cyberBotNotificationEmotion(notification),
+          tag: brandTag,
+          action: actionHandler ? { label: actionLabel, onClick: actionHandler } : undefined,
+          onDismiss: () => setNotification(null),
+          durationMs: notification.persistent ? 0 : notification.type === 'error' || notification.type === 'warning' ? 8000 : 5500,
+          priority: notification.level === 'critical' ? 'high' : 'normal',
+          essential: notification.essential,
+        });
+        if (accepted) noticeLedgerRef.current.mark(notification);
       }
 
-      if (accepted) noticeLedgerRef.current.mark(notification);
       if (showFloating && !notification.suppressToast && (notification.source !== 'system-alert' || isWindowVisible || ongoing)) void window.electronAPI!.showDesktopToast!({
         type: notification.type,
         level: notification.level,
@@ -3748,8 +3687,6 @@ export default function App() {
         actionLabel,
         brandTag: brandTag || t('toast_brand_system') || 'SISTEMA',
         botUnavailable: !isCyberBotSpeechVisible,
-        releaseUrl: notification.releaseUrl,
-        releaseLabel: notification.releaseUrl ? t('about_view_release') : undefined,
         dismissLabel: t('cyberbot_close_message'),
         persistent: notification.persistent,
       }).then(delivered => {
@@ -3758,8 +3695,38 @@ export default function App() {
       return;
     }
 
+    // The desktop reminder opens the launcher and its single update notice.
+    if (showFloating && !isWindowVisible && desktopUpdateStage && desktopUpdateTitle) {
+      let previouslySeen = desktopUpdateSeen.current;
+      try { previouslySeen ??= localStorage.getItem('update_notif_seen'); }
+      catch { /* Keep delivery available when storage is inaccessible. */ }
+      if (previouslySeen === desktopUpdateStage) return;
+      desktopUpdateSeen.current = desktopUpdateStage;
+      void window.electronAPI!.showDesktopToast!({
+        type: 'info',
+        essential: true,
+        title: desktopUpdateTitle,
+        action: 'open-update',
+        actionLabel: t('update_open_notice'),
+        brandTag: t('toast_brand_system'),
+        dismissLabel: t('cyberbot_close_message'),
+        persistent: true,
+      }).then(delivered => {
+        if (!delivered) {
+          if (desktopUpdateSeen.current === desktopUpdateStage) desktopUpdateSeen.current = null;
+          return;
+        }
+        try { localStorage.setItem('update_notif_seen', desktopUpdateStage); }
+        catch (error) { console.warn('[Updater] Could not save the desktop reminder state:', error); }
+      }).catch(error => {
+        if (desktopUpdateSeen.current === desktopUpdateStage) desktopUpdateSeen.current = null;
+        console.warn('[Updater] Desktop reminder could not be delivered:', error);
+      });
+      return;
+    }
+
     if (isElectron) void window.electronAPI?.hideDesktopToast?.();
-  }, [imminentTask, notification, updateStatus, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleSkipUpdateVersion, handleLaunchImminentNow, handleCancelImminentTask, openExternalUrl, openStoreSearchAction]);
+  }, [imminentTask, notification, desktopUpdateStage, desktopUpdateTitle, t, cyberBot.enabled, cyberBot.bannersEnabled, cyberBot.chatterLevel, cyberBot.quietHours, cyberBot.say, isWindowVisible, isCyberBotSpeechVisible, handleLaunchImminentNow, handleCancelImminentTask, openStoreSearchAction]);
 
   // Register desktop toast IPC action listeners (Cancel, Launch now, Open HUD)
   useEffect(() => {
@@ -3786,23 +3753,19 @@ export default function App() {
           setIsStorageHUDOpen(true);
         } else if (target === 'open-hud-system') {
           setIsSystemHUDOpen(true);
-        } else if (target === 'open-about') {
-          setIsAboutOpen(true);
-          setNotification(null);
+        } else if (target === 'open-update') {
+          openUpdateNotice();
         } else if (target === 'search-store') {
           openStoreSearchAction();
           setNotification(null);
         }
       }));
     }
-    if (window.electronAPI.onUpdateNoticeDismissed) {
-      unsubs.push(window.electronAPI.onUpdateNoticeDismissed(() => setNotification(null)));
-    }
 
     return () => {
       unsubs.forEach(u => u());
     };
-  }, [handleCancelImminentTask, handleLaunchById]);
+  }, [handleCancelImminentTask, handleLaunchById, openUpdateNotice, openStoreSearchAction]);
 
   const playPinBlockSound = useCallback(() => {
     try {
@@ -4709,60 +4672,8 @@ export default function App() {
     };
   }, []);
 
-  // Update status: badge + toast (deduped per version/state)
-  useEffect(() => {
-    if (!isElectron || !window.electronAPI?.onUpdateStatus) return;
-
-    const applyStatus = (status: UpdateStatus) => {
-      const skipped = localStorage.getItem(SKIPPED_UPDATE_KEY);
-      if (status.state === 'available' && isSkippedUpdateVersion(status.version, skipped)) {
-        setUpdateStatus({
-          state: 'skipped',
-          version: status.version,
-          releaseNotes: status.releaseNotes,
-          releaseUrl: status.releaseUrl,
-        });
-        return;
-      }
-      setUpdateStatus(status);
-      if (status.state === 'available' && configRef.current.autoUpdate === false) return;
-      if (status.state === 'available' || status.state === 'downloaded') {
-        const key = `${status.state}:${status.version}`;
-        const seen = updateNotifSeenRef.current || localStorage.getItem('update_notif_seen') || '';
-        const detail = status.releaseNotes ? peekReleaseNotes(status.releaseNotes, language) : undefined;
-        const releaseUrl = status.releaseUrl;
-        if (seen === key) {
-          setNotification((prev) => {
-            if (!prev || prev.action !== 'open-about') return prev;
-            if ((!detail || prev.detail) && (!releaseUrl || prev.releaseUrl)) return prev;
-            return { ...prev, detail: prev.detail || detail, releaseUrl: prev.releaseUrl || releaseUrl };
-          });
-          return;
-        }
-        updateNotifSeenRef.current = key;
-        localStorage.setItem('update_notif_seen', key);
-        setNotification({
-          message: status.state === 'available'
-            ? t('about_notif_available', { version: status.version })
-            : t('about_notif_downloaded', { version: status.version }),
-          type: 'info',
-          action: 'open-about',
-          detail,
-          releaseUrl,
-          essential: true,
-          persistent: true,
-        });
-      }
-    };
-
-    window.electronAPI.getUpdateStatus?.().then((s) => { if (s) applyStatus(s); }).catch(() => {});
-    const off = window.electronAPI.onUpdateStatus(applyStatus);
-    return off;
-  }, [t, language]);
-
   const handleAutoUpdateChange = useCallback((enabled: boolean) => {
     setAutoUpdate(enabled);
-    if (!enabled) setNotification(current => current?.action === 'open-about' ? null : current);
     if (isElectron) {
       window.electronAPI?.setAutoUpdate?.(enabled);
     }
@@ -7536,10 +7447,10 @@ export default function App() {
           return;
         }
 
-        // Ctrl+U -> Update / About (when update is available)
-        if (key === 'u' && autoUpdate && (updateStatus.state === 'available' || updateStatus.state === 'downloaded' || updateStatus.state === 'downloading')) {
+        // Ctrl+U opens the pending update.
+        if (key === 'u' && updateNotice.pending) {
           e.preventDefault();
-          setIsAboutOpen(true);
+          openUpdateNotice();
           return;
         }
       }
@@ -7769,7 +7680,7 @@ export default function App() {
     searchQuery, categoriesWithCount, isRecordingAppShortcut, isSystemHUDOpen, isStorageHUDOpen,
     contextMenu, systemContextMenu, categoryContextMenu, keyboardNav, isAnyModalOpen, isTerminalOpen, handleCyberKeyboardNav,
     handleCreateCategory, handleSaveCategory, handleConfirmDeleteCategory, handleResetMostUsed, handleResetRecents,
-    submitAppForm, openTerminal, closeTerminal, handleConfirmPowerAction, toggleMoreMenu
+    submitAppForm, openTerminal, closeTerminal, handleConfirmPowerAction, toggleMoreMenu, updateNotice.pending, openUpdateNotice
   ]);
 
   const getBackgroundStyle = () => {
@@ -8094,7 +8005,7 @@ export default function App() {
               >
                 <span className="relative flex-shrink-0">
                   <CyberLogo className="w-[26.6px] h-[26.6px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
-                  {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                  {updateNotice.pending && (
                     <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
                   )}
                 </span>
@@ -8123,7 +8034,7 @@ export default function App() {
                 className="group relative flex items-center justify-center w-7 h-7 cursor-pointer focus:outline-none"
               >
                 <CyberLogo className="w-[22.8px] h-[22.8px] drop-shadow-[0_0_5px_rgba(34,211,238,0.24)]" />
-                {(updateStatus.state === 'available' || updateStatus.state === 'downloaded') && (
+                {updateNotice.pending && (
                   <span aria-hidden="true" className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
                 )}
               </button>
@@ -9575,25 +9486,15 @@ export default function App() {
                   : <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white group-hover:scale-110 transition-transform" />}
               </button>
             </Tooltip>
-            {/* Update Available Button (CyberWall style - only if autoUpdate is enabled) */}
-            {autoUpdate && (updateStatus.state === 'available' || updateStatus.state === 'downloaded' || updateStatus.state === 'downloading') && (
-              <Tooltip 
-                label={withShortcut(
-                  updateStatus.state === 'downloaded'
-                    ? t('about_status_downloaded', { version: (updateStatus as any).version || '' })
-                    : updateStatus.state === 'downloading'
-                    ? t('about_status_downloading', { percent: String((updateStatus as any).percent || 0) })
-                    : t('about_status_available', { version: (updateStatus as any).version || '' }),
-                  'Ctrl+U'
-                )}
-                placement={rightSidebarCollapsed ? 'left' : 'bottom'}
-              >
+            {updateNotice.pending && (
+              <Tooltip label={withShortcut(t('update_open_notice'), 'Ctrl+U')} placement={rightSidebarCollapsed ? 'left' : 'bottom'}>
                 <button
                   type="button"
-                  onClick={() => setIsAboutOpen(true)}
-                  className="flex items-center justify-center w-7 h-7 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 transition-all group cursor-pointer focus:outline-none"
+                  aria-label={t('update_open_notice')}
+                  onClick={() => openUpdateNotice()}
+                  className="flex items-center justify-center w-7 h-7 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 transition-all group cursor-pointer"
                 >
-                  <ArrowDown className={`w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform ${updateStatus.state === 'downloading' ? 'animate-bounce' : ''}`} />
+                  <ArrowDown aria-hidden="true" className={`w-3.5 h-3.5 text-cyan-400 ${updateNotice.pending.state === 'downloading' ? 'motion-safe:animate-bounce' : ''}`} />
                 </button>
               </Tooltip>
             )}
@@ -10599,16 +10500,26 @@ export default function App() {
           <AboutModal
             language={language}
             t={t}
-            autoUpdate={autoUpdate}
-            onAutoUpdateChange={handleAutoUpdateChange}
+            onUpdateAvailable={openUpdateNotice}
             onClose={() => setIsAboutOpen(false)}
             isElectron={isElectron}
             autoCheckSeq={aboutAutoCheckSeq}
             showSuiteRecommendations={showSuiteRecommendations}
-            onSkipUpdateVersion={handleSkipUpdateVersion}
           />
         )}
       </AnimatePresence>
+
+      {isWindowVisible && updateNotice.visible && updateNotice.pending && (
+        <UpdateNotice
+          status={updateNotice.pending}
+          noticeRef={updateNotice.attach}
+          onDismiss={updateNotice.dismiss}
+          onSkip={updateNotice.skip}
+          onDownload={updateNotice.download}
+          language={language}
+          t={t}
+        />
+      )}
 
       {/* --- ADD/EDIT APP DRAWER --- */}
       <AnimatePresence>
@@ -14507,14 +14418,9 @@ export default function App() {
             data-cyberbot-obstacle={notification.persistent ? 'bounds' : undefined}
             role={notification.action ? 'button' : undefined}
             tabIndex={notification.action ? 0 : undefined}
-            onMouseEnter={() => { if (notification.action === 'open-about') setToastPaused(true); }}
-            onMouseLeave={() => setToastPaused(false)}
             onClick={(e) => {
               e.stopPropagation();
-              if (notification.action === 'open-about') {
-                setIsAboutOpen(true);
-                setNotification(null);
-              } else if (notification.action === 'open-hud-storage') {
+              if (notification.action === 'open-hud-storage') {
                 setIsStorageHUDOpen(true);
                 setNotification(null);
               } else if (notification.action === 'open-hud-system') {
@@ -14530,10 +14436,7 @@ export default function App() {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 e.stopPropagation();
-                if (notification.action === 'open-about') {
-                  setIsAboutOpen(true);
-                  setNotification(null);
-                } else if (notification.action === 'open-hud-storage') {
+                if (notification.action === 'open-hud-storage') {
                   setIsStorageHUDOpen(true);
                   setNotification(null);
                 } else if (notification.action === 'open-hud-system') {
@@ -14549,7 +14452,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className={`fixed bottom-6 right-6 z-[200] flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-2xl shadow-2xl ${
-              notification.detail || notification.releaseUrl ? 'max-w-sm' : 'items-center'
+              notification.detail ? 'max-w-sm' : 'items-center'
             } ${
               notification.action ? 'cursor-pointer hover:brightness-110' : ''
             } ${
@@ -14561,7 +14464,7 @@ export default function App() {
             }`}
           >
             <div className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
-              notification.detail || notification.releaseUrl ? 'mt-1.5' : ''
+              notification.detail ? 'mt-1.5' : ''
             } ${
               notification.type === 'success'
                 ? 'bg-emerald-400'
@@ -14576,7 +14479,7 @@ export default function App() {
                   {notification.detail}
                 </p>
               )}
-              {(notification.releaseUrl || (notification.action === 'open-about' && updateStatus.state === 'available') || notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock') && (
+              {(notification.action === 'open-hud-storage' || notification.action === 'open-hud-system' || notification.action === 'open-hud-clock') && (
                 <div className="flex items-center gap-2 pt-0.5">
                   {notification.action === 'open-hud-storage' && (
                     <button
@@ -14622,50 +14525,6 @@ export default function App() {
                       <Timer className="w-3 h-3" />
                       {t('toast_action_view_clock')}
                     </button>
-                  )}
-                  {notification.releaseUrl && (
-                    <button
-                      type="button"
-                      data-no-hide
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openExternalUrl(notification.releaseUrl!);
-                        if (notification.persistent) setNotification(null);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-400/20 hover:text-white transition-colors cursor-pointer"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      {t('about_view_release')}
-                    </button>
-                  )}
-                  {notification.action === 'open-about' && updateStatus.state === 'available' && (
-                    <>
-                      <button
-                        type="button"
-                        data-no-hide
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSkipUpdateVersion(updateStatus.version);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-600/40 bg-slate-700/30 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-slate-700/50 hover:text-white transition-colors cursor-pointer"
-                      >
-                        <SkipForward className="w-3 h-3 text-slate-400" />
-                        {t('about_skip_btn')}
-                      </button>
-                      <button
-                        type="button"
-                        data-no-hide
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void window.electronAPI?.downloadUpdate?.();
-                          setNotification(null);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-colors cursor-pointer"
-                      >
-                        <Download className="w-3 h-3" />
-                        {t('about_download_btn')}
-                      </button>
-                    </>
                   )}
                 </div>
               )}
