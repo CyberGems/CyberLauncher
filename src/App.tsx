@@ -9564,16 +9564,18 @@ export default function App() {
                     onClick={handleCyberBotToggle}
                     aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
                     aria-pressed={cyberBot.enabled}
-                    className={`relative flex items-center justify-center w-7 h-7 rounded-md transition-all group cursor-pointer focus:outline-none ${
+                    className={`${TITLEBAR_TOOL_CLASS} group/cyberbot-toggle ${
                       cyberBot.enabled
                         ? 'text-cyan-400 bg-cyan-500/15 hover:bg-cyan-500/25'
-                        : 'text-slate-500 hover:text-slate-300 hover:bg-white/10'
+                        : 'text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10'
                     }`}
                   >
-                    {cyberBot.enabled ? (
-                      <Bot className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                    ) : (
-                      <BotOff className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 group-hover:scale-110 transition-transform" />
+                    <Bot
+                      aria-hidden="true"
+                      className={`size-3.5 ${cyberBot.enabled ? 'group-hover/cyberbot-toggle:hidden' : ''}`}
+                    />
+                    {cyberBot.enabled && (
+                      <BotOff aria-hidden="true" className="hidden size-3.5 group-hover/cyberbot-toggle:block" />
                     )}
                   </button>
                 </Tooltip>
