@@ -612,6 +612,93 @@ button[disabled] .btn-kbd {
   font-size: 10.5px;
 }
 
+.settings-panel {
+  --settings-icon-color: var(--color-slate-400);
+}
+
+.settings-section-title {
+  @apply flex items-center gap-2 text-xs font-cyber font-bold uppercase tracking-widest text-slate-400;
+}
+
+.settings-section-title > svg,
+.settings-icon > svg {
+  @apply size-4 shrink-0;
+}
+
+.settings-section-title > svg,
+.settings-icon,
+.settings-inline-icon {
+  color: var(--settings-icon-color);
+}
+
+.settings-icon {
+  @apply flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5;
+}
+
+.settings-card {
+  @apply rounded-xl border border-white/5 bg-black/20 p-4;
+}
+
+.settings-card:focus-within {
+  @apply border-white/10;
+}
+
+.settings-section-divider {
+  @apply border-t border-white/5 pt-5;
+}
+
+.settings-action,
+.settings-option {
+  @apply inline-flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors;
+}
+
+.settings-action {
+  @apply border-white/10 bg-white/5 text-slate-300;
+}
+
+.settings-option {
+  @apply border-transparent text-slate-400;
+}
+
+.settings-action:hover:not(:disabled),
+.settings-option[aria-pressed="false"]:hover:not(:disabled) {
+  @apply border-white/10 bg-white/10 text-slate-100;
+}
+
+.settings-option[aria-pressed="true"] {
+  @apply border-cyan-500/30 bg-cyan-500/15 text-cyan-200;
+}
+
+.settings-option[aria-pressed="true"]:hover:not(:disabled) {
+  @apply bg-cyan-500/20;
+}
+
+.settings-action:focus-visible,
+.settings-option:focus-visible {
+  @apply outline-2 outline-offset-2 outline-cyan-400/70;
+}
+
+.settings-action:disabled,
+.settings-option:disabled {
+  @apply cursor-not-allowed opacity-40;
+}
+
+.settings-choice-group {
+  @apply flex gap-1 rounded-xl border border-white/5 bg-black/40 p-1;
+}
+
+.settings-slider {
+  @apply h-2 min-w-0 cursor-pointer appearance-none rounded-full bg-black/50 accent-cyan-400;
+}
+
+.settings-slider:disabled {
+  @apply cursor-not-allowed opacity-40;
+}
+
+.settings-field {
+  @apply select-text rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60;
+}
+
 /* Settings sidebar "saved" feedback: on every save action the slot expands to
    reveal the pill centered between the separator line and the close button,
    the line pulses green, and when the pill hides the slot collapses back so

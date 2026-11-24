@@ -59,7 +59,7 @@ import {
   RefreshCw, Calculator, Activity, FileText, PackagePlus,
   MoreHorizontal, Heart, User, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
-  Bot, BotOff, type LucideIcon
+  Bot, BotOff, Zap, type LucideIcon
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { CyberBotPrompt } from './components/companion/CyberBotPrompt';
@@ -11216,7 +11216,7 @@ export default function App() {
               data-no-hide
               onClick={(e) => e.stopPropagation()}
               data-cyberbot-obstacle="right"
-              className={`fixed right-0 top-0 bottom-0 w-[840px] max-w-[100vw] z-50 bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
+              className={`fixed right-0 top-0 bottom-0 w-[840px] max-w-[100vw] z-50 settings-panel bg-[#070b13]/95 backdrop-blur-2xl border-l border-cyan-500/20 overflow-hidden flex flex-col select-none transition-shadow duration-200 ${
                 isPeeking ? 'shadow-[-16px_0_48px_rgba(0,0,0,0.85)]' : 'shadow-2xl'
               }`}
             >
@@ -11251,14 +11251,15 @@ export default function App() {
                     ] as const).map(([id,label,IconComponent]) => (
                       <button 
                         key={id} 
-                        onClick={() => setSettingsTab(id as any)}
+                        onClick={() => setSettingsTab(id)}
+                        aria-current={settingsTab === id ? 'true' : undefined}
                         className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 group ${
                           settingsTab === id 
                             ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
                             : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
                         }`}
                       >
-                        <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${settingsTab === id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                        <IconComponent className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
                         <span>{label.toUpperCase()}</span>
                       </button>
                     ))}
@@ -11289,16 +11290,16 @@ export default function App() {
                 </div>
 
                 {/* Right Scrollable Panel Content */}
-                <div key={settingsTab} className="p-6 custom-scrollbar flex-1 min-h-0 text-slate-300 overflow-y-auto space-y-8">
+                <div key={settingsTab} className="p-6 custom-scrollbar flex-1 min-h-0 text-slate-300 overflow-y-auto space-y-6">
 
                 {settingsTab === 'general' && (<>
                 {/* Language Selection Config */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-slate-500" />
+                  <h3 className="settings-section-title">
+                    <Globe aria-hidden="true" />
                     {t('general_language')}
-                  </label>
-                  <div className="flex gap-3">
+                  </h3>
+                  <div className="settings-choice-group">
                     {[
                       { code: 'es', name: 'ESPAÑOL' },
                       { code: 'en', name: 'ENGLISH' }
@@ -11312,11 +11313,8 @@ export default function App() {
                             localStorage.setItem('cyber_lang', item.code);
                             setNotification({ message: item.code === 'es' ? 'Idioma cambiado a Español' : 'Language switched to English', type: 'success' });
                           }}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-cyber font-bold transition-all duration-300 border hover:scale-102 cursor-pointer ${
-                            isActive
-                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.15)] border-solid'
-                              : 'bg-black/40 text-slate-400 border-white/5 hover:border-white/10 hover:text-slate-200'
-                          }`}
+                          aria-pressed={isActive}
+                          className="settings-option flex-1"
                         >
                           {item.name}
                         </button>
@@ -11326,10 +11324,15 @@ export default function App() {
                   <p className="text-xs text-slate-500">{t('general_language_desc')}</p>
                 </div>
 
-                <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5">
-                  <div className="min-w-0">
-                    <h3 className="text-xs font-cyber font-bold text-slate-300 tracking-wide">{t('general_confirm_delete_apps')}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{t('general_confirm_delete_apps_desc')}</p>
+                <div className="flex items-center justify-between gap-6 settings-card">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="settings-icon" aria-hidden="true">
+                      <Trash2 />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_confirm_delete_apps')}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">{t('general_confirm_delete_apps_desc')}</p>
+                    </div>
                   </div>
                   <ToggleSwitch
                     checked={confirmBeforeDeletingApps}
@@ -11340,10 +11343,10 @@ export default function App() {
 
                 {/* Keyboard Shortcut Config */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <Keyboard className="w-4 h-4 text-slate-500" />
+                  <h3 className="settings-section-title">
+                    <Keyboard aria-hidden="true" />
                     {t('general_shortcut')}
-                  </label>
+                  </h3>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsRecordingShortcut(true)}
@@ -11399,11 +11402,11 @@ export default function App() {
 
                 {/* Monitor Selection */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <Monitor className="w-4 h-4 text-slate-500" />
+                  <h3 className="settings-section-title">
+                    <Monitor aria-hidden="true" />
                     {t('general_monitor')}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
+                  </h3>
+                  <div className="settings-choice-group flex-wrap">
                     <button
                       type="button"
                       onClick={() => {
@@ -11413,11 +11416,8 @@ export default function App() {
                           window.electronAPI!.setMonitor('follow-cursor');
                         }
                       }}
-                      className={`flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        selectedMonitor === 'follow-cursor'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                          : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                      }`}
+                      aria-pressed={selectedMonitor === 'follow-cursor'}
+                      className="settings-option flex-1 min-w-[140px]"
                     >
                       {t('general_monitor_follow')}
                     </button>
@@ -11432,11 +11432,8 @@ export default function App() {
                             window.electronAPI!.setMonitor(mon.id);
                           }
                         }}
-                        className={`flex-1 min-w-[100px] py-2.5 rounded-xl text-sm font-medium transition-all ${
-                          selectedMonitor === mon.id
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm'
-                            : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5 hover:bg-white/5 shadow-inner'
-                        }`}
+                        aria-pressed={selectedMonitor === mon.id}
+                        className="settings-option flex-1 min-w-[100px]"
                       >
                         {mon.label}
                       </button>
@@ -11447,14 +11444,14 @@ export default function App() {
 
                 {/* Help Tooltips Section */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-slate-500" />
+                  <h3 className="settings-section-title">
+                    <HelpCircle aria-hidden="true" />
                     {t('general_tooltips')}
-                  </label>
-                  <div className="flex items-center justify-between gap-6 bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                  </h3>
+                  <div className="flex items-center justify-between gap-6 settings-card">
                     <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                      <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                        <HelpCircle className="w-4 h-4 text-cyan-400" />
+                      <div className="settings-icon" aria-hidden="true">
+                        <HelpCircle />
                       </div>
                       <div className="min-w-0">
                         <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_tooltips')}</h4>
@@ -11481,34 +11478,34 @@ export default function App() {
                 <div className="space-y-4">
                   {/* Scale Selection */}
                   <div className="space-y-3">
-                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4 text-slate-500" />
+                    <h3 className="settings-section-title">
+                      <LayoutGrid aria-hidden="true" />
                       {t('general_scale')}
-                    </label>
+                    </h3>
                     <div className="flex items-center gap-4">
                       <input
                         type="range"
                         min="50" max="150"
                         value={cardScale}
                         onChange={(e) => setCardScale(Number(e.target.value))}
-                        className="flex-1 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="settings-slider flex-1"
                       />
-                      <span className="text-sm text-blue-400 font-mono w-[30px] text-right">{cardScale}%</span>
+                      <span className="text-xs text-cyan-400 font-mono w-10 text-right">{cardScale}%</span>
                     </div>
                     <p className="text-xs text-slate-500">{t('general_scale_desc')}</p>
                   </div>
 
-                  <div className="space-y-3 pt-6 border-t border-white/5">
-                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                      <Eye className="w-4 h-4 text-cyan-500" />
+                  <div className="space-y-3 settings-section-divider">
+                    <h3 className="settings-section-title">
+                      <Eye aria-hidden="true" />
                       {t('appearance_visible_items_title')}
-                    </label>
+                    </h3>
                     <div className="space-y-2">
                       {/* Header Clock Toggle */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                            <Clock className="w-4 h-4 text-cyan-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Clock />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_header_clock')}</h4>
@@ -11527,10 +11524,10 @@ export default function App() {
                       </div>
 
                       {/* Footer System Uptime Toggle */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                            <Power className="w-4 h-4 text-emerald-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Power />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_uptime')}</h4>
@@ -11549,10 +11546,10 @@ export default function App() {
                       </div>
 
                       {/* Footer Launch Counter Toggle */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                            <ChevronRight className="w-4 h-4 text-emerald-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <ChevronRight />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_launches')}</h4>
@@ -11571,10 +11568,10 @@ export default function App() {
                       </div>
 
                       {/* Footer Date & Time Toggle */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                            <Calendar className="w-4 h-4 text-emerald-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Calendar />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_show_footer_datetime')}</h4>
@@ -11597,11 +11594,11 @@ export default function App() {
 
                 {/* Background Type Selector */}
                 <div className="space-y-3">
-                  <h3 id="settings-background-type" className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <Wallpaper className="w-4 h-4 text-cyan-500" aria-hidden="true" />
+                  <h3 id="settings-background-type" className="settings-section-title">
+                    <Wallpaper aria-hidden="true" />
                     {t('app_bg_type')}
                   </h3>
-                  <div role="group" aria-labelledby="settings-background-type" className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                  <div role="group" aria-labelledby="settings-background-type" className="settings-choice-group flex-wrap">
                     {[
                       { id: 'image', icon: ImageIcon, label: t('app_bg_image') },
                       { id: 'gradient', icon: Palette, label: t('app_bg_gradient') },
@@ -11613,13 +11610,10 @@ export default function App() {
                           setBgType(type.id as any);
                           triggerPeek();
                         }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                          bgType === type.id 
-                            ? 'bg-blue-500/20 text-blue-300 shadow-sm border border-blue-500/30' 
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                        }`}
+                        aria-pressed={bgType === type.id}
+                        className="settings-option flex-1"
                       >
-                        <type.icon className="w-4 h-4" />
+                        <type.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                         {type.label}
                       </button>
                     ))}
@@ -11631,9 +11625,10 @@ export default function App() {
                   {bgType === 'image' && (
                     <div className="space-y-4">
                       <div className="space-y-3">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                        <h3 className="settings-section-title">
+                          <ImageIcon aria-hidden="true" />
                           {t('app_bg_presets')}
-                        </label>
+                        </h3>
                         <p className="text-xs text-slate-500 -mt-1">{t('app_bg_presets_hint')}</p>
                         <div className="grid grid-cols-2 gap-3">
                           {PRESET_IMAGES.map((img, i) => (
@@ -11762,7 +11757,7 @@ export default function App() {
                                 }}
                                 className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                               >
-                                <FolderSearch className="w-5 h-5 text-cyan-400" />
+                                  <FolderSearch className="settings-inline-icon w-5 h-5" aria-hidden="true" />
                                 <span className="text-xs font-medium tracking-wide">{t('app_bg_browse')}</span>
                               </button>
                             )}
@@ -11770,16 +11765,16 @@ export default function App() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                         <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                           <Link className="w-3 h-3" /> {t('app_bg_custom_url')}
-                         </label>
+                         <h3 className="settings-section-title">
+                           <Link aria-hidden="true" /> {t('app_bg_custom_url')}
+                         </h3>
                          <div className="flex gap-2">
                            <input 
                              type="text" 
                              placeholder={t('app_bg_url_placeholder')}
                              value={customImageUrl}
                              onChange={(e) => setCustomImageUrl(e.target.value)}
-                             className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500/50"
+                             className="settings-field min-w-0 flex-1"
                            />
                            <button 
                              onClick={() => {
@@ -11799,10 +11794,10 @@ export default function App() {
                       
                       <div className="space-y-3 pt-4 border-t border-white/5">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                          <h3 className="settings-section-title">
                             {language === 'es' ? 'INTENSIDAD DE CRISTAL (GLASS)' : 'GLASSMORPHISM BLUR LEVEL'}
-                          </label>
-                          <span className="text-xs text-blue-400 font-mono">{glassIntensity}%</span>
+                          </h3>
+                          <span className="text-xs text-cyan-400 font-mono">{glassIntensity}%</span>
                         </div>
                         <input 
                           type="range" 
@@ -11813,7 +11808,7 @@ export default function App() {
                             setGlassIntensity(Number(e.target.value));
                             triggerPeek();
                           }}
-                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
+                          className="settings-slider w-full"
                         />
                         <p className="text-xs text-slate-500">
                           {language === 'es' 
@@ -11824,8 +11819,8 @@ export default function App() {
 
                       <div className="space-y-3 pt-4 border-t border-white/5">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_opacity')}</label>
-                          <span className="text-xs text-blue-400 font-mono">{bgOpacity}%</span>
+                          <h3 className="settings-section-title">{t('app_opacity')}</h3>
+                          <span className="text-xs text-cyan-400 font-mono">{bgOpacity}%</span>
                         </div>
                         <input 
                           type="range" 
@@ -11836,7 +11831,7 @@ export default function App() {
                             setBgOpacity(Number(e.target.value));
                             triggerPeek();
                           }}
-                          className="w-full h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-blue-500 select-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:cursor-pointer"
+                          className="settings-slider w-full"
                         />
                         <p className="text-xs text-slate-500">
                           {language === 'es'
@@ -11849,9 +11844,10 @@ export default function App() {
 
                   {bgType === 'gradient' && (
                     <div className="space-y-3">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                      <h3 className="settings-section-title">
+                        <Palette aria-hidden="true" />
                         {language === 'es' ? 'GRADIENTES' : 'PRESET GRADIENTS'}
-                      </label>
+                      </h3>
                       <div className="grid grid-cols-2 gap-3">
                         {PRESET_GRADIENTS.map((grad, i) => (
                           <button
@@ -11872,9 +11868,10 @@ export default function App() {
 
                   {bgType === 'solid' && (
                     <div className="space-y-3">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                      <h3 className="settings-section-title">
+                        <Droplets aria-hidden="true" />
                         {language === 'es' ? 'COLORES SÓLIDOS' : 'SOLID COLORS'}
-                      </label>
+                      </h3>
                       <div className="flex flex-wrap gap-3">
                         {PRESET_SOLIDS.map((color, i) => (
                           <button
@@ -11915,12 +11912,12 @@ export default function App() {
                 {settingsTab === 'general' && (<>
                 {/* Hotspots Section */}
                 <div className="space-y-4">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <MousePointer2 className="w-4 h-4 text-cyan-500" />
+                  <h3 className="settings-section-title">
+                    <MousePointer2 aria-hidden="true" />
                     {t('general_hotspots')}
-                  </label>
+                  </h3>
                   
-                  <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                  <div className="flex flex-col gap-4 settings-card">
                     <div className="flex flex-col md:flex-row gap-6 items-center">
                       
                       {/* Interactive Screen Preview */}
@@ -11972,7 +11969,7 @@ export default function App() {
                             step="50"
                             value={hotspotDelay}
                             onChange={(e) => setHotspotDelay(parseInt(e.target.value))}
-                            className="w-full accent-cyan-500 h-1 bg-white/10 rounded-full appearance-none outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(34,211,238,0.5)] cursor-pointer mt-3"
+                            className="settings-slider w-full mt-3"
                           />
                           <p className="text-[10px] text-slate-500 text-right mt-1">{t('general_hotspots_delay_desc')}</p>
                         </div>
@@ -11981,8 +11978,8 @@ export default function App() {
 
                     <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-6 w-full">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <Monitor className="w-4 h-4 text-cyan-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Monitor />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hotspots_disable_fullscreen')}</h4>
@@ -12003,15 +12000,16 @@ export default function App() {
                 {settingsTab === 'system' && (<>
                 {/* Sistema Section */}
                 <div className="space-y-3 pb-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('sys_title')}</label>
-                  </div>
+                  <h3 className="settings-section-title">
+                    <Settings aria-hidden="true" />
+                    {t('sys_title')}
+                  </h3>
                   
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 shrink-0">
-                          <Power className="w-4 h-4 text-blue-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Power />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup')}</h4>
@@ -12032,10 +12030,10 @@ export default function App() {
                     </div>
 
                     {startWithWindows && (
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 border-l-blue-500/50 hover:border-white/10 transition-colors ml-4">
+                      <div className="flex items-center justify-between gap-6 settings-card ml-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
-                            <Shrink className="w-4 h-4 text-indigo-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Shrink />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_startup_minimized')}</h4>
@@ -12056,10 +12054,10 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
-                          <MousePointer2 className="w-4 h-4 text-amber-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <MousePointer2 />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_click')}</h4>
@@ -12073,10 +12071,10 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <Eye className="w-4 h-4 text-cyan-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Eye />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_hide_on_blur')}</h4>
@@ -12090,10 +12088,10 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
-                          <Monitor className="w-4 h-4 text-slate-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Monitor />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_show_taskbar')}</h4>
@@ -12107,10 +12105,10 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <RefreshCw className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <RefreshCw />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('about_auto_updates')}</h4>
@@ -12125,10 +12123,10 @@ export default function App() {
                     </div>
 
                     {/* Accesos Recientes en Menú del Tray */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <History className="w-4 h-4 text-cyan-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <History />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_recents_title')}</h4>
@@ -12149,10 +12147,10 @@ export default function App() {
                     </div>
 
                     {/* Recomendaciones de la Suite CyberGems */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
-                          <Sparkles className="w-4 h-4 text-purple-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Sparkles />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_suite_recommendations_title')}</h4>
@@ -12173,10 +12171,10 @@ export default function App() {
                     </div>
 
                     {/* Tray Pin Recommendation Card */}
-                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex flex-col gap-3 settings-card">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0 mt-0.5">
-                          <Pin className="w-4 h-4 text-cyan-400" />
+                        <div className="settings-icon mt-0.5" aria-hidden="true">
+                          <Pin />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_tray_pin_title')}</h4>
@@ -12193,7 +12191,7 @@ export default function App() {
                               void window.electronAPI.showTrayPinTip();
                             }
                           }}
-                          className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-cyber font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                          className="settings-action"
                         >
                           {t('sys_tray_pin_tip_btn')}
                         </button>
@@ -12212,10 +12210,10 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
-                          <History className="w-4 h-4 text-indigo-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <History />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_reset_on_launch')}</h4>
@@ -12230,20 +12228,20 @@ export default function App() {
                     </div>
 
                     {/* System Health Alerts Section */}
-                    <div className="space-y-3 pt-6 border-t border-white/5">
+                    <div className="space-y-3 settings-section-divider">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-cyan-400" />
+                        <h3 className="settings-section-title">
+                          <Activity aria-hidden="true" />
                           {t('sys_alerts_title')}
-                        </label>
+                        </h3>
                       </div>
 
                       <div className="flex flex-col gap-2">
                         {/* Master Switch */}
-                        <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-6 settings-card">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                              <Activity className="w-4 h-4 text-cyan-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Activity />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_enabled')}</h4>
@@ -12262,13 +12260,13 @@ export default function App() {
                         </div>
 
                         {systemAlertsEnabled && (
-                          <div className="space-y-2 ml-3 pl-3 border-l-2 border-cyan-500/30">
+                          <div className="space-y-2 ml-3 pl-3 border-l-2 border-slate-600/60">
                             {/* Disk Health Alert */}
-                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                            <div className="flex flex-col gap-3 settings-card">
                               <div className="flex items-center justify-between gap-6">
                                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                                  <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
-                                    <HardDrive className="w-4 h-4 text-amber-400" />
+                                  <div className="settings-icon" aria-hidden="true">
+                                    <HardDrive />
                                   </div>
                                   <div className="min-w-0">
                                     <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_disk_enabled')}</h4>
@@ -12305,11 +12303,11 @@ export default function App() {
                             </div>
 
                             {/* RAM Health Alert */}
-                            <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                            <div className="flex flex-col gap-3 settings-card">
                               <div className="flex items-center justify-between gap-6">
                                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                                  <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                                    <Cpu className="w-4 h-4 text-cyan-400" />
+                                  <div className="settings-icon" aria-hidden="true">
+                                    <Cpu />
                                   </div>
                                   <div className="min-w-0">
                                     <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_alerts_ram_enabled')}</h4>
@@ -12386,24 +12384,22 @@ export default function App() {
                 {settingsTab === 'cyberbot' && (<>
                 {/* CyberBot Companion Section */}
                 <div className="space-y-6 pb-2">
-                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-cyan-400" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('cyberbot_tab_title')}</h3>
-                      <p className="text-[10px] text-slate-500">
+                  <div className="space-y-2 min-w-0 text-left border-b border-white/5 pb-4">
+                    <h3 className="settings-section-title">
+                      <Bot aria-hidden="true" />
+                      {t('cyberbot_tab_title')}
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
                         {t('cyberbot_tab_desc')}
                       </p>
-                    </div>
                   </div>
                   
                   <div className="flex flex-col gap-3">
                     {/* Card 1: Activar CyberBot */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                          <Bot className="w-5 h-5 text-cyan-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Bot />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
@@ -12418,11 +12414,11 @@ export default function App() {
                     </div>
 
                     {/* Card: Atajo para CyberBot */}
-                    <div className={`flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
+                    <div className={`flex flex-col gap-3 settings-card ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                            <Keyboard className="w-5 h-5 text-cyan-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Keyboard />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_cyberbot_shortcut')}</h4>
@@ -12437,7 +12433,7 @@ export default function App() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 sm:pl-[52px]">
+                      <div className="flex items-center gap-2 sm:pl-12">
                         <button
                           type="button"
                           disabled={!cyberBot.enabled}
@@ -12501,10 +12497,13 @@ export default function App() {
                     </div>
 
                     {isElectron && (
-                      <div className="flex items-center justify-between gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('cyberbot_desktop_preload')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_preload_desc')}</p>
+                      <div className="flex items-center justify-between gap-6 settings-card">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="settings-icon" aria-hidden="true"><Zap /></div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_preload')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_preload_desc')}</p>
+                          </div>
                         </div>
                         <ToggleSwitch checked={cyberBot.preloadFloating} onChange={() => cyberBot.updatePreloadFloating(!cyberBot.preloadFloating)}
                           ariaLabel={t('cyberbot_desktop_preload')} />
@@ -12512,27 +12511,30 @@ export default function App() {
                     )}
 
                     {isElectron && (
-                      <div className="flex items-center justify-between gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
-                        <div>
-                          <h4 className="text-sm font-medium text-slate-200 mb-1">{t('cyberbot_desktop_remember_position')}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_remember_position_desc')}</p>
+                      <div className="flex items-center justify-between gap-6 settings-card">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="settings-icon" aria-hidden="true"><Pin /></div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_remember_position')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_remember_position_desc')}</p>
+                          </div>
                         </div>
                         <ToggleSwitch checked={cyberBot.rememberFloatingPosition} onChange={cyberBot.updateRememberFloatingPosition}
                           ariaLabel={t('cyberbot_desktop_remember_position')} />
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex flex-col gap-3 settings-card">
                       <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-rose-500/10 rounded-lg border border-rose-500/20 shrink-0">
-                          <User className="w-5 h-5 text-rose-300" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <User />
                         </div>
                         <div className="min-w-0">
                           <label htmlFor="cyberbot-preferred-name" className="text-sm font-medium text-slate-200 leading-tight mb-1 block">{t('cyberbot_name_title')}</label>
                           <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_name_desc')}</p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:pl-[52px]">
+                      <div className="flex flex-wrap items-center gap-2 sm:pl-12">
                         <input
                           id="cyberbot-preferred-name"
                           type="text"
@@ -12545,7 +12547,7 @@ export default function App() {
                             if (event.key === 'Escape') { event.stopPropagation(); setCyberBotNameDraft(cyberBot.preferredName); }
                           }}
                           placeholder={t('cyberbot_name_placeholder')}
-                          className="min-w-0 flex-1 basis-48 bg-[#0f172a] text-slate-100 text-sm rounded-lg px-3 py-2 border border-white/10 focus:border-cyan-400/60 focus:outline-none select-text"
+                          className="settings-field min-w-0 flex-1 basis-48"
                         />
                         <button
                           type="button"
@@ -12571,20 +12573,20 @@ export default function App() {
                             setNameEntryRequested(true);
                             setIsSettingsOpen(false);
                           }}
-                          className="px-3 py-2 rounded-lg border border-cyan-400/30 text-cyan-200 text-xs hover:bg-cyan-500/15 cursor-pointer"
+                          className="settings-action"
                         >
                           {t('cyberbot_name_ask_again')}
                         </button>}
                       </div>
-                      <p className="text-[11px] text-slate-500 sm:pl-[52px]">{t('cyberbot_name_limit')}</p>
+                      <p className="text-[11px] text-slate-500 sm:pl-12">{t('cyberbot_name_limit')}</p>
                     </div>
 
                     {cyberBot.enabled && (<>
                       {/* Card 2: Evasión del cursor (Dodge) */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2.5 bg-sky-500/10 rounded-lg border border-sky-500/20 shrink-0">
-                            <MousePointer2 className="w-5 h-5 text-sky-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <MousePointer2 />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_dodge_title')}</h4>
@@ -12599,10 +12601,10 @@ export default function App() {
                       </div>
 
                       {/* Separately configurable; immediate evasion takes precedence. */}
-                      <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex items-center justify-between gap-6 settings-card">
                         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                          <div className="p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                            <Timer className="w-5 h-5 text-cyan-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Timer />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_hover_assist_title')}</h4>
@@ -12617,10 +12619,10 @@ export default function App() {
                       </div>
 
                       {/* Card 3: Nivel de interactividad */}
-                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex flex-col gap-3 settings-card">
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0">
-                            <Sparkles className="w-5 h-5 text-indigo-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Sparkles />
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-0.5">{t('cyberbot_settings_chatter')}</h4>
@@ -12662,11 +12664,11 @@ export default function App() {
                       </div>
 
                       {/* Card 4: Horario silencioso (Captura 3 style) */}
-                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex flex-col gap-3 settings-card">
                         <div className="flex items-center justify-between gap-6">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                            <div className="p-2.5 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
-                              <Moon className="w-5 h-5 text-purple-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Moon />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_quiet_hours_title')}</h4>
@@ -12683,7 +12685,7 @@ export default function App() {
                         {cyberBot.quietHours.enabled && (
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-white/5">
                             <div className="flex items-center gap-2.5 text-slate-400 text-xs">
-                              <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+                              <Clock className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
                               <div>
                                 <span className="font-semibold text-slate-300 block">{t('cyberbot_quiet_schedule_title')}</span>
                                 <span className="text-[11px] text-slate-500">{t('cyberbot_quiet_schedule_desc')}</span>
@@ -12720,10 +12722,10 @@ export default function App() {
                       </div>
 
                       {/* Card 5: Posición inicial y arrastre */}
-                      <div className="flex flex-col gap-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex flex-col gap-3 settings-card">
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-teal-500/10 rounded-lg border border-teal-500/20 shrink-0">
-                            <SlidersHorizontal className="w-5 h-5 text-teal-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <SlidersHorizontal />
                           </div>
                           <div className="min-w-0 flex-1">
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_pos_title')}</h4>
@@ -12766,10 +12768,10 @@ export default function App() {
                     </>)}
 
                     {/* Banners alternativos (plan de contingencia cuando CyberBot está apagado o no cabe) */}
-                    <div className="flex items-center justify-between gap-6 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20 shrink-0">
-                          <Info className="w-5 h-5 text-amber-400" />
+                        <div className="settings-icon" aria-hidden="true">
+                          <Info />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_banners_title')}</h4>
@@ -12789,33 +12791,31 @@ export default function App() {
                 {settingsTab === 'backup' && (<>
                   <div className="space-y-6">
                     {/* Backup & Data Header */}
-                    <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                        <HardDrive className="w-5 h-5 text-cyan-400" />
-                      </div>
-                      <div className="text-left">
-                        <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('backup_title')}</h3>
-                        <p className="text-[10px] text-slate-500">
+                    <div className="space-y-2 min-w-0 text-left border-b border-white/5 pb-4">
+                      <h3 className="settings-section-title">
+                        <HardDrive aria-hidden="true" />
+                        {t('backup_title')}
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
                           {language === 'es'
                             ? 'Administración de copias de seguridad, almacenamiento y optimización de caché.'
                             : 'Manage configuration backups, data storage, and cache optimization.'}
                         </p>
-                      </div>
                     </div>
 
                     {/* Sección 1: Copias de Seguridad */}
                     <div className="space-y-3">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                        <FileJson className="w-4 h-4 text-emerald-400" />
+                      <h3 className="settings-section-title">
+                        <FileJson aria-hidden="true" />
                         {t('backup_section_backup')}
-                      </label>
+                      </h3>
 
                       <div className="flex flex-col gap-2">
                         {/* Exportar */}
-                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-4 settings-card">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                              <FileJson className="w-4 h-4 text-emerald-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <FileJson />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_export_title')}</h4>
@@ -12824,17 +12824,17 @@ export default function App() {
                           </div>
                           <button 
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-sm font-medium border border-emerald-500/30 shrink-0 cursor-pointer"
+                            className="settings-action shrink-0"
                           >
                             <Download className="w-4 h-4" /> {t('sys_export_btn')}
                           </button>
                         </div>
 
                         {/* Importar */}
-                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-4 settings-card">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
-                              <Upload className="w-4 h-4 text-purple-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Upload />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_import_title')}</h4>
@@ -12844,12 +12844,12 @@ export default function App() {
                           {isElectron ? (
                             <button 
                               onClick={handleImportNative}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer"
+                              className="settings-action shrink-0"
                             >
                               <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                             </button>
                           ) : (
-                            <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg transition-colors text-sm font-medium border border-purple-500/30 shrink-0 cursor-pointer">
+                            <label className="settings-action shrink-0">
                               <Upload className="w-4 h-4" /> {t('sys_import_btn')}
                               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                             </label>
@@ -12859,17 +12859,17 @@ export default function App() {
                     </div>
 
                     {/* Sección Respaldo Automático Programado */}
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-3 settings-section-divider">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                          <Archive className="w-4 h-4 text-cyan-400" />
+                        <h3 className="settings-section-title">
+                          <Archive aria-hidden="true" />
                           {t('backup_auto_title')}
-                        </label>
+                        </h3>
                         {isElectron && (
                           <button
                             type="button"
                             onClick={handleOpenBackupsFolder}
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg border border-cyan-500/20 transition-all cursor-pointer"
+                            className="settings-action"
                           >
                             <FolderOpen className="w-3.5 h-3.5" />
                             <span>{t('backup_auto_btn_open_folder')}</span>
@@ -12877,7 +12877,7 @@ export default function App() {
                         )}
                       </div>
 
-                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors space-y-4">
+                      <div className="settings-card space-y-4">
                         <p className="text-xs text-slate-400 leading-relaxed">
                           {t('backup_auto_desc')}
                         </p>
@@ -12898,8 +12898,8 @@ export default function App() {
                         {/* Selector de Frecuencia */}
                         <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                              <Clock className="w-4 h-4 text-cyan-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Clock />
                             </div>
                             <div className="min-w-0">
                               <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_frequency_label')}</div>
@@ -12927,8 +12927,8 @@ export default function App() {
                         {/* Selector de Copias Conservadas */}
                         <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/5">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                            <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shrink-0">
-                              <Database className="w-4 h-4 text-emerald-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Database />
                             </div>
                             <div className="min-w-0">
                               <div className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('backup_auto_keep_label')}</div>
@@ -12958,8 +12958,8 @@ export default function App() {
                           <div className="pt-3 border-t border-white/5 space-y-2">
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                                <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 shrink-0">
-                                  <Folder className="w-4 h-4 text-purple-400" />
+                                <div className="settings-icon" aria-hidden="true">
+                                  <Folder />
                                 </div>
                                 <div className="min-w-0">
                                   <div className="text-sm font-medium text-slate-200 leading-tight mb-1 flex items-center gap-2">
@@ -12984,7 +12984,7 @@ export default function App() {
                                   <button
                                     type="button"
                                     onClick={handleResetBackupFolder}
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                    className="settings-action"
                                     title={t('backup_auto_folder_btn_reset')}
                                   >
                                     <RotateCcw className="w-3.5 h-3.5" />
@@ -13004,7 +13004,7 @@ export default function App() {
 
                             {/* Ruta visible */}
                             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 font-mono text-[11px] text-slate-300 break-all select-text">
-                              <span className="text-slate-500 shrink-0 select-none">📁</span>
+                              <Folder className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
                               <span className="truncate flex-1" title={resolvedBackupsDir || autoBackupFolder || defaultBackupsDir}>
                                 {resolvedBackupsDir || autoBackupFolder || defaultBackupsDir || '...'}
                               </span>
@@ -13089,13 +13089,13 @@ export default function App() {
                     </div>
 
                     {/* Sección 2: Mantenimiento de Caché de Iconos */}
-                    <div className="space-y-3 pt-2">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 text-cyan-400" />
+                    <div className="space-y-3 settings-section-divider">
+                      <h3 className="settings-section-title">
+                        <RefreshCw aria-hidden="true" />
                         {t('backup_section_maintenance')}
-                      </label>
+                      </h3>
 
-                      <div className="flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex flex-col gap-4 settings-card">
                         <p className="text-xs text-slate-400 leading-relaxed">
                           {t('settings_icons_desc')}
                         </p>
@@ -13155,18 +13155,18 @@ export default function App() {
                     </div>
 
                     {/* Sección 3: Almacenamiento y Diagnóstico */}
-                    <div className="space-y-3 pt-2">
-                      <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                        <FolderOpen className="w-4 h-4 text-cyan-400" />
+                    <div className="space-y-3 settings-section-divider">
+                      <h3 className="settings-section-title">
+                        <FolderOpen aria-hidden="true" />
                         {t('backup_section_storage')}
-                      </label>
+                      </h3>
 
                       <div className="flex flex-col gap-2">
                         {/* Carpeta de Datos */}
-                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-4 settings-card">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 shrink-0">
-                              <FolderOpen className="w-4 h-4 text-cyan-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <FolderOpen />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_data_dir_title')}</h4>
@@ -13175,17 +13175,17 @@ export default function App() {
                           </div>
                           <button 
                             onClick={() => window.electronAPI!.openDataFolder()}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-200 rounded-lg transition-colors text-sm font-medium border border-cyan-700/50 shrink-0 cursor-pointer"
+                            className="settings-action shrink-0"
                           >
                             <FolderOpen className="w-4 h-4" /> {t('sys_data_dir_btn')}
                           </button>
                         </div>
 
                         {/* Diagnóstico del Sistema */}
-                        <div className="flex items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center justify-between gap-4 settings-card">
                           <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20 shrink-0">
-                              <Terminal className="w-4 h-4 text-slate-400" />
+                            <div className="settings-icon" aria-hidden="true">
+                              <Terminal />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('sys_diag_title')}</h4>
@@ -13194,17 +13194,17 @@ export default function App() {
                           </div>
                           <button 
                             onClick={() => window.electronAPI!.openDevTools()}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-slate-700 shrink-0 cursor-pointer"
+                            className="settings-action shrink-0"
                           >
                             <Terminal className="w-4 h-4" /> {t('sys_diag_btn')}
                           </button>
                         </div>
 
                         {/* Restablecer accesos predeterminados */}
-                        <div className="flex items-start sm:items-center justify-between gap-4 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-start sm:items-center justify-between gap-4 settings-card">
                           <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 shrink-0 mt-0.5">
-                              <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+                            <div className="settings-icon mt-0.5" aria-hidden="true">
+                              <SlidersHorizontal />
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('settings_default_shortcuts_title')}</h4>
@@ -13222,17 +13222,17 @@ export default function App() {
                     </div>
 
                     {/* Sección 4: Restablecimiento de fábrica */}
-                    <div className="space-y-3 pt-2">
-                      <label className="text-xs font-cyber font-bold text-amber-300/90 tracking-widest drop-shadow-sm flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <div className="space-y-3 settings-section-divider">
+                      <h3 className="settings-section-title">
+                        <AlertTriangle aria-hidden="true" />
                         {t('backup_section_reset')}
-                      </label>
+                      </h3>
 
                       <div className="flex flex-col gap-3 bg-amber-500/[0.04] p-4 rounded-xl border border-amber-500/20 hover:border-amber-500/35 transition-colors">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
-                            <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/25 shrink-0 mt-0.5">
-                              <RotateCcw className="w-4 h-4 text-amber-400" />
+                            <div className="settings-icon mt-0.5" aria-hidden="true">
+                              <RotateCcw />
                             </div>
                             <div className="min-w-0 space-y-1.5">
                               <h4 className="text-sm font-medium text-slate-200 leading-tight">{t('settings_factory_reset_title')}</h4>
@@ -13260,14 +13260,12 @@ export default function App() {
                   <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                          <Search className={`w-5 h-5 text-cyan-400 ${indexerStats.status === 'INDEXING' ? 'animate-spin' : ''}`} />
-                        </div>
-                        <div className="text-left">
-                          <h3 className="text-sm font-cyber font-bold text-slate-200 tracking-wider">{t('idx_title')}</h3>
-                          <p className="text-[10px] text-slate-500">{t('idx_desc')}</p>
-                        </div>
+                      <div className="space-y-2 min-w-0 text-left">
+                        <h3 className="settings-section-title">
+                          <Search aria-hidden="true" />
+                          {t('idx_title')}
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">{t('idx_desc')}</p>
                       </div>
                       
                       {/* Master Toggle */}
@@ -13291,7 +13289,7 @@ export default function App() {
 
                     {/* Stats Card */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
+                      <div className="settings-card flex flex-col items-start gap-1">
                         <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_label')}</span>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`w-2 h-2 rounded-full ${
@@ -13307,7 +13305,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-start gap-1">
+                      <div className="settings-card flex flex-col items-start gap-1">
                         <span className="text-[9px] font-cyber font-bold text-slate-500 tracking-widest uppercase">{t('idx_status_registered')}</span>
                         <span className="text-lg font-mono font-semibold text-cyan-400/90 mt-0.5 tabular-nums tracking-normal">
                           {indexerStats.totalFiles.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')}
@@ -13316,9 +13314,12 @@ export default function App() {
                     </div>
 
                     {/* Slider for Depth */}
-                    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-left">
+                    <div className="settings-card space-y-3 text-left">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">{t('idx_scan_depth')}</label>
+                        <h3 className="settings-section-title">
+                          <SlidersHorizontal aria-hidden="true" />
+                          {t('idx_scan_depth')}
+                        </h3>
                         <span className="text-xs font-cyber font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
                           {language === 'es' ? 'NIVEL' : 'LEVEL'} {indexerSettings.maxDepth}
                         </span>
@@ -13330,7 +13331,7 @@ export default function App() {
                         value={indexerSettings.maxDepth}
                         onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
                         disabled={!indexerSettings.enabled}
-                        className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="settings-slider w-full"
                       />
                       <div className="flex justify-between text-[9px] text-slate-500 font-mono">
                         <span>{t('stat_level1')}</span>
@@ -13345,10 +13346,10 @@ export default function App() {
 
                     {/* Hidden Folders Toggles */}
                     <div className="space-y-3 text-left">
-                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                      <div className={`flex items-center justify-between gap-6 settings-card ${indexerSettings.enabled ? '' : 'opacity-50'}`}>
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-slate-500/10 rounded-lg border border-slate-500/20">
-                            <Eye className="w-4 h-4 text-slate-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <Eye />
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_folders')}</h4>
@@ -13363,10 +13364,10 @@ export default function App() {
                         />
                       </div>
 
-                      <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${indexerSettings.enabled && indexerSettings.includeHiddenFolders ? 'bg-white/[0.02] border-white/5 hover:border-white/10' : 'bg-white/[0.01] border-white/5 opacity-50'}`}>
+                      <div className={`flex items-center justify-between gap-6 settings-card ${indexerSettings.enabled && indexerSettings.includeHiddenFolders ? '' : 'opacity-50'}`}>
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                            <FolderOpen className="w-4 h-4 text-amber-400" />
+                          <div className="settings-icon" aria-hidden="true">
+                            <FolderOpen />
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('idx_hidden_content')}</h4>
@@ -13384,10 +13385,10 @@ export default function App() {
 
                     {/* Discovered System Drives */}
                     <div className="space-y-3.5 text-left">
-                      <label className="text-[10px] font-cyber font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-slate-500" />
+                      <h3 className="settings-section-title">
+                        <HardDrive aria-hidden="true" />
                         {t('idx_drives_detected')}
-                      </label>
+                      </h3>
                       <div className="flex flex-wrap gap-2.5">
                         {systemDrives.map((drive) => {
                           const isIndexed = indexerSettings.paths.includes(drive);
@@ -13436,13 +13437,14 @@ export default function App() {
                     {/* Authorized Folders Chip List */}
                     <div className="space-y-3 text-left">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest uppercase">
+                        <h3 className="settings-section-title">
+                          <FolderOpen aria-hidden="true" />
                           {t('idx_folders_authorized')}
-                        </label>
+                        </h3>
                         <button
                           onClick={handleAddFolder}
                           disabled={!indexerSettings.enabled}
-                          className="px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-30 disabled:hover:bg-cyan-500/10 text-cyan-400 rounded-lg text-[10px] font-cyber font-bold transition-all border border-cyan-500/20 flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                          className="settings-action"
                         >
                           <Plus className="w-3 h-3" /> {t('idx_add_folder')}
                         </button>
@@ -13459,7 +13461,7 @@ export default function App() {
                           {indexerSettings.paths.map((folderPath, i) => (
                             <div key={i} className="flex items-center justify-between p-3 group hover:bg-white/[0.01] transition-colors">
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+                                <Folder className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
                                 <span className="text-xs text-slate-300 truncate font-mono select-all">
                                   {folderPath}
                                 </span>
