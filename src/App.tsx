@@ -579,17 +579,22 @@ const UptimeMonitor = React.memo(() => {
 
 const TITLEBAR_TOOL_CLASS = 'relative flex items-center justify-center w-7 h-7 shrink-0 rounded-md cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400';
 
-function ClearShortcutButton({ label, disabled, onClear }: { label: string; disabled: boolean; onClear: () => void }) {
+function ShortcutActionButton({ icon: Icon, label, disabled = false, onClick }: {
+  icon: LucideIcon;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
   return (
     <Tooltip label={disabled ? null : label} placement="top">
       <button
         type="button"
         aria-label={label}
         disabled={disabled}
-        onClick={onClear}
-        className="settings-action shrink-0 self-stretch px-2.5"
+        onClick={onClick}
+        className="settings-action w-10 shrink-0 self-stretch px-0"
       >
-        <BrushCleaning aria-hidden="true" className="size-4" />
+        <Icon aria-hidden="true" className="size-4" />
       </button>
     </Tooltip>
   );
@@ -10707,10 +10712,11 @@ export default function App() {
                       >
                         {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('shortcut_disabled'))}
                       </button>
-                      <ClearShortcutButton
+                      <ShortcutActionButton
+                        icon={BrushCleaning}
                         label={t('shortcut_clear')}
                         disabled={!editForm.shortcut}
-                        onClear={() => {
+                        onClick={() => {
                           setIsRecordingAppShortcut(false);
                           setEditForm(previous => ({ ...previous, shortcut: '' }));
                         }}
@@ -11431,26 +11437,23 @@ export default function App() {
                     >
                       {isRecordingShortcut ? t('general_shortcut_rec') : (activationShortcut || t('shortcut_disabled'))}
                     </button>
-                    <ClearShortcutButton
+                    <ShortcutActionButton
+                      icon={BrushCleaning}
                       label={t('shortcut_clear')}
                       disabled={!activationShortcut}
-                      onClear={() => {
+                      onClick={() => {
                         setIsRecordingShortcut(false);
                         setActivationShortcut('');
                       }}
                     />
-                    <Tooltip label={t('general_shortcut_reset')} placement="top">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsRecordingShortcut(false);
-                          setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
-                        }}
-                        className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
+                    <ShortcutActionButton
+                      icon={RotateCcw}
+                      label={t('general_shortcut_reset')}
+                      onClick={() => {
+                        setIsRecordingShortcut(false);
+                        setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
+                      }}
+                    />
                   </div>
                   <p className="text-xs text-slate-500">{t('general_shortcut_desc')}</p>
                 </div>
@@ -12778,33 +12781,24 @@ export default function App() {
                           >
                             {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : (cyberBotShortcut || t('shortcut_disabled'))}
                           </button>
-                          <ClearShortcutButton
+                          <ShortcutActionButton
+                            icon={BrushCleaning}
                             label={t('shortcut_clear')}
                             disabled={!cyberBotShortcut}
-                            onClear={() => {
+                            onClick={() => {
                               setIsRecordingCyberBotShortcut(false);
                               setCyberBotShortcut('');
                             }}
                           />
-                          <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
-                            <button
-                              type="button"
-                              aria-label={t('general_cyberbot_shortcut_reset')}
-                              disabled={!cyberBot.floatingEnabled}
-                              onClick={() => {
-                                if (!cyberBot.floatingEnabled) return;
-                                setIsRecordingCyberBotShortcut(false);
-                                setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
-                              }}
-                              className={`flex-shrink-0 p-2.5 rounded-xl border border-white/10 transition-all ${
-                                !cyberBot.floatingEnabled
-                                  ? 'bg-black/20 text-slate-600 cursor-not-allowed'
-                                  : 'bg-[#0f172a] text-slate-400 hover:text-cyan-300 hover:bg-white/5'
-                              }`}
-                            >
-                              <RotateCcw className="w-4 h-4" />
-                            </button>
-                          </Tooltip>
+                          <ShortcutActionButton
+                            icon={RotateCcw}
+                            label={t('general_cyberbot_shortcut_reset')}
+                            disabled={!cyberBot.floatingEnabled}
+                            onClick={() => {
+                              setIsRecordingCyberBotShortcut(false);
+                              setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                            }}
+                          />
                         </div>
                       </div>
 
