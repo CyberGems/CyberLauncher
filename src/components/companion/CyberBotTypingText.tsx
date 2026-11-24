@@ -11,7 +11,9 @@ export function CyberBotTypingText({ text, visible, caret = false, typing = fals
     node.scrollTop = typing ? node.scrollHeight : 0;
     node.scrollLeft = typing ? node.scrollWidth : 0;
   }, [visible, typing]);
-  return <span className="cyberbot-typing-text" data-cyberbot-typing={typing}>
+  if (!typing) return <>{text}</>;
+
+  return <span className="cyberbot-typing-text">
     <span className="cyberbot-typing-accessible">{text}</span>
     <span className="cyberbot-typing-reserve" aria-hidden="true">{text}<span className="cyberbot-caret-space" /></span>
     <span ref={viewport} className="cyberbot-typing-visible" aria-hidden="true">

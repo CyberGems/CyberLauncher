@@ -92,7 +92,6 @@ if (window.desktopToast) {
     if (!data) return;
 
     if (data.type === 'hide') {
-      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: null }));
       imminentCard.classList.add('exiting');
       standardCard.classList.add('exiting');
       cyberbotCard.classList.add('exiting');
@@ -118,7 +117,15 @@ if (window.desktopToast) {
         : ['warning', 'error', 'imminent'].includes(data.type) ? 'alert'
         : data.type === 'success' ? 'success'
         : data.type === 'info' && data.source !== 'launch' ? 'focused' : 'launcher';
-      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', { detail: { face, speechKey, title: (data.title || '').replace(/^CyberLauncher:\s*/i, ''), detail: data.detail || '' } }));
+      window.dispatchEvent(new CustomEvent('cyberbot-toast-avatar', {
+        detail: {
+          face,
+          speechKey,
+          title: (data.title || '').replace(/^CyberLauncher:\s*/i, ''),
+          detail: data.detail || '',
+          animateText: data.source === 'launch',
+        },
+      }));
       imminentCard.classList.add('hidden');
       standardCard.classList.add('hidden');
       cyberbotCard.classList.remove('hidden');

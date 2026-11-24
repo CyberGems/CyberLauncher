@@ -333,6 +333,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     id?: string;
     text: string;
     detail?: string;
+    presentation?: CyberBotMessage['presentation'];
     emotion?: CyberBotEmotion;
     tag?: string;
     action?: { label: string; onClick: () => void };
@@ -363,7 +364,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     const current = activeMessageRef.current;
     if (msg.id && current?.id === msg.id && current.text === msg.text && current.detail === msg.detail) {
       const refreshed = {
-        ...current, emotion: msg.emotion || 'speaking', tag: msg.tag, priority,
+        ...current, presentation: msg.presentation, emotion: msg.emotion || 'speaking', tag: msg.tag, priority,
         action: msg.action, secondaryAction: msg.secondaryAction, tertiaryAction: msg.tertiaryAction,
         nameEntry: msg.nameEntry, onDismiss: msg.onDismiss,
       };
@@ -383,6 +384,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
       id: msg.id || `bot_msg_${Date.now()}_${Math.random()}`,
       text: msg.text,
       detail: msg.detail,
+      presentation: msg.presentation,
       emotion: msg.emotion || 'speaking',
       tag: msg.tag,
       action: msg.action,
@@ -404,7 +406,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         activeMessageRef.current = null;
         dismissTimerRef.current = null;
         setActiveMessage(null);
-      }, msg.id?.startsWith('scheduled_countdown_') ? duration : cyberBotSpeechLifetime(duration, msg.text, msg.detail));
+      }, msg.presentation === 'notice' ? duration : cyberBotSpeechLifetime(duration, msg.text, msg.detail));
     }
     return true;
   }, [enabled, chatterLevel, quietHours, t]);

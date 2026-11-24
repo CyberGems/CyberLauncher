@@ -49,6 +49,7 @@ export interface CyberBotMessage {
   id: string;
   text: string;
   detail?: string;
+  presentation?: 'notice';
   emotion?: CyberBotEmotion;
   tag?: string;
   action?: {

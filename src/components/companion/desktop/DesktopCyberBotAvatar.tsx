@@ -8,6 +8,7 @@ export interface DesktopCyberBotState {
   speechKey: string;
   title: string;
   detail: string;
+  animateText: boolean;
 }
 export function DesktopCyberBotAvatar({ face, speaking = false, levitationRange }: { face: ApprovedCyberBotFace; speaking?: boolean; levitationRange?: number }) {
   const reducedMotion = useCyberBotReducedMotion();

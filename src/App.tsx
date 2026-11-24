@@ -1,4 +1,3 @@
-import { cyberBotSpeechLifetime } from './components/companion/cyberBotTyping';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
@@ -2357,7 +2356,7 @@ export default function App() {
     const ms = isLongToast ? 8000 : 4500;
     const timer = setTimeout(() => {
       setNotification(null);
-    }, cyberBotSpeechLifetime(ms, notification.message, notification.detail));
+    }, ms);
 
     const handleVisibilityChange = () => {
       if (!isElectron && document.hidden) {
@@ -3598,6 +3597,7 @@ export default function App() {
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: false, essential: true }) === 'bot') {
         countdownSpoken = cyberBot.say({
           id: `scheduled_countdown_${imminentTask.id}`,
+          presentation: 'notice',
           text: t('notif_scheduled_imminent', { seconds: imminentTask.remainingSeconds.toString() }),
           detail: imminentTask.name,
           emotion: 'alert',
@@ -3614,6 +3614,10 @@ export default function App() {
           priority: 'normal',
           essential: true,
         });
+      }
+      if (countdownSpoken) {
+        if (showFloating) void window.electronAPI?.hideDesktopToast?.();
+        return;
       }
       if (showFloating) void window.electronAPI!.showDesktopToast!({
         type: 'imminent',
@@ -3632,7 +3636,7 @@ export default function App() {
 
     if (notification) {
       const ongoing = notification.persistent || notification.level === 'critical';
-      if (!ongoing && noticeLedgerRef.current.has(notification)) return;
+      if (!notification.persistent && noticeLedgerRef.current.has(notification)) return;
       let actionLabel = '';
       let brandTag = notification.brandTag;
       if (notification.action === 'open-hud-clock') {
@@ -3664,6 +3668,7 @@ export default function App() {
       if (botAvailable && chooseNotificationChannel(deliverySettings, { critical: notification.level === 'critical', essential: notification.essential }) === 'bot') {
         const accepted = cyberBot.say({
           id: noticeLedgerRef.current.id(notification),
+          presentation: 'notice',
           text: notification.message,
           detail: notification.detail,
           emotion: cyberBotNotificationEmotion(notification),
@@ -3674,7 +3679,11 @@ export default function App() {
           priority: notification.level === 'critical' ? 'high' : 'normal',
           essential: notification.essential,
         });
-        if (accepted) noticeLedgerRef.current.mark(notification);
+        if (accepted) {
+          noticeLedgerRef.current.mark(notification);
+          if (showFloating) void window.electronAPI?.hideDesktopToast?.();
+          return;
+        }
       }
 
       if (showFloating && !notification.suppressToast && (notification.source !== 'system-alert' || isWindowVisible || ongoing)) void window.electronAPI!.showDesktopToast!({

@@ -2293,11 +2293,12 @@ function presentDesktopToast(win: BrowserWindow) {
     const ms = payload.source === 'launch' ? 3000 : payload.action ? 8000 : 4500;
     desktopToastAutoDismissTimer = setTimeout(() => {
       hideDesktopToastInternal();
-    }, payload.presentation === 'bot' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
+    }, payload.source === 'launch' ? cyberBotSpeechLifetime(ms, payload.title || '', payload.detail || '') : ms);
   }
 }
 
 function hideDesktopToastInternal() {
+  if (!latestToastPayload) return;
   const version = ++desktopToastVisibilityVersion;
   latestToastPayload = null;
   if (desktopToastAutoDismissTimer) {

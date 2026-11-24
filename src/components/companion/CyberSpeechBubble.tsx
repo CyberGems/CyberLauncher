@@ -35,7 +35,7 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
   const nameInputId = React.useId();
   React.useEffect(() => { setNameDraft(''); }, [message.id]);
   const normalizedName = normalizeCyberBotName(nameDraft);
-  const typing = useCyberBotTyping(message.id, message.text, message.detail);
+  const typing = useCyberBotTyping(message.id, message.text, message.detail, message.presentation !== 'notice');
   React.useLayoutEffect(() => { onTypingChange?.(message.id, typing.isTyping); }, [message.id, typing.isTyping, onTypingChange]);
   React.useLayoutEffect(() => () => onTypingChange?.(message.id, false), [message.id, onTypingChange]);
   const isAlert = message.emotion === 'alert';
@@ -97,11 +97,11 @@ export const CyberSpeechBubble: React.FC<CyberSpeechBubbleProps> = ({
             <span>{message.tag}</span>
           </div>
         )}
-        <div className={`${wide && message.tag ? 'col-span-2' : 'col-start-2'} ${wide && !message.tag ? 'pr-7' : ''} text-xs font-cyber font-bold tracking-wide text-white leading-relaxed break-words`}>
+        <div className={`${wide && message.tag ? 'col-span-2' : 'col-start-2'} ${wide && !message.tag ? 'pr-7' : ''} text-xs font-cyber font-bold tracking-wide text-white leading-relaxed [overflow-wrap:anywhere]`}>
           <CyberBotTypingText text={message.text} visible={typing.text} caret={typing.part === 'text'} typing={typing.isTyping} />
         </div>
         {message.detail && (
-          <p className="col-span-2 mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap break-words">
+          <p className="col-span-2 mt-1 text-[11px] font-medium leading-snug text-cyan-100/70 whitespace-pre-wrap [overflow-wrap:anywhere]">
             <CyberBotTypingText text={message.detail} visible={typing.detail} caret={typing.part === 'detail'} typing={typing.isTyping} />
           </p>
         )}

@@ -159,13 +159,21 @@ test('speech uses the CyberBot symbol without an empty header row', () => {
   assert.match(ordinary, /lucide-bot/);
   assert.doesNotMatch(ordinary, /icon-32\.png/);
   assert.match(ordinary, /Good morning/);
+  assert.match(ordinary, /cyberbot-typing-visible/);
   assert.ok(ordinary.indexOf('lucide-bot') < ordinary.indexOf('Good morning'));
   assert.doesNotMatch(ordinary, /mb-1"><span aria-hidden/);
 
   const scheduled = renderToStaticMarkup(React.createElement(CyberSpeechBubble, {
-    message: { ...base, tag: 'TIMER', emotion: 'alert' }, onClose: () => {}, closeLabel: 'Dismiss',
+    message: {
+      ...base, text: 'Launch in 10s', detail: 'Scheduled application', presentation: 'notice',
+      tag: 'TIMER', emotion: 'alert',
+    },
+    onClose: () => {}, closeLabel: 'Dismiss',
   }));
   assert.match(scheduled, /TIMER/);
+  assert.match(scheduled, />Launch in 10s</);
+  assert.match(scheduled, />Scheduled application</);
+  assert.doesNotMatch(scheduled, /cyberbot-typing/);
 });
 
 test('app-launch count speech is clear for zero, one, and repeated launches in both languages', () => {
@@ -381,13 +389,14 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
     }
     return elements.get(id)!;
   };
-  const avatarStates: Array<{ face: string; speechKey: string; title: string; detail: string } | null> = [];
+  type Announcement = { face: string; speechKey: string; title: string; detail: string; animateText: boolean };
+  const avatarStates: Array<Announcement | null> = [];
   const actions: Array<[string, unknown]> = [];
   let receive: (data: Record<string, unknown>) => void = () => {};
   runInNewContext(source, {
     document: { getElementById: element },
     CustomEvent: class { constructor(public type: string, public options: { detail: unknown }) {} },
-    window: { dispatchEvent: (event: { options: { detail: { face: string; speechKey: string; title: string; detail: string } | null } }) => { const state = event.options.detail; if (state && state.speechKey !== previousSpeechKey) speechRestarts++; previousSpeechKey = state?.speechKey ?? null; avatarStates.push(state); }, desktopToast: {
+    window: { dispatchEvent: (event: { options: { detail: Announcement | null } }) => { const state = event.options.detail; if (state?.animateText && state.speechKey !== previousSpeechKey) speechRestarts++; previousSpeechKey = state?.speechKey ?? null; avatarStates.push(state); }, desktopToast: {
       onData: (callback: typeof receive) => { receive = callback; },
       action: (name: string, payload: unknown) => actions.push([name, payload]),
       hide: () => {},
@@ -398,11 +407,12 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 9s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
   assert.equal(avatarStates.at(-1)?.speechKey, 'imminent:task-1');
-  assert.equal(speechRestarts, 1);
+  assert.equal(speechRestarts, 0);
   assert.equal(element('standardCard').classList.contains('hidden'), true);
   assert.equal(avatarStates.at(-1)?.title, 'Launching in 9s');
   receive({ presentation: 'bot', type: 'imminent', taskId: 'task-1', title: 'Launching in 8s', detail: 'Editor', actionLabelLaunch: 'Launch now', actionLabelCancel: 'Cancel' });
-  assert.equal(speechRestarts, 1, 'countdown updates should keep the same writing session');
+  assert.equal(speechRestarts, 0, 'the countdown should never start writing');
+  assert.equal(avatarStates.at(-1)?.title, 'Launching in 8s');
   assert.equal(avatarStates[0]?.face, 'alert');
   assert.equal(avatarStates[0]?.speechKey, avatarStates[1]?.speechKey);
   click('cyberbotActionBtn');
@@ -410,28 +420,32 @@ test('floating CyberBot keeps scheduled actions and release links usable', () =>
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task']);
 
   receive({ presentation: 'bot', type: 'info', title: 'Update available', action: 'open-about', actionLabel: 'About', releaseUrl: 'https://example.com/release', releaseLabel: 'Release notes' });
-  assert.equal(speechRestarts, 2);
+  assert.equal(speechRestarts, 0);
   assert.equal(avatarStates.at(-1)?.face, 'focused');
   click('cyberbotActionBtn');
   click('cyberbotSecondaryBtn');
   assert.deepEqual(actions.map(action => action[0]), ['launch-now', 'cancel-task', 'open-hud', 'open-release']);
 
   receive({ presentation: 'bot', type: 'info', source: 'launch', title: 'Opening Editor' });
-  assert.equal(speechRestarts, 3);
+  assert.equal(speechRestarts, 1);
   assert.equal(element('cyberbotCard').classList.contains('hidden'), false);
   assert.equal(avatarStates.at(-1)?.title, 'Opening Editor');
   assert.equal(avatarStates.at(-1)?.face, 'launcher');
   assert.equal(element('cyberbotActions').classList.contains('hidden'), true);
+  const exitingState = avatarStates.at(-1);
   receive({ type: 'hide' });
-  assert.equal(avatarStates.at(-1), null, 'hidden notifications must unmount the avatar');
+  receive({ type: 'hide' });
+  assert.equal(avatarStates.at(-1), exitingState, 'keep the complete announcement mounted during exit');
+  assert.equal(element('cyberbotCard').classList.contains('exiting'), true);
 
   receive({ presentation: 'bot', type: 'warning', action: 'open-hud-system', title: 'High RAM usage' });
+  assert.equal(element('cyberbotCard').classList.contains('exiting'), false);
   assert.equal(element('cyberbotCard').classList.contains('alert'), true);
   assert.equal(element('cyberbotCard').classList.contains('storage'), false);
   receive({ presentation: 'bot', type: 'warning', action: 'open-hud-storage', title: 'Low disk space' });
   assert.equal(element('cyberbotCard').classList.contains('alert'), true);
   assert.equal(element('cyberbotCard').classList.contains('storage'), true);
-  assert.equal(speechRestarts, 5);
+  assert.equal(speechRestarts, 1);
   assert.equal(avatarStates.at(-1)?.face, 'storage');
   receive({ presentation: 'bot', type: 'info', title: 'Routine notice' });
   assert.equal(avatarStates.at(-1)?.face, 'focused');

@@ -51,7 +51,6 @@ html, body {
   display: flex;
   align-items: center;
   gap: 14px;
-  animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -62,6 +61,7 @@ html, body {
 .toast-card.exiting {
   opacity: 0;
   transform: translateY(12px) scale(0.96);
+  pointer-events: none;
 }
 
 .cyberbot-card {
@@ -69,17 +69,16 @@ html, body {
   width: fit-content;
   max-width: 100%;
   min-width: 0;
-  height: 130px;
+  height: min(130px, 100%);
   display: flex;
   align-items: flex-end;
   gap: 8px;
   margin-left: auto;
-  animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .cyberbot-card.hidden, .cyberbot-card .hidden { display: none !important; }
-.cyberbot-card.exiting { opacity: 0; transform: translateY(12px) scale(0.96); }
+.cyberbot-card.exiting { opacity: 0; transform: translateY(12px) scale(0.96); pointer-events: none; }
 .cyberbot-avatar {
   flex: 0 0 84px;
   width: 84px;
@@ -99,9 +98,11 @@ html, body {
   align-self: flex-start;
   flex: 0 1 auto;
   width: max-content;
-  min-width: 220px;
+  min-width: min(220px, calc(100% - 92px));
   max-width: 382px;
-  max-height: 130px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: visible;
   padding: 11px 13px;
   border-radius: 17px;
@@ -123,28 +124,25 @@ html, body {
   border-left: 1px solid rgba(6, 182, 212, 0.30);
   border-bottom: 1px solid rgba(6, 182, 212, 0.30);
 }
-.cyberbot-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.cyberbot-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .cyberbot-brand { color: #fbbf24; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
 #cyberbotBrandTag { color: #94a3b8; margin-left: 5px; }
-.cyberbot-title { color: #fff; font-weight: 750; font-size: 13px; line-height: 1.25; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.cyberbot-detail { color: #a5cbd6; font-size: 11px; line-height: 1.2; margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.cyberbot-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+.cyberbot-copy { min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
+.cyberbot-title { color: #fff; font-weight: 750; font-size: 13px; line-height: 1.25; }
+.cyberbot-detail { color: #a5cbd6; font-size: 11px; line-height: 1.2; margin-top: 3px; white-space: pre-wrap; }
+.cyberbot-actions { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
 .cyberbot-actions button { cursor: pointer; font: inherit; font-size: 10px; font-weight: 700; border-radius: 7px; padding: 3px 8px; }
 .cyberbot-primary { color: #67e8f9; background: rgba(6,182,212,.17); border: 1px solid rgba(34,211,238,.4); }
 .cyberbot-secondary { color: #cbd5e1; background: rgba(100,116,139,.18); border: 1px solid rgba(148,163,184,.35); }
 .cyberbot-actions button:hover { filter: brightness(1.25); }
 @media (prefers-reduced-motion: reduce) {
-  .cyberbot-card { animation: none; }
+  .toast-card, .cyberbot-card { transition: none; }
 }
 
-@keyframes toastSlideIn {
-  from {
+@starting-style {
+  .toast-card:not(.exiting), .cyberbot-card:not(.exiting) {
     opacity: 0;
     transform: translateY(14px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -554,8 +552,3 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
 }
-
-/* Reserve the complete message footprint while the caret follows live text. */
-.cyberbot-title { display: block; }
-.cyberbot-title .cyberbot-typing-reserve, .cyberbot-title .cyberbot-typing-text[data-cyberbot-typing="false"] .cyberbot-typing-visible { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.cyberbot-detail .cyberbot-typing-reserve, .cyberbot-detail .cyberbot-typing-text[data-cyberbot-typing="false"] .cyberbot-typing-visible { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
