@@ -1780,6 +1780,18 @@ const formatRelativeTime = (timestamp: number, t: any) => {
 
 let globalAudioCtx: AudioContext | null = null;
 
+const SETTINGS_TABS = {
+  general: { label: 'tab_general', description: 'tab_general_desc', icon: Keyboard },
+  appearance: { label: 'tab_appearance', description: 'tab_appearance_desc', icon: Palette },
+  system: { label: 'tab_system', description: 'tab_system_desc', icon: Settings },
+  cyberbot: { label: 'tab_cyberbot', description: 'tab_cyberbot_desc', icon: Bot },
+  backup: { label: 'tab_backup', description: 'tab_backup_desc', icon: HardDrive },
+  indexer: { label: 'tab_indexer', description: 'tab_indexer_desc', icon: Search },
+} as const;
+
+type SettingsTab = keyof typeof SETTINGS_TABS;
+const SETTINGS_TAB_IDS = Object.keys(SETTINGS_TABS) as SettingsTab[];
+
 export default function App() {
 
   const [categories, setCategories] = useState<CategoryRecord[]>(() => {
@@ -2219,7 +2231,8 @@ export default function App() {
     return text;
   }, [language]);
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'appearance' | 'system' | 'cyberbot' | 'backup' | 'indexer'>('general');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
+  const { label: settingsTabLabel, description: settingsTabDescription, icon: SettingsTabIcon } = SETTINGS_TABS[settingsTab];
   const [settingsAppVersion, setSettingsAppVersion] = useState('');
   // "Guardado" feedback: bumped on every successful settings write so the pill
   // and its separator pulse replay their animation on each save action.
@@ -11240,28 +11253,25 @@ export default function App() {
                 {/* Left Sidebar Navigation */}
                 <div className="w-48 border-r border-white/5 bg-black/20 flex flex-col py-3 shrink-0 select-none">
                   <div className="flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                    {([
-                      ['general', t('tab_general'), Keyboard],
-                      ['appearance', t('tab_appearance'), Palette],
-                      ['system', t('tab_system'), Settings],
-                      ['cyberbot', t('tab_cyberbot'), Bot],
-                      ['backup', t('tab_backup'), HardDrive],
-                      ['indexer', t('tab_indexer'), Search]
-                    ] as const).map(([id,label,IconComponent]) => (
-                      <button 
-                        key={id} 
-                        onClick={() => setSettingsTab(id)}
-                        aria-current={settingsTab === id ? 'true' : undefined}
-                        className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 group ${
-                          settingsTab === id 
-                            ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' 
-                            : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
-                        }`}
-                      >
-                        <IconComponent className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
-                        <span>{label.toUpperCase()}</span>
-                      </button>
-                    ))}
+                    {SETTINGS_TAB_IDS.map(id => {
+                      const { label, icon: IconComponent } = SETTINGS_TABS[id];
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setSettingsTab(id)}
+                          aria-current={settingsTab === id ? 'true' : undefined}
+                          className={`flex items-center gap-2.5 px-4 py-3.5 text-[11px] font-cyber font-bold transition-all text-left border-l-2 shrink-0 group ${
+                            settingsTab === id
+                              ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5'
+                              : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
+                          }`}
+                        >
+                          <IconComponent className="settings-inline-icon w-4 h-4 shrink-0" aria-hidden="true" />
+                          <span>{t(label)}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="mt-auto pt-3 px-3 shrink-0 border-t border-white/5 relative">
                     {settingsSavePulse > 0 && (
@@ -11290,6 +11300,33 @@ export default function App() {
 
                 {/* Right Scrollable Panel Content */}
                 <div key={settingsTab} className="p-6 custom-scrollbar flex-1 min-h-0 text-slate-300 overflow-y-auto space-y-6">
+                  <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-white/5 pb-4">
+                    <div className="min-w-0 flex-1 basis-64 space-y-2 text-left">
+                      <h3 className="settings-section-title">
+                        <SettingsTabIcon aria-hidden="true" />
+                        {t(settingsTabLabel)}
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">{t(settingsTabDescription)}</p>
+                    </div>
+                    {settingsTab === 'indexer' && (
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-cyber font-bold border tracking-wider ${
+                            indexerSettings.enabled
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.12)]'
+                              : 'bg-slate-800/80 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
+                        </span>
+                        <ToggleSwitch
+                          checked={indexerSettings.enabled}
+                          onChange={() => handleToggleIndexer(!indexerSettings.enabled)}
+                          ariaLabel={t('idx_title')}
+                        />
+                      </div>
+                    )}
+                  </header>
 
                 {settingsTab === 'general' && (<>
                 {/* Language Selection Config */}
@@ -11999,11 +12036,6 @@ export default function App() {
                 {settingsTab === 'system' && (<>
                 {/* Sistema Section */}
                 <div className="space-y-3 pb-2">
-                  <h3 className="settings-section-title">
-                    <Settings aria-hidden="true" />
-                    {t('sys_title')}
-                  </h3>
-                  
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-6 settings-card">
                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
@@ -12383,16 +12415,6 @@ export default function App() {
                 {settingsTab === 'cyberbot' && (<>
                 {/* CyberBot Companion Section */}
                 <div className="space-y-6 pb-2">
-                  <div className="space-y-2 min-w-0 text-left border-b border-white/5 pb-4">
-                    <h3 className="settings-section-title">
-                      <Bot aria-hidden="true" />
-                      {t('cyberbot_tab_title')}
-                    </h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                        {t('cyberbot_tab_desc')}
-                      </p>
-                  </div>
-                  
                   <div className="flex flex-col gap-3">
                     {/* Card 1: Activar CyberBot */}
                     <div className="flex items-center justify-between gap-6 settings-card">
@@ -12789,19 +12811,6 @@ export default function App() {
 
                 {settingsTab === 'backup' && (<>
                   <div className="space-y-6">
-                    {/* Backup & Data Header */}
-                    <div className="space-y-2 min-w-0 text-left border-b border-white/5 pb-4">
-                      <h3 className="settings-section-title">
-                        <HardDrive aria-hidden="true" />
-                        {t('backup_title')}
-                      </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                          {language === 'es'
-                            ? 'Administración de copias de seguridad, almacenamiento y optimización de caché.'
-                            : 'Manage configuration backups, data storage, and cache optimization.'}
-                        </p>
-                    </div>
-
                     {/* Sección 1: Copias de Seguridad */}
                     <div className="space-y-3">
                       <h3 className="settings-section-title">
@@ -13257,35 +13266,6 @@ export default function App() {
 
                 {settingsTab === 'indexer' && (
                   <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                      <div className="space-y-2 min-w-0 text-left">
-                        <h3 className="settings-section-title">
-                          <Search aria-hidden="true" />
-                          {t('idx_title')}
-                        </h3>
-                        <p className="text-xs text-slate-500 leading-relaxed">{t('idx_desc')}</p>
-                      </div>
-                      
-                      {/* Master Toggle */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-cyber font-bold border tracking-wider ${
-                            indexerSettings.enabled
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.12)]'
-                              : 'bg-slate-800/80 text-slate-400 border-slate-700'
-                          }`}
-                        >
-                          {indexerSettings.enabled ? t('idx_status_online') : t('idx_status_offline')}
-                        </span>
-                        <ToggleSwitch
-                          checked={indexerSettings.enabled}
-                          onChange={() => handleToggleIndexer(!indexerSettings.enabled)}
-                          ariaLabel={t('idx_title')}
-                        />
-                      </div>
-                    </div>
-
                     {/* Stats Card */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="settings-card flex flex-col items-start gap-1">

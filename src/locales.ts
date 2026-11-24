@@ -208,12 +208,19 @@ export const translations = {
     about_suite_tray: "CyberTray: lanzador en bandeja",
     about_suite_wall: "CyberWall: firewall por aplicación",
 
-    // Sidebar Tabs
+    // Settings tabs
     tab_general: "GENERAL",
+    tab_general_desc: "Elige el idioma, el atajo para abrir el launcher, el monitor y las esquinas activas.",
     tab_appearance: "APARIENCIA",
+    tab_appearance_desc: "Ajusta el tamaño de las tarjetas, el fondo y los elementos visibles del launcher.",
     tab_system: "SISTEMA",
+    tab_system_desc: "Configura el inicio con Windows, el comportamiento de la ventana y las alertas de disco y memoria.",
+    tab_cyberbot: "ASISTENTE CYBERBOT",
+    tab_cyberbot_desc: "Elige cómo te llama el Asistente CyberBot y ajusta su comportamiento, horario silencioso e interacciones.",
     tab_backup: "RESPALDO Y DATOS",
+    tab_backup_desc: "Administración de copias de seguridad, almacenamiento y optimización de caché.",
     tab_indexer: "BUSCADOR",
+    tab_indexer_desc: "Elige qué unidades y carpetas se indexan para encontrar archivos y accesos directos.",
 
     // Settings Title
     settings_title: "CONFIGURACIÓN DE CYBERLAUNCHER",
@@ -307,7 +314,6 @@ export const translations = {
 
     // Indexer Settings Tab
     idx_title: "ÍNDICE GLOBAL",
-    idx_desc: "Motor de indexación híbrido de archivos y accesos directos",
     idx_master: "SERVICIO DE BÚSQUEDA INDEXADA",
     idx_master_desc: "Habilita la indexación global de archivos en segundo plano con velocidad Everything.",
     idx_status_online: "SISTEMA ONLINE",
@@ -558,7 +564,6 @@ export const translations = {
     hud_history_remove_item: "Eliminar registro del historial",
 
     // System Tab Config Additional
-    sys_title: "SISTEMA",
     sys_show_header_clock: "Mostrar reloj digital en barra superior",
     sys_show_header_clock_desc: "Muestra la hora digital en la cabecera junto a los monitores de CPU y RAM.",
     sys_show_footer_uptime: "Mostrar tiempo de actividad en el pie de página",
@@ -620,7 +625,6 @@ export const translations = {
     notif_scheduled_cancelled_detail: "Se canceló el lanzamiento de \"{name}\".",
 
     // Backup & Data Tab Config
-    backup_title: "RESPALDO Y DATOS",
     backup_section_backup: "COPIAS DE SEGURIDAD",
     backup_section_maintenance: "MANTENIMIENTO DE CACHÉ",
     backup_section_storage: "ALMACENAMIENTO Y DIAGNÓSTICO",
@@ -943,7 +947,6 @@ export const translations = {
     cyberbot_settings_title: "Asistente CyberBot",
     cyberbot_settings_desc: "Un asistente con gestos, alertas y consejos. Se duerme tras 90 segundos sin actividad en el launcher y despierta cuando vuelves a interactuar.",
     cyberbot_settings_enable: "Activar Asistente CyberBot",
-    cyberbot_tab_desc: "Elige cómo te llama el Asistente CyberBot y ajusta su comportamiento, horario silencioso e interacciones.",
     cyberbot_name_title: "¿Cómo quieres que te llame?",
     cyberbot_name_desc: "Opcional. Usaré tu nombre de vez en cuando en saludos y frases cercanas. Puedes cambiarlo o quitarlo cuando quieras.",
     cyberbot_name_placeholder: "Tu nombre o apodo",
@@ -959,8 +962,6 @@ export const translations = {
     cyberbot_name_confirmed: "Perfecto, {userName}. Así te saludaré de vez en cuando.",
     cyberbot_banners_title: "Banners alternativos",
     cyberbot_banners_desc: "Muestra banners si CyberBot está apagado o no cabe su globo. Respeta el horario silencioso. Las alertas críticas conservan la notificación de Windows.",
-    cyberbot_tab_title: "ASISTENTE CYBERBOT",
-    tab_cyberbot: "ASISTENTE CYBERBOT",
     cyberbot_dodge_title: "Evasión inmediata del cursor",
     cyberbot_dodge_desc: "Se aparta enseguida al acercar el cursor. Si está activa, tiene prioridad sobre el aviso con cuenta regresiva.",
     cyberbot_hover_assist_title: "Apartarse con aviso",
@@ -1256,12 +1257,19 @@ export const translations = {
     about_suite_tray: "CyberTray: tray launcher",
     about_suite_wall: "CyberWall: per-application firewall",
 
-    // Sidebar Tabs
+    // Settings tabs
     tab_general: "GENERAL",
+    tab_general_desc: "Choose your language, launcher shortcut, monitor, and hot corners.",
     tab_appearance: "APPEARANCE",
+    tab_appearance_desc: "Adjust card size, the background, and which elements appear in the launcher.",
     tab_system: "SYSTEM",
+    tab_system_desc: "Manage Windows startup, window behavior, and alerts for disk space and memory.",
+    tab_cyberbot: "CYBERBOT ASSISTANT",
+    tab_cyberbot_desc: "Set the name CyberBot Assistant uses for you, then adjust its behavior, quiet hours, and interactions.",
     tab_backup: "BACKUP & DATA",
+    tab_backup_desc: "Manage configuration backups, data storage, and cache optimization.",
     tab_indexer: "SEARCH ENGINE",
+    tab_indexer_desc: "Choose which drives and folders to index so you can find files and shortcuts.",
 
     // Settings Title
     settings_title: "CYBERLAUNCHER CONFIGURATION",
@@ -1355,7 +1363,6 @@ export const translations = {
 
     // Indexer Settings Tab
     idx_title: "GLOBAL INDEX",
-    idx_desc: "Hybrid indexing file system and application shortcut engine",
     idx_master: "INDEXED SEARCH SERVICE",
     idx_master_desc: "Enable global background file indexing with Everything-grade speed.",
     idx_status_online: "SYSTEM ONLINE",
@@ -1606,7 +1613,6 @@ export const translations = {
     hud_history_remove_item: "Remove execution record from history",
 
     // System Tab Config Additional
-    sys_title: "SYSTEM",
     sys_show_header_clock: "Show digital clock in top bar",
     sys_show_header_clock_desc: "Displays digital time in the header next to CPU and RAM monitors.",
     sys_show_footer_uptime: "Show system uptime in footer",
@@ -1668,7 +1674,6 @@ export const translations = {
     notif_scheduled_cancelled_detail: "Launch was cancelled for \"{name}\".",
 
     // Backup & Data Tab Config
-    backup_title: "BACKUP & DATA",
     backup_section_backup: "BACKUP COPIES",
     backup_section_maintenance: "CACHE MAINTENANCE",
     backup_section_storage: "STORAGE & DIAGNOSTICS",
@@ -1991,7 +1996,6 @@ export const translations = {
     cyberbot_settings_title: "CyberBot Assistant",
     cyberbot_settings_desc: "An assistant with expressions, alerts, and tips. It falls asleep after 90 seconds of launcher inactivity and wakes when you interact again.",
     cyberbot_settings_enable: "Enable CyberBot Assistant",
-    cyberbot_tab_desc: "Set the name CyberBot Assistant uses for you, then adjust its behavior, quiet hours, and interactions.",
     cyberbot_name_title: "What should I call you?",
     cyberbot_name_desc: "Optional. I'll use your name occasionally in greetings and friendly phrases. Change or remove it whenever you like.",
     cyberbot_name_placeholder: "Your name or nickname",
@@ -2007,8 +2011,6 @@ export const translations = {
     cyberbot_name_confirmed: "Got it, {userName}. I'll greet you that way now and then.",
     cyberbot_banners_title: "Alternative banners",
     cyberbot_banners_desc: "Show banners when CyberBot is off or its bubble cannot fit. Quiet hours still apply. Critical alerts keep Windows notifications.",
-    cyberbot_tab_title: "CYBERBOT ASSISTANT",
-    tab_cyberbot: "CYBERBOT ASSISTANT",
     cyberbot_dodge_title: "Immediate cursor evasion",
     cyberbot_dodge_desc: "Moves aside as soon as the cursor approaches. When enabled, it takes priority over the countdown warning.",
     cyberbot_hover_assist_title: "Move aside with a warning",
