@@ -59,7 +59,7 @@ import {
   RefreshCw, Calculator, Activity, FileText, PackagePlus,
   MoreHorizontal, Heart, User, HelpCircle, Tag, BookOpen, Copy, Check, Calendar, ArrowDown, ChevronUp, LoaderCircle,
   Archive, Database, Sparkles, FolderSearch, Moon, LogOut, Command, PanelLeft, PanelRight, AlertTriangle,
-  Bot, BotOff, Zap, type LucideIcon
+  Bot, BotOff, Zap, BrushCleaning, type LucideIcon
 } from 'lucide-react';
 import { CyberBot } from './components/companion/CyberBot';
 import { CyberBotPrompt } from './components/companion/CyberBotPrompt';
@@ -578,6 +578,22 @@ const UptimeMonitor = React.memo(() => {
 });
 
 const TITLEBAR_TOOL_CLASS = 'relative flex items-center justify-center w-7 h-7 shrink-0 rounded-md cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400';
+
+function ClearShortcutButton({ label, disabled, onClear }: { label: string; disabled: boolean; onClear: () => void }) {
+  return (
+    <Tooltip label={disabled ? null : label} placement="top">
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClear}
+        className="settings-action shrink-0 self-stretch px-2.5"
+      >
+        <BrushCleaning aria-hidden="true" className="size-4" />
+      </button>
+    </Tooltip>
+  );
+}
 
 const HeaderClock = React.memo(({ onClick, ariaLabel, placement, activeTasksCount = 0 }: {
   onClick: () => void;
@@ -1612,7 +1628,7 @@ const SystemHUD = ({ isOpen, onClose, activationShortcut, dailyLaunchCount, show
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-500 shrink-0">{t('hud_system_shortcut_label')}</span>
-                    <span className="text-slate-200 text-right">{activationShortcut}</span>
+                    <span className="text-slate-200 text-right">{activationShortcut || t('shortcut_disabled')}</span>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-500 shrink-0">{t('hud_system_platform_label')}</span>
@@ -2149,8 +2165,8 @@ export default function App() {
   const [isCyberBotAvatarHidden, setIsCyberBotAvatarHidden] = useState(false);
 
   // Launcher Activity State
-  const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut') || DEFAULT_ACTIVATION_SHORTCUT);
-  const [cyberBotShortcut, setCyberBotShortcut] = useState(() => localStorage.getItem('cyberBotShortcut') || DEFAULT_CYBERBOT_SHORTCUT);
+  const [activationShortcut, setActivationShortcut] = useState(() => localStorage.getItem('activationShortcut')?.trim() ?? DEFAULT_ACTIVATION_SHORTCUT);
+  const [cyberBotShortcut, setCyberBotShortcut] = useState(() => localStorage.getItem('cyberBotShortcut')?.trim() ?? DEFAULT_CYBERBOT_SHORTCUT);
   const [isRecordingCyberBotShortcut, setIsRecordingCyberBotShortcut] = useState(false);
   const [hotspotCorners, setHotspotCorners] = useState<string[]>(() => {
     const saved = localStorage.getItem('hotspotCorners');
@@ -3250,6 +3266,9 @@ export default function App() {
     if (isConfigLoaded) window.electronAPI?.setDesktopCyberBotPreload?.(cyberBot.preloadFloating);
   }, [isConfigLoaded, cyberBot.preloadFloating]);
   useEffect(() => {
+    if (isConfigLoaded) void window.electronAPI?.registerShortcut(activationShortcut);
+  }, [isConfigLoaded, activationShortcut]);
+  useEffect(() => {
     if (isConfigLoaded) void window.electronAPI?.registerCyberBotShortcut?.(cyberBotShortcut, cyberBot.floatingEnabled);
   }, [isConfigLoaded, cyberBotShortcut, cyberBot.floatingEnabled]);
   useEffect(() => { if (!isWindowVisible) cyberBotFarewell.cancel(); }, [isWindowVisible, cyberBotFarewell.cancel]);
@@ -4297,9 +4316,9 @@ export default function App() {
             setHideOnBlur(val);
             if (isElectron) window.electronAPI!.setHideOnBlur(val);
           }
-          if (source.activationShortcut) setActivationShortcut(source.activationShortcut);
-          if (typeof source.cyberBotShortcut === 'string' && source.cyberBotShortcut.trim()) {
-            setCyberBotShortcut(source.cyberBotShortcut);
+          if (typeof source.activationShortcut === 'string') setActivationShortcut(source.activationShortcut.trim());
+          if (typeof source.cyberBotShortcut === 'string') {
+            setCyberBotShortcut(source.cyberBotShortcut.trim());
           }
           if (source.hotspotCorners) setHotspotCorners(source.hotspotCorners);
           if (source.hotspotDelay !== undefined) setHotspotDelay(source.hotspotDelay);
@@ -4835,13 +4854,11 @@ export default function App() {
         localStorage.setItem('hideOnBlur', val.toString());
         if (isElectron) window.electronAPI!.setHideOnBlur(val);
       }
-      if (config.activationShortcut) {
-        setActivationShortcut(config.activationShortcut);
-        localStorage.setItem('activationShortcut', config.activationShortcut);
+      if (typeof config.activationShortcut === 'string') {
+        setActivationShortcut(config.activationShortcut.trim());
       }
-      if (config.cyberBotShortcut) {
-        setCyberBotShortcut(config.cyberBotShortcut);
-        localStorage.setItem('cyberBotShortcut', config.cyberBotShortcut);
+      if (typeof config.cyberBotShortcut === 'string') {
+        setCyberBotShortcut(config.cyberBotShortcut.trim());
       }
       if (config.hotspotCorners) {
         setHotspotCorners(config.hotspotCorners);
@@ -5895,8 +5912,8 @@ export default function App() {
       if (s.autoUpdate !== undefined) setAutoUpdate(!!s.autoUpdate);
       if (s.showTrayRecents !== undefined) setShowTrayRecents(s.showTrayRecents !== false);
       if (s.showSuiteRecommendations !== undefined) setShowSuiteRecommendations(s.showSuiteRecommendations !== false);
-      if (s.activationShortcut !== undefined) setActivationShortcut(s.activationShortcut);
-      if (s.cyberBotShortcut !== undefined) setCyberBotShortcut(s.cyberBotShortcut);
+      if (typeof s.activationShortcut === 'string') setActivationShortcut(s.activationShortcut.trim());
+      if (typeof s.cyberBotShortcut === 'string') setCyberBotShortcut(s.cyberBotShortcut.trim());
       if (s.hotspotCorners !== undefined) setHotspotCorners(s.hotspotCorners);
       if (s.hotspotCorner !== undefined && s.hotspotCorner !== 'none') {
         setHotspotCorners([s.hotspotCorner]);
@@ -6159,8 +6176,6 @@ export default function App() {
           localStorage.setItem('selectedMonitor', resolved);
         }
 
-        // Registrar el atajo guardado al iniciar
-        window.electronAPI!.registerShortcut(activationShortcut);
         // Registrar hotspots al iniciar
         window.electronAPI!.setHotspots(hotspotCorners, hotspotDelay, hotspotsDisableInFullscreen);
       } else {
@@ -10659,47 +10674,48 @@ export default function App() {
                           <p className="text-[11px] text-slate-500 text-left leading-snug">{t('app_shortcut_desc')}</p>
                         </div>
                       </div>
-                      {editForm.shortcut && (
-                        <button
-                          type="button"
-                          onClick={() => setEditForm(prev => ({ ...prev, shortcut: '' }))}
-                          className="text-xs text-red-400 hover:text-red-300 font-cyber transition-colors shrink-0"
-                        >
-                          {t('app_shortcut_clear')}
-                        </button>
-                      )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsRecordingAppShortcut(true)}
-                      onKeyDown={(e) => {
-                        if (isRecordingAppShortcut) {
-                          e.preventDefault();
-                          const keys = [];
-                          if (e.ctrlKey) keys.push('Ctrl');
-                          if (e.altKey) keys.push('Alt');
-                          if (e.shiftKey) keys.push('Shift');
-                          if (e.metaKey) keys.push('Meta');
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsRecordingAppShortcut(true)}
+                        onKeyDown={(e) => {
+                          if (isRecordingAppShortcut) {
+                            e.preventDefault();
+                            const keys = [];
+                            if (e.ctrlKey) keys.push('Ctrl');
+                            if (e.altKey) keys.push('Alt');
+                            if (e.shiftKey) keys.push('Shift');
+                            if (e.metaKey) keys.push('Meta');
 
-                          if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
-                              const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
-                              keys.push(keyName);
-                              const newShortcut = keys.join('+');
-                              setEditForm(prev => ({ ...prev, shortcut: newShortcut }));
-                              setIsRecordingAppShortcut(false);
+                            if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                                const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                                keys.push(keyName);
+                                const newShortcut = keys.join('+');
+                                setEditForm(prev => ({ ...prev, shortcut: newShortcut }));
+                                setIsRecordingAppShortcut(false);
+                            }
                           }
-                        }
-                      }}
-                      onBlur={() => setIsRecordingAppShortcut(false)}
-                      className={`w-full text-center px-3 py-2.5 rounded-lg text-xs font-mono outline-none transition-all ${
-                        isRecordingAppShortcut
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                          : 'bg-black/30 text-slate-300 hover:bg-white/5 border border-white/10'
-                      }`}
-                    >
-                      {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('app_shortcut_none'))}
-                    </button>
+                        }}
+                        onBlur={() => setIsRecordingAppShortcut(false)}
+                        className={`min-w-0 flex-1 text-center px-3 py-2.5 rounded-lg text-xs font-mono outline-none transition-all ${
+                          isRecordingAppShortcut
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                            : 'bg-black/30 text-slate-300 hover:bg-white/5 border border-white/10'
+                        }`}
+                      >
+                        {isRecordingAppShortcut ? t('app_shortcut_recording') : (editForm.shortcut || t('shortcut_disabled'))}
+                      </button>
+                      <ClearShortcutButton
+                        label={t('shortcut_clear')}
+                        disabled={!editForm.shortcut}
+                        onClear={() => {
+                          setIsRecordingAppShortcut(false);
+                          setEditForm(previous => ({ ...previous, shortcut: '' }));
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -11403,10 +11419,6 @@ export default function App() {
                               const newShortcut = keys.join('+');
                               setActivationShortcut(newShortcut);
                               setIsRecordingShortcut(false);
-                              // Registrar el atajo global en Electron
-                              if (isElectron) {
-                                window.electronAPI!.registerShortcut(newShortcut);
-                              }
                           }
                         }
                       }}
@@ -11417,17 +11429,22 @@ export default function App() {
                           : 'bg-black/40 text-slate-300 hover:bg-white/5 border border-white/10 shadow-inner'
                       }`}
                     >
-                      {isRecordingShortcut ? t('general_shortcut_rec') : activationShortcut}
+                      {isRecordingShortcut ? t('general_shortcut_rec') : (activationShortcut || t('shortcut_disabled'))}
                     </button>
+                    <ClearShortcutButton
+                      label={t('shortcut_clear')}
+                      disabled={!activationShortcut}
+                      onClear={() => {
+                        setIsRecordingShortcut(false);
+                        setActivationShortcut('');
+                      }}
+                    />
                     <Tooltip label={t('general_shortcut_reset')} placement="top">
                       <button
                         type="button"
                         onClick={() => {
                           setIsRecordingShortcut(false);
                           setActivationShortcut(DEFAULT_ACTIVATION_SHORTCUT);
-                          if (isElectron) {
-                            window.electronAPI!.registerShortcut(DEFAULT_ACTIVATION_SHORTCUT);
-                          }
                         }}
                         className="flex-shrink-0 p-3 rounded-xl bg-black/40 text-slate-400 hover:text-cyan-300 hover:bg-white/5 border border-white/10 transition-all"
                       >
@@ -12759,8 +12776,16 @@ export default function App() {
                                   : 'bg-[#0f172a] text-slate-200 hover:bg-white/5 border border-white/10 shadow-inner'
                             }`}
                           >
-                            {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                            {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : (cyberBotShortcut || t('shortcut_disabled'))}
                           </button>
+                          <ClearShortcutButton
+                            label={t('shortcut_clear')}
+                            disabled={!cyberBotShortcut}
+                            onClear={() => {
+                              setIsRecordingCyberBotShortcut(false);
+                              setCyberBotShortcut('');
+                            }}
+                          />
                           <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
                             <button
                               type="button"

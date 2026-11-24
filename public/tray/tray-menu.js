@@ -387,7 +387,7 @@ function makeFlyoutDivider() {
 
 function renderMainView() {
   const isVis = Boolean(currentState && currentState.isVisible);
-  const shortcut = (currentState && currentState.shortcut) || 'Alt+Shift+L';
+  const shortcut = currentState?.shortcut;
   const showRecents = currentState ? currentState.showTrayRecents !== false : true;
   const showSuite = currentState ? currentState.showSuiteRecommendations !== false : true;
   const recents = (currentState && Array.isArray(currentState.recents)) ? currentState.recents : [];

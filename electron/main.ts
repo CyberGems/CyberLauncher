@@ -1570,7 +1570,7 @@ function buildTrayMenuState(resetView = false) {
     version: app.getVersion(),
     lang,
     isVisible,
-    shortcut: currentShortcut || 'Alt+Shift+L',
+    shortcut: currentShortcut,
     floatingCyberBotEnabled,
     floatingCyberBotOpen: !isVisible && (desktopCyberBot?.isRequested() ?? false),
     floatingCyberBotShortcut: registeredCyberBotShortcut ? currentCyberBotShortcut : undefined,
@@ -2808,7 +2808,9 @@ function unregisterCyberBotShortcut() {
 function registerGlobalShortcut(shortcut: string) {
   unregisterMainShortcut();
 
-  const electronShortcut = toElectronAccelerator(shortcut);
+  currentShortcut = shortcut.trim();
+  if (!currentShortcut) return;
+  const electronShortcut = toElectronAccelerator(currentShortcut);
 
   try {
     const success = globalShortcut.register(electronShortcut, () => {
@@ -2824,8 +2826,6 @@ function registerGlobalShortcut(shortcut: string) {
     } else {
       registeredMainShortcut = electronShortcut;
     }
-
-    currentShortcut = shortcut;
   } catch (err) {
     console.error('Error registrando atajo global:', err);
   }
@@ -2843,17 +2843,20 @@ function toggleFloatingCyberBot() {
 function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   unregisterCyberBotShortcut();
   floatingCyberBotEnabled = enabled;
-  if (shortcut && shortcut.trim()) {
-    currentCyberBotShortcut = shortcut;
-  }
+  currentCyberBotShortcut = shortcut.trim();
 
-  if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
+  if (!enabled) {
     desktopCyberBot?.setPreloadEnabled(false);
     desktopCyberBot?.destroy();
     updateCustomTrayMenuState();
     return;
   }
 
+  desktopCyberBot?.setPreloadEnabled(cyberBotPreloadEnabled);
+  if (!currentCyberBotShortcut) {
+    updateCustomTrayMenuState();
+    return;
+  }
   const electronShortcut = toElectronAccelerator(currentCyberBotShortcut);
 
   try {
@@ -2873,7 +2876,6 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   } catch (err) {
     console.error('Error registrando atajo global de CyberBot:', err);
   }
-  desktopCyberBot?.setPreloadEnabled(cyberBotPreloadEnabled);
   updateCustomTrayMenuState();
 }
 
@@ -4537,7 +4539,7 @@ ConvertTo-Json -InputObject \$uwpApps
 
   ipcMain.handle('register-cyberbot-shortcut', (_event, shortcut: string, enabled: boolean) => {
     registerCyberBotGlobalShortcut(shortcut, enabled);
-    return { success: !enabled || Boolean(registeredCyberBotShortcut), shortcut: currentCyberBotShortcut };
+    return { success: !enabled || !currentCyberBotShortcut || Boolean(registeredCyberBotShortcut), shortcut: currentCyberBotShortcut };
   });
 
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
@@ -5718,20 +5720,20 @@ app.whenReady().then(() => {
   buildSystemIndex().catch(err => console.error('[INDEXER] Error building index:', err));
   
   const windowState = loadWindowState();
-  if (windowState && windowState.shortcut) {
-    currentShortcut = windowState.shortcut;
+  if (typeof windowState?.shortcut === 'string') {
+    currentShortcut = windowState.shortcut.trim();
   }
   
   // Intentar cargar configuración centralizada (atajo, hotspots, etc.)
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      if (config.activationShortcut) {
-        currentShortcut = config.activationShortcut;
+      if (typeof config.activationShortcut === 'string') {
+        currentShortcut = config.activationShortcut.trim();
         console.log('Atajo cargado desde configuración central:', currentShortcut);
       }
-      if (config.cyberBotShortcut) {
-        currentCyberBotShortcut = config.cyberBotShortcut;
+      if (typeof config.cyberBotShortcut === 'string') {
+        currentCyberBotShortcut = config.cyberBotShortcut.trim();
         console.log('Atajo CyberBot cargado desde configuración central:', currentCyberBotShortcut);
       }
       floatingCyberBotEnabled = config.cyberBotSettings?.floatingEnabled !== false;
