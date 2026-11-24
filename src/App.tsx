@@ -12415,20 +12415,14 @@ export default function App() {
                 </>)}
 
                 {settingsTab === 'cyberbot' && (<>
-                {/* CyberBot Companion Section */}
                 <div className="space-y-6 pb-2">
-                  <div className="flex flex-col gap-3">
-                    {/* Card 1: Activar CyberBot */}
+                  <section className="space-y-3" aria-labelledby="settings-integrated-cyberbot">
+                    <h3 id="settings-integrated-cyberbot" className="settings-section-title">
+                      <Bot aria-hidden="true" />
+                      {t('cyberbot_settings_title')}
+                    </h3>
                     <div className="flex items-center justify-between gap-6 settings-card">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                        <div className="settings-icon" aria-hidden="true">
-                          <Bot />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_settings_title')}</h4>
-                          <p role={cyberBotFarewell.state.confirmation ? 'status' : undefined} className="text-xs text-slate-500 leading-relaxed">{t(cyberBotFarewell.state.confirmation ? 'cyberbot_disabled_confirmation' : 'cyberbot_settings_desc')}</p>
-                        </div>
-                      </div>
+                      <p role={cyberBotFarewell.state.confirmation ? 'status' : undefined} className="text-xs text-slate-500 leading-relaxed">{t(cyberBotFarewell.state.confirmation ? 'cyberbot_disabled_confirmation' : 'cyberbot_settings_desc')}</p>
                       <ToggleSwitch
                         checked={cyberBot.enabled}
                         onChange={handleCyberBotToggle}
@@ -12696,7 +12690,7 @@ export default function App() {
                         ariaLabel={t('cyberbot_banners_title')}
                       />
                     </div>
-                  </div>
+                  </section>
                   {isElectron && (
                     <section className="space-y-3 settings-section-divider" aria-labelledby="settings-floating-cyberbot">
                       <h3 id="settings-floating-cyberbot" className="settings-section-title">
