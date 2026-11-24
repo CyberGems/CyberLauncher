@@ -151,8 +151,8 @@ const I18N = {
     hide: 'Ocultar Launcher',
     newApp: 'Nuevo acceso...',
     settings: 'Configuración...',
-    cyberBotEnable: 'Activar CyberBot',
-    cyberBotDisable: 'Desactivar CyberBot',
+    floatingCyberBotOpen: 'Abrir CyberBot flotante',
+    floatingCyberBotHide: 'Ocultar CyberBot flotante',
     statusVisible: 'En pantalla · Visible',
     statusHidden: 'En bandeja · Oculto',
     recentsTitle: 'Accesos Recientes',
@@ -176,8 +176,8 @@ const I18N = {
     hide: 'Hide Launcher',
     newApp: 'New shortcut...',
     settings: 'Settings...',
-    cyberBotEnable: 'Enable CyberBot',
-    cyberBotDisable: 'Disable CyberBot',
+    floatingCyberBotOpen: 'Open floating CyberBot',
+    floatingCyberBotHide: 'Hide floating CyberBot',
     statusVisible: 'On screen · Visible',
     statusHidden: 'In tray · Hidden',
     recentsTitle: 'Recent Shortcuts',
@@ -435,13 +435,15 @@ function renderMainView() {
     })
   );
 
-  items.push(makeItem({
-    action: 'toggle-cyberbot',
-    icon: 'bot',
-    label: t(currentState?.cyberBotEnabled === false ? 'cyberBotEnable' : 'cyberBotDisable'),
-    shortcut: currentState?.cyberBotToggleShortcut,
-    inMainCard: true,
-  }));
+  if (currentState?.floatingCyberBotEnabled) {
+    items.push(makeItem({
+      action: 'toggle-floating-cyberbot',
+      icon: 'bot',
+      label: t(currentState.floatingCyberBotOpen ? 'floatingCyberBotHide' : 'floatingCyberBotOpen'),
+      shortcut: currentState.floatingCyberBotShortcut,
+      inMainCard: true,
+    }));
+  }
 
   // Recent apps (Integrated top 4 apps for 1-click launch + side-by-side flyout for full list)
   if (showRecents) {

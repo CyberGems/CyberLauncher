@@ -471,9 +471,9 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     showWhenReady(session);
   };
 
+  const isRequested = () => openSearchWhenHidden || active?.requested === true;
   const toggle = () => {
-    if (launcherVisible) return;
-    if (active?.requested) hide();
+    if (isRequested()) hide();
     else openSearch();
   };
 
@@ -488,5 +488,5 @@ export function createDesktopCyberBotWindow(options: DesktopCyberBotOptions) {
     if (active.bubbleVisible) bounds.push(active.bubbleWindow.getBounds());
     return bounds;
   };
-  return { toggle, openSearch, setPreloadEnabled, destroy, getVisibleBounds, setLauncherVisible };
+  return { toggle, openSearch, isRequested, setPreloadEnabled, destroy, getVisibleBounds, setLauncherVisible };
 }

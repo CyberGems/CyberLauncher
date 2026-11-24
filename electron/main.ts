@@ -124,10 +124,8 @@ let isQuitting = false;
 let altHeld = false;
 let currentShortcut = 'Alt+Shift+L';
 let currentCyberBotShortcut = 'Alt+Shift+B';
-let cyberBotShortcutEnabled = true;
+let floatingCyberBotEnabled = true;
 let cyberBotPreloadEnabled = true;
-const CYBERBOT_TOGGLE_SHORTCUT = 'Ctrl+Alt+Shift+B';
-let cyberBotToggleShortcutRegistered = false;
 let registeredMainShortcut: string | undefined;
 let registeredCyberBotShortcut: string | undefined;
 let desktopCyberBot: ReturnType<typeof createDesktopCyberBotWindow> | null = null;
@@ -261,6 +259,7 @@ function showMainWindow(cursor?: Electron.Point, canReveal?: () => boolean) {
       // Siempre mantener al menos 1500ms de guarda contra desenfoque tras mostrar
       bootBlurGuardUntil = Math.max(bootBlurGuardUntil, Date.now() + 1500);
       resetHotspotGesture();
+      desktopCyberBot?.setLauncherVisible(true);
       mainWindow.show();
       hideDesktopToastInternal();
       const pinned = mainWindow.isAlwaysOnTop();
@@ -919,6 +918,7 @@ function createWindow() {
 
   // Vista al restaurar del tray (reset ligero) — no mezclar con reload-config
   mainWindow.on('show', () => {
+    desktopCyberBot?.setLauncherVisible(true);
     const ownShow = inOwnShowCall !== 0 && inOwnShowCall === ownShowCallId;
     displayDiagnostics.write('window-show', { ...displayWindowState(), ownShow });
     console.log('[WM EVENT] show (inOwnShowCall=' + inOwnShowCall + ', state=' + windowVisibilityState + ')');
@@ -932,7 +932,6 @@ function createWindow() {
       return;
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
-      desktopCyberBot?.setLauncherVisible(true);
       mainWindow.webContents.send('launcher-shown');
     }
     applyRendererThrottling();
@@ -1012,13 +1011,13 @@ function createWindow() {
   });
 
   mainWindow.on('restore', () => {
+    desktopCyberBot?.setLauncherVisible(true);
     const ownRestore = inOwnRestoreCall !== 0 && inOwnRestoreCall === ownRestoreCallId;
     displayDiagnostics.write('window-restore', { ...displayWindowState(), ownRestore });
     console.log('[WM EVENT] restore (inOwnRestoreCall=' + inOwnRestoreCall + ', state=' + windowVisibilityState + ')');
     if (ownRestore || windowVisibilityState === 'shown-intentional') {
       inOwnRestoreCall = 0;
       console.log('[WM] Restore confirmed for a visible launcher');
-      desktopCyberBot?.setLauncherVisible(Boolean(mainWindow?.isVisible()));
       mainWindow?.webContents.send('launcher-shown');
     } else {
       console.log('[WM] Window restored by OS (UAC?), re-hiding unconditionally');
@@ -1572,8 +1571,9 @@ function buildTrayMenuState(resetView = false) {
     lang,
     isVisible,
     shortcut: currentShortcut || 'Alt+Shift+L',
-    cyberBotEnabled: cyberBotShortcutEnabled,
-    cyberBotToggleShortcut: cyberBotToggleShortcutRegistered ? CYBERBOT_TOGGLE_SHORTCUT : undefined,
+    floatingCyberBotEnabled,
+    floatingCyberBotOpen: !isVisible && (desktopCyberBot?.isRequested() ?? false),
+    floatingCyberBotShortcut: registeredCyberBotShortcut ? currentCyberBotShortcut : undefined,
     showTrayRecents: showTrayRecentsConfig,
     showSuiteRecommendations: showSuiteRecommendationsConfig,
     recents: trayRecents,
@@ -2229,7 +2229,10 @@ function showDesktopToastInternal(payload: any) {
   )) return false;
   if (payload.source === 'system-alert' && launcherVisible) return false;
   const floatingBounds = desktopCyberBot?.getVisibleBounds() ?? [];
-  const channel = chooseNotificationChannel(toastDeliverySettings, {
+  const deliverySettings = launcherVisible
+    ? toastDeliverySettings
+    : { ...toastDeliverySettings, botEnabled: floatingCyberBotEnabled };
+  const channel = chooseNotificationChannel(deliverySettings, {
     critical: payload.level === 'critical',
     essential: payload.type === 'imminent' || payload.essential === true,
     botAvailable: !floatingBounds.length && (!launcherVisible || !payload.botUnavailable),
@@ -2390,6 +2393,7 @@ function createTray() {
 
 // IPC Handlers for custom tray menu
 ipcMain.on('tray-menu-action', (_event, action, payload) => {
+  const fromTrayMenu = _event.sender === trayMenuWin?.webContents;
   hideCustomTrayMenu();
 
   if (action === 'quit') {
@@ -2405,8 +2409,8 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
     return;
   }
 
-  if (action === 'toggle-cyberbot') {
-    if (_event.sender === trayMenuWin?.webContents) requestCyberBotToggle();
+  if (action === 'toggle-floating-cyberbot') {
+    if (fromTrayMenu) toggleFloatingCyberBot();
     return;
   }
 
@@ -2626,7 +2630,7 @@ function toggleWindow(forceShow = false) {
     mainWindow = null;
     createWindow();
     registerGlobalShortcut(currentShortcut);
-    registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
+    registerCyberBotGlobalShortcut(currentCyberBotShortcut, floatingCyberBotEnabled);
     return;
   }
   
@@ -2827,21 +2831,26 @@ function registerGlobalShortcut(shortcut: string) {
   }
 }
 
-function requestCyberBotToggle() {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cyberbot-toggle-enabled');
+function toggleFloatingCyberBot() {
+  if (!desktopCyberBot || !floatingCyberBotEnabled || isQuitting) return;
+  if (trayMenuOpen) hideCustomTrayMenu();
+  if (isLauncherWindowVisible()) {
+    desktopCyberBot.openSearch();
+    hideMainWindow(true);
+  } else desktopCyberBot.toggle();
 }
 
 function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   unregisterCyberBotShortcut();
-  cyberBotShortcutEnabled = enabled;
-  updateCustomTrayMenuState();
+  floatingCyberBotEnabled = enabled;
   if (shortcut && shortcut.trim()) {
     currentCyberBotShortcut = shortcut;
   }
 
   if (!enabled || !currentCyberBotShortcut || !currentCyberBotShortcut.trim()) {
-    desktopCyberBot?.destroy();
     desktopCyberBot?.setPreloadEnabled(false);
+    desktopCyberBot?.destroy();
+    updateCustomTrayMenuState();
     return;
   }
 
@@ -2850,18 +2859,7 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   try {
     const success = globalShortcut.register(electronShortcut, () => {
       try {
-        if (!desktopCyberBot || isQuitting) return;
-        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
-          if (mainWindow.isFocused()) {
-            mainWindow.webContents.send('cyberbot-open-prompt');
-            return;
-          }
-          if (trayMenuOpen) hideCustomTrayMenu();
-          desktopCyberBot.openSearch();
-          hideMainWindow();
-        } else {
-          desktopCyberBot.toggle();
-        }
+        toggleFloatingCyberBot();
       } catch (err) {
         console.error('[SHORTCUT] Error in CyberBot shortcut callback:', err);
       }
@@ -2875,7 +2873,8 @@ function registerCyberBotGlobalShortcut(shortcut: string, enabled: boolean) {
   } catch (err) {
     console.error('Error registrando atajo global de CyberBot:', err);
   }
-  desktopCyberBot?.setPreloadEnabled(Boolean(registeredCyberBotShortcut) && cyberBotPreloadEnabled);
+  desktopCyberBot?.setPreloadEnabled(cyberBotPreloadEnabled);
+  updateCustomTrayMenuState();
 }
 
 function getDesktopCyberBotCatalog(): DesktopCyberBotContext {
@@ -3883,7 +3882,7 @@ function setupIpcHandlers() {
   ipcMain.on('desktop-cyberbot:set-preload', (event, enabled: boolean) => {
     if (event.sender !== mainWindow?.webContents || typeof enabled !== 'boolean') return;
     cyberBotPreloadEnabled = enabled;
-    desktopCyberBot?.setPreloadEnabled(Boolean(registeredCyberBotShortcut) && enabled);
+    desktopCyberBot?.setPreloadEnabled(floatingCyberBotEnabled && enabled);
   });
   desktopCyberBot = createDesktopCyberBotWindow({
     devServerUrl: VITE_DEV_SERVER_URL,
@@ -4538,7 +4537,7 @@ ConvertTo-Json -InputObject \$uwpApps
 
   ipcMain.handle('register-cyberbot-shortcut', (_event, shortcut: string, enabled: boolean) => {
     registerCyberBotGlobalShortcut(shortcut, enabled);
-    return { success: true, shortcut: currentCyberBotShortcut };
+    return { success: !enabled || Boolean(registeredCyberBotShortcut), shortcut: currentCyberBotShortcut };
   });
 
   // --- Controles de ventana (minimizar, maximizar, cerrar) ---
@@ -5654,6 +5653,7 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) {
         ownRestoreCallId++;
         inOwnRestoreCall = ownRestoreCallId;
+        desktopCyberBot?.setLauncherVisible(true);
         mainWindow.restore();
         if (inOwnRestoreCall === ownRestoreCallId) inOwnRestoreCall = 0;
         setImmediate(() => { if (inOwnRestoreCall === ownRestoreCallId) inOwnRestoreCall = 0; });
@@ -5734,9 +5734,7 @@ app.whenReady().then(() => {
         currentCyberBotShortcut = config.cyberBotShortcut;
         console.log('Atajo CyberBot cargado desde configuración central:', currentCyberBotShortcut);
       }
-      if (config.cyberBotSettings && typeof config.cyberBotSettings.enabled === 'boolean') {
-        cyberBotShortcutEnabled = config.cyberBotSettings.enabled;
-      }
+      floatingCyberBotEnabled = config.cyberBotSettings?.floatingEnabled !== false;
       cyberBotPreloadEnabled = config.cyberBotSettings?.preloadFloating !== false;
       if (config.hotspotCorners && Array.isArray(config.hotspotCorners)) {
         hotspotCorners = config.hotspotCorners;
@@ -5956,9 +5954,7 @@ app.whenReady().then(() => {
 
   // Registrar atajo global
   registerGlobalShortcut(currentShortcut);
-  registerCyberBotGlobalShortcut(currentCyberBotShortcut, cyberBotShortcutEnabled);
-  cyberBotToggleShortcutRegistered = globalShortcut.register(toElectronAccelerator(CYBERBOT_TOGGLE_SHORTCUT), requestCyberBotToggle);
-  if (!cyberBotToggleShortcutRegistered) console.warn('[SHORTCUT] Could not register CyberBot toggle:', CYBERBOT_TOGGLE_SHORTCUT);
+  registerCyberBotGlobalShortcut(currentCyberBotShortcut, floatingCyberBotEnabled);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -118,9 +118,10 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Ocultamiento inteligente**: se oculta al lanzar un acceso, con opción en Configuración para ocultar también al perder el foco (desactivada por defecto)
 
 ### 🤖 Asistente CyberBot
-- **Paleta rápida interactiva de comandos**: Haz clic en CyberBot o pulsa `Alt+Shift+B` con CyberLauncher al frente para abrir la burbuja de comandos. Si estás en otra ventana o CyberLauncher está en la bandeja, `Alt+Shift+B` abre el buscador flotante de accesos de CyberBot.
+- **Paleta rápida interactiva de comandos**: Haz clic en el CyberBot integrado de CyberLauncher para abrir su burbuja de comandos.
+- **Buscador flotante de accesos**: Abre u oculta CyberBot flotante desde la bandeja o con `Alt+Shift+B` de forma predeterminada. En Configuración puedes activarlo de forma independiente y personalizar su atajo. Al cambiar entre CyberLauncher y el widget, primero se oculta la otra superficie.
 - **Avatar refinado y compartido**: El diseño con profundidad visual, reflejos sutiles y reacciones de enfoque y escaneo aparece en el lanzador y los avisos flotantes.
-- **Mensajes progresivos**: Los comentarios al abrir accesos, avisos del sistema, cuentas regresivas y consejos se escriben poco a poco, con el ecualizador activo durante la escritura.
+- **Mensajes progresivos**: Las conversaciones, los comentarios al abrir accesos y los consejos se escriben poco a poco, con el ecualizador activo durante la escritura. Los avisos del sistema y las cuentas regresivas muestran el texto completo desde el inicio.
 - **Personaliza la experiencia**: Introduce tu nombre desde el asistente inicial o el globo de invitación, elige la esquina inicial, arrástralo, ajusta su interacción y define un horario silencioso. Configuración permite reabrir la invitación cuando el nombre está vacío.
 - **Presencia más tranquila y permanente**: Permanece visible en el panel principal durante la inactividad rutinaria con expresiones, pantallas de estado y siestas tranquilas. CyberBot se retira tras hablar en diálogos o la terminal y vuelve con una pequeña demora al cerrarlos.
 - **Compañero opcional**: Activa o desactiva el Asistente CyberBot desde el asistente inicial, en Configuración o desde su menú rápido. Si está visible, se despide brevemente y los banners alternativos muestran los avisos en su lugar.

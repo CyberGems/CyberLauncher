@@ -32,6 +32,7 @@ export interface CyberBotQuietHoursConfig {
 
 export interface CyberBotSettings {
   enabled: boolean;
+  floatingEnabled: boolean;
   position: CyberBotPosition;
   rememberFloatingPosition: boolean;
   preloadFloating: boolean;

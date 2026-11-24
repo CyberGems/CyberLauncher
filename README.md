@@ -118,9 +118,10 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Smart Auto-Hide**: Hides on shortcut launch, with optional hide-on-blur in Settings (disabled by default)
 
 ### 🤖 CyberBot Assistant
-- **Interactive Quick Command Prompt**: Click CyberBot or press `Alt+Shift+B` while CyberLauncher is in focus to open the command bubble. With another window in focus or CyberLauncher in the tray, `Alt+Shift+B` opens CyberBot's floating shortcut search.
+- **Interactive Quick Command Prompt**: Click the built-in CyberBot in CyberLauncher to open its command bubble.
+- **Floating shortcut search**: Open or hide floating CyberBot from the tray or with `Alt+Shift+B` by default. In Settings, you can enable it independently and customize its shortcut. Switching between CyberLauncher and the widget hides the other surface first.
 - **Shared refined avatar**: A layered design with subtle reflections and focus/scan hover reactions appears in the launcher and floating desktop notices.
-- **Typed messages**: Contextual launch feedback, system notices, scheduled-task countdowns and tips appear progressively, with the chest equalizer active while writing.
+- **Typed messages**: Conversations, launch comments, and tips appear progressively, with the chest equalizer active while writing. System notices and scheduled-task countdowns display their full text immediately.
 - **Personalize the experience**: Enter your name directly in onboarding or its bubble, choose a starting corner, drag it, set an interaction level and schedule quiet hours. Settings lets you reopen an empty-name invitation.
 - **Calmer and persistent presence**: Stays visible on the main panel during routine idle with facial expressions, status screens, and peaceful naps. CyberBot retires after speaking in dialogs or the terminal and returns after a short delay when they close.
 - **Optional companion**: Toggle CyberBot Assistant on or off during onboarding, in Settings, or from its quick command action. A visible bot gives a short farewell, and alternative banners can show notices in its place.

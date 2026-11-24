@@ -131,18 +131,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { ipcRenderer.removeListener('launcher-hidden', handler); };
   },
 
-  onCyberBotOpenPrompt: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('cyberbot-open-prompt', handler);
-    return () => { ipcRenderer.removeListener('cyberbot-open-prompt', handler); };
-  },
-
   showCyberBotAvatarContextMenu: () => ipcRenderer.invoke('cyberbot-avatar-context-menu'),
-  onCyberBotToggleEnabled: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('cyberbot-toggle-enabled', handler);
-    return () => { ipcRenderer.removeListener('cyberbot-toggle-enabled', handler); };
-  },
 
   // --- Window Pinning (Always-on-top) ---
   setAlwaysOnTop: (enabled: boolean) => ipcRenderer.invoke('set-always-on-top', enabled),

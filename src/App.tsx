@@ -322,8 +322,6 @@ declare global {
       onReloadConfig: (callback: () => void) => () => void;
       onLauncherShown: (callback: () => void) => () => void;
       onLauncherHidden?: (callback: () => void) => () => void;
-      onCyberBotOpenPrompt?: (callback: () => void) => () => void;
-      onCyberBotToggleEnabled?: (callback: () => void) => () => void;
       showCyberBotAvatarContextMenu?: () => Promise<boolean>;
       showTextContextMenu: (x: number, y: number) => Promise<void>;
       setAlwaysOnTop: (enabled: boolean) => Promise<{ success: boolean }>;
@@ -3193,7 +3191,7 @@ export default function App() {
     }
   });
 
-  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded, cyberBotShortcut });
+  const cyberBot = useCyberBot({ t, dailyLaunchCount, playCyberBeep, ready: isConfigLoaded });
   const openCyberBotPrompt = useCallback(() => {
     setIsCyberBotAvatarHidden(false);
     cyberBot.dismissMessage();
@@ -3201,12 +3199,6 @@ export default function App() {
     setIsCyberBotPromptOpen(true);
   }, [cyberBot.dismissMessage]);
 
-  useEffect(() => {
-    if (!cyberBot.enabled) return;
-    return window.electronAPI?.onCyberBotOpenPrompt?.(() => {
-      if (!isCyberBotPromptOpen) openCyberBotPrompt();
-    });
-  }, [cyberBot.enabled, isCyberBotPromptOpen, openCyberBotPrompt]);
   const [cyberBotNameDraft, setCyberBotNameDraft] = useState(cyberBot.preferredName);
   const [nameEntryRequested, setNameEntryRequested] = useState(false);
   useEffect(() => {
@@ -3255,15 +3247,11 @@ export default function App() {
     cyberBot.toggleEnabled();
   }, [cyberBot.enabled, cyberBot.toggleEnabled, cyberBotFarewell.start, cyberBotFarewell.cancel, isWindowVisible, t]);
   useEffect(() => {
-    if (!isConfigLoaded) return;
-    return window.electronAPI?.onCyberBotToggleEnabled?.(handleCyberBotToggle);
-  }, [isConfigLoaded, handleCyberBotToggle]);
-  useEffect(() => {
     if (isConfigLoaded) window.electronAPI?.setDesktopCyberBotPreload?.(cyberBot.preloadFloating);
   }, [isConfigLoaded, cyberBot.preloadFloating]);
   useEffect(() => {
-    if (isConfigLoaded) void window.electronAPI?.registerCyberBotShortcut?.(cyberBotShortcut, cyberBot.enabled);
-  }, [isConfigLoaded, cyberBotShortcut, cyberBot.enabled]);
+    if (isConfigLoaded) void window.electronAPI?.registerCyberBotShortcut?.(cyberBotShortcut, cyberBot.floatingEnabled);
+  }, [isConfigLoaded, cyberBotShortcut, cyberBot.floatingEnabled]);
   useEffect(() => { if (!isWindowVisible) cyberBotFarewell.cancel(); }, [isWindowVisible, cyberBotFarewell.cancel]);
 
   const lastPinnedLaunchAtRef = useRef(0);
@@ -4077,6 +4065,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('glassIntensity', glassIntensity.toString()); }, [glassIntensity]);
   useEffect(() => { localStorage.setItem('bgOpacity', bgOpacity.toString()); }, [bgOpacity]);
   useEffect(() => { localStorage.setItem('activationShortcut', activationShortcut); }, [activationShortcut]);
+  useEffect(() => { localStorage.setItem('cyberBotShortcut', cyberBotShortcut); }, [cyberBotShortcut]);
   useEffect(() => { 
     localStorage.setItem('hotspotCorners', JSON.stringify(hotspotCorners)); 
     localStorage.setItem('hotspotsDisableInFullscreen', hotspotsDisableInFullscreen.toString());
@@ -4309,6 +4298,9 @@ export default function App() {
             if (isElectron) window.electronAPI!.setHideOnBlur(val);
           }
           if (source.activationShortcut) setActivationShortcut(source.activationShortcut);
+          if (typeof source.cyberBotShortcut === 'string' && source.cyberBotShortcut.trim()) {
+            setCyberBotShortcut(source.cyberBotShortcut);
+          }
           if (source.hotspotCorners) setHotspotCorners(source.hotspotCorners);
           if (source.hotspotDelay !== undefined) setHotspotDelay(source.hotspotDelay);
           if (source.leftSidebarWidth !== undefined) setLeftSidebarWidth(source.leftSidebarWidth);
@@ -12444,117 +12436,6 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Card: Atajo para CyberBot */}
-                    <div className={`flex flex-col gap-3 settings-card ${!cyberBot.enabled ? 'opacity-60' : ''}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="settings-icon" aria-hidden="true">
-                            <Keyboard />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_cyberbot_shortcut')}</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                              {!cyberBot.enabled ? t('general_cyberbot_shortcut_disabled_desc') : t('general_cyberbot_shortcut_desc')}
-                            </p>
-                          </div>
-                        </div>
-                        {!cyberBot.enabled && (
-                          <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
-                            {t('cyberbot_disabled_tag')}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 sm:pl-12">
-                        <button
-                          type="button"
-                          disabled={!cyberBot.enabled}
-                          onClick={() => {
-                            if (cyberBot.enabled) setIsRecordingCyberBotShortcut(true);
-                          }}
-                          onKeyDown={(e) => {
-                            if (isRecordingCyberBotShortcut && cyberBot.enabled) {
-                              e.preventDefault();
-                              const keys = [];
-                              if (e.ctrlKey) keys.push('Ctrl');
-                              if (e.altKey) keys.push('Alt');
-                              if (e.shiftKey) keys.push('Shift');
-                              if (e.metaKey) keys.push('Meta');
-                              
-                              if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
-                                const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
-                                keys.push(keyName);
-                                const newShortcut = keys.join('+');
-                                setCyberBotShortcut(newShortcut);
-                                setIsRecordingCyberBotShortcut(false);
-                                if (isElectron) {
-                                  window.electronAPI!.registerCyberBotShortcut(newShortcut, true);
-                                }
-                              }
-                            }
-                          }}
-                          onBlur={() => setIsRecordingCyberBotShortcut(false)}
-                          className={`flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all ${
-                            !cyberBot.enabled
-                              ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
-                              : isRecordingCyberBotShortcut 
-                                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]' 
-                                : 'bg-[#0f172a] text-slate-200 hover:bg-white/5 border border-white/10 shadow-inner'
-                          }`}
-                        >
-                          {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
-                        </button>
-                        <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
-                          <button
-                            type="button"
-                            disabled={!cyberBot.enabled}
-                            onClick={() => {
-                              if (!cyberBot.enabled) return;
-                              setIsRecordingCyberBotShortcut(false);
-                              setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
-                              if (isElectron) {
-                                window.electronAPI!.registerCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT, true);
-                              }
-                            }}
-                            className={`flex-shrink-0 p-2.5 rounded-xl border border-white/10 transition-all ${
-                              !cyberBot.enabled
-                                ? 'bg-black/20 text-slate-600 cursor-not-allowed'
-                                : 'bg-[#0f172a] text-slate-400 hover:text-cyan-300 hover:bg-white/5'
-                            }`}
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </div>
-
-                    {isElectron && (
-                      <div className="flex items-center justify-between gap-6 settings-card">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="settings-icon" aria-hidden="true"><Zap /></div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_preload')}</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_preload_desc')}</p>
-                          </div>
-                        </div>
-                        <ToggleSwitch checked={cyberBot.preloadFloating} onChange={() => cyberBot.updatePreloadFloating(!cyberBot.preloadFloating)}
-                          ariaLabel={t('cyberbot_desktop_preload')} />
-                      </div>
-                    )}
-
-                    {isElectron && (
-                      <div className="flex items-center justify-between gap-6 settings-card">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="settings-icon" aria-hidden="true"><Pin /></div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_remember_position')}</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_remember_position_desc')}</p>
-                          </div>
-                        </div>
-                        <ToggleSwitch checked={cyberBot.rememberFloatingPosition} onChange={cyberBot.updateRememberFloatingPosition}
-                          ariaLabel={t('cyberbot_desktop_remember_position')} />
-                      </div>
-                    )}
-
                     <div className="flex flex-col gap-3 settings-card">
                       <div className="flex items-center gap-3">
                         <div className="settings-icon" aria-hidden="true">
@@ -12816,6 +12697,123 @@ export default function App() {
                       />
                     </div>
                   </div>
+                  {isElectron && (
+                    <section className="space-y-3 settings-section-divider" aria-labelledby="settings-floating-cyberbot">
+                      <h3 id="settings-floating-cyberbot" className="settings-section-title">
+                        <Monitor aria-hidden="true" />
+                        {t('cyberbot_floating_title')}
+                      </h3>
+                      <div className="flex items-center justify-between gap-6 settings-card">
+                        <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_floating_desc')}</p>
+                        <ToggleSwitch
+                          checked={cyberBot.floatingEnabled}
+                          onChange={() => cyberBot.updateFloatingEnabled(!cyberBot.floatingEnabled)}
+                          ariaLabel={t('cyberbot_floating_enable')}
+                        />
+                      </div>
+                      {/* Floating shortcut */}
+                      <div className={`flex flex-col gap-3 settings-card ${!cyberBot.floatingEnabled ? 'opacity-60' : ''}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="settings-icon" aria-hidden="true">
+                              <Keyboard />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('general_cyberbot_shortcut')}</h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">
+                                {!cyberBot.floatingEnabled ? t('general_cyberbot_shortcut_disabled_desc') : t('general_cyberbot_shortcut_desc')}
+                              </p>
+                            </div>
+                          </div>
+                          {!cyberBot.floatingEnabled && (
+                            <span className="text-[10px] font-cyber text-amber-400/90 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
+                              {t('cyberbot_disabled_tag')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 sm:pl-12">
+                          <button
+                            type="button"
+                            disabled={!cyberBot.floatingEnabled}
+                            onClick={() => {
+                              if (cyberBot.floatingEnabled) setIsRecordingCyberBotShortcut(true);
+                            }}
+                            onKeyDown={(e) => {
+                              if (isRecordingCyberBotShortcut && cyberBot.floatingEnabled) {
+                                e.preventDefault();
+                                const keys = [];
+                                if (e.ctrlKey) keys.push('Ctrl');
+                                if (e.altKey) keys.push('Alt');
+                                if (e.shiftKey) keys.push('Shift');
+                                if (e.metaKey) keys.push('Meta');
+
+                                if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift' && e.key !== 'Meta') {
+                                  const keyName = e.code === 'Space' ? 'Space' : e.key.toUpperCase();
+                                  keys.push(keyName);
+                                  const newShortcut = keys.join('+');
+                                  setCyberBotShortcut(newShortcut);
+                                  setIsRecordingCyberBotShortcut(false);
+                                }
+                              }
+                            }}
+                            onBlur={() => setIsRecordingCyberBotShortcut(false)}
+                            className={`flex-1 text-center px-4 py-2.5 rounded-xl text-sm font-medium outline-none transition-all ${
+                              !cyberBot.floatingEnabled
+                                ? 'bg-black/20 text-slate-500 border border-white/5 cursor-not-allowed'
+                                : isRecordingCyberBotShortcut
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
+                                  : 'bg-[#0f172a] text-slate-200 hover:bg-white/5 border border-white/10 shadow-inner'
+                            }`}
+                          >
+                            {isRecordingCyberBotShortcut ? t('general_shortcut_rec') : cyberBotShortcut}
+                          </button>
+                          <Tooltip label={t('general_cyberbot_shortcut_reset')} placement="top">
+                            <button
+                              type="button"
+                              aria-label={t('general_cyberbot_shortcut_reset')}
+                              disabled={!cyberBot.floatingEnabled}
+                              onClick={() => {
+                                if (!cyberBot.floatingEnabled) return;
+                                setIsRecordingCyberBotShortcut(false);
+                                setCyberBotShortcut(DEFAULT_CYBERBOT_SHORTCUT);
+                              }}
+                              className={`flex-shrink-0 p-2.5 rounded-xl border border-white/10 transition-all ${
+                                !cyberBot.floatingEnabled
+                                  ? 'bg-black/20 text-slate-600 cursor-not-allowed'
+                                  : 'bg-[#0f172a] text-slate-400 hover:text-cyan-300 hover:bg-white/5'
+                              }`}
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
+                          </Tooltip>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-6 settings-card">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="settings-icon" aria-hidden="true"><Zap /></div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_preload')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_preload_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch checked={cyberBot.preloadFloating} disabled={!cyberBot.floatingEnabled} onChange={() => cyberBot.updatePreloadFloating(!cyberBot.preloadFloating)}
+                          ariaLabel={t('cyberbot_desktop_preload')} />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-6 settings-card">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="settings-icon" aria-hidden="true"><Pin /></div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-medium text-slate-200 leading-tight mb-1">{t('cyberbot_desktop_remember_position')}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">{t('cyberbot_desktop_remember_position_desc')}</p>
+                          </div>
+                        </div>
+                        <ToggleSwitch checked={cyberBot.rememberFloatingPosition} disabled={!cyberBot.floatingEnabled} onChange={cyberBot.updateRememberFloatingPosition}
+                          ariaLabel={t('cyberbot_desktop_remember_position')} />
+                      </div>
+                    </section>
+                  )}
                 </div>
                 </>)}
 
@@ -14647,7 +14645,8 @@ export default function App() {
         closeLabel={t('cyberbot_close_message')}
         hoverAssistText={count => t('cyberbot_hover_assist_message', { count: String(count) })}
         marqueeStatusMessages={getCyberBotMarqueeStatusMessages({
-          apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut, cyberBotShortcut,
+          apps, favoriteIds, dailyLaunchCount, scheduledTasks, activationShortcut,
+          cyberBotShortcut: cyberBot.floatingEnabled ? cyberBotShortcut : undefined,
         }, t)}
         systemAttention={!!notification}
         contextOpen={isAnyModalOpen || isTerminalOpen || isCyberBotPromptOpen}

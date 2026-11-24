@@ -45,7 +45,6 @@ interface UseCyberBotProps {
   dailyLaunchCount?: number;
   playCyberBeep?: () => void;
   ready?: boolean;
-  cyberBotShortcut?: string;
 }
 
 interface CyberBotPhraseOptions {
@@ -54,7 +53,7 @@ interface CyberBotPhraseOptions {
   priority?: CyberBotMessage['priority'];
 }
 
-export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = true, cyberBotShortcut }: UseCyberBotProps) {
+export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = true }: UseCyberBotProps) {
   const [enabled, setEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('cyberbot_enabled');
     return saved === null ? true : saved === 'true';
@@ -64,6 +63,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     return getCyberBotInitialPosition(localStorage.getItem('cyberbot_position'));
   });
   const [rememberFloatingPosition, setRememberFloatingPosition] = useState(() => localStorage.getItem('cyberbot_remember_floating_position') !== 'false');
+  const [floatingEnabled, setFloatingEnabled] = useState(() => localStorage.getItem('cyberbot_floating_enabled') !== 'false');
   const [preloadFloating, setPreloadFloating] = useState(() => localStorage.getItem('cyberbot_preload_floating') !== 'false');
 
   const [dodgeEnabled, setDodgeEnabled] = useState<boolean>(() => {
@@ -152,6 +152,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   const updateRememberFloatingPosition = useCallback((remember: boolean) => {
     setRememberFloatingPosition(remember);
     localStorage.setItem('cyberbot_remember_floating_position', String(remember));
+  }, []);
+
+  const updateFloatingEnabled = useCallback((next: boolean) => {
+    setFloatingEnabled(next);
+    localStorage.setItem('cyberbot_floating_enabled', String(next));
   }, []);
 
   const updatePreloadFloating = useCallback((preload: boolean) => {
@@ -246,6 +251,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     if (settings.position === 'bottom-left' || settings.position === 'bottom-right' || settings.position === 'top-right') {
       updatePosition(settings.position);
     }
+    if (typeof settings.floatingEnabled === 'boolean') updateFloatingEnabled(settings.floatingEnabled);
     if (typeof settings.rememberFloatingPosition === 'boolean') updateRememberFloatingPosition(settings.rememberFloatingPosition);
     if (typeof settings.preloadFloating === 'boolean') updatePreloadFloating(settings.preloadFloating);
     if (typeof settings.dodgeEnabled === 'boolean') updateDodgeEnabled(settings.dodgeEnabled);
@@ -273,7 +279,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
         ...(typeof to === 'string' && timePattern.test(to) ? { to } : {}),
       });
     }
-  }, [updatePosition, updateRememberFloatingPosition, updatePreloadFloating, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
+  }, [updatePosition, updateFloatingEnabled, updateRememberFloatingPosition, updatePreloadFloating, updateDodgeEnabled, updateHoverAssistEnabled, updateBannersEnabled, persistPreferredName, completeNamePrompt, updateChatterLevel, updateQuietHours]);
 
   const dismissMessage = useCallback(() => {
     if (dismissTimerRef.current) {
@@ -286,6 +292,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
 
   const resetSettings = useCallback(() => {
     setEnabled(true);
+    setFloatingEnabled(true);
     setPosition('bottom-right');
     setRememberFloatingPosition(true);
     setPreloadFloating(true);
@@ -301,6 +308,7 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     dismissMessage();
     [
       'cyberbot_enabled',
+      'cyberbot_floating_enabled',
       'cyberbot_position',
       'cyberbot_remember_floating_position',
       'cyberbot_preload_floating',
@@ -417,12 +425,11 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
     deliver: (text: string, emotion: CyberBotEmotion) => boolean,
   ) => phraseDeckRef.current!.tryNext(topic, phrase => deliver(
     t(cyberBotPhraseKeyWithName(cyberBotPhraseKeyForCount(phrase.key, params?.count), preferredName), {
-      shortcut: cyberBotShortcut || 'Alt+Shift+B',
       ...params,
       userName: preferredName,
     }),
     phrase.emotion,
-  )), [t, preferredName, cyberBotShortcut]);
+  )), [t, preferredName]);
 
   const sayPhrase = useCallback((topic: CyberBotTopic, options: CyberBotPhraseOptions = {}) => {
     return deliverPhrase(topic, options.params, (text, emotion) => say({
@@ -463,11 +470,13 @@ export function useCyberBot({ t, dailyLaunchCount = 0, playCyberBeep, ready = tr
   }, [dailyLaunchCount, playCyberBeep, sayPhrase]);
 
   const settings = useMemo<CyberBotSettings>(() => (
-    { enabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
-  ), [enabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
+    { enabled, floatingEnabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours }
+  ), [enabled, floatingEnabled, position, rememberFloatingPosition, preloadFloating, dodgeEnabled, hoverAssistEnabled, bannersEnabled, preferredName, namePromptState, namePromptAfter, chatterLevel, quietHours]);
 
   return {
     enabled,
+    floatingEnabled,
+    updateFloatingEnabled,
     updateEnabled,
     toggleEnabled,
     position,
