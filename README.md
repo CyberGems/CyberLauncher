@@ -145,7 +145,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 - **Per-Shortcut Global Hotkeys**: Assign custom hotkeys to launch any shortcut from anywhere
 - **Missing Target Recovery**: Detects moved or deleted targets and lets you locate a new file or remove the broken shortcut cleanly
 - **Drag & Drop from Explorer**: Drag applications, folders, or files directly into the launcher to create instant shortcuts
-- **Auto-Updates**: Automatic update checks and downloads via GitHub releases
+- **Updates**: One panel previews release notes, tracks downloads, and lets you choose when to restart and install. Open a pending update with `Ctrl+U`.
 - **Export / Import**: Backup and restore your entire configuration as JSON
 - **Single Instance**: Only one instance runs at a time; second launches focus the existing window
 - **Launch with Windows**: Optionally start minimized or visible at system boot
@@ -195,7 +195,7 @@ CyberLauncher stays out of the way until you press `Alt+Shift+L`.
 2. Press **Enter** to launch the highlighted result.
 3. Open **Cyber Terminal** with `Ctrl+J` when you need a command instead of a shortcut.
 
-Frequently used shortcuts rank higher automatically. The global hotkey is customizable and `Alt+Q` closes Cyber Terminal.
+Frequently used shortcuts rank higher automatically. Use the broom next to a shortcut field to clear its assignment. The field shows **Disabled** until you assign another shortcut. `Alt+Q` closes Cyber Terminal.
 
 See [How Do You Use CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use) for everyday examples and the full guides.
 
@@ -224,7 +224,7 @@ CyberLauncher/
 │   ├── main.tsx           React entry point
 │   ├── index.css          Global styles, Tailwind, font imports
 │   ├── locales.ts         i18n (English / Spanish)
-│   ├── AboutModal.tsx     About & update dialog
+│   ├── AboutModal.tsx     About dialog
 │   └── Tooltip.tsx        Reusable tooltip component
 ├── public/                Static assets & icons
 ├── vite.config.ts         Vite + Electron plugin configuration
@@ -270,6 +270,7 @@ npm run lint
 | Key | Action |
 |---|---|
 | `Alt+Shift+L` | Show/hide CyberLauncher (customizable) |
+| `Alt+Shift+B` | Show/hide floating CyberBot (customizable) |
 | `Ctrl+J` | Open/close Cyber Terminal |
 | `Enter` | Launch selected shortcut / run the command at the terminal prompt |
 | `Ctrl+C` (in terminal) | Interrupt the foreground command |

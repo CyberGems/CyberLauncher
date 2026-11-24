@@ -145,7 +145,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 - **Atajos globales por acceso**: asigna atajos personalizados para lanzar cualquier acceso desde cualquier lugar
 - **Recuperación de rutas faltantes**: detecta destinos movidos o eliminados y permite buscar una nueva ubicación o quitar el acceso roto fácilmente
 - **Arrastrar y soltar desde el Explorador**: arrastra aplicaciones, carpetas o cualquier archivo directamente al lanzador para agregarlos como accesos directos
-- **Actualizaciones automáticas**: comprobación y descarga automáticas mediante GitHub releases
+- **Actualizaciones**: un solo panel muestra las novedades y el progreso de la descarga, y te deja elegir cuándo reiniciar para instalar. Abre una actualización pendiente con `Ctrl+U`.
 - **Exportar / Importar**: copia de seguridad y restauración de toda tu configuración en JSON
 - **Instancia única**: solo se ejecuta una instancia; un segundo lanzamiento enfoca la ventana existente
 - **Iniciar con Windows**: opcionalmente arranca minimizado o visible al arrancar el sistema
@@ -195,7 +195,7 @@ CyberLauncher se aparta hasta que pulsas `Alt+Shift+L`.
 2. Pulsa **Intro** para abrir el resultado resaltado.
 3. Abre **Cyber Terminal** con `Ctrl+J` cuando necesites un comando en lugar de un acceso directo.
 
-Los accesos que más usas suben automáticamente en los resultados. El atajo global es personalizable y `Alt+Q` cierra Cyber Terminal.
+Los accesos que más usas suben automáticamente en los resultados. Usa la escobilla junto a un campo de atajo para borrar su asignación. El campo muestra **Desactivado** hasta que asignes otro atajo. `Alt+Q` cierra Cyber Terminal.
 
 Consulta [¿Cómo se usa CyberLauncher?](https://github.com/CyberGems/CyberLauncher/wiki/How-Do-You-Use-es) para ver ejemplos cotidianos y las guías completas de la wiki.
 
@@ -224,7 +224,7 @@ CyberLauncher/
 │   ├── main.tsx           Punto de entrada de React
 │   ├── index.css          Estilos globales, Tailwind, imports de fuentes
 │   ├── locales.ts         i18n (inglés / español)
-│   ├── AboutModal.tsx     Diálogo Acerca de y actualizaciones
+│   ├── AboutModal.tsx     Diálogo Acerca de
 │   └── Tooltip.tsx        Componente de tooltip reutilizable
 ├── public/                Recursos estáticos e iconos
 ├── vite.config.ts         Configuración de Vite + plugin de Electron
@@ -270,6 +270,7 @@ npm run lint
 | Tecla | Acción |
 |---|---|
 | `Alt+Shift+L` | Mostrar/ocultar CyberLauncher (personalizable) |
+| `Alt+Shift+B` | Mostrar/ocultar CyberBot flotante (personalizable) |
 | `Ctrl+J` | Abrir/cerrar Cyber Terminal |
 | `Intro` | Lanzar el acceso seleccionado / ejecutar el comando en el prompt |
 | `Ctrl+C` (en la terminal) | Interrumpir el comando activo |
