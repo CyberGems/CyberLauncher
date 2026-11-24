@@ -3235,6 +3235,8 @@ export default function App() {
   }, []);
   const isWindowVisible = useLauncherVisibility();
   const cyberBotFarewell = useCyberBotFarewell(cyberBot.enabled);
+  const [suppressCyberBotHoverPreview, setSuppressCyberBotHoverPreview] = useState(false);
+  const canPreviewCyberBotDisable = cyberBot.enabled && !suppressCyberBotHoverPreview;
   const handleCyberBotToggle = useCallback(() => {
     if (cyberBot.enabled) {
       const control = document.querySelector<HTMLElement>('[data-cyberbot-control]');
@@ -9561,7 +9563,13 @@ export default function App() {
                 >
                   <button
                     type="button"
-                    onClick={handleCyberBotToggle}
+                    onClick={event => {
+                      if (!cyberBot.enabled && event.currentTarget.matches(':hover')) {
+                        setSuppressCyberBotHoverPreview(true);
+                      }
+                      handleCyberBotToggle();
+                    }}
+                    onPointerEnter={() => setSuppressCyberBotHoverPreview(false)}
                     aria-label={cyberBot.enabled ? t('cyberbot_toggle_active') : t('cyberbot_toggle_inactive')}
                     aria-pressed={cyberBot.enabled}
                     className={`${TITLEBAR_TOOL_CLASS} group/cyberbot-toggle ${
@@ -9572,9 +9580,9 @@ export default function App() {
                   >
                     <Bot
                       aria-hidden="true"
-                      className={`size-3.5 ${cyberBot.enabled ? 'group-hover/cyberbot-toggle:hidden' : ''}`}
+                      className={`size-3.5 ${canPreviewCyberBotDisable ? 'group-hover/cyberbot-toggle:hidden' : ''}`}
                     />
-                    {cyberBot.enabled && (
+                    {canPreviewCyberBotDisable && (
                       <BotOff aria-hidden="true" className="hidden size-3.5 group-hover/cyberbot-toggle:block" />
                     )}
                   </button>
