@@ -2,6 +2,30 @@
 
 All notable changes to CyberLauncher are documented here.
 
+## [1.17.0] - 2026-11-24
+
+### 🇺🇸 English
+
+- **Independent CyberBot controls.** Enable the built-in assistant and floating search separately. Open or hide floating search from the tray or its customizable shortcut (`Alt+Shift+B` by default). The launcher and widget switch without overlapping.
+- **Readable system alerts.** Show system notices and countdowns immediately, keep long desktop text scrollable, and prevent duplicate desktop health alerts or a second bubble on dismissal. Conversations retain the typing effect.
+- **One update notice.** Check, download, cancel a download, or restart to install from one notice, with progress and expandable release notes. Settings controls automatic update notices, and About can start a manual check.
+- **Clear global shortcuts.** Use the broom button to disable launcher, floating CyberBot, or per-app shortcuts. Empty controls display Disabled, and the clear and reset buttons share the same style.
+- **Consistent settings.** Give all six tabs matching introductions, neutral icons and shared control styles. Clearly label both CyberBot sections and show save feedback and a branded footer.
+- **Clearer titlebar and search.** Move launcher tools into the titlebar, preserve the search field and resource values when space allows, and refine focus, spacing and divider feedback. The CyberBot toggle previews its crossed-out icon on a fresh hover.
+- **Keyboard and tray behavior.** Keep `Alt+F4` available for Exit, clarify the minimize-to-tray gesture, focus the More menu on keyboard opening, and prevent stale menu tooltips and stuck Alt state. The tray tooltip truncates unusually long shortcuts.
+- **Privacy and AI documentation.** Publish bilingual privacy and AI disclosures and document how the project verifies and uses AI-assisted work.
+
+### 🇪🇸 Español
+
+- **Controles independientes de CyberBot.** Activa por separado el asistente integrado y el buscador flotante. Abre u oculta el buscador desde la bandeja o con su atajo configurable (`Alt+Shift+B` por defecto). El lanzador y el widget se alternan sin solaparse.
+- **Avisos de sistema legibles.** Muestra avisos y cuentas regresivas de inmediato, permite desplazar los textos largos en el escritorio y evita alertas de salud duplicadas o una segunda burbuja al cerrar. Las conversaciones conservan el efecto de escritura.
+- **Un solo aviso de actualización.** Busca, descarga, cancela la descarga o reinicia para instalar desde un mismo aviso, con progreso y notas desplegables. Configuración controla los avisos automáticos y Acerca de permite iniciar una búsqueda manual.
+- **Limpieza de atajos globales.** Usa la escobilla para desactivar los atajos del lanzador, CyberBot flotante o un acceso individual. Los campos vacíos muestran Desactivado, y los botones de limpiar y restablecer comparten estilo.
+- **Configuración uniforme.** Las seis pestañas comparten introducciones, íconos neutros y estilos de controles. Las secciones de CyberBot se distinguen por su encabezado, y el panel muestra la confirmación de guardado y un pie con la marca.
+- **Barra de título y búsqueda más claras.** Las herramientas pasan a la barra de título. El buscador y los valores de recursos se conservan cuando hay espacio, con ajustes de foco, espaciado y divisores. El toggle de CyberBot muestra el ícono tachado al volver a entrar con el cursor.
+- **Comportamiento del teclado y la bandeja.** Mantiene `Alt+F4` disponible para salir, aclara el gesto de minimizar a la bandeja, enfoca el menú Más cuando se abre con el teclado y evita tooltips obsoletos y el estado Alt atascado. El tooltip de bandeja recorta atajos demasiado largos.
+- **Documentación de privacidad e IA.** Publica avisos bilingües de privacidad y uso de IA, y documenta cómo se usa y verifica el trabajo asistido por IA.
+
 ## [1.16.2] - 2026-11-19
 
 ### 🇺🇸 English

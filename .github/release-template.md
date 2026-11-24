@@ -8,7 +8,7 @@
 
 <!-- IMPORTANT FOR AGENTS & MAINTAINERS: Always rewrite this entire section and highlights with the ACTUAL release notes for this specific new version before tagging. NEVER leave or copy previous version notes! Use 25-45 words for the summary, lead with user-facing changes, and do not repeat the app name or version. Keep the Spanish mirror inside the details block in sync: translate the summary and rewrite the highlights. -->
 <!-- changelog-summary:start -->
-Eliminates system tray menu flicker on repeated opens and position jumps across mixed-DPI monitors using a fresh prewarmed tray window with two-step reveal, aligns the flyout gap to 4px, and adds Exit to the titlebar More menu.
+CyberBot’s desktop search now has independent controls and switches cleanly with the launcher. System alerts appear immediately, updates have a single notice, and global shortcuts can be cleared. Settings and the titlebar also use more consistent layouts.
 <!-- changelog-summary:end -->
 
 > **New to CyberLauncher?** A full-screen, keyboard-driven Windows launcher for organizing, searching, and opening apps, files, shortcuts, and console commands from a unified panel.
@@ -17,15 +17,21 @@ Eliminates system tray menu flicker on repeated opens and position jumps across 
 
 ### ✨ Key Features & Highlights
 
-- 🪟 **Flicker-free multi-monitor tray menu**: Replaced window hide/reuse with a fresh prewarmed tray window and two-step transparent reveal so repeated clicks and mixed-DPI monitor switches open cleanly with a `4px` flyout gap.
-- 🚪 **Exit from the titlebar menu**: Added an `Exit CyberLauncher` item to the titlebar More menu for quick full shutdown without using the system tray.
+- **Independent CyberBot controls.** Enable the built-in assistant and floating search separately. Open or hide floating search from the tray or its customizable shortcut (`Alt+Shift+B` by default). The launcher and widget switch without overlapping.
+- **Readable system alerts.** Show system notices and countdowns immediately, keep long desktop text scrollable, and prevent duplicate desktop health alerts or a second bubble on dismissal. Conversations retain the typing effect.
+- **One update notice.** Check, download, cancel a download, or restart to install from one notice, with progress and expandable release notes. Settings controls automatic update notices, and About can start a manual check.
+- **Clear global shortcuts.** Use the broom button to disable launcher, floating CyberBot, or per-app shortcuts. Empty controls display Disabled, and the clear and reset buttons share the same style.
+- **Consistent settings.** Give all six tabs matching introductions, neutral icons and shared control styles. Clearly label both CyberBot sections and show save feedback and a branded footer.
+- **Clearer titlebar and search.** Move launcher tools into the titlebar, preserve the search field and resource values when space allows, and refine focus, spacing and divider feedback. The CyberBot toggle previews its crossed-out icon on a fresh hover.
+- **Keyboard and tray behavior.** Keep `Alt+F4` available for Exit, clarify the minimize-to-tray gesture, focus the More menu on keyboard opening, and prevent stale menu tooltips and stuck Alt state. The tray tooltip truncates unusually long shortcuts.
+- **Privacy and AI documentation.** Publish bilingual privacy and AI disclosures and document how the project verifies and uses AI-assisted work.
 
 <details>
 <summary><b>🇪🇸 Ver notas de la versión en Español</b></summary>
 
 ### 🚀 Novedades de esta versión
 
-Elimina el parpadeo del menú de bandeja en aperturas repetidas y los saltos de posición entre monitores con DPI mixto mediante una ventana precalentada con revelado en dos pasos, ajusta el espacio de flyouts a 4px y añade Salir al menú Más.
+El buscador flotante de CyberBot tiene controles independientes y se alterna con el lanzador. Los avisos de sistema aparecen de inmediato, las actualizaciones tienen un único aviso y los atajos globales se pueden desactivar. Configuración y la barra de título ganan consistencia.
 
 > **¿Nuevo en CyberLauncher?** Un lanzador para Windows a pantalla completa y guiado por teclado para organizar, buscar y abrir apps, archivos, accesos directos y comandos desde un panel unificado.
 
@@ -33,8 +39,14 @@ Elimina el parpadeo del menú de bandeja en aperturas repetidas y los saltos de 
 
 ### ✨ Novedades destacadas
 
-- 🪟 **Menú de bandeja sin parpadeos en multimonitor**: Se reemplazó la reutilización tras ocultar por una ventana precalentada con revelado transparente en dos pasos para abrir sin parpadeos ni saltos entre monitores con DPI mixto y con un espacio de `4px` entre flyouts.
-- 🚪 **Opción Salir en la barra de título**: Se agregó `Salir de CyberLauncher` al menú Más de la barra de título para cerrar la aplicación por completo sin pasar por la bandeja del sistema.
+- **Controles independientes de CyberBot.** Activa por separado el asistente integrado y el buscador flotante. Abre u oculta el buscador desde la bandeja o con su atajo configurable (`Alt+Shift+B` por defecto). El lanzador y el widget se alternan sin solaparse.
+- **Avisos de sistema legibles.** Muestra avisos y cuentas regresivas de inmediato, permite desplazar los textos largos en el escritorio y evita alertas de salud duplicadas o una segunda burbuja al cerrar. Las conversaciones conservan el efecto de escritura.
+- **Un solo aviso de actualización.** Busca, descarga, cancela la descarga o reinicia para instalar desde un mismo aviso, con progreso y notas desplegables. Configuración controla los avisos automáticos y Acerca de permite iniciar una búsqueda manual.
+- **Limpieza de atajos globales.** Usa la escobilla para desactivar los atajos del lanzador, CyberBot flotante o un acceso individual. Los campos vacíos muestran Desactivado, y los botones de limpiar y restablecer comparten estilo.
+- **Configuración uniforme.** Las seis pestañas comparten introducciones, íconos neutros y estilos de controles. Las secciones de CyberBot se distinguen por su encabezado, y el panel muestra la confirmación de guardado y un pie con la marca.
+- **Barra de título y búsqueda más claras.** Las herramientas pasan a la barra de título. El buscador y los valores de recursos se conservan cuando hay espacio, con ajustes de foco, espaciado y divisores. El toggle de CyberBot muestra el ícono tachado al volver a entrar con el cursor.
+- **Comportamiento del teclado y la bandeja.** Mantiene `Alt+F4` disponible para salir, aclara el gesto de minimizar a la bandeja, enfoca el menú Más cuando se abre con el teclado y evita tooltips obsoletos y el estado Alt atascado. El tooltip de bandeja recorta atajos demasiado largos.
+- **Documentación de privacidad e IA.** Publica avisos bilingües de privacidad y uso de IA, y documenta cómo se usa y verifica el trabajo asistido por IA.
 
 ### ℹ️ Antes de instalar
 
