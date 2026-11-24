@@ -51,7 +51,7 @@ import {
   Terminal, Globe, Lock, MousePointer2, Star,
   Search, Grid, List as ListIcon, Plus, Clock, History, Settings,
   Minus, Square, X, ChevronRight, ChevronDown, ChevronLeft, LayoutGrid, Image as ImageIcon,
-  Palette, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
+  Palette, Wallpaper, Droplets, Link, Keyboard, PenBox, Pencil, Trash2,
   Wifi, BatteryMedium, Volume2, Info, Monitor, Upload, Cpu,
   HardDrive, Minimize2, Shrink, Download, Power, FileJson, Package, Hexagon,
   FolderOpen, FolderPlus, Eye, EyeOff, Pin, Play, Pause, Timer, SlidersHorizontal, TerminalSquare,
@@ -11479,10 +11479,6 @@ export default function App() {
 
                 {settingsTab === 'appearance' && (<>
                 <div className="space-y-4">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4 text-slate-500" />
-                    {t('appearance_layout_title')}
-                  </label>
                   {/* Scale Selection */}
                   <div className="space-y-3">
                     <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
@@ -11601,8 +11597,11 @@ export default function App() {
 
                 {/* Background Type Selector */}
                 <div className="space-y-3">
-                  <label className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">{t('app_bg_type')}</label>
-                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                  <h3 id="settings-background-type" className="text-xs font-cyber font-bold text-slate-400 tracking-widest drop-shadow-sm flex items-center gap-2">
+                    <Wallpaper className="w-4 h-4 text-cyan-500" aria-hidden="true" />
+                    {t('app_bg_type')}
+                  </h3>
+                  <div role="group" aria-labelledby="settings-background-type" className="flex bg-black/40 p-1 rounded-xl border border-white/5">
                     {[
                       { id: 'image', icon: ImageIcon, label: t('app_bg_image') },
                       { id: 'gradient', icon: Palette, label: t('app_bg_gradient') },

@@ -259,7 +259,6 @@ export const translations = {
     general_reset_on_launch_desc: "Al abrir el launcher, limpia búsqueda/filtro/scroll y vuelve la categoría a 'TODAS' (una sola vez por apertura).",
 
     // Appearance Settings Tab
-    appearance_layout_title: "DISEÑO DEL LANZADOR",
     appearance_visible_items_title: "ELEMENTOS VISIBLES",
     app_bg_type: "TIPO DE FONDO",
     app_bg_image: "Imagen",
@@ -1308,7 +1307,6 @@ export const translations = {
     general_reset_on_launch_desc: "When opening the launcher, clears search/filter/scroll and sets category to 'ALL' (once per open).",
 
     // Appearance Settings Tab
-    appearance_layout_title: "LAUNCHER LAYOUT",
     appearance_visible_items_title: "VISIBLE ITEMS",
     app_bg_type: "BACKGROUND TYPE",
     app_bg_image: "Image",
