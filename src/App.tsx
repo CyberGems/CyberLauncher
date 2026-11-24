@@ -365,7 +365,7 @@ declare global {
       setAutoUpdate: (enabled: boolean) => Promise<{ success: boolean; enabled: boolean }>;
       openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
       onUpdateStatus: (callback: (status: PendingUpdate | null) => void) => () => void;
-      onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical'; delivered?: boolean }) => void) => () => void;
+      onSystemAlertToast?: (callback: (data: { type: 'disk' | 'ram'; title: string; message: string; level: 'warning' | 'critical' }) => void) => () => void;
       onSystemAlertAction?: (callback: (data: { type: 'disk' | 'ram' }) => void) => () => void;
       showDesktopToast?: (payload: {
         type: 'imminent' | 'success' | 'error' | 'warning' | 'info';
@@ -4965,7 +4965,6 @@ export default function App() {
         action: data.type === 'disk' ? 'open-hud-storage' as const : 'open-hud-system' as const,
         source: 'system-alert' as const,
       };
-      if (data.delivered) noticeLedgerRef.current.mark(notice);
       setNotification(notice);
     });
 

@@ -15,7 +15,7 @@ export function shouldHideLauncherAfterLaunch(pinned: boolean, keepWindowOpen: b
 }
 
 export function shouldClearToastForRendererCleanup(source?: string): boolean {
-  return source !== 'launch';
+  return source !== 'launch' && source !== 'system-alert';
 }
 
 export const PIN_LAUNCH_HINT_COOLDOWN_MS = 45_000;

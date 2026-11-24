@@ -2131,6 +2131,7 @@ let desktopToastAutoDismissTimer: NodeJS.Timeout | null = null;
 let latestToastPayload: any = null;
 let desktopToastVisibilityVersion = 0;
 let desktopToastReady = false;
+let desktopToastLoading: Promise<boolean> | null = null;
 let desktopToastWorkArea: Electron.Rectangle | null = null;
 let toastDeliverySettings: NotificationDeliverySettings = {
   botEnabled: true,
@@ -2198,20 +2199,23 @@ function ensureDesktopToastWin(): BrowserWindow {
   const loaded = VITE_DEV_SERVER_URL
     ? window.loadURL(new URL('/cyberbot-toast.html', VITE_DEV_SERVER_URL).href)
     : window.loadFile(htmlPath);
-  void loaded.then(() => {
-    if (window.isDestroyed()) return;
+  desktopToastLoading = loaded.then(() => {
+    if (window.isDestroyed()) return false;
     desktopToastReady = true;
     presentDesktopToast(window);
+    return true;
   }).catch((error) => {
-    if (window.isDestroyed()) return;
+    if (window.isDestroyed()) return false;
     console.error('[TOAST] Failed to load desktop notification:', error);
     latestToastPayload = null;
     window.destroy();
+    return false;
   });
 
   desktopToastWin.on('closed', () => {
     desktopToastWin = null;
     desktopToastReady = false;
+    desktopToastLoading = null;
     desktopToastWorkArea = null;
   });
 
@@ -2219,7 +2223,7 @@ function ensureDesktopToastWin(): BrowserWindow {
 }
 
 function showDesktopToastInternal(payload: any) {
-  const launcherVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  const launcherVisible = isLauncherWindowVisible();
   if (payload.action === 'open-update' && (
     launcherVisible || latestToastPayload?.type === 'imminent' || latestToastPayload?.source === 'system-alert'
   )) return false;
@@ -2264,11 +2268,19 @@ function showDesktopToastInternal(payload: any) {
   return true;
 }
 
+async function showSystemAlertOnDesktop(payload: any): Promise<boolean> {
+  if (!showDesktopToastInternal({ ...payload, source: 'system-alert' })) return false;
+  if (desktopToastReady) return true;
+  const queued = latestToastPayload;
+  return (await desktopToastLoading) === true && latestToastPayload === queued;
+}
+
 function refreshDesktopToastForFloatingBot() {
   const floatingBounds = desktopCyberBot?.getVisibleBounds() ?? [];
   const win = desktopToastWin;
   if (!floatingBounds.length || !latestToastPayload || !win || win.isDestroyed() || !desktopToastWorkArea) return;
-  if (latestToastPayload.presentation === 'bot') {
+  // Keep a health alert on its original surface for its entire lifetime.
+  if (latestToastPayload.presentation === 'bot' && latestToastPayload.source !== 'system-alert') {
     if (!toastDeliverySettings.bannersEnabled || latestToastPayload.source === 'launch') {
       hideDesktopToastInternal();
       if (!win.isDestroyed()) win.hide();
@@ -4284,8 +4296,8 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('hide-desktop-toast', () => {
-    // The renderer clears its ordinary notice when visibility changes after a
-    // launch. That cleanup must not immediately erase the launch commentary.
+    // The renderer only owns the notice it asked to show. Desktop launch
+    // commentary and health alerts follow their own lifetime.
     if (shouldClearToastForRendererCleanup(latestToastPayload?.source)) hideDesktopToastInternal();
     return true;
   });
@@ -5887,7 +5899,7 @@ app.whenReady().then(() => {
     () => getAppIconPath(),
     () => showMainWindow(),
     bootAlertsConfig,
-    (payload) => showDesktopToastInternal({ ...payload, source: 'system-alert' })
+    showSystemAlertOnDesktop
   );
 
   // Iniciar vigilante de respaldo automático programado

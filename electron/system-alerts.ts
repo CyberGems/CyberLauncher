@@ -27,7 +27,7 @@ let warmUpTimer: NodeJS.Timeout | null = null;
 let getMainWindowFn: () => BrowserWindow | null = () => null;
 let getAppIconPathFn: () => string = () => '';
 let showMainWindowFn: () => void = () => {};
-let showDesktopToastFn: ((payload: any) => boolean) | null = null;
+let showDesktopToastFn: ((payload: any) => Promise<boolean>) | undefined;
 
 // State tracking for disk alerts
 let lastDiskTier: number | null = null;
@@ -45,20 +45,16 @@ function getSystemDriveLetter(): string {
   return '/';
 }
 
-function sendAlertNotification(options: {
+async function sendAlertNotification(options: {
   title: string;
   body: string;
   type: 'disk' | 'ram';
   level: 'warning' | 'critical';
 }) {
-  const win = getMainWindowFn();
-  const icon = getAppIconPathFn();
   const isEs = currentConfig.language !== 'en';
 
-  let delivered = false;
-  // 1. Direct standalone desktop toast (fast, independent)
-  if (showDesktopToastFn) {
-    delivered = showDesktopToastFn({
+  try {
+    const delivered = await showDesktopToastFn?.({
       type: options.level === 'critical' ? 'error' : 'warning',
       level: options.level,
       title: options.title,
@@ -72,16 +68,19 @@ function sendAlertNotification(options: {
         : (isEs ? 'MEMORIA' : 'MEMORY'),
       dismissLabel: isEs ? 'Cerrar aviso' : 'Dismiss notice',
     });
+    if (delivered) return;
+  } catch (err) {
+    console.error('[SYSTEM-ALERTS] Error showing desktop notification:', err);
   }
 
-  // 2. Send toast event to renderer window (if alive)
-  if (win && !win.isDestroyed()) {
+  // A hidden launcher must not retry an alert already handled on the desktop.
+  const win = getMainWindowFn();
+  if (win && !win.isDestroyed() && win.isVisible() && !win.isMinimized()) {
     win.webContents.send('system-alert-toast', {
       type: options.type,
       title: options.title,
       message: options.body,
       level: options.level,
-      delivered,
     });
   }
 
@@ -91,7 +90,7 @@ function sendAlertNotification(options: {
       const notif = new Notification({
         title: options.title,
         body: options.body,
-        icon: icon || undefined,
+        icon: getAppIconPathFn() || undefined,
         silent: false,
       });
 
@@ -178,7 +177,7 @@ function checkDiskHealth() {
         }
 
         console.log(`[SYSTEM-ALERTS] Disk alert triggered for tier ${currentTier}GB (${formattedFree}GB free)`);
-        sendAlertNotification({ title, body, type: 'disk', level });
+        void sendAlertNotification({ title, body, type: 'disk', level });
       }
     } else {
       // Space is > 20 GB: apply hysteresis before resetting tier tracking
@@ -256,7 +255,7 @@ function checkRamHealth() {
       }
 
       console.log(`[SYSTEM-ALERTS] RAM alert triggered: ${percent}% used, ${freeGb}GB free`);
-      sendAlertNotification({ title, body, type: 'ram', level });
+      void sendAlertNotification({ title, body, type: 'ram', level });
     }
   } catch (err) {
     console.error('[SYSTEM-ALERTS] Error checking RAM health:', err);
@@ -273,14 +272,12 @@ export function initSystemAlerts(
   getAppIconPath: () => string,
   showMainWindow: () => void,
   initialConfig?: Partial<SystemAlertsConfig>,
-  showDesktopToast?: (payload: any) => boolean
+  showDesktopToast?: (payload: any) => Promise<boolean>
 ) {
   getMainWindowFn = getMainWindow;
   getAppIconPathFn = getAppIconPath;
   showMainWindowFn = showMainWindow;
-  if (showDesktopToast) {
-    showDesktopToastFn = showDesktopToast;
-  }
+  showDesktopToastFn = showDesktopToast;
 
   if (initialConfig) {
     updateSystemAlertsConfig(initialConfig);

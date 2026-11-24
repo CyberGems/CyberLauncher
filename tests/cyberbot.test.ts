@@ -337,7 +337,7 @@ test('launch speech follows actual visibility and never falls back to a banner',
   const quiet = { ...settings, quietHours: { enabled: true, from: '22:00', to: '07:00' } };
   assert.equal(chooseLaunchSpeechChannel(quiet, true, true, true, new Date(2026, 9, 4, 23, 0)), 'none');
   assert.equal(shouldClearToastForRendererCleanup('launch'), false);
-  assert.equal(shouldClearToastForRendererCleanup('system-alert'), true);
+  assert.equal(shouldClearToastForRendererCleanup('system-alert'), false);
   assert.equal(shouldClearToastForRendererCleanup(), true);
   for (const language of ['es', 'en'] as const) {
     assert.ok(translations[language].launch_missing_path_detail.trim());
