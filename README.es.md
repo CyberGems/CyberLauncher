@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://cybergems.org/es/apps/cyberlauncher/">
-    <img src="https://cybergems.org/banners/es/cyberlauncher.png" alt="Encuentra y abre todo en tu PC en segundos" />
+    <img src="https://cybergems.org/banners/es/cyberlauncher.png" alt="Encuentra y abre todo en tu PC" />
   </a>
 </p>
 
@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### Accesos, archivos, comandos y una terminal real a un atajo de distancia, con las estadísticas del sistema en el mismo panel
+### Accesos, archivos, comandos y una terminal real a un atajo, con las estadísticas del sistema al lado.
 
 </div>
 
