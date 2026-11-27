@@ -2225,7 +2225,7 @@ export default function App() {
       main.style.removeProperty('--launcher-scrollbar-width');
       header.removeAttribute('data-compact-resources');
     };
-  }, [showHeaderClock]);
+  }, []);
 
   type KeyboardNavTarget = { section: 'favorites' | 'apps'; index: number };
   const [keyboardNav, setKeyboardNav] = useState<KeyboardNavTarget | null>(null);
