@@ -83,6 +83,10 @@ El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de
 
 *HUD de Recursos del sistema con uso de memoria en vivo, procesador, tiempo activo y datos clave del lanzador.*
 
+![Panel HUD de Almacenamiento en CyberLauncher mostrando las unidades C a H con barras de uso en cian y ámbar, espacio libre y capacidad total](docs/screenshots/storage-es.png)
+
+*HUD de Almacenamiento con porcentaje de uso por unidad, alertas de espacio alto, capacidad libre y total en un solo panel lateral.*
+
 ![Compañero flotante CyberBot en el escritorio mostrando buscador de accesos, aplicaciones más usadas y lanzamientos recientes](docs/screenshots/cyberbot-es.png)
 
 *CyberBot flotante de escritorio (`Alt+Shift+B`) para buscar accesos, favoritos y lanzamientos recientes sin abrir la ventana principal.*

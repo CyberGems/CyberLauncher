@@ -83,6 +83,10 @@ The Start menu was never built to find things: it searches a subset of your apps
 
 *System Resources HUD showing live memory usage, processor topology, uptime, and quick-reference launcher details.*
 
+![CyberLauncher Storage HUD drawer displaying disk drives C through H with cyan and amber usage bars, free space and total capacity](docs/screenshots/storage-en.png)
+
+*Storage HUD showing every drive's usage percentage, high-usage alerts, free space, and total capacity in one side drawer.*
+
 ![CyberLauncher floating desktop CyberBot companion bubble showing search bar, most used shortcuts, and recent launches](docs/screenshots/cyberbot-en.png)
 
 *Floating desktop CyberBot (`Alt+Shift+B`) for searching shortcuts, favorites, and recent launches right over your workspace.*
