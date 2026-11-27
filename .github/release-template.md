@@ -91,6 +91,8 @@ El buscador flotante de CyberBot tiene controles independientes y se alterna con
 {{PORTABLE_HASH}}
 ```
 
+The checksums are also available as a downloadable [SHA256SUMS.txt](https://github.com/CyberGems/CyberLauncher/releases/download/{{VERSION}}/SHA256SUMS.txt).
+
 ---
 
 📜 **Full changelog:** browse every version in [CHANGELOG.md](https://github.com/CyberGems/CyberLauncher/blob/main/CHANGELOG.md).
