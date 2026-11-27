@@ -6633,7 +6633,7 @@ export default function App() {
         id: 'action-toggle-left-sidebar',
         group: t('cmd_palette_group_actions'),
         label: t('cmd_palette_action_toggle_left_sidebar'),
-        shortcut: 'Ctrl+Shift+B',
+        shortcut: 'Alt+B',
         keywords: 'sidebar panel izquierdo categories categorias collapse expand alternar colapsar',
         icon: <PanelLeft className="w-4 h-4 text-cyan-400" />,
         onSelect: () => {
@@ -7420,7 +7420,7 @@ export default function App() {
         }
       }
 
-      // Title-bar menu and pin use a single Alt modifier, the suite convention.
+      // Title-bar menu, pin and the left rail use a single Alt modifier, the suite convention.
       if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         const altKey = e.key.toLowerCase();
         if (altKey === 'm') {
@@ -7431,6 +7431,11 @@ export default function App() {
         if (altKey === 'p') {
           e.preventDefault();
           setIsAlwaysOnTop(prev => !prev);
+          return;
+        }
+        if (altKey === 'b') {
+          e.preventDefault();
+          setLeftSidebarCollapsed(prev => !prev);
           return;
         }
       }
@@ -7446,15 +7451,8 @@ export default function App() {
           return;
         }
 
-        // Ctrl+Shift+B -> Toggle left sidebar
-        if (key === 'b' && e.shiftKey) {
-          e.preventDefault();
-          setLeftSidebarCollapsed(prev => !prev);
-          return;
-        }
-
         // Ctrl+B -> Toggle right sidebar
-        if (key === 'b' && !e.shiftKey) {
+        if (key === 'b') {
           e.preventDefault();
           setIsMoreMenuOpen(false);
           setRightSidebarCollapsed(prev => !prev);
@@ -8049,7 +8047,7 @@ export default function App() {
                 </span>
               </button>
             </Tooltip>
-            <Tooltip label={withShortcut(t('tooltip_left_sidebar_collapse'), 'Ctrl+Shift+B')} placement="bottom">
+            <Tooltip label={withShortcut(t('tooltip_left_sidebar_collapse'), 'Alt+B')} placement="bottom">
               <button
                 type="button"
                 onClick={() => setLeftSidebarCollapsed(true)}
@@ -8074,7 +8072,7 @@ export default function App() {
                 )}
               </button>
             </Tooltip>
-            <Tooltip label={withShortcut(t('tooltip_left_sidebar_expand'), 'Ctrl+Shift+B')} placement="right">
+            <Tooltip label={withShortcut(t('tooltip_left_sidebar_expand'), 'Alt+B')} placement="right">
               <button
                 type="button"
                 onClick={() => setLeftSidebarCollapsed(false)}

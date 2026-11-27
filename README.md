@@ -118,7 +118,7 @@ CyberLauncher streamlines app launching from the ground up: **type to search, ho
 ### 📂 Organization
 - **Bilingual Initial Setup**: Quick onboarding wizard lets you pick English or Spanish with 5 starter categories, 5 default favorites, 5 essential Windows taskbar shortcuts, and optional CyberBot setup
 - **Custom Categories**: Organize shortcuts into color-coded categories under `All Items`, with inline editing and automatic hiding of `Uncategorized` when empty
-- **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Ctrl+Shift+B` or hover
+- **Collapsible Sidebar**: Collapse category sidebar to a compact 52px icon rail with `Alt+B` or hover
 - **Favorites & Drag-to-Reorder**: Pin frequent shortcuts under a collapsible Favorites header with fluid live drag & drop reordering
 - **Taskbar**: Customizable bottom bar with pinned shortcuts for instant access
 - **Resizable Panels**: Drag to resize the category sidebar and most-used/recent panel

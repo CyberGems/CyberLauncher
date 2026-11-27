@@ -118,7 +118,7 @@ CyberLauncher agiliza el lanzamiento de apps desde cero: **escribe para buscar, 
 ### 📂 Organización
 - **Asistente inicial bilingüe**: configuración inicial rápida para elegir español o inglés con 5 categorías base, 5 favoritos iniciales, 5 accesos esenciales en la barra de tareas y activación opcional de CyberBot
 - **Categorías personalizadas**: organiza tus accesos en categorías con código de color bajo `Todo`, edición en línea y ocultamiento automático de `Sin Categoría` cuando está vacía
-- **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Ctrl+Shift+B` o al pasar el cursor
+- **Barra lateral colapsable**: contrae la barra de categorías a un riel compacto de 52px con `Alt+B` o al pasar el cursor
 - **Favoritos y reordenar con arrastrar**: fija tus accesos más usados bajo una cabecera plegable de Favoritos con arrastre fluido en tiempo real
 - **Barra de tareas**: barra inferior personalizable con accesos anclados de apertura rápida
 - **Paneles redimensionables**: arrastra para redimensionar la barra lateral de categorías y el panel de más usados y recientes
