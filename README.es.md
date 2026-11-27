@@ -69,11 +69,11 @@ El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de
 
 ---
 
-<!-- Capturas: pendiente de la galería bilingüe ES/EN del plan en https://github.com/CyberGems/CyberGems.github.io/blob/main/docs/screenshots.md — sustituir la cita, conservar este título y su entrada en el índice. -->
-
 ## 🖼️ Capturas
 
-> Próximamente...
+![Espacio de trabajo a pantalla completa de CyberLauncher con categorías, barra de favoritos, cuadrícula de accesos, listas de más usados y recientes, telemetría del sistema y CyberBot](docs/screenshots/main-es.png)
+
+*Espacio a pantalla completa con categorías por color, barra de acceso rápido, ránking de uso, indicadores del sistema y CyberBot.*
 
 ---
 
