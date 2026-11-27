@@ -10,3 +10,10 @@ artifacts/
 
 # Local scratch
 scratch/
+
+# Frontend build output
+dist/
+dist-electron/
+build/
+release/
+coverage/
