@@ -4,3 +4,9 @@ artifacts/
 
 # OS generated files
 .DS_Store
+
+# Logs
+*.log
+
+# Local scratch
+scratch/
