@@ -75,6 +75,18 @@ The Start menu was never built to find things: it searches a subset of your apps
 
 *Full-screen workspace with color-coded categories, quick-access dock, usage rankings, system gauges, and CyberBot.*
 
+![CyberLauncher embedded Cyber Terminal running PowerShell commands and tests inside the launcher workspace](docs/screenshots/terminal-en.png)
+
+*Integrated Cyber Terminal (`Ctrl+J`) with persistent PowerShell/CMD sessions inside the launcher.*
+
+![CyberLauncher System Resources HUD overlay displaying RAM usage, processor model and core count, uptime, and shortcut info](docs/screenshots/system-en.png)
+
+*System Resources HUD showing live memory usage, processor topology, uptime, and quick-reference launcher details.*
+
+![CyberLauncher floating desktop CyberBot companion bubble showing search bar, most used shortcuts, and recent launches](docs/screenshots/cyberbot-en.png)
+
+*Floating desktop CyberBot (`Alt+Shift+B`) for searching shortcuts, favorites, and recent launches right over your workspace.*
+
 ---
 
 ## 🚀 Why CyberLauncher?

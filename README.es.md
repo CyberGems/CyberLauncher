@@ -75,6 +75,18 @@ El menú Inicio nunca se pensó para encontrar cosas: busca en un subconjunto de
 
 *Espacio a pantalla completa con categorías por color, barra de acceso rápido, ránking de uso, indicadores del sistema y CyberBot.*
 
+![Terminal integrada Cyber Terminal en CyberLauncher ejecutando comandos de PowerShell y pruebas dentro del espacio de trabajo](docs/screenshots/terminal-es.png)
+
+*Cyber Terminal integrada (`Ctrl+J`) con sesiones persistentes de PowerShell o CMD dentro del lanzador.*
+
+![Panel HUD de Recursos del sistema en CyberLauncher mostrando uso de RAM, procesador y núcleos, tiempo activo e información rápida](docs/screenshots/system-es.png)
+
+*HUD de Recursos del sistema con uso de memoria en vivo, procesador, tiempo activo y datos clave del lanzador.*
+
+![Compañero flotante CyberBot en el escritorio mostrando buscador de accesos, aplicaciones más usadas y lanzamientos recientes](docs/screenshots/cyberbot-es.png)
+
+*CyberBot flotante de escritorio (`Alt+Shift+B`) para buscar accesos, favoritos y lanzamientos recientes sin abrir la ventana principal.*
+
 ---
 
 ## 🚀 ¿Por qué CyberLauncher?
