@@ -17,3 +17,6 @@ dist-electron/
 build/
 release/
 coverage/
+
+# Local environment
+.env*
