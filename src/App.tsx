@@ -600,10 +600,10 @@ function ShortcutActionButton({ icon: Icon, label, disabled = false, onClick }: 
   );
 }
 
-const HeaderClock = React.memo(({ onClick, ariaLabel, placement, activeTasksCount = 0 }: {
+const HeaderClock = React.memo(({ onClick, title, ariaLabel, activeTasksCount = 0 }: {
   onClick: () => void;
+  title: React.ReactNode;
   ariaLabel: string;
-  placement: 'bottom' | 'left';
   activeTasksCount?: number;
 }) => {
   const [time, setTime] = useState(() => new Date());
@@ -616,21 +616,21 @@ const HeaderClock = React.memo(({ onClick, ariaLabel, placement, activeTasksCoun
     return () => clearInterval(timer);
   }, [visible]);
 
-  const timeLabel = time.toLocaleTimeString('en-US', { hour12: false });
   return (
-    <Tooltip label={<><span>{ariaLabel}</span><span>{timeLabel}</span><kbd className="tooltip-shortcut">Ctrl+T</kbd></>} placement={placement} showOnFocus>
+    <Tooltip label={title} placement="bottom" showOnFocus>
       <button
         onClick={onClick}
         type="button"
         aria-label={ariaLabel}
         aria-keyshortcuts="Control+T"
-        className="launcher-titlebar-clock relative flex items-center justify-center gap-1 h-7 px-1 shrink-0 rounded-md text-cyan-400 hover:bg-white/10 font-digits font-bold text-xs tabular-nums cursor-pointer focus-visible:outline-2 focus-visible:outline-cyan-400"
+        className="focus:outline-none focus-visible:outline-2 focus-visible:outline-cyan-400 rounded-md flex items-center gap-1.5 text-cyan-400 font-digits font-bold text-[13px] sm:text-[14px] xl:text-[16px] tracking-wider drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer tabular-nums shrink-0 justify-start pl-0.5 pr-1 group"
       >
-        <Clock aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-        <span className="launcher-titlebar-clock-time">{timeLabel}</span>
+        <Clock aria-hidden="true" className="w-3.5 h-3.5 mb-0.5 shrink-0 transition-transform duration-300 group-hover:scale-115 group-hover:rotate-12" />
+        <span>{time.toLocaleTimeString('en-US', { hour12: false })}</span>
         {activeTasksCount > 0 && (
-          <span className="launcher-titlebar-clock-count text-[9px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-1 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse">
-            {activeTasksCount}
+          <span className="flex items-center gap-1 text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)] animate-pulse ml-0.5">
+            <Timer aria-hidden="true" className="w-3 h-3 text-cyan-400" />
+            <span>{activeTasksCount}</span>
           </span>
         )}
       </button>
@@ -2225,7 +2225,7 @@ export default function App() {
       main.style.removeProperty('--launcher-scrollbar-width');
       header.removeAttribute('data-compact-resources');
     };
-  }, []);
+  }, [showHeaderClock]);
 
   type KeyboardNavTarget = { section: 'favorites' | 'apps'; index: number };
   const [keyboardNav, setKeyboardNav] = useState<KeyboardNavTarget | null>(null);
@@ -8739,6 +8739,16 @@ export default function App() {
           <div className="launcher-header-tools flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 ml-auto max-w-full shrink-0">
             <SystemMonitor t={t} onClick={toggleSystemHUD} />
             <DiskMonitor t={t} onClick={toggleStorageHUD} />
+            {showHeaderClock && (
+              <div className="flex items-center border-l border-white/10 pl-2">
+                <HeaderClock
+                  onClick={() => setIsClockHUDOpen(prev => !prev)}
+                  title={withShortcut(t('hud_clock'), 'Ctrl+T')}
+                  ariaLabel={t('hud_clock')}
+                  activeTasksCount={scheduledTasks.length}
+                />
+              </div>
+            )}
           </div>
         </header>
 
@@ -9549,23 +9559,18 @@ export default function App() {
                   <TerminalSquare aria-hidden="true" className="w-3.5 h-3.5" />
                 </button>
               </Tooltip>
-              {showHeaderClock ? (
-                <HeaderClock onClick={() => setIsClockHUDOpen(prev => !prev)} ariaLabel={t('hud_clock')}
-                  placement={titlebarTooltipPlacement} activeTasksCount={scheduledTasks.length} />
-              ) : (
-                <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement={titlebarTooltipPlacement}>
-                  <button type="button" onClick={() => setIsClockHUDOpen(prev => !prev)}
-                    className={`${TITLEBAR_TOOL_CLASS} ${scheduledTasks.length > 0 ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10'}`}
-                    aria-label={t('hud_clock')} aria-keyshortcuts="Control+T">
-                    <Timer aria-hidden="true" className="w-3.5 h-3.5" />
-                    {scheduledTasks.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
-                        {scheduledTasks.length}
-                      </span>
-                    )}
-                  </button>
-                </Tooltip>
-              )}
+              <Tooltip label={withShortcut(t('hud_clock'), 'Ctrl+T')} placement={titlebarTooltipPlacement}>
+                <button type="button" onClick={() => setIsClockHUDOpen(prev => !prev)}
+                  className={`${TITLEBAR_TOOL_CLASS} ${scheduledTasks.length > 0 ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10'}`}
+                  aria-label={t('hud_clock')} aria-keyshortcuts="Control+T">
+                  <Timer aria-hidden="true" className="w-3.5 h-3.5" />
+                  {scheduledTasks.length > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 bg-cyan-500 text-slate-950 font-digits font-bold text-[9px] rounded-full flex items-center justify-center shadow-[0_0_6px_rgba(34,211,238,0.8)]">
+                      {scheduledTasks.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
 
               {/* CyberBot Companion Quick Toggle */}
               <div className="relative">
