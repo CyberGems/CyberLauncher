@@ -333,7 +333,7 @@ export const CyberBotPrompt: React.FC<CyberBotPromptProps> = ({
       label: isPinned ? t('cyberbot_prompt_action_pin_off') : t('cyberbot_prompt_action_pin_on'),
       description: t('cyberbot_prompt_action_pin_desc'),
       keywords: 'pin anclar desanclar fijar ventana al frente topmost siempre visible toggle pin',
-      shortcut: 'Ctrl+P',
+      shortcut: 'Alt+P',
       icon: <Pin className="w-3.5 h-3.5" />,
       run: onTogglePin,
     }] : []),
