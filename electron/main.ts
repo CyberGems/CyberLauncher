@@ -1,4 +1,6 @@
+import { createGitHubStarAction } from './github-star';
 import { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen, nativeImage, dialog, protocol, net, powerMonitor, Notification } from 'electron';
+
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { exec, execSync, spawn, execFile } from 'node:child_process';
@@ -50,6 +52,9 @@ import {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'local-resource', privileges: { bypassCSP: true, secure: true, supportFetchAPI: true, allowServiceWorkers: true } }
 ]);
+
+const starRepository = createGitHubStarAction(() => shell.openExternal('https://github.com/CyberGems/CyberLauncher'));
+ipcMain.handle('github:star', () => starRepository());
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1411,6 +1416,8 @@ function getTrayMenuTemplate(): Electron.MenuItemConstructorOptions[] {
       label: t.help,
       ...(iconHelp ? { icon: iconHelp } : {}),
       submenu: [
+        { label: lang === 'es' ? 'Dar una estrella en GitHub' : 'Star on GitHub', click: () => { void starRepository().catch(console.error); } },
+        { type: 'separator' },
         {
           label: t.pinTrayIcon,
           ...(iconSettings ? { icon: iconSettings } : {}),
@@ -2455,6 +2462,10 @@ ipcMain.on('tray-menu-action', (_event, action, payload) => {
     return;
   }
 
+  if (action === 'help-star') {
+    void starRepository().catch(console.error);
+    return;
+  }
   if (action === 'help-faq') {
     void shell.openExternal('https://github.com/CyberGems/CyberLauncher/wiki#faq');
     return;

@@ -1,3 +1,4 @@
+import { githubStarLabels } from './useGitHubStar';
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { translations, TranslationKey } from './locales';
@@ -260,6 +261,7 @@ const AppIcon = ({ app, className, style, strokeWidth, broken, brokenLabel, mini
 declare global {
   interface Window {
     electronAPI?: {
+      starRepository: () => Promise<'starred' | 'opened'>;
       launchApp: (path: string, isAdmin?: boolean, keepWindowOpen?: boolean) => Promise<LaunchResult>;
       showNotification?: (options: { title: string; body: string }) => Promise<boolean>;
       getUwpApps: (onProgress?: (progress: StoreAppDiscoveryProgress) => void) => Promise<UwpImportAppPreview[]>;
@@ -9834,6 +9836,21 @@ export default function App() {
                     style={{ top: helpSubmenuPos.top, left: helpSubmenuPos.left }}
                     role="menu"
                   >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsHelpSubmenuOpen(false);
+                        void window.electronAPI!.starRepository().catch(console.error);
+                      }}
+                      className="help-submenu-item group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 focus:outline-none focus:bg-cyan-500/20 focus:text-white focus:ring-1 focus:ring-cyan-500/40 transition-colors text-left"
+                    >
+                      <Star className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
+                      <span>{githubStarLabels[language === 'es' ? 'es' : 'en'].idle}</span>
+                    </button>
+                    <div className="h-px bg-white/10 my-1 mx-1.5" />
                     <button
                       type="button"
                       role="menuitem"

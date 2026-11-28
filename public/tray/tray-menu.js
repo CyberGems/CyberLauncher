@@ -1,6 +1,7 @@
 'use strict';
 
 const ICONS = {
+  star: '<svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></svg>',
   bot: '<svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="3"/><path d="M12 8V4M10 4h4M8 13v2m8-2v2"/></svg>',
   window: '<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="10" y1="4" x2="10" y2="8"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="6" y1="4" x2="6" y2="8"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
@@ -159,6 +160,7 @@ const I18N = {
     viewAllRecents: 'Ver todos los recientes ({count})',
     noRecents: 'Sin accesos recientes',
     help: 'Ayuda',
+    star: 'Dar una estrella en GitHub',
     suite: 'Más de CyberGems',
     quit: 'Salir',
     pin: 'Fijar icono en la barra...',
@@ -184,6 +186,7 @@ const I18N = {
     viewAllRecents: 'View all recent ({count})',
     noRecents: 'No recent shortcuts',
     help: 'Help',
+    star: 'Star on GitHub',
     suite: 'More from CyberGems',
     quit: 'Exit',
     pin: 'Pin icon to taskbar...',
@@ -535,6 +538,8 @@ function renderHelpFlyout() {
   const group = document.createElement('div');
   group.className = 'group group-bottom';
   group.replaceChildren(
+    makeItem({ action: 'help-star', icon: 'star', label: t('star') }),
+    makeSeparator(),
     makeItem({ action: 'help-pin', icon: 'pin', label: t('pin') }),
     makeSeparator(),
     makeItem({ action: 'help-faq', icon: 'faq', label: t('faq') }),

@@ -1,8 +1,9 @@
+import { useGitHubStar } from './useGitHubStar';
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   X, Github, RefreshCw,
-  Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Heart
+  Tag, ClipboardCopy, Check, Gem, Globe, BookOpen, Bug, Star, Heart
 } from 'lucide-react';
 import Tooltip from './Tooltip';
 import { EscKeyBadge } from './KeyBadge';
@@ -86,6 +87,7 @@ export default function AboutModal({
   const [versions, setVersions] = useState<AppVersions | null>(null);
   const [status, setStatus] = useState<CheckStatus>('idle');
   const [diagCopied, setDiagCopied] = useState(false);
+  const { giveStar, starState, starLabel } = useGitHubStar(() => window.electronAPI!.starRepository(), language === 'es');
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHandledSeqRef = useRef(0);
   const mainFade = useEdgeFades<HTMLDivElement>();
@@ -401,6 +403,16 @@ export default function AboutModal({
                 aria-label={t('about_releases_tooltip')}
               >
                 <Tag className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip label={starLabel} placement="top">
+              <button
+                type="button"
+                onClick={() => void giveStar()}
+                className="group flex items-center justify-center w-[30px] h-[30px] rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label={starLabel} aria-busy={starState === 'busy'} disabled={starState === 'busy' || starState === 'starred'}
+              >
+                <Star size={14} fill={starState === 'starred' ? 'currentColor' : 'none'} />
               </button>
             </Tooltip>
             <Tooltip label={t('about_donate_tooltip')} placement="top">

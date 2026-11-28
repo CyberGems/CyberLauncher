@@ -219,6 +219,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: (version: string) => ipcRenderer.invoke('update:install', version),
   setAutoUpdate: (enabled: boolean) => ipcRenderer.invoke('set-auto-update', enabled),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  starRepository: () => ipcRenderer.invoke('github:star'),
   onUpdateStatus: (callback: (status: any) => void) => {
     const handler = (_event: any, status: any) => callback(status);
     ipcRenderer.on('update:status', handler);
